@@ -167,8 +167,11 @@ describe('the admin side', () => {
     await decline('Lin');
 
     expect(stored('Lin').accessRequests).toEqual([]);
+    // Silent (one-way-in step 4c): a declined ask reads like one never stored,
+    // waiting until its hour is up, and signs nobody in.
     const res = await CLAIM(makeRequest('POST', 'http://x/claim', { name: 'Lin', secret }));
-    expect((await res.json()).status).toBe('none');
+    expect((await res.json()).status).toBe('pending');
+    expect(res.headers.get('set-cookie')).toBeNull();
   });
 
   it('drops off the list once approved', async () => {

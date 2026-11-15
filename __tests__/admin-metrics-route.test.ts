@@ -82,6 +82,23 @@ describe('GET /api/admin/metrics', () => {
     expect(body.equipment).toMatchObject({ racketSavers: 1, racketAndStringSavers: 1 });
   });
 
+  it('counts Stats reach and Home-lead tappers on this roster, since Slice-0 began', async () => {
+    const { GET } = await import('@/app/api/admin/metrics/route');
+    const lin = seedMember('Lin');
+    const kento = seedMember('Kento');
+    seedMember('Akane');
+    seedDoc('events', { id: 'e1', memberId: lin.id, kind: 'stats_open', at: ago(3), source: 'home' });
+    seedDoc('events', { id: 'e2', memberId: lin.id, kind: 'stats_open', at: ago(2) });
+    seedDoc('events', { id: 'e3', memberId: kento.id, kind: 'stats_open', at: ago(1), source: 'tab' });
+    // Before the clock, off the roster, and another kind: none counts.
+    seedDoc('events', { id: 'e4', memberId: kento.id, kind: 'stats_open', at: '2026-08-01T00:00:00.000Z', source: 'home' });
+    seedDoc('events', { id: 'e5', memberId: 'not-on-roster', kind: 'stats_open', at: ago(1), source: 'home' });
+    seedDoc('events', { id: 'e6', memberId: kento.id, kind: 'checkin_open', at: ago(1), source: 'home' });
+    const body = await (await GET(makeGetRequest(URL_BASE, true))).json();
+    expect(body.skill).toMatchObject({ since: '2026-08-16', statsOpeners: 2, homeLeadTappers: 1 });
+    expect(body.skill.reach).toBeCloseTo(2 / body.skill.rosterSize);
+  });
+
   it('does not count another club', async () => {
     const { GET } = await import('@/app/api/admin/metrics/route');
     seedSession('session-2026-10-01', { datetime: ago(6), maxPlayers: 4 });

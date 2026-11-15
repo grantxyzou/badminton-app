@@ -23,6 +23,7 @@ import { ensureContainer } from '@/lib/cosmos';
 import { readMembership } from '@/lib/groups';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
+import { stringingServiceOnFor } from '@/lib/stringingService';
 import { canStringIn } from '@/lib/roster';
 import { verifyMemberAuth, isAdminAuthedWithMember } from '@/lib/auth';
 import { lastStrungFromJobs } from '@/lib/restring';
@@ -367,6 +368,11 @@ export async function POST(req: NextRequest) {
   const admin = await isAdminAuthedWithMember(req);
   if (!admin.authed) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  }
+  // A club with stringing switched off takes no new job, from the bench either
+  // (docs/plans/stringing-add-on.md).
+  if (!(await stringingServiceOnFor(resolveGroupId(req)))) {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
 
   const body = await req.json().catch(() => null);

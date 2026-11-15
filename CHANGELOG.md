@@ -8,6 +8,140 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Swipe back that works, and the Stringing tab after a club switch (2026-11-15)
+
+- **Swiping back is easier and smoother.** It now counts from a thumb a little in from the edge, at any speed once you've dragged far enough, and with a natural arc. While you drag across, the page holds still instead of scrolling under your finger.
+- **The page no longer slides while you swipe back.** It used to shift right and dim under your finger, which made the top bar see-through and cut the cards off at the edge. Now only the green edge glow and the back arrow move. A swipe also no longer gets dropped when the page refreshes in the middle of it.
+- **Switching clubs updates the whole app.** After moving from a club with stringing off to one with it on, the Stringing tab could stay hidden until the app restarted. Every screen now re-reads the club you switched to, and a setting saved in one club is never applied to another.
+
+## The page scrolls the ordinary way (2026-11-15)
+
+- **Admin no longer opens under a screen of blank space.** On the App Store app, the console could open with an empty band above "At a glance" that only went away when you scrolled. The app's pages now scroll the way an ordinary web page does, rather than inside a screen-sized box, which is the path the phone's browser handles best. Nothing about where you are on a page, a sheet holding the page still, or each tab remembering its place changes.
+- **Admin remembers where you were.** A page you open from far down the console now opens at its top, and Back returns the console to exactly where you left it. The same goes for the stringing bench: open a job, go back, and the list is where it was.
+
+## Join a club with its link: sign in, ask, and hear back by email (2026-11-13)
+
+- **A club's link now signs you in first, then asks to join.** Tap the link, use Apple, Google or a 6-digit code from your email, type the name the club will see, and ask. No password, and no page to keep open: you can close the app.
+- **"Almost in" shows while you wait,** and moves you into the club by itself once an organiser lets you in. You also get an email (and a notification if you've turned them on).
+- **Organisers let people in as a Regular or a Drop-in.** A regular gets members-first priority; a drop-in waits behind regulars during that window. Nobody is a regular unless the organiser says so.
+- **Already in one club? Tap another club's link to ask to join it,** under the name you want there.
+- **An account with an email no longer hears "nothing to sign in with"**: the email is a way back in, by code.
+- **Log in starts with an email code.** Apple and Google are still at the top; name and PIN are under "Other ways to log in". Your PIN still works.
+- **Already on the list and signed in before? Your PIN connects a new sign-in.** Through the club's link, if your name is taken by you, you're asked "Is that you?": your PIN (or a code from an organiser) joins the new sign-in to your account and you're straight in, with no second account and no waiting.
+- **Accounts that never get into a club are removed after 14 days**, unless they're still waiting on an ask.
+- **Organisers get one "Club link" card in place of "Invite someone".** The link, its QR right on the card, Share, Save poster and New link. Post it anywhere: nobody gets in until an organiser says yes. Creating a club shows its link straight away.
+- **One-time invites and their 8-character codes are gone.** "Join a club" asks for the club's link, and an old code says to ask for the link instead. Any unused invite stopped working with this update.
+- **One way in through a club's link.** "Claim your name" is gone from the club's page: someone already on the list signs in like everyone else, and the organiser joins them to their spot.
+- **"I play here already" no longer gives away who is on a club's list.** Every name now gets the same "Sent. If the club knows that name, an organiser will see it." Before, asking under a name and waiting a few seconds showed whether that name was on the list.
+- **Already on a club's list but never signed in? Come in the same way.** Ask with the name the club knows you by, and the organiser sees "Lin is on your list and has never signed in. Is this them?" Their yes joins your new sign-in to your spot, history and all, and the app switches you in. ("Claim your name" on the club's page still works for now.)
+
+## Log in with a code from your email (2026-11-13)
+
+- **"Use email instead" on Log in now sends you a 6-digit code.** Type it in and you're in: no password to remember or reset. The code is in the email's subject line, works once, and lasts ten minutes. Your password still works, one tap away under "Use my password instead".
+- It works for any account that already has an email address. Making a new account with a code comes with the next step of the joining rework (`docs/plans/one-way-in.md`).
+
+## One word for each idea: "Join a club", and "club" everywhere (2026-11-13)
+
+- **Welcome's first button says "Join a club"**, and so does the invite page; Log in's link says "New here? Join a club". "Sign up" now means one thing in the app: putting yourself on a session's list.
+- **"Group" is "club" on every screen** a member or organiser reads: Create a club, Join a club, Your clubs, the Stats comparisons ("What the club plays") and the admin ledger ("Club outlay"). In Chinese, 群组 became 俱乐部. The legal pages are unchanged.
+
+## Joining: clearer messages, and imported names can claim their spot (2026-11-13)
+
+The first step of making joining simpler (`docs/plans/one-way-in.md`).
+
+- **A one-word name at the club's link is a hint now, not a wall.** Someone the club already knows by one name ("Lin") could not claim their spot through the club's link, because the form demanded a last name. The first tap asks for one; the second sends the name as typed.
+- **"Is that you?" after Google or Apple looks in the right club.** A new account following another club's invite, whose name that club already had, was asked for a PIN that was then checked against BPM Core's roster. It now checks the club the invite is for, and signs them in there.
+- **A link that no longer works says so.** A used or expired link said "That code doesn't work" about a code nobody typed, and a failed sign-up said the invite "has been replaced". Both now say the link no longer works.
+- **"That request expired" said too little.** The same words covered an ask that ran out, one an organiser ignored and one under a name the club doesn't know. They now say no request is open under that name and what to check.
+- **Another club's club link no longer leads to a Join button that always failed** for someone already signed in. It says to ask that club's organiser for an invite link, until joining through a club link with an existing account is built.
+
+## A swipe back in Admin goes back one page (2026-11-13)
+
+- **Swiping back from an Admin page left Admin altogether.** The console stays loaded, hidden, under every Admin page so Back is instant, and its own top bar ("Back to profile") still answered the swipe. So one swipe from Late cancellations ran two Backs at once, the page's and the console's, and the app swapped from Admin to Profile under your finger (Grant, App Store app). It now goes back one page: Late cancellations → How your club runs → the console. Escape on a keyboard is the same.
+- **The same was true of every tab kept in the background**: a page left open on another tab went back too, unseen. A top bar now answers only while it is the page on screen.
+- **Profile no longer notes another tab's scrolling as its own** list position while it waits in the background.
+
+## Voice scoring is on (2026-11-13)
+
+- **The Preview mic on Keep score is on for everyone** (Stats → Play → Keep score; `docs/plans/voice-score.md`). Call the score, server's first, and the board keeps it. Chrome on Android listens hands-free; Safari on iPhone and iPad hears one call per tap. Not in the App Store or Play app.
+- **What the mic hears goes to the browser's own speech service** (Google in Chrome, Apple in Safari), never to BPM's server; the privacy policy will say so.
+
+## Voice scoring on Keep score: a proof of concept, off for now (2026-11-13)
+
+- **Call the score and the board keeps it** (Preview, behind `NEXT_PUBLIC_FLAG_VOICE_SCORE`, OFF in production; `docs/plans/voice-score.md`). A mic above the +1 buttons listens for the umpire's call, "eleven seven", and scores the rally only when the call is exactly one rally on from the board, so another court's call is shown as heard and never scored. At a level score ("six five" at 5 all) it asks which side won; "five all" and "service over" settle it themselves.
+- **Hands-free in Chrome on Android, one tap per call on iPhone and iPad**, where Safari's always-on listening is unreliable. Not in the App Store or Play apps: their web views have no speech recogniser.
+- **Members see nothing yet.** It stays off until the privacy policy says the browser sends what the mic hears to its own speech service (Google in Chrome, Apple in Safari). The one change that ships now: the app's pages may ask for the microphone (`Permissions-Policy: microphone=(self)`), and the browser still asks the person first.
+
+## Stringing is a club's own choice (2026-11-13)
+
+- **An organiser can switch the stringing service off** (Grant: "What if we tray the entire stringing feature as an add-on?"). It is the new **Add-ons** switch at the bottom of "How your club runs". Off, the club has no Stringing tab (the bar shows Home, Stats and Profile), no stringing bench in the admin console, no "Request stringing" from a racket's page or the app icon's menu, and the server takes no new request.
+- **It cannot be switched off while a racket is still on the bench, or a finished job is unpaid.** The page says how many, under the switch. A setting never hides a racket someone handed over or money someone owes.
+- **BPM Core is unchanged**, and so is any club that never chose: stringing stays on. A club that started from "Members first" (Six Feathers) starts with it off, because it has no stringer. Choosing a style never turns it on or off, and switching it never makes the club "Custom".
+- The deployment-wide stringing switch still turns stringing off for every club. This is phase 1 of `docs/plans/stringing-add-on.md`; linking a club to another club's stringer comes later.
+
+## Receipts and the admin console read dates on the club's clock (2026-11-12)
+
+- **A receipt read the session's date in the phone's own time zone**, so a Thursday 7 PM session showed as "Fri, Nov 20" on a phone or browser set to UTC, on the receipt image, both receipt texts and the e-transfer memo. It now reads in Vancouver time like every other session date in the app. The payments inbox matches a memo by the name after the dash, so a memo's date was never part of matching.
+- **The admin console's dates and times do too**: the next-session card, Payments, the Ledger, Past sessions, Roster, a player's profile and the club-run page all format through the same helpers, which now read in Vancouver time on any phone.
+- **A shuttle purchase showed the day before on a Pacific phone**: its date is a plain calendar day, which a phone read as midnight in London, still the previous evening in Vancouver. It now shows the day that was entered, on every phone.
+
+## Cards grow with your phone's text size (2026-11-12)
+
+- **Set larger text on your iPhone and the app follows**: every card grows as a whole — its text, padding, buttons, icons and avatar together — up to one and a half times the designed size. Pinch-to-zoom stays off.
+- **On a tablet or a computer the app is a little larger** (up to 12% on a wide screen). On a phone, or a page of an open Z Fold or Duo, it is exactly the size it was: the same screens before and after match pixel for pixel at the default text size.
+- **What stays fixed on purpose**: the tab bar and the top bar, the way iPhone apps keep their own bars, plus the launch screen and the courtside scoreboard. On an open foldable at large text no card crosses the fold.
+
+## Stringing: the strings map, rethought, and every rating re-checked against its maker (2026-11-12)
+
+- **The card holds only the map** (Grant: "What if the map card only contains the map and the control?"). Compare by is now the maker's own ratings: **Repulsion, Control, Sound, Shock**, with durability always along the bottom. The list/map button is gone, and "How to choose a string" is the card's one button.
+- **A quiet line on the tab bar points back at the map** (Grant: "This should bring all the interaction focus to the map"). With nothing picked it says "Tap a dot on the map to see it here"; with a string picked, its name and the two numbers that put it where it is. Tap it or swipe it up to open the string. A foldable keeps showing the string on its right page instead.
+- **Your racket on the map itself** (Grant: "we should not loose this AI personalized analysis. In fact it should be top level visible"): "For your Astrox 88D Pro", and the strings that suit it glow. The picked string says "Good match for your …", and so does its row in the list. One request answers for the whole shelf (`/api/stringing/fit?ids=`).
+- **Every string as a list**, the peek's swipe-up with nothing picked: the maker's five ratings as small number chips in their colours, sortable by any of them or by price. The sort button and its menu take the colour of what you sort by, and that column's chip is filled solid.
+- **A string's sheet**: the packet beside what it is for and five bars in their colours. Then one card with how it suits your racket and the stringer's note, the colours on the reel, and the price at the foot beside "Restring with this string".
+
+- **Five ratings, one set of names, for every brand** (Grant: "For yonex: repulsion, durability, control, sound, shock absorption … lining and Victor can map to that too"). Each of the 46 strings in the catalog was re-checked, and **shock absorption** is new.
+- **Yonex (19)**: all five from Yonex's own charts (Yonex Japan's string pages and the charts printed on the packs). BG66, BG66 Brilliant and BG85 have no Yonex page left, so their numbers come from shops' copies of the same chart. Several of our old numbers were off, e.g. Exbolt 63 is control 10 (was 8) and BG65 repulsion 7 (was 5). Where Yonex draws a bar past the top of its chart (11 of 10), it is stored as 10 with a note.
+- **Li-Ning (16)**: all five from Li-Ning's own stores (Singapore, India, UAE). No. 1 is durability 7 and control 8 (was 5 and 9). NS30 has no shock absorption anywhere.
+- **Victor (11)**: Victor publishes no numbers. Its four ratings come from shops copying a distributor's sheet, so every Victor string is now marked a community estimate, and none has shock absorption. VBS-58 Nano, VBS-69 Nano and VS-850 keep their old estimates where nothing agreed.
+- Each brand-rated string now names the chart it came from.
+
+## Every sheet's fields have a name a screen reader can say (2026-11-12)
+
+- **All 59 files that open a sheet were checked**, not only the eight opened in a browser. Ten fields had no name a screen reader could read: on the shuttle purchase sheet (tubes, total cost, date, speed), the shuttle stock count, the receipt's recipient, and the session form's start, deadline and end times, courts and max players. Each now says what it is. Nothing on screen changed.
+- **A test now checks every sheet** for an unnamed field, a button drawn under 44 pt without a 44 pt tap, and an icon button with no name.
+
+## Admin pages and sheets checked against Apple's guidance (2026-11-12)
+
+- **Every Admin page passed the automatic accessibility check (WCAG 2.2 AA) and the 44pt tap check**, after three fixes: the Skip dates field now has a label a screen reader can say, the names on Sign-in readiness take a 44pt tap (their rows sit 12 px apart now), and on a foldable the Admin pages open from the fold instead of sliding in from the edge.
+- **"What's new" is easier to read and to close**: its grey title text was below the contrast minimum in both themes and is now well above it, and its ✕ takes a 44pt tap (the title bar is a few pixels taller).
+- **The check-in sheet's ✕** keeps its circle and takes a 44pt tap behind it.
+
+## Easier to tap: every small control takes a 44pt tap (2026-11-12)
+
+- **Apple asks for tap targets of at least 44 by 44 points.** Measured in a browser on Home and every Stats register, a handful fell short: the You / Equipment / Play / Learn switch and Doubles / Singles (28 px tall), "Add to calendar" (16 px), the Balance row (20 px), "Update", "Share", "+ String tension", the racket to try next, its shop link, "Open this week's focus" and "All your kudos".
+- **The rest of the app had the same check**: Stringing, Profile, Admin, the signed-out screens. Roster's filter chips (32 px) and a job's "Ready by" date field (42 px) take the same tap area; the chips' rows sit 12 px apart now so each row keeps its own. The round top buttons (theme, language, notifications) measured 42 px across and now measure 44.
+- **Each now takes a 44pt tap area that is invisible**, so nothing moved or was redrawn: the same screens before and after match pixel for pixel on Home, Profile and Welcome, and differ on Stats only by 2 to 7 shades out of 255 on some text edges. The one visible change is the Roster's second row of chips, 6 px lower.
+
+## Every tab on a foldable uses both halves, with motion (2026-11-12)
+
+- **Profile on an open Z Fold or Duo**: your list on the left, the page a row opens on the right — Edit profile is open before you tap anything. The open row is marked in green. Sheets (notifications, install) still open in the left half.
+- **Admin**: the console on the left, the page you open on the right, with Roster open by default. Opening another row swaps the right half.
+- **The stringing bench's own pages** — Add job, Archived, the set-up page, an archived job — and a player's "A change to confirm" now open on the right half beside the list instead of covering both halves.
+- **A page on the right has no Back button**: the list it came from is right beside it. A page opened from it (your name, from Edit profile) still has one.
+- **Motion**: a page on the right slides in from the fold as it fades in, and the right half scrolls into view when a row far down the list opens it. With reduced motion it only fades.
+- **Signed out on a foldable reads like a book**: the bpm logo on the left half, Sign up and Log in on the right. Log in and Sign up keep the logo on the left and put their form on the right.
+- **Notifications** shows your settings on the left half and the recent list on the right.
+- **Keep your account** (for someone an organiser let in) opens on the right half beside the banner that asks for it, instead of across both halves.
+- **A phone is unchanged.**
+
+## Stringing: two-colour sets, your own colours, and a tidier colour picker (2026-11-12)
+
+- **A reel can be a two-colour set** (Grant: "two colour combo like aerobites"). "Red / White" means red mains and white crosses; the mains are always named first. A set is shown as a swatch split down the middle with a small M and C, and is counted in stock like any single colour: buy a reel of "Red / White", string a racket in it, and that set's count goes down.
+- **An admin can add the club's own colour** (Grant: "custom picker for future"). "Custom colour" asks for a name and a colour (a quick pick, the hue strip, or a hex like #14B8A6). It is saved with the club's strings, so another string can use it too. Players see its swatch and the name you gave it.
+- **The colour picker is tidier.** "Colours on the reel" lists what the maker makes the string in first ("Yonex makes BG80 in"), then "Two-colour sets" (the maker's, such as Aerobite's, and the club's) with "New combo", then "Other colours" with "Custom colour". The tiles are three across, and long names are shortened to fit ("Fl. yellow"). A stringer who isn't an admin gets the same picker and can make a new set, but can't add a club colour.
+- **A player's request offers the sets and the club's colours** and sends the colour's English name ("Red / White", or "Teal") to the bench.
+- **Catalog colours corrected against retailer listings**: Aerobite is red mains with white crosses ("Red/White"), Aerobite Boost is yellow mains with grey crosses ("Yellow/Grey", not white/yellow), and BG80 no longer lists red.
+
 ## Stringing: a walk-up's email goes once, and a waiting job can still be received (2026-11-12)
 
 - **A walk-up never gets the same email twice.** Undoing and redoing "Mark ready" while the ready email was still going out, or a second "Send again" from another phone, could each send a second copy. The job now notes the email as being sent before it goes, and the job page says "Sending…" until it has.

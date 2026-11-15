@@ -21,11 +21,30 @@ export function withLocalTz(date: string, time: string): string {
   return `${date}T${time}:00${sign}${hh}:${mm}`;
 }
 
+/**
+ * The club's clock. Every session date and time the app shows reads in
+ * Vancouver time, whatever zone the phone is in (CLAUDE.md, "Session times
+ * display in Vancouver time"). Without it a Thursday 7 PM Pacific session read
+ * "Fri, Nov 20 · 3:00 AM" on a device set to UTC.
+ */
+export const CLUB_TIME_ZONE = 'America/Vancouver';
+
+/**
+ * The zone to format `iso` in. A bare `YYYY-MM-DD` (a shuttle purchase's
+ * `date`) is a calendar day, not a moment: `new Date('2026-11-19')` is UTC
+ * midnight, which is still Nov 18 in Vancouver, so it is read back in UTC to
+ * land on the day that was written. Anything with a time is a moment, and
+ * reads on the club's clock.
+ */
+function zoneFor(iso: string): string {
+  return /^\d{4}-\d{2}-\d{2}$/.test(iso) ? 'UTC' : CLUB_TIME_ZONE;
+}
+
 /** Short, locale-aware date — 'May 7'. */
 export function fmtShortDate(iso: string | undefined): string {
   if (!iso) return '—';
   try {
-    return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: zoneFor(iso) });
   } catch {
     return iso.slice(0, 10);
   }
@@ -35,7 +54,7 @@ export function fmtShortDate(iso: string | undefined): string {
 export function fmtSessionLabel(iso: string | undefined): string {
   if (!iso) return '—';
   try {
-    return new Date(iso).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    return new Date(iso).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', timeZone: zoneFor(iso) });
   } catch {
     return iso.slice(0, 10);
   }
@@ -45,7 +64,7 @@ export function fmtSessionLabel(iso: string | undefined): string {
 export function fmtFullDate(iso: string | undefined): string {
   if (!iso) return '—';
   try {
-    return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', timeZone: zoneFor(iso) });
   } catch {
     return iso.slice(0, 10);
   }
@@ -55,7 +74,7 @@ export function fmtFullDate(iso: string | undefined): string {
 export function fmtDeadline(iso: string | undefined): string {
   if (!iso) return '—';
   try {
-    return new Date(iso).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+    return new Date(iso).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit', timeZone: CLUB_TIME_ZONE });
   } catch {
     return iso.slice(0, 10);
   }
@@ -65,7 +84,7 @@ export function fmtDeadline(iso: string | undefined): string {
 export function fmtTime(iso: string | undefined): string {
   if (!iso) return '—';
   try {
-    return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    return new Date(iso).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZone: CLUB_TIME_ZONE });
   } catch {
     return iso.slice(11, 16);
   }

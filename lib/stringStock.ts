@@ -4,7 +4,7 @@ import { ensureCatalogSeeded } from './catalogSeed';
 import { groupScope, type GroupScope } from './groupScope';
 import { ensureClubSettings } from './stringingShop';
 import type { CatalogItem, StringPurchase, StringingJob } from './types';
-import { isStringColourId, type StringColourId } from './stringPalette';
+import { isReelColourId, type ReelColourId } from './stringPalette';
 
 export * from './stringStockMath';
 import { MAX_UNITS, MAX_METRES_PER_UNIT, MAX_COST_CENTS, STRUNG_STATUSES } from './stringStockMath';
@@ -74,8 +74,8 @@ export interface NewStringPurchase {
   totalCostCents: number;
   date: string;
   notes?: string;
-  /** A palette id; absent = "Mixed / not sure". */
-  color?: StringColourId;
+  /** A reel colour id (palette, two-colour set or the club's own); absent = "Mixed / not sure". */
+  color?: ReelColourId;
 }
 
 export function validatePurchase(input: Record<string, unknown>): NewStringPurchase {
@@ -92,9 +92,11 @@ export function validatePurchase(input: Record<string, unknown>): NewStringPurch
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date))) throw new StringStockError('invalid_date');
   const catalogId = typeof input.catalogId === 'string' && input.catalogId.startsWith('string-') ? input.catalogId : null;
   const notes = typeof input.notes === 'string' ? input.notes.trim().slice(0, 200) : undefined;
-  // Not a palette id (absent, empty, "mixed", a typo) is "Mixed / not sure":
-  // the purchase still saves, it just counts in the string's mixed pool.
-  const color = isStringColourId(input.color) ? input.color : undefined;
+  // Not a reel colour id (absent, empty, "mixed", a typo) is "Mixed / not
+  // sure": the purchase still saves, it just counts in the string's mixed
+  // pool. A set (`combo:red+white`) or the club's own (`custom:<rrggbb>`) is
+  // a colour like any other here.
+  const color = isReelColourId(input.color) ? input.color : undefined;
   return {
     label, catalogId, unit, units, metresPerUnit: Math.round(metresPerUnit * 10) / 10, totalCostCents, date,
     ...(notes ? { notes } : {}),

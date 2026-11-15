@@ -26,6 +26,14 @@ export type ClubStyle = 'first_come' | 'members_first' | 'custom';
 /** `'off'`: the organiser keeps the money outside the app — no bill, no "unpaid". */
 export type ClubMoney = 'split' | 'off';
 
+/**
+ * The stringing service, an ADD-ON a club switches on (docs/plans/stringing-add-on.md,
+ * phase 1). `'off'`: no Stringing tab, no bench, no requests. It sits UNDER the
+ * deployment-wide `NEXT_PUBLIC_FLAG_STRINGING`, which still turns the service
+ * off for everyone (`stringingServiceOn` in `lib/stringingService.ts`).
+ */
+export type ClubStringing = 'on' | 'off';
+
 export interface ClubRun {
   style: ClubStyle;
   /** Spots per court; the session's cap is courts × this. `null` = the cap is typed by hand. */
@@ -51,6 +59,7 @@ export interface ClubRun {
    * Not part of any style: picking one keeps the club's fee.
    */
   organiserFee: number;
+  stringing: ClubStringing;
 }
 
 /** The most a club may add per player, in dollars. */
@@ -76,7 +85,20 @@ type ClubRunValues = Omit<ClubRun, 'style'>;
  * "First come, first served" says nothing about them, so choosing it keeps
  * whatever the club has, and any number reads as that style.
  */
-type StyleValues = Omit<ClubRunValues, 'guests' | 'organiserFee'> & { guests: GuestCap | null };
+type StyleValues = Omit<ClubRunValues, 'guests' | 'stringing' | 'organiserFee'> & { guests: GuestCap | null };
+
+/**
+ * Stringing for a club that never chose: on for BPM's style (BPM Core has a
+ * stringer), off for "Members first" (Six Feathers has none). It fills a GAP
+ * only. A style never switches it: choosing "Members first" keeps the shop a
+ * club already runs, and the switch is not part of what makes a style, so
+ * turning it on or off never makes a club "Custom".
+ */
+const STYLE_STRINGING: Record<ClubStyle, ClubStringing> = { first_come: 'on', members_first: 'off', custom: 'on' };
+
+function isClubStringing(v: unknown): v is ClubStringing {
+  return v === 'on' || v === 'off';
+}
 
 export const CLUB_STYLES: Record<Exclude<ClubStyle, 'custom'>, { label: string; summary: string; values: StyleValues }> = {
   first_come: {
@@ -94,7 +116,7 @@ export const CLUB_STYLES: Record<Exclude<ClubStyle, 'custom'>, { label: string; 
 export const PLAYERS_PER_COURT_MIN = 2;
 export const PLAYERS_PER_COURT_MAX = 12;
 
-const DEFAULT_RUN: ClubRun = { style: 'first_come', ...CLUB_STYLES.first_come.values, membersFirst: null, guests: 0, organiserFee: 0 };
+const DEFAULT_RUN: ClubRun = { style: 'first_come', ...CLUB_STYLES.first_come.values, membersFirst: null, guests: 0, stringing: 'on', organiserFee: 0 };
 
 /** The old switch's answer, for a club whose `run` never named a number of guests. */
 function legacyGuests(settings: { guestsAllowed?: unknown } | null | undefined): GuestCap {
@@ -131,11 +153,12 @@ export function clubRunOf(settings: { run?: unknown; guestsAllowed?: unknown } |
       r.membersFirst === null ? null : isMembersFirst(r.membersFirst) ? { ...r.membersFirst } : base.membersFirst && { ...base.membersFirst },
     guests: isGuestCap(r.guests) ? r.guests : base.guests ?? legacyGuests(settings),
     organiserFee: isOrganiserFee(r.organiserFee) ? r.organiserFee : 0,
+    stringing: isClubStringing(r.stringing) ? r.stringing : STYLE_STRINGING[style],
   };
 }
 
-/** Start from a style: its values, in full. */
-export function applyStyle(style: Exclude<ClubStyle, 'custom'>, current?: Pick<ClubRun, 'guests'> & Partial<Pick<ClubRun, 'organiserFee'>>): ClubRun {
+/** Start from a style: its values, in full. The stringing switch and the organiser fee are the club's and are kept. */
+export function applyStyle(style: Exclude<ClubStyle, 'custom'>, current?: Partial<Pick<ClubRun, 'guests' | 'stringing' | 'organiserFee'>>): ClubRun {
   const values = CLUB_STYLES[style].values;
   return {
     style,
@@ -143,6 +166,7 @@ export function applyStyle(style: Exclude<ClubStyle, 'custom'>, current?: Pick<C
     membersFirst: values.membersFirst && { ...values.membersFirst },
     guests: values.guests ?? current?.guests ?? 0,
     organiserFee: current?.organiserFee ?? 0,
+    stringing: current?.stringing ?? STYLE_STRINGING[style],
   };
 }
 
@@ -158,13 +182,14 @@ export function withSetting<K extends keyof ClubRunValues>(run: ClubRun, key: K,
     membersFirst: run.membersFirst,
     guests: run.guests,
     organiserFee: run.organiserFee,
+    stringing: run.stringing,
     [key]: value,
   };
   return { style: styleOf(values), ...values };
 }
 
 /** The style whose values these are, or `custom`. */
-export function styleOf(values: ClubRunValues): ClubStyle {
+export function styleOf(values: Omit<ClubRunValues, 'stringing'>): ClubStyle {
   for (const [name, preset] of Object.entries(CLUB_STYLES) as [Exclude<ClubStyle, 'custom'>, (typeof CLUB_STYLES)[keyof typeof CLUB_STYLES]][]) {
     if (
       preset.values.playersPerCourt === values.playersPerCourt &&
@@ -189,11 +214,11 @@ export function styleOf(values: ClubRunValues): ClubStyle {
  */
 export function parseClubRun(
   value: unknown,
-  current: { membersFirst?: MembersFirst | null; guests?: GuestCap; organiserFee?: number } = {},
+  current: { membersFirst?: MembersFirst | null; guests?: GuestCap; stringing?: ClubStringing; organiserFee?: number } = {},
 ): ClubRun | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const v = value as Record<string, unknown>;
-  const known = new Set(['style', 'playersPerCourt', 'money', 'membersFirst', 'guests', 'organiserFee']);
+  const known = new Set(['style', 'playersPerCourt', 'money', 'membersFirst', 'guests', 'stringing', 'organiserFee']);
   if (Object.keys(v).some((k) => !known.has(k))) return null;
   if (!(v.playersPerCourt === null || isPlayersPerCourt(v.playersPerCourt))) return null;
   if (!(v.money === 'split' || v.money === 'off')) return null;
@@ -208,12 +233,16 @@ export function parseClubRun(
   // And the fee: absent keeps the club's, so an older screen cannot zero it.
   const organiserFee = v.organiserFee === undefined ? current.organiserFee ?? 0 : v.organiserFee;
   if (!isOrganiserFee(organiserFee)) return null;
+  // And for stringing: a screen from before the add-on never turns a shop off.
+  const stringing = v.stringing === undefined ? current.stringing ?? 'on' : v.stringing;
+  if (!isClubStringing(stringing)) return null;
   const values: ClubRunValues = {
     playersPerCourt: v.playersPerCourt,
     money: v.money,
     membersFirst: membersFirst === null ? null : { daysBefore: membersFirst.daysBefore, time: membersFirst.time },
     guests,
     organiserFee,
+    stringing,
   };
   return { style: styleOf(values), ...values };
 }

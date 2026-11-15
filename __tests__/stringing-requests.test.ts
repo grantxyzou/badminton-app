@@ -224,14 +224,15 @@ describe('stringColor', () => {
 
   it('drops a colour that is too long or not a string, and still files the request', async () => {
     await openShop();
-    expect((await POST(playerReq('wei', { ...VALID, stringColor: 'x'.repeat(31) }))).status).toBe(201);
+    expect((await POST(playerReq('wei', { ...VALID, stringColor: 'x'.repeat(65) }))).status).toBe(201);
     expect((await POST(playerReq('wei', { ...VALID, stringColor: 42 }))).status).toBe(201);
     expect(jobs().map((j) => j.stringColor)).toEqual([undefined, undefined]);
   });
 
-  it('keeps 30 characters', async () => {
+  it('keeps 64 characters: a set of two of the club\'s own colours is "<30> / <30>"', async () => {
     await openShop();
-    await POST(playerReq('wei', { ...VALID, stringColor: 'x'.repeat(30) }));
-    expect(jobs()[0].stringColor).toBe('x'.repeat(30));
+    const set = `${'x'.repeat(30)} / ${'y'.repeat(30)}`;
+    await POST(playerReq('wei', { ...VALID, stringColor: set }));
+    expect(jobs()[0].stringColor).toBe(set);
   });
 });

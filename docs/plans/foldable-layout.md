@@ -325,6 +325,75 @@ detail never empty.
   switch's sliding pill caught mid-slide, which two shots of the same code
   also differ by.
 
+### Every tab on two pages, and motion for them (2026-11-12, `/goal`)
+
+Grant: "finish the app with apple guideline. using our design system. then add
+motion for the fold views." An audit at the Z Fold and Duo sizes found Profile,
+the Admin console it opens, and the bench's own pages (Add job, the archive,
+set-up, an archived job) still one column across the fold. Each now follows
+Apple's list-detail, the shape Stringing took the same day:
+
+- **Profile**: the title and the list on the left; the screen a row opens on the
+  right — Edit profile before any tap, as a phone's Settings opens on your
+  account. The card or row whose page is open wears the accent's tint
+  (`aria-current="page"`). A row that opens a SHEET still opens it in the left
+  half. `ProfileTab`'s sub-screens became one function of the view
+  (`subScreen`), so one screen keeps its early returns and two pages render the
+  same screen in `.profile-detail`. Signed in only.
+- **Admin**: the console on the left, the page a row opens on the right — Roster
+  before any tap. On two pages a console row REPLACES the right page; a page
+  opening another (How your club runs → Late cancellations) still stacks, and
+  keeps its Back.
+- **The bench's own pages** (Add job, Archived, set-up, an archived job, and the
+  player's "A change to confirm") open on the right page beside the list
+  instead of taking the tab over. Tapping a job closes whatever was open.
+- **A right page has no Back** (`PaneDetail` in
+  `components/primitives/PaneDetail.tsx`; `TopBar` reads it): the list it came
+  from is beside it, so a Back, an edge swipe or Escape closing it would close
+  the page for no reason. A page opened from the right page is `nested` and
+  keeps its Back.
+- **A right page comes into view when it changes** (`usePaneDetailReveal`): the
+  body is the one scroller, so a row tapped far down a long list opened a page
+  whose top was already above the screen (measured: the job page sat at
+  y = −403 after "Add job"). It scrolls up only when the page is out of sight,
+  smoothly unless reduced motion.
+- **Motion** (`.pane-page-open`, a sixth recipe beside the five in the motion
+  pass): a page on the right arrives FROM THE FOLD, the book's spine — a
+  `--space-5` glide under a fade at `--duration-normal`, the reflow's own
+  duration; reduced motion keeps the fade only. Going Back in Admin fades, as
+  on one screen. An open row's tint transitions in (`--duration-fast`). The
+  fold/unfold crossfade (`data-pane-flip`) is unchanged. Sampled in Chromium:
+  −6 px / 0.62 at 40 ms, −1 px / 0.93 at 120 ms, none / 1 at 400 ms; reduced:
+  no transform at any sample.
+- **Signed out, a book's spread** (same evening, after the rest of the audit:
+  Welcome's lockup and its two doors sat across the fold): the launch lockup
+  on the LEFT page — the cover — and Sign up / Log in on the RIGHT, opposite
+  it, where the hand holding the right half reaches. The splash's lockup sits
+  on the same left page, so a cold start still hands over to Welcome with
+  nothing moving. Log in, Sign up and the ask keep the lockup on the left as a
+  cover (`.signed-out-cover`, rendered only on two pages) and put their form on
+  the right. The lockup's fit for one page is `--launch-kh`, a second value
+  from the same pre-paint script (`app/layout.tsx`), because a unitless scale
+  from viewport units needs typed `calc()` division, which Safari lacks.
+- **Notifications** (the bell's page): its title and this phone's settings on
+  the left page, Recent on the right; with no setting to show it keeps one
+  column.
+- **Keep your account** (the page Home's "Choose how to sign in" banner opens
+  for a member an admin let in): on one screen it still stands in for Home; on
+  two pages it opens in the week's place on the RIGHT page, beside the banner
+  that opened it, with no Back ("Not now" closes it). It was the last screen
+  the audit had not reached (it needs an account with no way back in); forced
+  in the browser by answering `/api/auth/methods` with none, it ran 16–868
+  across the fold before this.
+- **Checked and left alone**: Home, Stats' four registers and the pages they
+  open (on the right since #885), and every sheet (the left half since step 1).
+- **Measured**: Profile, Admin and every bench page at Z Fold open 402 / 402 and
+  Duo sideways 356 / 355; nothing crosses the centre. Welcome: lockup 20–422,
+  doors 474–876 on the Z Fold; 87–389 and 574–876 on the Duo. Phone: 0 pixels
+  changed on Profile, a Profile page, the Admin console, Welcome (upright and
+  sideways), Log in, Notifications and Keep your account against main; a bench page differs by 17
+  anti-aliased edge pixels of the tab bar's pill.
+
 ## Shape
 
 | Piece | Where |
@@ -340,6 +409,11 @@ detail never empty.
 | The Android plugin (WindowManager FoldingFeature) | `android/.../BpmFoldPlugin.java`, registered in `MainActivity.java`, deps in `app/build.gradle` + `variables.gradle` |
 | The courtside scoreboard | `components/stats/CourtsideScoreboard.tsx`, opened from `YourRecordCard`; styles `.courtside-*` and `--court-digit` in `globals.css`; strings `stats.courtside` |
 | Shell canary (both plugins pinned) | `__tests__/native-shell-projects.test.ts` |
+| Every right page (no Back beside a list, scroll into view) | `components/primitives/PaneDetail.tsx`, read by `components/primitives/TopBar.tsx` |
+| Profile and Admin two pages | `ProfileTab.tsx` (`subScreen`, `.profile-shell`), `admin/AdminDashboard.tsx` (`pageFor`, `.admin-shell`), `__tests__/components/ProfileTab.twoPages.test.tsx` |
+| Signed out as a spread | `.signed-out-cover`, `.launch-canvas` / `.launch-actions` in the pane block, `--launch-kh` in `app/layout.tsx`, `components/onboarding/SignedOutShell.tsx` |
+| Notifications two pages | `components/NotificationsPage.tsx` (`.notices-shell`) |
+| Right page motion | `.pane-page-open` / `panePageOpen` in `globals.css` |
 | Stringing's right page | `components/stringing/StringingAside.tsx` (slot, provider, portal), `usePaneMode` in `lib/paneMode.ts`, `.stringing-shell` / `.stringing-aside` in the pane block, `__tests__/components/stringing-two-pages.test.tsx` |
 | The fold/unfold crossfade | `lib/paneMode.ts`, `components/PaneFlip.tsx` (mounted in `HomeShell`), `paneFlipA/B` in `globals.css`, `__tests__/pane-mode.test.tsx` |
 

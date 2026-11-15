@@ -35,7 +35,11 @@ const TTL_S = 30 * 60;
 const COOKIE_PATH = '/bpm';
 
 export interface PendingSignup {
-  provider: ProviderName;
+  /**
+   * `email`: an address proved by a 6-digit code (`/api/auth/email-code/verify`,
+   * docs/plans/one-way-in.md step 4), whose `sub` IS the normalized address.
+   */
+  provider: ProviderName | 'email';
   sub: string;
   email: string | null;
   emailVerified: boolean;
@@ -71,7 +75,9 @@ export function readPendingSignup(req: NextRequest): PendingSignup | null {
   const value = verifySignedValue<PendingSignup>(req.cookies.get(PENDING_COOKIE)?.value);
   if (!value) return null;
   if (
-    (value.provider !== 'google' && value.provider !== 'apple') ||
+    (value.provider !== 'google' && value.provider !== 'apple' && value.provider !== 'email') ||
+    // An email-proven identity is the address: it must say so, verified.
+    (value.provider === 'email' && (value.email !== value.sub || value.emailVerified !== true)) ||
     typeof value.sub !== 'string' ||
     !value.sub
   ) {

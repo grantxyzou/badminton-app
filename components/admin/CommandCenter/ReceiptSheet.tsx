@@ -179,6 +179,7 @@ export default function ReceiptSheet({ open, onClose, input: rawInput, error, in
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
                   <label className="section-label" style={{ color: 'var(--text-muted)' }}>Recipient</label>
                   <select
+                    aria-label="Recipient"
                     value={selectedPlayer ?? ''}
                     onChange={(e) => setSelectedPlayer(e.target.value || null)}
                   >

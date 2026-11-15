@@ -25,7 +25,7 @@ import { POST as DRILL_DONE } from '@/app/api/stats/drills/done/route';
 import { POST as EVENTS } from '@/app/api/events/route';
 import { POST as CREATE_GROUP } from '@/app/api/groups/route';
 import { POST as SWITCH_GROUP } from '@/app/api/groups/switch/route';
-import { POST as JOIN_GROUP } from '@/app/api/groups/join/route';
+import { POST as ASK_TO_JOIN } from '@/app/api/groups/ask/route';
 import { POST as LOG_GAME } from '@/app/api/games/route';
 import { POST as ASSESS } from '@/app/api/assessments/route';
 import { POST as PUSH_SUBSCRIBE } from '@/app/api/push/subscribe/route';
@@ -97,7 +97,7 @@ const CASES: Case[] = [
   { name: 'write a usage beacon', call: () => EVENTS(req('POST', 'events', { kind: 'app_open', platform: 'web' })) },
   { name: 'create a club', call: () => CREATE_GROUP(req('POST', 'groups', { name: 'Late Smashers', rosterName: 'Lin' })) },
   { name: 'switch clubs', call: () => SWITCH_GROUP(req('POST', 'groups/switch', { groupId: 'club-x' })) },
-  { name: 'join with a code', call: () => JOIN_GROUP(req('POST', 'groups/join', { code: 'ABCD2345' })) },
+  { name: 'ask to join a club', call: () => ASK_TO_JOIN(req('POST', 'groups/ask', { doorToken: 'a'.repeat(32), name: 'Lin' })) },
   {
     name: 'log a game',
     call: () => LOG_GAME(req('POST', 'games', { teamA: ['Lin', 'Viktor'], teamB: ['Akane', 'Kento'], scoreA: 21, scoreB: 15 })),
@@ -195,8 +195,9 @@ describe('groups off: the Member copy is the cutoff', () => {
 
 describe('a cutoff in ANOTHER club than the cookie names (audit, 2026-11-05)', () => {
   // Lin is in club-x (the cookie's club) and in club-y. Club-y signs Lin out;
-  // club-x does not. The live check reads only club-x's cutoff, so both doors
-  // that hand back a club-y cookie have to read club-y's.
+  // club-x does not. The live check reads only club-x's cutoff, so the door
+  // that hands back a club-y cookie has to read club-y's. (A "welcome back"
+  // invite join was the second door until one-way-in step 5 retired invites.)
   beforeEach(() => {
     seedGroup('clubyy', { ownerMemberId: ADMIN_MEMBER_ID, name: 'Late Smashers' });
     seedMembership('clubyy', lin.id, { name: 'Lin' });
@@ -208,15 +209,5 @@ describe('a cutoff in ANOTHER club than the cookie names (audit, 2026-11-05)', (
     expect((await SWITCH_GROUP(req('POST', 'groups/switch', { groupId: 'clubyy' }))).status).toBe(200);
     signOutAt(0, linY());
     expect((await SWITCH_GROUP(req('POST', 'groups/switch', { groupId: 'clubyy' }))).status).toBe(401);
-  });
-
-  it('a "welcome back" join refuses it too, and leaves the invite for its owner', async () => {
-    const { mintInvite } = await import('@/lib/invites');
-    signOutAt(0, linY());
-    const invite = await mintInvite('clubyy', ADMIN_MEMBER_ID);
-    const res = await JOIN_GROUP(req('POST', 'groups/join', { token: invite!.token }));
-    expect(res.status).toBe(401);
-    const { resolveInvite } = await import('@/lib/invites');
-    expect(await resolveInvite(invite!.token, 'invite')).not.toBeNull();
   });
 });

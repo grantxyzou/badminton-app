@@ -2,7 +2,8 @@
 
 **Track:** members-only (docs/plans/members-only.md) — how a new person gets in
 **Status:** in-flight (built 2026-10-06; ships with its PR)
-**Review on:** 2026-12-06 — did an admin get stuck creating or sending a link, did anyone report a link that "didn't work" (used, expired, or the old club-wide one), and did more new accounts arrive by invite than by access request?
+**Read 2026-11-12:** No reports of a stuck admin or a broken link. No known failures.
+**Review on:** 2026-12-12 — same question: stuck admin, broken link, and are new accounts arriving by invite?
 
 ## Problem
 
@@ -28,6 +29,8 @@ should come back as an option.
 - Any change to the "I play here already" access-request path.
 
 ## Decisions
+
+- **2026-11-13 — To be retired** by [`one-way-in.md`](one-way-in.md) (Grant: "One time invite should just be the guest feature", then: drop the link entirely). The club's door link becomes the only way to become a member; guests stay as plus-ones. Until that step ships, everything below still describes the live code.
 
 - **2026-11-06 — first review: nothing reported yet** (Grant: "Not yet"). No admin stuck, no broken link. The kill criterion's count (invites against access requests) was not read; moved a month on with that question added.
 

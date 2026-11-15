@@ -34,7 +34,10 @@ function tokensFromCss(prefix: string): Record<string, string> {
   const out: Record<string, string> = {};
   const re = new RegExp(`^\\s*(--${prefix}-[a-z0-9-]+):\\s*([^;]+);`, 'gm');
   for (const m of css.matchAll(re)) {
-    if (!(m[1] in out)) out[m[1]] = m[2].trim(); // first (:root) wins
+    // A rem rung is written `calc(Nrem / 16)` (docs/plans/ui-scale.md): N px
+    // at the default size, which is what the reference page documents.
+    const v = m[2].trim().replace(/^calc\(([0-9.]+)rem \/ 16\)$/, '$1px');
+    if (!(m[1] in out)) out[m[1]] = v; // first (:root) wins
   }
   return out;
 }

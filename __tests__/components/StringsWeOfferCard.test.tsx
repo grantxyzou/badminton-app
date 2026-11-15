@@ -8,9 +8,11 @@ import { resetCatalogCache } from '@/components/stats/useCatalog';
 import enMessages from '../../messages/en.json';
 
 /**
- * "Strings in stock" (docs/design/strings-shelf-spec.md, design 4a): the map
- * by default, with power, control or feel up the side; the list one tap away;
- * and the list alone when there is too little to plot.
+ * "Strings in stock" (docs/design/strings-shelf-spec.md, design 4a; the
+ * Stringing canvas, idea B, 2026-11-12): a card that holds only the map, with
+ * repulsion, control, sound or shock up the side; a quiet peek on the tab bar
+ * that names the picked string and opens it; the whole shelf as a list in a
+ * sheet; and the list alone when there is too little to plot.
  */
 
 const str = (id: string, model: string, repulsion: number | null, durability: number | null, extra: Record<string, unknown> = {}) => ({
@@ -55,63 +57,44 @@ afterEach(() => {
 });
 
 describe('the map', () => {
-  it('opens on the map, with the first in-stock string selected', async () => {
-    // Exbolt and BG66 sort first (power 9) but BG66 is out.
+  it('opens on the map with nothing picked, the peek pointing back at it', async () => {
     mockApi(['BG80', 'BG66', 'BG65', 'Exbolt'], { stock: { BG66: 'out', Exbolt: 'in' }, prices: { Exbolt: 3200 } });
     wrap();
-    const map = await screen.findByRole('group', { name: 'Strings by power and durability' });
-    const pressed = within(map).getAllByRole('button').filter((b) => b.getAttribute('aria-pressed') === 'true');
-    expect(pressed.map((b) => b.getAttribute('aria-label'))).toEqual(['Yonex Exbolt 63: power 9 out of 10, durability 5 out of 10']);
-    expect(screen.getByText('$32')).toBeDefined();
-    // The card is the list's row: its ratings are the coloured trait line
-    // (the meters moved to the string's page, under "Ratings and specs").
-    expect(document.querySelector('button[data-selected="true"]')!.textContent).toContain('Power 9 · Control 7 · Durability 5');
-    // The subtitle names the view; the icon beside it switches.
+    const map = await screen.findByRole('group', { name: 'Strings by repulsion and durability' });
+    expect(within(map).getAllByRole('button').filter((b) => b.getAttribute('aria-pressed') === 'true')).toHaveLength(0);
+    const peek = screen.getByTestId('string-peek');
+    expect(peek.textContent).toContain('Tap a dot on the map to see it here');
+    expect(within(peek).getByRole('button', { name: 'Show every string as a list' })).toBeDefined();
+    // The card holds only the map: no list switch, the lesson behind a button.
     expect(screen.getByText('Map view')).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Show as a list' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Show as a list' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'How to choose a string' })).toBeDefined();
   });
 
-  it('moves the panel when a dot is tapped, without opening the sheet', async () => {
-    mockApi(['BG80', 'BG66', 'BG65']);
+  it('names a tapped dot in the peek, with its two map numbers, and the peek opens its sheet', async () => {
+    mockApi(['BG80', 'BG66', 'BG65', 'Exbolt'], { stock: { Exbolt: 'low' }, prices: { Exbolt: 3200 } });
     wrap();
-    fireEvent.click(await screen.findByRole('button', { name: /^Yonex BG65:/ }));
-    // The panel follows: the card names the string the dot stands for.
-    expect(screen.getAllByText('BG65').length).toBeGreaterThan(0);
+    fireEvent.click(await screen.findByRole('button', { name: /^Yonex Exbolt 63:/ }));
+    // Tapping a dot never opens the sheet.
     expect(screen.queryByRole('dialog')).toBeNull();
+    const peek = screen.getByTestId('string-peek');
+    expect(peek.textContent).toContain('Exbolt');
+    expect(peek.textContent).toContain('Repulsion 9 · Durability 5');
+    // The peek says what the map says and nothing more: no price or stock.
+    expect(peek.textContent).not.toContain('$32');
+    expect(peek.textContent).not.toContain('Low on stock');
+    fireEvent.click(within(peek).getByRole('button', { name: 'Open Yonex Exbolt 63' }));
+    const sheet = await screen.findByRole('dialog');
+    expect(within(sheet).getByText('Yonex Exbolt 63')).toBeDefined();
+    expect(within(sheet).getByText(/Low on stock/)).toBeDefined();
   });
 
-  it('shows the picked string as the list’s own row, tinted, and the whole card opens its page', async () => {
-    resetCatalogCache();
-    const before = CATALOG[3].attributes;
-    CATALOG[3].attributes = { ...before, stringType: 'Repulsion', feel: 'Hard', feelScale: 4, hittingSound: 8, ratingSource: 'Brand published' } as typeof before;
-    try {
-      mockApi(['BG80', 'BG66', 'BG65', 'Exbolt'], { stock: { Exbolt: 'low' }, prices: { Exbolt: 3200 }, colours: { Exbolt: ['white'] } });
-      wrap();
-      await screen.findByRole('group', { name: 'Strings by power and durability' });
-      const card = document.querySelector<HTMLButtonElement>('button[data-selected="true"]')!;
-      expect(card).not.toBeNull();
-      // The same row as the list: name, price, type · feel, stock, what it is for, traits.
-      const text = card.textContent ?? '';
-      for (const part of ['Exbolt', '$32', 'Power · Hard feel', 'Low on stock', 'Exbolt 63 is for you', 'Power 9 · Control 7 · Durability 5']) {
-        expect(text).toContain(part);
-      }
-      expect(within(card).getByRole('img', { name: 'Colours: White' })).toBeDefined();
-      expect(card.querySelectorAll('[data-trait]')).toHaveLength(3);
-      // Picked: a solid accent tint, never a ring; a chevron says it opens.
-      expect(card.style.background).toContain('--accent');
-      expect(card.getAttribute('style') ?? '').not.toMatch(/(^|;\s*)(border|outline|box-shadow)\s*:/);
-      expect(within(card).getByText('chevron_right')).toBeDefined();
-      // The meters, whose ratings and the feel scale are the page's now.
-      expect(screen.queryByText('Power, control and durability as rated by Yonex')).toBeNull();
-      expect(screen.queryByText('Feel')).toBeNull();
-      expect(screen.queryByText('See how it plays')).toBeNull();
-      expect(document.querySelectorAll('.bpm-meter-fill')).toHaveLength(0);
-      fireEvent.click(card);
-      const sheet = await screen.findByRole('dialog');
-      expect(within(sheet).getByText('Yonex Exbolt 63')).toBeDefined();
-    } finally {
-      CATALOG[3].attributes = before;
-    }
+  it('follows the axis in the peek', async () => {
+    mockApi(['BG80', 'BG66', 'BG65', 'Exbolt']);
+    wrap();
+    fireEvent.click(await screen.findByRole('button', { name: /^Yonex BG80:/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Control' }));
+    expect(screen.getByTestId('string-peek').textContent).toContain('Control 7 · Durability 6');
   });
 
   it('moves the selection with the arrow keys, in list order', async () => {
@@ -122,24 +105,27 @@ describe('the map', () => {
     expect(screen.getByRole('button', { name: /^Yonex BG80:/ }).getAttribute('aria-pressed')).toBe('true');
   });
 
-  it('lists strings it cannot plot under "Not on the map"', async () => {
+  it('points strings it cannot plot to the list, where they are', async () => {
     mockApi(['BG80', 'BG66', 'BG65', 'Unrated', 'House']);
     wrap();
-    await screen.findByRole('group', { name: 'Strings by power and durability' });
-    expect(screen.getByText('Not on the map')).toBeDefined();
+    await screen.findByRole('group', { name: 'Strings by repulsion and durability' });
+    fireEvent.click(screen.getByRole('button', { name: '2 more strings aren’t on the map · see the list' }));
+    const sheet = await screen.findByRole('dialog');
     // An unlinked label is listed, as a plain row: it has no page to open, but
     // it is on offer, so it is not drawn as a disabled one (audit 2026-10-12).
-    expect(screen.getByText('House').closest('button')).toBeNull();
+    expect(within(sheet).getByText('House').closest('button')).toBeNull();
+    expect(within(sheet).getByText('Unrated').closest('button')).not.toBeNull();
   });
 
-  it('draws no stock legend, and says stock on the card only when it is low or out', async () => {
+  it('draws no stock legend; the string’s sheet says it when it is low or out', async () => {
     // Grant, on the map: "Does user care about stock here?"
     mockApi(['BG80', 'BG66', 'BG65'], { stock: { BG80: 'in', BG66: 'low', BG65: 'in' } });
     wrap();
-    await screen.findByRole('group', { name: 'Strings by power and durability' });
+    await screen.findByRole('group', { name: 'Strings by repulsion and durability' });
     expect(screen.queryByText('In stock')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: /^Yonex BG66:/ }));
-    expect(screen.getByText('Low on stock')).toBeDefined();
+    fireEvent.click(within(screen.getByTestId('string-peek')).getByRole('button'));
+    expect(within(await screen.findByRole('dialog')).getByText(/Low on stock/)).toBeDefined();
   });
 
   it('puts strings with identical scores on ONE dot with their count, and zooms in on a tap', async () => {
@@ -157,13 +143,13 @@ describe('the map', () => {
       expect(cluster.textContent).toBe('2');
       fireEvent.click(cluster);
       // Zoomed: only the two, a way back, and what they share.
-      const map = screen.getByRole('group', { name: '2 strings at Power 8 · Durability 6' });
+      const map = screen.getByRole('group', { name: '2 strings at Repulsion 8 · Durability 6' });
       expect(within(map).getAllByRole('button')).toHaveLength(2);
-      expect(screen.getByRole('status').textContent).toBe('2 strings at Power 8 · Durability 6');
+      expect(screen.getByRole('status').textContent).toBe('2 strings at Repulsion 8 · Durability 6');
       fireEvent.click(within(map).getByRole('button', { name: /^Yonex BG80 Twin:/ }));
       expect(within(map).getByRole('button', { name: /^Yonex BG80 Twin:/ }).getAttribute('aria-pressed')).toBe('true');
       fireEvent.click(screen.getByRole('button', { name: 'All strings' }));
-      expect(screen.getByRole('group', { name: 'Strings by power and durability' })).toBeDefined();
+      expect(screen.getByRole('group', { name: 'Strings by repulsion and durability' })).toBeDefined();
     } finally {
       CATALOG.pop();
     }
@@ -174,8 +160,8 @@ describe('what runs up the side', () => {
   it('switches from power to control, says so, and remembers it', async () => {
     mockApi(['BG80', 'BG66', 'BG65', 'Exbolt']);
     wrap();
-    await screen.findByRole('group', { name: 'Strings by power and durability' });
-    expect(screen.getByText('More power →')).toBeDefined();
+    await screen.findByRole('group', { name: 'Strings by repulsion and durability' });
+    expect(screen.getByText('More repulsion →')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Control' }));
     const map = screen.getByRole('group', { name: 'Strings by control and durability' });
     expect(within(map).getByRole('button', { name: 'Yonex BG80: control 7 out of 10, durability 6 out of 10' })).toBeDefined();
@@ -184,44 +170,82 @@ describe('what runs up the side', () => {
     expect(localStorage.getItem('bpm:strings-axis')).toBe('control');
   });
 
-  it('plots feel out of 5, higher is harder', async () => {
+  it('plots hitting sound and shock absorption, the maker’s own ratings, out of 10', async () => {
     resetCatalogCache();
-    CATALOG.forEach((c, i) => { (c.attributes as Record<string, unknown>).feelScale = [4, 3, 2, 5, 3][i]; });
+    CATALOG.forEach((c, i) => {
+      (c.attributes as Record<string, unknown>).hittingSound = [7, 8, 6, 10, 5][i];
+      (c.attributes as Record<string, unknown>).shockAbsorption = [6, 7, 6, 7, 5][i];
+    });
     try {
       mockApi(['BG80', 'BG66', 'BG65', 'Exbolt']);
       wrap();
-      fireEvent.click(await screen.findByRole('button', { name: 'Feel' }));
-      const map = screen.getByRole('group', { name: 'Strings by feel and durability' });
-      expect(within(map).getByRole('button', { name: 'Yonex BG65: feel 2 out of 5, higher is harder, durability 9 out of 10' })).toBeDefined();
-      expect(screen.getByText('Harder feel →')).toBeDefined();
+      fireEvent.click(await screen.findByRole('button', { name: 'Sound' }));
+      let map = screen.getByRole('group', { name: 'Strings by hitting sound and durability' });
+      expect(within(map).getByRole('button', { name: 'Yonex BG65: hitting sound 6 out of 10, durability 9 out of 10' })).toBeDefined();
+      fireEvent.click(screen.getByRole('button', { name: 'Shock' }));
+      map = screen.getByRole('group', { name: 'Strings by shock absorption and durability' });
+      expect(within(map).getByRole('button', { name: 'Yonex BG66: shock absorption 7 out of 10, durability 4 out of 10' })).toBeDefined();
+      expect(screen.getByText('More shock absorption →')).toBeDefined();
     } finally {
-      CATALOG.forEach((c) => { delete (c.attributes as Record<string, unknown>).feelScale; });
+      CATALOG.forEach((c) => {
+        delete (c.attributes as Record<string, unknown>).hittingSound;
+        delete (c.attributes as Record<string, unknown>).shockAbsorption;
+      });
     }
   });
 
-  it('offers only the axes enough strings are rated on, and falls back to power', async () => {
-    // The fixtures carry no feel rating: Feel is not offered, and a stored
-    // "feel" opens on power rather than an empty map.
+  it('offers only the axes enough strings are rated on, and falls back to repulsion', async () => {
+    // The fixtures carry no sound or shock rating: neither is offered, and a
+    // stored pick that is no longer an axis ("feel") opens on repulsion.
     localStorage.setItem('bpm:strings-axis', 'feel');
     mockApi(['BG80', 'BG66', 'BG65', 'Exbolt']);
     wrap();
-    await screen.findByRole('group', { name: 'Strings by power and durability' });
+    await screen.findByRole('group', { name: 'Strings by repulsion and durability' });
+    expect(screen.queryByRole('button', { name: 'Sound' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Feel' })).toBeNull();
     expect(screen.getByRole('button', { name: 'Control' })).toBeDefined();
   });
 });
 
 describe('the list', () => {
-  it('is one tap away, sorted by power, and remembered', async () => {
+  it('is the peek’s swipe-up: every string, sorted by repulsion, the maker’s ratings as chips', async () => {
     mockApi(['BG65', 'BG80', 'BG66']);
     wrap();
-    fireEvent.click(await screen.findByRole('button', { name: 'Show as a list' }));
-    expect(screen.getByText('List view')).toBeDefined();
-    expect(screen.queryByRole('group', { name: 'Strings by power and durability' })).toBeNull();
-    // By the SHELF name, what a request sends; sorted by power.
-    const rows = screen.getAllByRole('listitem').map((li) => li.textContent ?? '');
-    expect(rows.map((r) => r.match(/^BG\d+/)?.[0])).toEqual(['BG66', 'BG80', 'BG65']);
-    expect(localStorage.getItem('bpm:strings-view')).toBe('list');
+    await screen.findByRole('group', { name: 'Strings by repulsion and durability' });
+    fireEvent.click(within(screen.getByTestId('string-peek')).getByRole('button'));
+    const sheet = await screen.findByRole('dialog', { name: '3 strings in stock' });
+    // By the SHELF name, what a request sends; sorted by repulsion.
+    const rows = within(sheet).getAllByRole('listitem').filter((li) => li.querySelector('.string-list-row'));
+    expect(rows.map((r) => r.textContent?.match(/BG\d+/)?.[0])).toEqual(['BG66', 'BG80', 'BG65']);
+    const bg80 = rows[1];
+    expect(within(bg80).getByRole('img', { name: 'Repulsion 8, Durability 6, Control 7' })).toBeDefined();
+    // The chip it is sorted by is filled solid.
+    expect(bg80.querySelector<HTMLElement>('[data-chip="power"]')!.style.background).not.toContain('color-mix');
+    expect(bg80.querySelector<HTMLElement>('[data-chip="durability"]')!.style.background).toContain('color-mix');
+  });
+
+  it('sorts by any trait or the price, its button and menu in the trait’s colour', async () => {
+    const { traitTint } = await import('@/lib/stringShelf');
+    const norm = (c: string) => { const el = document.createElement('span'); el.style.color = c; return el.style.color; };
+    mockApi(['BG65', 'BG80', 'BG66'], { prices: { BG65: 2800, BG80: 3200, BG66: 3000 } });
+    wrap();
+    await screen.findByRole('group', { name: 'Strings by repulsion and durability' });
+    fireEvent.click(within(screen.getByTestId('string-peek')).getByRole('button'));
+    const sheet = await screen.findByRole('dialog', { name: '3 strings in stock' });
+    const sortButton = within(sheet).getByTestId('list-sort');
+    expect(sortButton.textContent).toContain('Repulsion');
+    expect(sortButton.style.color).toBe(norm(traitTint('power')));
+    fireEvent.click(sortButton);
+    const menu = within(sheet).getByRole('menu');
+    expect(within(menu).getAllByRole('menuitemradio').map((b) => b.querySelector('span:not([aria-hidden])')?.textContent)).toEqual(['Repulsion', 'Durability', 'Control', 'Sound', 'Shock', 'Price']);
+    expect(within(menu).getByRole('menuitemradio', { name: 'Repulsion' }).getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(within(menu).getByRole('menuitemradio', { name: 'Durability' }));
+    expect(within(sheet).getByTestId('list-sort').style.color).toBe(norm(traitTint('durability')));
+    const order = () => within(sheet).getAllByRole('listitem').filter((li) => li.querySelector('.string-list-row')).map((r) => r.textContent?.match(/BG\d+/)?.[0]);
+    expect(order()).toEqual(['BG65', 'BG80', 'BG66']);
+    fireEvent.click(within(sheet).getByTestId('list-sort'));
+    fireEvent.click(within(sheet).getByRole('menuitemradio', { name: 'Price' }));
+    expect(order()).toEqual(['BG65', 'BG66', 'BG80']);
   });
 
   it('is all there is, with no toggle, when fewer than three strings plot', async () => {
@@ -229,77 +253,53 @@ describe('the list', () => {
     wrap();
     await screen.findByText('BG80');
     expect(screen.queryByRole('button', { name: 'Show as a list' })).toBeNull();
-    expect(screen.queryByRole('group', { name: 'Strings by power and durability' })).toBeNull();
+    expect(screen.queryByRole('group', { name: 'Strings by repulsion and durability' })).toBeNull();
+    // No map, so no peek either.
+    expect(screen.queryByTestId('string-peek')).toBeNull();
   });
 
-  it('opens on the list for a long shelf, unless the member chose the map', async () => {
-    resetCatalogCache();
-    const extra = Array.from({ length: 6 }, (_, i) => str(`s-x${i}`, `Extra ${i}`, 4 + i, 4 + i));
-    CATALOG.push(...extra);
-    try {
-      const labels = ['BG80', 'BG66', 'BG65', ...extra.map((e) => e.model)];
-      const links: Record<string, string> = { BG80: 's-80', BG66: 's-66', BG65: 's-65', ...Object.fromEntries(extra.map((e) => [e.model, e.id])) };
-      vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => {
-        if (String(url).includes('/catalog')) return Promise.resolve({ ok: true, json: async () => ({ items: CATALOG }) } as Response);
-        return Promise.resolve({ ok: true, json: async () => ({ strings: labels, links }) } as Response);
-      }));
-      wrap();
-      expect(await screen.findByText('List view')).toBeDefined();
-      cleanup();
-      localStorage.setItem('bpm:strings-view', 'map');
-      wrap();
-      expect(await screen.findByText('Map view')).toBeDefined();
-    } finally {
-      CATALOG.splice(CATALOG.length - extra.length, extra.length);
-    }
-  });
-
-  it('names a row by power, control and durability, with its stock in words', async () => {
-    // Grant, 2026-11-12: what the string's page led with belongs on the list.
-    mockApi(['BG65', 'BG80', 'BG66'], { stock: { BG80: 'low' } });
+  it('names a short shelf’s row by repulsion, control and durability, with its stock in words', async () => {
+    // Too few to plot: the list is the card, as before.
+    mockApi(['BG80', 'BG66', 'Unrated'], { stock: { BG80: 'low' } });
     wrap();
-    fireEvent.click(await screen.findByRole('button', { name: 'Show as a list' }));
-    const row = screen.getByText('BG80').closest('button')!;
-    expect(row.textContent).toContain('Power 8 · Control 7 · Durability 6');
+    const row = (await screen.findByText('BG80')).closest('button')!;
+    expect(row.textContent).toContain('Repulsion 8 · Control 7 · Durability 6');
     expect(row.textContent).toContain('Low on stock');
     // A string with no stock band says nothing about stock, never "out".
     expect(screen.getByText('BG66').closest('button')!.textContent).not.toMatch(/stock/i);
   });
 
-  it('leads each row with name and price, then type · feel beside the stock, then what it is for', async () => {
+  it('leads each list row with name and price, then type · feel, then what it is for', async () => {
     resetCatalogCache();
     const before = CATALOG[0].attributes;
     CATALOG[0].attributes = { ...before, stringType: 'Repulsion', feel: 'Medium-Hard' } as typeof before;
     try {
-      mockApi(['BG65', 'BG80', 'BG66'], { stock: { BG80: 'in' }, prices: { BG80: 3200 } });
+      mockApi(['BG65', 'BG80', 'BG66'], { stock: { BG80: 'low' }, prices: { BG80: 3200 } });
       wrap();
-      fireEvent.click(await screen.findByRole('button', { name: 'Show as a list' }));
-      const row = screen.getByText('BG80').closest('button')!;
+      await screen.findByRole('group', { name: 'Strings by repulsion and durability' });
+      fireEvent.click(within(screen.getByTestId('string-peek')).getByRole('button'));
+      const sheet = await screen.findByRole('dialog', { name: '3 strings in stock' });
+      const row = within(sheet).getByText('BG80').closest('button')!;
       const text = row.textContent ?? '';
-      expect(within(row).getByText('Power · Hard feel')).toBeDefined();
-      expect(within(row).getByText('In stock')).toBeDefined();
-      expect(within(row).getByText('BG80 is for you')).toBeDefined();
-      // Reading order: name, price, type · feel, stock, description, traits.
+      // Reading order: name, price, type · feel, description; stock is the
+      // string's sheet's (Grant: "remove" the list's "Low on stock").
       const at = (part: string) => text.indexOf(part);
       expect(at('BG80')).toBe(0);
       expect(at('BG80')).toBeLessThan(at('$32'));
-      expect(at('$32')).toBeLessThan(at('Power · Hard feel'));
-      expect(at('Power · Hard feel')).toBeLessThan(at('In stock'));
-      expect(at('In stock')).toBeLessThan(at('BG80 is for you'));
-      expect(at('BG80 is for you')).toBeLessThan(at('Power 8 · Control 7'));
+      expect(at('$32')).toBeLessThan(at('Repulsion · Hard feel'));
+      expect(at('Repulsion · Hard feel')).toBeLessThan(at('BG80 is for you'));
+      expect(text).not.toContain('Low on stock');
     } finally {
       CATALOG[0].attributes = before;
     }
   });
 
   it('hands the stringer’s note for a string to its page', async () => {
-    try { localStorage.setItem('bpm:strings-view', 'list'); } catch { /* jsdom always has it */ }
-    mockApi(['BG80', 'BG65'], { notes: { BG80: 'Hard hitters: 26 lb.' } });
+    mockApi(['BG80', 'BG66', 'BG65'], { notes: { BG80: 'Hard hitters: 26 lb.' } });
     wrap();
-    // The note is the page's, not the list's.
-    await screen.findByText('BG80');
+    fireEvent.click(await screen.findByRole('button', { name: /^Yonex BG80:/ }));
     expect(screen.queryByText('Hard hitters: 26 lb.')).toBeNull();
-    fireEvent.click(screen.getByText('BG80').closest('button')!);
+    fireEvent.click(within(screen.getByTestId('string-peek')).getByRole('button'));
     const sheet = await screen.findByRole('dialog');
     expect(within(sheet).getByText('Your stringer recommends')).toBeDefined();
     expect(within(sheet).getByText('Hard hitters: 26 lb.')).toBeDefined();
@@ -446,8 +446,7 @@ describe('as a whole tab', () => {
 });
 
 describe('the colours on the reel', () => {
-  it('shows the stringer’s colours on the row; the string’s page lists none (the request picks the colour)', async () => {
-    try { localStorage.setItem('bpm:strings-view', 'list'); } catch { /* jsdom always has it */ }
+  it('shows the stringer’s colours on the row, and names them on the string’s sheet', async () => {
     mockApi(['BG80', 'BG65'], { colours: { BG80: ['white', 'yellow', 'not-a-colour'] } });
     wrap();
     expect(await screen.findByRole('img', { name: 'Colours: White, Yellow' })).toBeDefined();
@@ -455,9 +454,9 @@ describe('the colours on the reel', () => {
     expect(screen.getAllByRole('img', { name: /^Colours:/ })).toHaveLength(1);
     fireEvent.click(screen.getByText('BG80').closest('button')!);
     const sheet = await screen.findByRole('dialog');
-    // Grant, 2026-11-12: "people dont do any selection here. The CTA takes
-    // them to the request sheet with this string preselected."
-    expect(within(sheet).queryByText('On the reel')).toBeNull();
+    // The canvas, frame 3: the colours sit above the price, which may one day
+    // depend on them. Still nothing to pick here: the request picks.
+    expect(within(sheet).getByText('Colours on the reel')).toBeDefined();
     expect(within(sheet).queryByText(enMessages.home.stringing.offer.coloursNote)).toBeNull();
   });
 });
@@ -483,13 +482,13 @@ describe('colour by trait (Grant, 2026-11-12: "A for lists, D for map")', () => 
 
   it('draws each "Trait N" on a list row in its trait colour, unbroken, with muted separators', async () => {
     const { traitTint } = await import('@/lib/stringShelf');
-    mockApi(['BG65', 'BG80', 'BG66']);
+    // A short shelf: the list is the card.
+    mockApi(['BG80', 'BG66', 'Unrated']);
     wrap();
-    fireEvent.click(await screen.findByRole('button', { name: 'Show as a list' }));
-    const row = screen.getByText('BG80').closest('button')!;
+    const row = (await screen.findByText('BG80')).closest('button')!;
     const parts = Array.from(row.querySelectorAll<HTMLElement>('[data-trait]'));
     expect(parts.map((p) => [p.dataset.trait, p.textContent])).toEqual([
-      ['power', 'Power 8'], ['control', 'Control 7'], ['durability', 'Durability 6'],
+      ['power', 'Repulsion 8'], ['control', 'Control 7'], ['durability', 'Durability 6'],
     ]);
     for (const p of parts) {
       expect(p.style.whiteSpace).toBe('nowrap');
@@ -497,14 +496,14 @@ describe('colour by trait (Grant, 2026-11-12: "A for lists, D for map")', () => 
     }
     // The separators are outside the coloured parts, in the row's muted ink.
     expect(parts.every((p) => !p.textContent!.includes('·'))).toBe(true);
-    expect(row.textContent).toContain('Power 8 · Control 7 · Durability 6');
+    expect(row.textContent).toContain('Repulsion 8 · Control 7 · Durability 6');
   });
 
   it('colours each map dot by its string type, with a legend and the type in words on the card', async () => {
     const { typeDotFill } = await import('@/lib/stringShelf');
     mockTyped(['BG80', 'BG66', 'BG65', 'Exbolt']);
     wrap();
-    const map = await screen.findByRole('group', { name: 'Strings by power and durability' });
+    const map = await screen.findByRole('group', { name: 'Strings by repulsion and durability' });
     const dotOf = (name: RegExp) => within(map).getByRole('button', { name }).querySelector<HTMLElement>('[data-dot-type]')!;
     expect(dotOf(/^Yonex BG80:/).dataset.dotType).toBe('repulsion');
     expect(dotOf(/^Yonex BG80:/).style.background).toBe(normBg(typeDotFill('repulsion')));
@@ -513,21 +512,59 @@ describe('colour by trait (Grant, 2026-11-12: "A for lists, D for map")', () => 
     expect(dotOf(/^Yonex Exbolt 63:/).dataset.dotType).toBe('hybrid');
 
     const legend = screen.getByRole('list', { name: "Dot colour: the string's type" });
-    expect(within(legend).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Power', 'Control', 'Durability', 'Hybrid']);
+    expect(within(legend).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Repulsion', 'Control', 'Durability', 'Hybrid']);
 
-    // The selected string's card says its type in words, beside the colour.
+    // The peek names the picked string beside its type's dot.
     fireEvent.click(within(map).getByRole('button', { name: /^Yonex BG66:/ }));
-    expect(screen.getByTestId('selected-type').textContent).toBe('Control');
+    expect(screen.getByTestId('string-peek').textContent).toContain('BG66');
   });
 
   it('draws a string with no type in neutral ink, never the accent, and leaves it out of the legend', async () => {
     mockApi(['BG80', 'BG66', 'BG65']);
     wrap();
-    const map = await screen.findByRole('group', { name: 'Strings by power and durability' });
+    const map = await screen.findByRole('group', { name: 'Strings by repulsion and durability' });
     const dot = within(map).getByRole('button', { name: /^Yonex BG80:/ }).querySelector<HTMLElement>('[data-dot-type]')!;
     expect(dot.dataset.dotType).toBe('none');
     expect(dot.getAttribute('style')).not.toContain('--accent');
     expect(screen.queryByRole('list', { name: "Dot colour: the string's type" })).toBeNull();
     expect(screen.queryByTestId('selected-type')).toBeNull();
+  });
+});
+
+describe('what suits your racket, on the map (Grant: "it should be top level visible")', () => {
+  function mockWithFit(fit: unknown) {
+    const links: Record<string, string> = { BG80: 's-80', BG66: 's-66', BG65: 's-65', Exbolt: 's-ex' };
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => {
+      const u = String(url);
+      if (u.includes('/catalog')) return Promise.resolve({ ok: true, json: async () => ({ items: CATALOG }) } as Response);
+      if (u.includes('/fit?ids=')) return Promise.resolve({ ok: true, json: async () => fit } as Response);
+      return Promise.resolve({ ok: true, json: async () => ({ strings: ['BG80', 'BG66', 'BG65', 'Exbolt'], links }) } as Response);
+    }));
+  }
+
+  it('names the racket, glows the strings that suit it, and says so in the peek and the list', async () => {
+    mockWithFit({ racket: 'Yonex Astrox 88D Pro', fits: { 's-80': 'good_match', 's-66': 'worth_a_look', 's-65': 'not_for_frame', 's-ex': 'good_match' } });
+    wrap();
+    const strip = await screen.findByTestId('map-fit-strip');
+    expect(strip.textContent).toContain('For your Yonex Astrox 88D Pro · glowing dots suit it best');
+    const map = screen.getByRole('group', { name: 'Strings by repulsion and durability' });
+    const glow = (name: RegExp) => within(map).getByRole('button', { name }).querySelector<HTMLElement>('[data-dot-type]')!.dataset.match;
+    expect(glow(/^Yonex BG80:/)).toBe('true');
+    expect(glow(/^Yonex Exbolt 63:/)).toBe('true');
+    expect(glow(/^Yonex BG66:/)).toBeUndefined();
+    fireEvent.click(within(map).getByRole('button', { name: /^Yonex BG80:/ }));
+    expect(screen.getByTestId('peek-match').textContent).toBe('check_circleGood match for your Yonex Astrox 88D Pro');
+    // The fit was asked once, for every string the catalog knows.
+    const calls = (globalThis.fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls.map((c) => String(c[0]));
+    expect(calls.filter((u) => u.includes('/fit?ids=')).length).toBe(1);
+  });
+
+  it('says nothing about a racket the engine cannot pair, and glows nothing', async () => {
+    mockWithFit({ fits: null, reason: 'no_frame' });
+    wrap();
+    const map = await screen.findByRole('group', { name: 'Strings by repulsion and durability' });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(screen.queryByTestId('map-fit-strip')).toBeNull();
+    expect(map.querySelectorAll('[data-match]')).toHaveLength(0);
   });
 });

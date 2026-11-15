@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { usePaneMode } from '@/lib/paneMode';
+import { PaneDetail } from '@/components/primitives/PaneDetail';
 import dynamic from 'next/dynamic';
 import { useTranslations, useFormatter } from 'next-intl';
 import { signupErrorKey } from '@/lib/signupError';
@@ -203,6 +205,8 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
   // and password, for a member signed in with nothing to sign in WITH. A PAGE
   // in place of Home, not a sheet (Grant, 2026-11-08), so Back steps out of it.
   const [keepOpen, setKeepOpen] = useState(false);
+  // Two pages on an open foldable (lib/paneMode.ts); false on one screen.
+  const pane = usePaneMode();
   usePageBack(keepOpen, () => setKeepOpen(false));
   /**
    * Does the verified member have any way to sign in again —
@@ -327,9 +331,14 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       try {
         const res = await sharedFetch('/api/auth/methods');
         if (res.ok) {
-          const m = (await res.json()) as { hasPin?: boolean; hasPassword?: boolean; linked?: string[] };
+          const m = (await res.json()) as { hasPin?: boolean; hasPassword?: boolean; hasEmailCode?: boolean; linked?: string[] };
           if (cancelled) return;
-          const has = m.hasPin === true || m.hasPassword === true || (Array.isArray(m.linked) && m.linked.length > 0);
+          // An email a code can go to is a way back in too (docs/plans/one-way-in.md, step 3).
+          const has =
+            m.hasPin === true ||
+            m.hasPassword === true ||
+            m.hasEmailCode === true ||
+            (Array.isArray(m.linked) && m.linked.length > 0);
           setHasCredential(has);
           return;
         }
@@ -627,17 +636,21 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
 
   // The page stands in for Home while it is open: everything Home holds stays
   // in this component's state, so closing it shows the week as it was.
-  if (keepOpen && memberName) {
-    const close = () => setKeepOpen(false);
-    return (
-      <KeepAccountPage
-        onBack={close}
-        onDone={close}
-        /* A password now exists; the "no way back in" card has nothing left to say. */
-        onSaved={() => setHasCredential(true)}
-      />
-    );
-  }
+  const closeKeep = () => setKeepOpen(false);
+  const keepPage = (
+    <KeepAccountPage
+      onBack={closeKeep}
+      onDone={closeKeep}
+      /* A password now exists; the "no way back in" card has nothing left to say. */
+      onSaved={() => setHasCredential(true)}
+    />
+  );
+  /* One screen: the page stands in for Home. Two pages (an open foldable):
+     it opens on the RIGHT page in the week's place, beside the banner that
+     opened it (docs/plans/foldable-layout.md), with no Back — "Not now"
+     closes it. */
+  if (keepOpen && memberName && !pane) return keepPage;
+  const keepBeside = keepOpen && !!memberName && pane;
 
   return (
     <div className="space-y-5">
@@ -707,7 +720,13 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
           first thing a new organiser sees after making their club.
           Flag-gated, because with one club this state means the pointer is
           MISSING, and the old layout is the honest report of that. */}
-      {weekLoadError ? (
+      {keepBeside ? (
+        <section className="bpm-home-group bpm-home-week" aria-label={t('groups.session')}>
+          <PaneDetail>
+            <div className="pane-page-open">{keepPage}</div>
+          </PaneDetail>
+        </section>
+      ) : weekLoadError ? (
         /* Page-level fallback: standalone, 48/24, no card (CLAUDE.md spacing
            ladder) — the card it replaces would have held nothing true. */
         <section className="bpm-home-group bpm-home-week" aria-label={t('groups.session')} style={{ padding: 'var(--space-9) var(--space-7)' }}>
@@ -763,9 +782,12 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 href={mapsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="fs-md text-gray-300 underline underline-offset-2 decoration-dotted line-clamp-2 block"
+                className="fs-md text-gray-300 underline underline-offset-2 decoration-dotted block tap-44"
               >
-                {session.locationAddress}
+                {/* The two-line clamp sits on the text, not the link: a clamp
+                    clips its box's overflow, and the link's 44pt tap area
+                    (`.tap-44`, an overlay past its edges) would be clipped too. */}
+                <span className="line-clamp-2">{session.locationAddress}</span>
               </a>
             ) : (
               <p className="fs-md text-gray-300 line-clamp-2">{session.locationAddress}</p>
@@ -1076,7 +1098,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 style={{ paddingInline: 0, fontWeight: 600 }}
                 onClick={() => {
                   setKeepOpen(true);
-                  // The BODY scrolls (lib/pageScroll.ts); window.scrollTo moved nothing.
+                  // lib/pageScroll.ts: right whichever element scrolls.
                   scrollPageTo(0);
                 }}
               >

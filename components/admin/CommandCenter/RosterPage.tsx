@@ -9,7 +9,7 @@ import ErrorState from '@/components/primitives/ErrorState';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '@/components/BottomSheet';
 import ResetAccessSheet from '../ResetAccessSheet';
 import RosterImportSheet from './RosterImportSheet';
-import ClaimLinkSheet from './ClaimLinkSheet';
+import ClubLinkSheet from './ClubLinkSheet';
 import SettingsList from '@/components/profile/SettingsList';
 import StatusBadge from '@/components/primitives/StatusBadge';
 import { fmtShortDate } from '@/lib/fmt';
@@ -35,7 +35,7 @@ interface RowData {
   member: Member;
   presence: Array<1 | null>;     // length-8 sparkline, 1 = attended that session
   recentCount: number;            // sum of presence
-  lastSession: string | null;     // YYYY-MM-DD of most recent session attended
+  lastSession: string | null;     // ISO datetime of the most recent session attended
   /** `new`: no recent sessions yet, but joined inside the grace window (lib/dormant.ts) — shown under All, never counted dormant. */
   status: 'regular' | 'casual' | 'dormant' | 'new';
   hasAlias: boolean;
@@ -534,8 +534,8 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
         <SettingsList
           rows={[
             { icon: 'group_add', label: 'Import a list', meta: 'Paste or CSV', onClick: () => setImportOpen(true) },
-            // How the people on that list get in (docs/plans/claim-your-name.md).
-            { icon: 'link', label: 'Club link', meta: 'For claiming a name', onClick: () => setClaimLinkOpen(true) },
+            // How anyone gets in, the people on that list included (docs/plans/one-way-in.md).
+            { icon: 'link', label: 'Club link', meta: 'How people join', onClick: () => setClaimLinkOpen(true) },
           ]}
         />
       </div>
@@ -571,7 +571,9 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
       </div>
 
       {/* Filter chips */}
-      <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', margin: 'var(--space-4) 0 var(--space-2)' }}>
+      {/* Rows 12px apart, not 6: each chip is 32px drawn with a 44pt tap,
+          and at 6px a wrapped row's tap areas covered the row above. */}
+      <div style={{ display: 'flex', columnGap: 'var(--space-2)', rowGap: 'var(--space-4)', flexWrap: 'wrap', margin: 'var(--space-4) 0 var(--space-2)' }}>
         {chipDefs.map(([k, label, count]) => {
           const on = filter === k;
           return (
@@ -581,7 +583,8 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
               onClick={() => setFilter(k)}
               // The member/drop-in chips arrive with the first mark (an import):
               // they fade in rather than pop into the row.
-              className={k === 'members' || k === 'dropins' ? 'motion-fade' : undefined}
+              // `.tap-44`: a 32px chip with a 44pt tap (the Apple pass, globals.css).
+              className={k === 'members' || k === 'dropins' ? 'tap-44 motion-fade' : 'tap-44'}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -846,7 +849,7 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
             {editingId && (
               <>
                 {/* The rank. An organiser's is nobody's to change — they step
-                    down themselves from Profile → Your groups — and only an
+                    down themselves from Profile → Your clubs — and only an
                     organiser hands one out; an admin sees the rank as text. */}
                 <Field label="Role">
                   {formRole === 'owner' ? (
@@ -1012,7 +1015,7 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
           setClaimLinkOpen(true);
         }}
       />
-      <ClaimLinkSheet open={claimLinkOpen} onClose={() => setClaimLinkOpen(false)} clubName={currentGroup?.name} />
+      <ClubLinkSheet open={claimLinkOpen} onClose={() => setClaimLinkOpen(false)} clubName={currentGroup?.name} />
 
       <ResetAccessSheet
         open={resetSheet.open}

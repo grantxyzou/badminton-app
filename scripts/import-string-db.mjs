@@ -18,12 +18,16 @@
  *
  * TWO THINGS TO KNOW ABOUT THE RATINGS
  * ------------------------------------
- * 1. repulsion / durability / control / hittingSound are MARKETING numbers on
- *    a nominal 1-10. Yonex publishes 3 axes, Victor 4, Li-Ning 5, each on its
- *    own curve — one Yonex string is literally rated 11 out of 10. They are
- *    reliable WITHIN a brand and directional ACROSS brands, so `ratingSource`
- *    is carried through unchanged: a consumer must be able to tell
- *    "Brand published" from "Consensus estimate" before ranking on them.
+ * 1. repulsion / durability / control / hittingSound / shockAbsorption are
+ *    MARKETING numbers on a nominal 1-10 (re-sourced 2026-11-12). Yonex and
+ *    Li-Ning publish all five; Yonex draws a few past the top of its chart
+ *    (11 of 10), stored here as 10 with a `ratingNote`. Victor publishes no
+ *    numbers at all: its four come from a retailer's copy of a distributor
+ *    sheet, and it has no shock absorption. They are reliable WITHIN a brand
+ *    and directional ACROSS brands, so `ratingSource` ("Brand published",
+ *    "Retailer copy of brand chart", "Consensus estimate") and
+ *    `ratingSourceUrl` are carried through unchanged: a consumer must be able
+ *    to tell them apart before ranking on them.
  *    gaugeMm is the only objective cross-brand spec. Do not surface these as
  *    if they were measurements.
  * 2. Nothing here is normalized or rescaled. Rescaling three incompatible
@@ -82,7 +86,10 @@ function mapRecord(raw) {
   put('durability', raw.durability);
   put('control', raw.control);
   put('hittingSound', raw.hittingSound);
+  put('shockAbsorption', raw.shockAbsorption);
   put('ratingSource', raw.ratingSource);
+  put('ratingSourceUrl', raw.ratingSourceUrl);
+  put('ratingNote', raw.ratingNote);
   put('tensionMinLbs', raw.tensionMinLbs);
   put('tensionMaxLbs', raw.tensionMaxLbs);
   put('skillLevel', raw.skillLevel);

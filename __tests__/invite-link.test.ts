@@ -12,7 +12,7 @@ import {
   INVITE_LINK_SEGMENT,
 } from '@/lib/inviteLink';
 import { buildSignupShare } from '@/lib/signupShare';
-import { inviteUrl } from '@/lib/useInvites';
+import { clubLinkUrl } from '@/lib/clubLinkUrl';
 
 /**
  * The one link (docs/superpowers/plans/2026-11-04-app-clip.md, Task 1.1).
@@ -46,9 +46,9 @@ describe('the link format', () => {
     expect(isInviteToken('g'.repeat(32))).toBe(false);
   });
 
-  it('is what the Invite card shares', () => {
-    expect(inviteUrl(TOKEN)).toMatch(new RegExp(`${INVITE_LINK_SEGMENT}${TOKEN}$`));
-    expect(inviteUrl(TOKEN)).not.toContain('?join=');
+  it('is what the Club link card shares', () => {
+    expect(clubLinkUrl(TOKEN)).toMatch(new RegExp(`${INVITE_LINK_SEGMENT}${TOKEN}$`));
+    expect(clubLinkUrl(TOKEN)).not.toContain('?join=');
   });
 });
 

@@ -204,12 +204,14 @@ Recommend: <one>, because <one line>. Ask Grant: <the question>.
 
 ## Add two-pane behaviour to another tab
 
-Home, Stats and Stringing are the two-pane tabs (Stats since 2026-11-12: the
+Every tab is two-pane now (Profile and Admin since the evening of
+2026-11-12: list-detail, a page open on the right by default, `PaneDetail`
+for the right page and `.pane-page-open` for its motion). Home, Stats and Stringing came first (Stats since 2026-11-12: the
 overview left, the switch and the register right, `.stats-shell*`; Stringing
 the same day: list-detail, the register left and what a tap opens on the right,
 open by default, through a portal slot — `StringingAside` — because what
 renders changes, not only where), and that was a decision per tab, not a gap:
-Profile keeps its 512 px column inside the wider padding. When a foldable must
+signed-out screens keep their 512 px column inside the wider padding. When a foldable must
 render something DIFFERENT (a detail beside its list instead of in place of
 it), read `usePaneMode()` from `lib/paneMode.ts`; one screen must get `false`
 and its old path. If another tab earns panes, follow the same shape — a

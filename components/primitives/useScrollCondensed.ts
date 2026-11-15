@@ -4,12 +4,12 @@ import { useEffect, useLayoutEffect, type RefObject } from 'react';
 
 /**
  * Walks up from `el` to the nearest scrollable ancestor. Falls back to
- * `window`. CRITICAL for this app: `app/globals.css` sets
- * `html, body { height: 100%; overflow-x: hidden }`, which makes the
- * browser compute `body`'s overflow-y to `auto` — so the **<body> is the
- * scroller, not the window**. A header that listens to `window` scroll /
- * reads `window.scrollY` never sees the scroll and never condenses. This
- * is exactly the bug that left PageHeader's frosted bar dead on every tab.
+ * `window`, which is the page's scroller since 2026-11-15
+ * (`docs/plans/page-scroll.md`). Before that `html, body { height: 100%;
+ * overflow-x: hidden }` made the BODY the scroller, a header listening to
+ * `window` never condensed (PageHeader's frosted bar was dead on every tab),
+ * and a browser older than `overflow: clip` still gets those rules — so
+ * the walk stays.
  */
 function findScroller(el: HTMLElement): HTMLElement | Window {
   let node: HTMLElement | null = el.parentElement;

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { createHash } from 'node:crypto';
 import {
   mintHandoff,
   stageHandoff,
@@ -90,12 +91,13 @@ describe('mintHandoff / stageHandoff', () => {
   });
 
   it('is stable for a given secret — the callback and the claim must agree', async () => {
-    const ref1 = await beginHandoff();
-    const secret = localStorage.getItem(KEY);
-    localStorage.setItem(KEY, secret!);
-    // Re-deriving the same secret must give the same ref; beginHandoff mints a
-    // NEW one, so compare against a known-good pair instead.
-    expect(ref1).toHaveLength(64);
+    // The URL carries the ref; the claim sends the stored id and the server
+    // hashes it. They meet only if the ref is exactly sha256(id), so derive it
+    // independently here rather than trusting the module's own helper.
+    const ref = await beginHandoff();
+    const storedId = pendingHandoffId();
+    expect(storedId).toMatch(/^[0-9a-f]{64}$/);
+    expect(ref).toBe(createHash('sha256').update(storedId!).digest('hex'));
   });
 
   it('mints a different handoff each time it is called', async () => {

@@ -71,6 +71,8 @@ export interface MetricsInput {
   etransfers?: Array<{ status: string; matchedBy?: string; receivedAt: string }>;
   /** Every `playerGear` doc (PERSON-scoped; narrowed to the roster here), for `equipment`. */
   gear?: GearRow[];
+  /** `stats_open` events since `SKILL_SINCE`, for `skill` (docs/plans/home-skill-lead.md's review). */
+  statsOpens?: StatsOpenRow[];
   /** `memberId` of each push subscription doc (any device). */
   pushSubscriptions: Array<{ memberId: string }>;
   /**
@@ -167,6 +169,8 @@ export interface ClubMetrics {
   paymentsInbox: PaymentsInboxMetrics;
   /** Who has saved their gear (docs/plans/equipment-setup-card.md's review). */
   equipment: EquipmentMetrics;
+  /** Who opens Stats, and who came from Home's skill lead (docs/plans/home-skill-lead.md, skill-leads-stats.md). */
+  skill: SkillReachMetrics;
   /** How far the people who joined lately got (docs/plans/new-member-path.md). */
   newMemberPath: NewMemberPathMetrics;
 }
@@ -332,6 +336,56 @@ export function countGearSavers(
     if (cats.has('string')) both.add(key);
   }
   return { racketSavers: rackets.size, racketAndStringSavers: both.size };
+}
+
+/**
+ * Slice-0's clock: the four-week window restarted on 2026-08-16, and it is the
+ * default `since` of `GET /api/admin/slice0`. The skill plans' `reach` is read
+ * over it, so the report reads over it too.
+ */
+export const SKILL_SINCE = '2026-08-16';
+
+export interface StatsOpenRow {
+  memberId?: unknown;
+  name?: unknown;
+  kind?: unknown;
+  at?: unknown;
+  source?: unknown;
+}
+
+/** Stats reach over `SKILL_SINCE` (docs/plans/skill-leads-stats.md): `reach` = openers / roster. */
+export interface SkillReachMetrics {
+  since: string;
+  rosterSize: number;
+  /** Roster members who opened Stats at least once. A floor: the beacon needs a live member cookie. */
+  statsOpeners: number;
+  /** Of those, the ones whose open came from Home's skill lead (`source: 'home'`). */
+  homeLeadTappers: number;
+  /** statsOpeners / rosterSize; null with an empty roster. */
+  reach: number | null;
+}
+
+/**
+ * THE one count of who opened Stats, and who came from Home, shared by the
+ * admin slice0 page and `clubMetrics` so the two cannot disagree (the
+ * `countGearSavers` rule). `resolve` maps an event's owner to a roster key, or
+ * null for someone not on THIS club's roster.
+ */
+export function countStatsReach(
+  rows: StatsOpenRow[],
+  resolve: (memberId: unknown, name: unknown) => string | null,
+  since: string,
+): { statsOpeners: number; homeLeadTappers: number } {
+  const openers = new Set<string>();
+  const fromHome = new Set<string>();
+  for (const e of rows) {
+    if (e?.kind !== 'stats_open' || typeof e.at !== 'string' || e.at < since) continue;
+    const key = resolve(e.memberId, e.name);
+    if (!key) continue;
+    openers.add(key);
+    if (e.source === 'home') fromHome.add(key);
+  }
+  return { statsOpeners: openers.size, homeLeadTappers: fromHome.size };
 }
 
 /**
@@ -654,18 +708,29 @@ export function computeClubMetrics(input: MetricsInput): ClubMetrics {
     stringingRequests: computeStringingRequests(input.stringingJobs, rosterIds, now),
     paymentsInbox: computePaymentsInbox(input.etransfers ?? [], now),
     equipment: computeEquipment(input.gear ?? [], input.roster),
+    skill: computeSkill(input.statsOpens ?? [], input.roster),
     newMemberPath: computeNewMemberPath(input),
   };
 }
 
-function computeEquipment(rows: GearRow[], roster: MetricsRosterEntry[]): EquipmentMetrics {
+/** A row's owner on this roster, by id, else by name (older rows carry a name only). */
+function rosterResolver(roster: MetricsRosterEntry[]): (memberId: unknown, name: unknown) => string | null {
   const ids = new Set(roster.map((r) => r.memberId));
   const byName = new Map(roster.map((r) => [r.name.trim().toLowerCase(), r.memberId]));
-  const counts = countGearSavers(rows, (memberId, name) => {
+  return (memberId, name) => {
     if (typeof memberId === 'string' && ids.has(memberId)) return memberId;
     return typeof name === 'string' ? byName.get(name.trim().toLowerCase()) ?? null : null;
-  });
+  };
+}
+
+function computeEquipment(rows: GearRow[], roster: MetricsRosterEntry[]): EquipmentMetrics {
+  const counts = countGearSavers(rows, rosterResolver(roster));
   return { ...counts, racketShare: ratio(counts.racketSavers, roster.length) };
+}
+
+function computeSkill(rows: StatsOpenRow[], roster: MetricsRosterEntry[]): SkillReachMetrics {
+  const counts = countStatsReach(rows, rosterResolver(roster), SKILL_SINCE);
+  return { since: SKILL_SINCE, rosterSize: roster.length, ...counts, reach: ratio(counts.statsOpeners, roster.length) };
 }
 
 /** When a player's request was first answered: claimed, or moved off `requested`. */

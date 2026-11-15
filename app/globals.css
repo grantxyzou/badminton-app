@@ -145,7 +145,9 @@
   /* ── Release notes terminal — dark ── */
   --terminal-bg: #0f1116;
   --terminal-titlebar-bg: #1e2128;
-  --terminal-prompt: #6b7280;
+  /* #9ca3af: 6.35:1 on the title bar. #6b7280 read 3.33:1, under AA's 4.5
+     for 12px text (axe-core, the Apple pass, 2026-11-12). */
+  --terminal-prompt: #9ca3af;
   --terminal-accent: #f0d079;
   --terminal-date: #9ca3af;
   --terminal-title: #e5e7eb;
@@ -391,7 +393,8 @@
   /* ── Release notes terminal — light ── */
   --terminal-bg: #ffffff;
   --terminal-titlebar-bg: #e5e7eb;
-  --terminal-prompt: #6b7280;
+  /* #4b5563: 6.1:1 on the light title bar, where #6b7280 read 3.9:1. */
+  --terminal-prompt: #4b5563;
   --terminal-accent: #b8942d;
   --terminal-date: #6b7280;
   --terminal-title: #1a2332;
@@ -609,10 +612,32 @@ html[data-theme="light"][data-tab="admin"]   { --text-secondary: #6a4128; --text
   padding: 0;
 }
 
+/* THE APP'S ONE SIZE FACTOR (docs/plans/ui-scale.md; Grant, 2026-11-12: "no
+   zoom, card should scale"). `--ui-scale` is the phone's text size times the
+   screen's, written before first paint by app/layout.tsx's script; it is 1 on a
+   phone at the default text size, so this is the browser's own 16px there and
+   nothing moves. The design tokens are rem, so a card grows whole — its text,
+   padding, radius and icons together. The 100% keeps a browser's own default
+   text size setting in the product too. */
+html {
+  font-size: calc(100% * var(--ui-scale, 1));
+}
+
+/* THE PAGE SCROLLS, NOT THE BODY (docs/plans/page-scroll.md, 2026-11-15).
+   `height: 100%` with `overflow-x: hidden` made <body> a screen-sized scroll
+   box with the page scrolling inside it, and on the App Store app the Admin
+   console opened under a screen of blank space that a scroll repainted.
+   `clip` cuts sideways overflow WITHOUT making a scroll box (`hidden` forces
+   the other axis to `auto`); `hidden` stays first for a browser older than
+   `clip`, which keeps the old behaviour there. */
+html {
+  min-height: 100%;
+}
+
 html,
 body {
-  height: 100%;
   overflow-x: hidden;
+  overflow-x: clip;
   /* Disable double-tap-to-zoom (and the legacy 300ms tap delay) — pairs with
      the viewport scale cap in layout.tsx to make the iOS web app feel native.
      `manipulation` still permits scroll + panning, just not the zoom gestures. */
@@ -636,7 +661,7 @@ body {
    that nothing is, so it is confirmed on the device, not assumed. */
 @media (display-mode: standalone) {
   html {
-    height: 100lvh;
+    min-height: 100lvh;
   }
 }
 
@@ -711,11 +736,11 @@ body {
   /* Corner radii ladder — rectangular surfaces capped at 16px per design
      bundle v3. Use these tokens in inline styles (`borderRadius:
      var(--radius-md)`) instead of typing 10/12/16 by hand. Pill = 100. */
-  --radius-xs: 6px;
-  --radius-sm: 8px;
-  --radius-md: 10px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  --radius-xs: calc(6rem / 16);
+  --radius-sm: calc(8rem / 16);
+  --radius-md: calc(10rem / 16);
+  --radius-lg: calc(12rem / 16);
+  --radius-xl: calc(16rem / 16);
   --radius-pill: 100px;
 
   /* Type-size scale — canonical inline font sizes. Use the token
@@ -726,25 +751,25 @@ body {
        2xs (10) section labels / micro badges · xs (11) tile labels / meta
        sm (12) card subtitle / secondary · base (13) body / hints / empty
        md (14) emphasis values · lg (16) stat values */
-  --fs-2xs: 10px;
-  --fs-xs: 11px;
-  --fs-sm: 12px;
-  --fs-base: 13px;
-  --fs-md: 14px;
-  --fs-lg: 16px;
+  --fs-2xs: calc(10rem / 16);
+  --fs-xs: calc(11rem / 16);
+  --fs-sm: calc(12rem / 16);
+  --fs-base: calc(13rem / 16);
+  --fs-md: calc(14rem / 16);
+  --fs-lg: calc(16rem / 16);
   /* Stats-tab headline data numbers (Level, Overall, streak count, partner
      counts) — a deliberate larger mono scale with no Home equivalent. Named
      tokens so those hand-typed 20/22px values stop being magic numbers. */
-  --fs-stat: 20px;
-  --fs-stat-lg: 22px;
+  --fs-stat: calc(20rem / 16);
+  --fs-stat-lg: calc(22rem / 16);
   /* The single headline number on a screen (Home spots-left). Bigger than
      --fs-stat, which is a value inside a row of values. */
-  --fs-count: 34px;
+  --fs-count: calc(34rem / 16);
   /* Single-focus numeric input — a number that IS the screen's whole task, not
      a stat among others. Currently just the game logger's score steppers,
      where the value is what the member is actively changing. Deliberately a
      big jump from --fs-stat-lg: anything closer would read as a stat tile. */
-  --fs-stat-xl: 38px;
+  --fs-stat-xl: calc(38rem / 16);
   /* The courtside scoreboard's digits: read from the far side of a court off
      a phone propped on the bench, so sized by the screen, not the type scale.
      The one display size in the app that is not a fixed pixel. */
@@ -753,11 +778,11 @@ body {
      (below), so inline `.material-icons` styles use a token instead of a raw px.
      Same values as the classes; these exist for the inline-style call sites the
      way --fs-* mirrors .fs-*. */
-  --icon-xs: 13px;
-  --icon-sm: 16px;
-  --icon-md: 18px;
-  --icon-lg: 24px;
-  --icon-xl: 40px;
+  --icon-xs: calc(13rem / 16);
+  --icon-sm: calc(16rem / 16);
+  --icon-md: calc(18rem / 16);
+  --icon-lg: calc(24rem / 16);
+  --icon-xl: calc(40rem / 16);
   --lh-tight: 1.25;
   --lh-snug: 1.35;
   --lh-normal: 1.5;
@@ -780,12 +805,12 @@ body {
      gap; --space-1 is the smallest LAYOUT rung. */
   --space-hair: 1px;
   --space-05: 2px;
-  --space-1: 4px;
-  --space-2: 6px;
-  --space-3: 8px;
-  --space-4: 12px;
-  --space-5: 16px;
-  --space-6: 20px;
+  --space-1: calc(4rem / 16);
+  --space-2: calc(6rem / 16);
+  --space-3: calc(8rem / 16);
+  --space-4: calc(12rem / 16);
+  --space-5: calc(16rem / 16);
+  --space-6: calc(20rem / 16);
   /* Section rungs. 1..6 are the INLINE MICRO scale — the space between an
      icon and its label, a row and the row under it. 7..9 are what a section
      needs: the breathing room around an empty state, a sheet's bottom safe
@@ -800,9 +825,9 @@ body {
      content. Sized to the pill: 2x --space-1 padding + its border + the
      --fs-2xs line box. */
   --card-header-row-h: 26px;
-  --space-7: 24px;
-  --space-8: 32px;
-  --space-9: 48px;
+  --space-7: calc(24rem / 16);
+  --space-8: calc(32rem / 16);
+  --space-9: calc(48rem / 16);
 
   /* ══════════════════════════════════════════════════════════════════════
      FIELDS & CARD MATERIALS  (design: "Visual Colours" §06, 2026-08-25)
@@ -828,7 +853,7 @@ body {
      Deliberately NOT part of the --radius-xs..xl ladder above, which
      stays capped at 16. Never write `border-radius: 30px` — always this
      token; __tests__/design-canary.test.ts enforces that. */
-  --radius-3xl: 30px;
+  --radius-3xl: calc(30rem / 16);
 
   /* ── Fields — one hue per tab (chosen 2026-08-26 on /design/backgrounds) ──
      The alternative kept a single hue at five depths and preserved the
@@ -1409,21 +1434,18 @@ html[data-swiping="release"] .bpm-topbar__back {
               color 0.15s ease;
 }
 
-/* Page shell nudges right + dims slightly, so the gesture reads as
-   "pushing the screen aside" even though no back-stack renders under. */
-html[data-swiping] [data-page-shell] {
-  transform: translateX(calc(var(--swipe-back, 0) * 18px));
-  opacity: calc(1 - var(--swipe-back, 0) * 0.18);
-}
-html[data-swiping="release"] [data-page-shell] {
-  transition: transform var(--duration-normal) var(--ease-out-quart),
-              opacity var(--duration-normal) var(--ease-out-quart);
-}
+/* THE PAGE ITSELF DOES NOT MOVE (2026-11-15). It used to nudge 18px right
+   and dim while the finger dragged. On the App Store app that slid the cards
+   out from under the sticky top bar, turned the bar's frost see-through (a
+   transformed, translucent ancestor is a new backdrop root), and repainted
+   every glass card on every touchmove: Grant's "the back is still like this"
+   screenshot, and much of "janky". The glow and the chevron carry the
+   gesture on their own. Never put a transform or opacity on
+   `[data-page-shell]` for this (`__tests__/page-scroll-canary.test.ts`). */
 
 @media (prefers-reduced-motion: reduce) {
   html[data-swiping="release"]::before,
-  html[data-swiping="release"] .bpm-topbar__back,
-  html[data-swiping="release"] [data-page-shell] { transition-duration: 0ms; }
+  html[data-swiping="release"] .bpm-topbar__back { transition-duration: 0ms; }
 }
 
 /* ── 02 Aurora background ──
@@ -2711,6 +2733,22 @@ html:root .ink-button {
   transition: transform var(--duration-press) var(--ease-glass);
 }
 .profile-card-button:active { transform: scale(0.98); }
+/* The card whose page (Edit profile) is open on a foldable's right page:
+   the accent's tint laid over the card's own material — a fill, never a ring
+   — as an open settings row and the open bench job are. Never on one screen. */
+.profile-card-button--open {
+  position: relative;
+}
+.profile-card-button--open::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--tone-green-bg);
+  pointer-events: none;
+  /* The tint arrives as the rows' does (they transition their background). */
+  animation: motionFade var(--duration-fast) var(--ease-glass) backwards;
+}
 /* A picture to wear on Edit profile. The selected one takes a ring: the one
    ring the fill-only rule allows, because the picture itself is the fill. */
 .avatar-choice {
@@ -3223,16 +3261,17 @@ button.edit-profile-row { cursor: pointer; }
 
 /* Shared sliding indicator — one pill that glides between tabs on
    switch instead of the active background cross-fading per tab.
-   --ri (0–3, the active tab index) is set inline on .rail-bar from
-   React. 25% / translateX(--ri*100%) is tied to the 4-tab invariant
-   (CLAUDE.md: slot count is always 4). Rail stays fixed — only the
+   --ri (the active tab index) and --rn (how many tabs: 4, or 3 in a
+   club with stringing switched off) are set inline on .rail-bar from
+   React. Width 100%/--rn and translateX(--ri*100%) keep the pill over
+   its equal flex:1 column at either count. Rail stays fixed — only the
    pill moves (spec: no rail translate/scale). Triple signal intact:
    colour + (now travelling) pill + label weight 700. */
 .rail-indicator {
   position: absolute;
   top: 8px;            /* = .rail-tab padding-top → the icon-wrap row */
   left: 0;
-  width: 25%;          /* one of four equal flex:1 columns */
+  width: calc(100% / var(--rn, 4)); /* one of the equal flex:1 columns */
   height: 30px;        /* = .rail-icon-wrap height */
   pointer-events: none;
   z-index: 0;
@@ -3245,7 +3284,7 @@ button.edit-profile-row { cursor: pointer; }
   display: block;
   width: 56px;         /* = .rail-icon-wrap width */
   height: 100%;
-  margin: 0 auto;      /* centre in the 25% column → sits over the icon */
+  margin: 0 auto;      /* centre in its column → sits over the icon */
   border-radius: var(--rail-indicator-radius);
   background: var(--rail-indicator-bg);
 }
@@ -3879,6 +3918,21 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
   animation: motionFade var(--duration-fast) var(--ease-glass) backwards;
 }
 
+/* PAGE OPEN — a foldable's right page taking a new page
+   (docs/plans/foldable-layout.md, "Motion for the two pages"). The page
+   arrives from the fold, the spine of the book: a short glide away from the
+   gap (--space-5) under a fade, at --duration-normal, the reflow's own
+   duration. Only ever rendered in two-page mode, so one screen never sees
+   it. Reduced motion keeps the fade and drops the glide (below). The
+   transform ends at none, so nothing fixed inside is caught once it lands. */
+@keyframes panePageOpen {
+  from { opacity: 0; transform: translateX(calc(-1 * var(--space-5))); }
+  to   { opacity: 1; transform: none; }
+}
+.pane-page-open {
+  animation: panePageOpen var(--duration-normal) var(--ease-out-quart) backwards;
+}
+
 .motion-collapse {
   display: grid;
   grid-template-rows: 0fr;
@@ -3942,6 +3996,7 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
   /* The wildcard above zeroes every animation. A fade is not movement, so it
      is given back — `!important` on a class outranks the `*` rule. */
   .motion-fade,
+  .pane-page-open,
   .field-error,
   .field-warn,
   p[role='alert'] {
@@ -3952,11 +4007,11 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
 
 /* ── Icon sizes ── */
 .icon-spin-lg {
-  font-size: 32px;
+  font-size: calc(32rem / 16);
 }
 
 .icon-pin {
-  font-size: 16px;
+  font-size: calc(16rem / 16);
   color: var(--pin-color);
   /* Optical hairline nudge, not a layout gap — the pin glyph sits 1px high
      against its label. Exempt from the spacing ladder. */
@@ -3964,17 +4019,17 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
 }
 
 .icon-pin-lg {
-  font-size: 20px;
+  font-size: calc(20rem / 16);
 }
 
-.icon-xs  { font-size: 13px; }
-.icon-sm  { font-size: 16px; }
-.icon-md  { font-size: 18px; }
-.icon-lg  { font-size: 24px; }
-.icon-xl  { font-size: 40px; }
+.icon-xs  { font-size: var(--icon-xs); }
+.icon-sm  { font-size: var(--icon-sm); }
+.icon-md  { font-size: var(--icon-md); }
+.icon-lg  { font-size: var(--icon-lg); }
+.icon-xl  { font-size: var(--icon-xl); }
 
 .icon-status {
-  font-size: 22px;
+  font-size: calc(22rem / 16);
 }
 
 /* ── Status banners ──
@@ -4149,6 +4204,62 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
 }
 .bpm-switch[aria-checked='true']:active .bpm-switch__knob { transform: translateX(20px) scale(0.92); }
 
+/* ── 44pt tap targets (Apple HIG: "a hit target of at least 44×44 pt") ──
+   The controls below are DRAWN smaller than that — the register switch's
+   28px tabs, a 16px "Add to calendar", the Balance row's 20px header, Stats'
+   small text actions — and measured short of it on Home and Stats
+   (2026-11-12, the app-wide Apple pass). Each takes a 44px-tall invisible
+   overlay centred on itself, the `.bpm-switch` pattern below, so nothing
+   moves and no pixel changes; a control already taller is untouched (the
+   overlay sits inside it). `.tap-44` is the same for a control with no class
+   of its own. */
+.segment-control > button,
+.state-link--aside,
+.you-update,
+.skill-panel-link,
+.setup-share-btn,
+.setup-chip-dashed,
+.setup-next-name,
+.setup-price-row,
+.kudos-all-link,
+.date-picker-trigger,
+.tap-44 {
+  position: relative;
+}
+.segment-control > button::after,
+.state-link--aside::after,
+.you-update::after,
+.skill-panel-link::after,
+.setup-share-btn::after,
+.setup-chip-dashed::after,
+.setup-next-name::after,
+.setup-price-row::after,
+.kudos-all-link::after,
+.date-picker-trigger::after,
+.tap-44::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 44px;
+  transform: translateY(-50%);
+}
+
+/* A 32px round control (the check-in sheet's ✕) keeps its circle and takes a
+   44pt SQUARE behind it: a circle's edge pixels take no pointer, so a round
+   target reads short of its drawn size. */
+.tap-44-box {
+  position: relative;
+}
+.tap-44-box::before {
+  content: '';
+  position: absolute;
+  /* 32 + 2×7 = 46 drawn, 44 measured: the box's edge pixels take no pointer
+     either (-6px, exactly 44 drawn, measured 42). */
+  inset: calc(-1 * (var(--space-2) + var(--space-hair)));
+}
+
 /* The visual track is 31px tall — under the app-wide 44px touch minimum.
    Extend the hit area with an overlay so the target passes without the
    control growing and pushing the card's layout around. */
@@ -4278,7 +4389,10 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
 .notif-toggle::before {
   content: '';
   position: absolute;
-  inset: -4px;
+  /* 36 + 2×5 = 46 drawn, which hit-tests at 44 across: a circle's edge pixels
+     do not take the pointer, and -4px measured 42 (the Apple pass,
+     2026-11-12). Transparent, so nothing on screen moves. */
+  inset: -5px;
   border-radius: 50%;
 }
 
@@ -4700,6 +4814,18 @@ html[data-launch="loading"] .splash {
 }
 
 .terminal-prompt  { color: var(--terminal-prompt); }
+/* "What's new"'s ✕: a 16px glyph with a 44pt tap. The negative margins give
+   back what the box grew, so the title bar keeps its height. */
+.terminal-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  /* The bar's own 8px padding is all it gives back: past it the sheet's
+     rounded top would clip the target, so the bar grows to 44px instead. */
+  margin: calc(-1 * var(--space-3)) calc(-1 * var(--space-4)) calc(-1 * var(--space-3)) 0;
+}
 .terminal-version { color: var(--terminal-accent); font-weight: 600; }
 .terminal-date    { color: var(--terminal-date); }
 .terminal-title   { color: var(--terminal-title); font-weight: 600; }
@@ -5073,6 +5199,14 @@ button.sheet-row { cursor: pointer; }
   font-style: italic;
 }
 
+/* The one-line "done" message a sheet shows after it succeeds (recovery,
+   enter-code, create-account). In rem so it scales (docs/plans/ui-scale.md). */
+.sheet-success-line {
+  text-align: center;
+  font-size: calc(18rem / 16);
+  color: var(--text-primary);
+}
+
 /* ── Command Center button styles ── */
 /* Pills were reading as badges. These give CTAs button affordance: */
 /* heavier weight, more padding, opaque hover, focus ring. */
@@ -5210,7 +5344,7 @@ button.sheet-row { cursor: pointer; }
    any of the color variants (e.g. `cc-btn cc-btn-primary cc-btn-lg`). */
 .cc-btn-lg {
   padding: var(--space-4) var(--space-5);
-  font-size: 15px;
+  font-size: calc(15rem / 16);
   border-radius: var(--radius-xl);
   font-weight: 700;
   letter-spacing: -0.005em;
@@ -5374,7 +5508,10 @@ html:root .bpm-field-filled textarea:focus {
   padding: var(--space-5);
   border-radius: var(--radius-xl);
   background: var(--inner-card-bg);
-  transition: transform var(--duration-press) var(--ease-out-quart);
+  /* The tint follows the job open on a foldable's right page (--open). */
+  transition:
+    transform var(--duration-press) var(--ease-out-quart),
+    background-color var(--duration-fast) var(--ease-glass);
 }
 .bpm-job-card:has(> button:first-child:active) {
   transform: scale(0.98);
@@ -5467,7 +5604,7 @@ html:root .glass-card.bpm-job-card--open {
   display: inline-flex;
   align-items: center;
   gap: var(--space-4);
-  font-size: 13.5px;
+  font-size: calc(13.5rem / 16);
   color: var(--text-primary);
   cursor: pointer;
   user-select: none;
@@ -5841,6 +5978,42 @@ html:root[data-theme="light"] {
   background: var(--inner-card-green-bg);
 }
 .cc-choice:disabled { opacity: 0.5; pointer-events: none; }
+
+/* The "Custom colour" step's hue strip (components/stringing/ReelColourPicker.tsx):
+   a range input whose track IS the colour wheel unrolled. The strip is DATA
+   (`HUE_STRIP` in lib/stringShelf.ts), set inline; this rule only clears the
+   form-field material and draws the thumb. Specificity outranks `input`/`input:focus`. */
+input[type="range"].reel-hue {
+  -webkit-appearance: none;
+  appearance: none;
+  height: var(--space-7);
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  cursor: pointer;
+}
+input[type="range"].reel-hue::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: var(--space-7);
+  height: var(--space-7);
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: inset 0 0 0 3px var(--text-primary), 0 0 0 2px var(--page-bg);
+}
+input[type="range"].reel-hue::-moz-range-thumb {
+  width: var(--space-7);
+  height: var(--space-7);
+  border-radius: 50%;
+  background: transparent;
+  border: 3px solid var(--text-primary);
+}
+input[type="range"].reel-hue:focus-visible {
+  box-shadow: 0 0 0 3px var(--input-focus-ring);
+}
 
 /* Dot indicator — scroll-position pagination markers. Same theme split
    as cc-mini-card so they don't vanish over light backgrounds. */
@@ -7748,6 +7921,127 @@ button.setup-next-row { cursor: pointer; }
 .string-pack-hero { width: 80px; height: 112px; }
 /* On the Equipment card's Strings line, under its label. */
 .string-pack-line { width: 32px; height: 45px; }
+/* The strings map's peek (the Stringing canvas, idea B, 2026-11-12): one
+   quiet line pinned on the tab bar, in the content column, that points back
+   at the map. Fill-only; its top corners round into the screen like a sheet's
+   top, because swiping it up opens one. Above the rail (50), below a toast
+   (55) and a sheet (60). */
+.string-peek {
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: 52;
+  max-width: 32rem;
+  margin-inline: auto;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  background: var(--rail-bg);
+  -webkit-backdrop-filter: var(--rail-blur);
+  backdrop-filter: var(--rail-blur);
+  border: 1px solid transparent;
+}
+.string-peek-tap {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-3) var(--space-5) var(--space-4);
+  background: transparent;
+  border: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: pan-x;
+}
+/* "For your <racket>" on the strings map: the accent's gradient fill, the
+   same green as "How it suits you" on a string's page. */
+.bpm-fit-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 16%, transparent), color-mix(in srgb, var(--accent) 5%, transparent));
+}
+/* A string's rating on its sheet (the canvas, frame 3): a bar in the
+   trait's tint, filled to the score, its name and number inside it. */
+.string-trait-bar {
+  position: relative;
+  height: var(--space-6);
+  border-radius: var(--radius-xs);
+  overflow: hidden;
+}
+.string-trait-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+}
+.string-trait-text {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 100%;
+  padding: 0 var(--space-2);
+}
+/* The stringer's note inside the racket-match card. */
+.string-fit-note {
+  padding-top: var(--space-4);
+  margin-top: var(--space-1);
+}
+.string-list-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  text-align: left;
+}
+button.string-list-row { cursor: pointer; }
+/* A trait's rating as a tinted number chip (the list, option G). */
+.string-rating-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--space-7);
+  height: var(--space-6);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+/* The list's sort menu, under its button. */
+.string-sort-menu {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  z-index: 2;
+  min-width: 220px;
+  padding: var(--space-2);
+  border-radius: var(--radius-xl);
+  background: var(--bg-elevated);
+  box-shadow: 0 16px 40px color-mix(in srgb, black 55%, transparent);
+}
+.string-sort-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  cursor: pointer;
+}
+.string-peek-grabber {
+  align-self: center;
+  width: 36px;
+  height: 4px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--text-primary) 28%, transparent);
+}
 .setup-next-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
 /* The name is the door to the pick's detail; the chevron rides on it. */
 .setup-next-name {
@@ -8548,9 +8842,10 @@ button.pill-unpaid:active { transform: scale(0.97); }
 .settings-row {
   background: transparent;
   -webkit-tap-highlight-color: transparent;
-  transition: background-color var(--duration-press) var(--ease-glass);
+  transition: background-color var(--duration-fast) var(--ease-glass);
 }
 .settings-row:active { background: var(--press-bg); }
+.settings-row--open { background: var(--tone-green-bg); }
 button.sheet-row { transition: background-color var(--duration-press) var(--ease-glass), opacity var(--duration-fast) var(--ease-glass); }
 
 .link-quiet,
@@ -8589,7 +8884,7 @@ html:root .state-link:active { opacity: 0.6; }
 
   input,
   select,
-  textarea { font-size: 16px; }
+  textarea { font-size: max(16px, 1rem); }
   /* Its own figure is the point of the control. */
   .tension-field-box input,
   .tension-field-box input:focus { font-size: var(--fs-stat-lg); }
@@ -8812,10 +9107,91 @@ html:root .courtside {
   font-size: var(--fs-sm);
   color: var(--text-muted);
 }
+/* Voice scoring (Preview, docs/plans/voice-score.md): the mic sits above the
+   +1 buttons, on the half in the hand. Fill-only like the point buttons; while
+   it listens the dot pulses, the one sign the phone is hearing the court. */
+.courtside-voice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.courtside-voice-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+}
+.courtside-voice-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 44px;
+  padding: var(--space-3) var(--space-6);
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+  background: var(--glass-bg);
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform var(--duration-press) var(--ease-glass), background var(--duration-fast) var(--ease-glass);
+}
+.courtside-voice-btn:active {
+  transform: scale(0.97);
+  background: var(--press-bg);
+}
+.courtside-voice-btn:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.courtside-voice-btn[data-listening='true'] {
+  color: var(--accent);
+}
+.courtside-voice-dot {
+  width: var(--space-3);
+  height: var(--space-3);
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+.courtside-voice-btn[data-listening='true'] .courtside-voice-dot {
+  background: var(--accent);
+  animation: courtside-voice-pulse 1.2s ease-in-out infinite;
+}
+@keyframes courtside-voice-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+.courtside-voice-line {
+  margin: 0;
+  text-align: center;
+  font-size: var(--fs-md);
+  color: var(--text-secondary);
+  min-height: calc(var(--fs-md) * var(--lh-normal));
+}
+/* What to say next: quieter than the status line above it, always under it. */
+.courtside-voice-hint {
+  margin: 0;
+  text-align: center;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+  color: var(--text-muted);
+}
+.courtside-voice-ask {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.courtside-voice-choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: var(--space-3);
+}
 @media (prefers-reduced-motion: reduce) {
   .courtside,
   .courtside-point,
-  .courtside-digit {
+  .courtside-digit,
+  .courtside-voice-btn {
     transition: none;
   }
 }
@@ -8938,6 +9314,99 @@ html[data-pane-flip='b'] [data-app-shell] {
   /* Holding nothing it takes no room, and no gap under the register. */
   .stringing-shell > .stringing-aside:not(:has(> * > :not([hidden]))) {
     display: none;
+  }
+  /* Profile, the same list-detail: the title and the list on the LEFT page;
+     the screen a row opens on the RIGHT, Edit profile before any tap — a
+     phone's Settings opening on your account. The shell is a grid only when
+     ProfileTab renders the right page (`.profile-shell`, signed in, two
+     pages); the right page starts on the list's first row. */
+  main[data-page-shell]:has(> [data-tab-panel='profile']:not([hidden]) .profile-shell) {
+    max-width: var(--panes-max-w);
+  }
+  .profile-shell {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto 1fr;
+    column-gap: var(--fold-gap);
+    align-items: start;
+  }
+  .profile-shell > * {
+    grid-column: 1;
+  }
+  .profile-shell > .profile-detail {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  /* Admin, the same list-detail: the console on the LEFT page, the page a row
+     opens on the RIGHT — Roster before any tap. Both pages start at the top,
+     each under its own top bar. `.admin-shell` is rendered only on two pages. */
+  main[data-page-shell]:has(> [data-tab-panel='admin']:not([hidden]) .admin-shell) {
+    max-width: var(--panes-max-w);
+  }
+  .admin-shell {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--fold-gap);
+    align-items: start;
+  }
+  /* Signed out, a book's spread: the launch lockup on the LEFT page — the
+     cover — and the doors (Sign up, Log in) on the RIGHT, opposite it, where
+     the hand holding the right half reaches. The splash's lockup sits on the
+     same left page, so the cold start still hands over to Welcome with
+     nothing moving. Log in, Sign up and the ask keep that cover on the left
+     (`.signed-out-cover`, rendered only on two pages) and put their form on
+     the right page. `--launch-kh` is the lockup's fit for one page
+     (app/layout.tsx's pre-paint script). */
+  .launch-canvas {
+    left: 25%;
+    transform: translate(-50%, -50%) scale(var(--launch-kh, var(--launch-k, 1)));
+  }
+  .launch-actions {
+    left: calc(50% + var(--fold-gap) / 2);
+    top: 50%;
+    bottom: auto;
+    translate: 0 -50%;
+    max-width: calc(360px * var(--launch-kh, var(--launch-k, 1)));
+    padding: 0 var(--space-6);
+  }
+  .signed-out-cover {
+    right: 50%;
+    z-index: 0;
+  }
+  /* The cover IS the left page, so its lockup centres in it. */
+  .signed-out-cover .launch-canvas {
+    left: 50%;
+  }
+  body:has(.launch-stage--welcome) .signed-out-cover {
+    display: none;
+  }
+  main[data-page-shell].signed-out-main:not(:has(.launch-stage--welcome)) {
+    position: relative;
+    z-index: 1;
+    max-width: calc(50% - var(--fold-gap) / 2);
+    margin-left: auto;
+    margin-right: 0;
+  }
+  /* Notifications (the bell's page): the title and this phone's settings on
+     the LEFT page, the Recent list on the RIGHT. `.notices-shell` is set only
+     on two pages and only when there is a setting to show. */
+  main[data-page-shell]:has(> .notices-shell) {
+    max-width: var(--panes-max-w);
+  }
+  .notices-shell {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto auto 1fr;
+    column-gap: var(--fold-gap);
+    row-gap: 0;
+    align-items: start;
+  }
+  .notices-shell > * {
+    grid-column: 1;
+  }
+  .notices-shell > .notices-recent {
+    grid-column: 2;
+    grid-row: 2 / -1;
   }
   /* RIGHT pane: the week, alone — the page that opens (Grant, 2026-11-04:
      "I would want it on the right cuz that's the elevation opening up more

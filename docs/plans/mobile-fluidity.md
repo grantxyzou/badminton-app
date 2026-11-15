@@ -2,7 +2,7 @@
 
 **Track:** Native shell / store launch (the app people install is this app in a WebView).
 **Status:** in-flight
-**Review on:** 2026-11-15 — has a native build gone out since build 4 (2026-09-17), and which of the rebuild list rode with it?
+**Review on:** 2026-12-13 — has a store build gone out since iPhone 7 / Android 6 (2026-10-28), and did any of the native items still open below (1, 2, 4's native half, 5, 7, 8) ride with it?
 
 ## Problem
 
@@ -149,3 +149,22 @@ colour first.
   `max-age=0`, so every launch revalidated every one; #650 gave them a day.)
 - **Offline caching.** The push worker has no `fetch` handler and must not gain
   one (`docs/plans/offline-legible-fail.md`).
+
+## Review outcome (2026-11-15)
+
+**Three store builds have gone out since build 4:** build 5 (#719, 2026-10-25, the home-screen widgets), iPhone build 6 (#724), and iPhone 7 / Android 6 (#748, 2026-10-28).
+
+**None of the rebuild list's native items rode with them.** Read from the tree:
+
+| Item | State |
+|---|---|
+| 1. Dark `backgroundColor` | Not done. No `backgroundColor` in `capacitor.config.ts`; `LaunchScreen.storyboard` still uses `systemBackgroundColor` |
+| 2. `@capacitor/splash-screen` | Not installed |
+| 3. Haptics | In the tree before 2026-10-15, so it rode with build 5 onward |
+| 4. Keyboard | Web half (`interactiveWidget`) in; `@capacitor/keyboard` not installed |
+| 5. Android predictive back | `enableOnBackInvokedCallback` not in `AndroidManifest.xml` |
+| 6. iOS back gesture | **Done on the web side.** `TopBar` answers an edge swipe (#923, 2026-11-14), which ships with a web deploy and needs no store build |
+| 7. `@capacitor/network` | Not installed |
+| 8. State at background time | Not done |
+
+The builds that went out were for widgets, the icon badge and shortcuts, not this list. Item 1 is still the cheapest visible win: one config line and one storyboard colour, then the next store build.

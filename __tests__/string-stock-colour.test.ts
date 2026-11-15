@@ -36,8 +36,8 @@ describe('colourIdOf', () => {
     }
     expect(colourIdOf('  fluorescent YELLOW ')).toBe('fluo_yellow');
     expect(colourIdOf('Gray')).toBe('grey');
-    // A two-tone is no one palette colour; it counts in the mixed pool.
-    expect(colourIdOf('White/Yellow')).toBeNull();
+    // A two-tone is a two-colour set, the first named as the mains (2026-11-12).
+    expect(colourIdOf('White/Yellow')).toBe('combo:white+yellow');
     expect(colourIdOf(undefined)).toBeNull();
   });
 });
@@ -94,7 +94,7 @@ describe('validatePurchase, colour', () => {
 });
 
 describe('requestColours (what the request sheet offers)', () => {
-  const shelf = (over: Partial<Shelf>): Shelf => ({ strings: ['BG80'], links: { BG80: bg80.id }, prices: {}, stock: {}, players: {}, colours: {}, colourStock: {}, notes: {}, ...over });
+  const shelf = (over: Partial<Shelf>): Shelf => ({ strings: ['BG80'], links: { BG80: bg80.id }, prices: {}, stock: {}, players: {}, colours: {}, colourStock: {}, notes: {}, customColours: [], ...over });
   const names = (s: Shelf | null) => requestColours(s, 'BG80', bg80).map((c) => c.name);
 
   it('falls back to the maker\'s colours when nothing is tagged and the stringer said none', () => {

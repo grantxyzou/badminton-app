@@ -3,6 +3,7 @@ import { colourStockOf, labelKey, readStringCatalog, readStringPurchases, readSt
 import { readClubGearDocs } from './clubGearDocs';
 import { tallyClubGear } from './clubGear';
 import type { CatalogItem, StringingJob } from './types';
+import type { CustomColour } from './stringPalette';
 
 /**
  * The player-facing extras on `GET /api/stringing/strings`
@@ -45,6 +46,7 @@ export async function readShelfExtras(
   strings: string[],
   links: Record<string, string>,
   aliases: Record<string, string> = {},
+  customColours: readonly CustomColour[] = [],
 ): Promise<ShelfExtras> {
   const cached = cacheEnabled() ? shelfCache.get(groupId) : undefined;
   if (cached && Date.now() - cached.at < SHELF_TTL_MS) return cached.value;
@@ -60,7 +62,7 @@ export async function readShelfExtras(
     readStringUses(scope),
   ]);
 
-  const summary = summarizeStringStock({ offered: strings, links, aliases, purchases, jobs: withDeletedUses(jobs, uses), catalog });
+  const summary = summarizeStringStock({ offered: strings, links, aliases, purchases, jobs: withDeletedUses(jobs, uses), catalog, customColours });
   const offeredKeys = new Map(strings.map((l) => [labelKey(l), l]));
   const stock: Record<string, StockBand> = {};
   const colourStock: Record<string, ColourStock> = {};

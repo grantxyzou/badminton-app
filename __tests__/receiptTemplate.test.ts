@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { breakdownRows, payToItems, renderGroupText, renderIndividualText, type ReceiptInput } from '@/lib/receiptTemplate';
 
 const baseInput: ReceiptInput = {
@@ -144,5 +144,38 @@ describe('renderIndividualText', () => {
   it('appends Thanks at the end', () => {
     const text = renderIndividualText({ ...baseInput, playerName: 'Daisy' });
     expect(text.trim().endsWith('Thanks!')).toBe(true);
+  });
+});
+
+describe('the date is the club\'s (America/Vancouver), not the device\'s', () => {
+  // Thursday 7 PM Pacific is Friday 03:00 UTC. Seen 2026-11-12: a browser in
+  // UTC printed "Fri, Nov 20" on the receipt and "Nov 20" in the memo.
+  const thursdayNight: ReceiptInput = { ...baseInput, datetime: '2026-11-19T19:00:00-08:00' };
+  let savedTz: string | undefined;
+  beforeEach(() => {
+    savedTz = process.env.TZ;
+    process.env.TZ = 'UTC';
+  });
+  afterEach(() => {
+    if (savedTz === undefined) delete process.env.TZ;
+    else process.env.TZ = savedTz;
+  });
+
+  it('the device really is in UTC here (or this test proves nothing)', () => {
+    expect(new Date(thursdayNight.datetime).getDate()).toBe(20);
+  });
+
+  it('group text reads Thu, Nov 19, and so does its memo', () => {
+    const text = renderGroupText({ ...thursdayNight, memoTemplate: '{date} - {name}' });
+    expect(text).toContain('Thu, Nov 19');
+    expect(text).toContain('Nov 19 - {your name}');
+    expect(text).not.toContain('Nov 20');
+  });
+
+  it('individual text and its memo read Nov 19', () => {
+    const text = renderIndividualText({ ...thursdayNight, playerName: 'Lin', memoTemplate: '{date} - {name}' });
+    expect(text).toContain('Thu, Nov 19');
+    expect(text).toContain('Nov 19 - Lin');
+    expect(text).not.toContain('Nov 20');
   });
 });

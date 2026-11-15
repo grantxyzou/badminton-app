@@ -16,6 +16,8 @@ export interface NudgeInput {
   hasPin: boolean;
   hasPassword: boolean;
   linkedCount: number;
+  /** An email address a sign-in code can go to (docs/plans/one-way-in.md, step 3). Absent = false. */
+  hasEmailCode?: boolean;
   /** ISO timestamp of the last dismissal, or null if never dismissed. */
   dismissedAt: string | null;
   /** Injectable for tests. Defaults to now. */
@@ -29,7 +31,7 @@ export function shouldNudgeUpgrade(input: NudgeInput): boolean {
 
   // Already has something modern. Hide permanently, not on a cooldown: the
   // nudge has done its job and re-asking would be nagging.
-  if (input.hasPassword || input.linkedCount > 0) return false;
+  if (input.hasPassword || input.linkedCount > 0 || input.hasEmailCode === true) return false;
 
   if (!input.dismissedAt) return true;
 

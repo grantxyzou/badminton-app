@@ -10,6 +10,7 @@ import MoneyInput from '@/components/primitives/MoneyInput';
 import ProfileEyebrow from '@/components/primitives/ProfileEyebrow';
 import SettingsList from '@/components/profile/SettingsList';
 import { isRefused } from '@/lib/apiFetch';
+import { isFlagOn } from '@/lib/flags';
 import { useOnline } from '@/lib/useOnline';
 import { fmtSessionLabel, fmtTime } from '@/lib/fmt';
 import { announceClubRun } from '@/lib/useClubRun';
@@ -35,7 +36,7 @@ const DEFAULT_PER_COURT = 8;
  * "First come, first served", where spots do not follow the courts and the
  * per-court choice is closed.
  */
-export const CLUB_RUN_HEIGHTS = { style: 238, spots: 64, money: 64, window: 64, guests: 64, fee: 183 } as const;
+export const CLUB_RUN_HEIGHTS = { style: 238, spots: 64, money: 64, window: 64, guests: 64, stringing: 64, fee: 183 } as const;
 
 /** What the fee field shows for a stored fee: blank for none, else dollars and cents. */
 const feeText = (fee: number) => (fee > 0 ? fee.toFixed(2) : '');
@@ -71,6 +72,14 @@ export function windowLabel(rule: MembersFirst, sessionDay: number | null): stri
 
 const STYLE_ORDER = ['first_come', 'members_first'] as const;
 
+/** Why stringing cannot be switched off yet: a setting never hides a racket or money owed. */
+export function openJobsMessage(open: number): string {
+  if (open <= 0) return 'Couldn’t save. Try again.';
+  return open === 1
+    ? '1 stringing job is still on the bench or unpaid. Finish it before switching stringing off.'
+    : `${open} stringing jobs are still on the bench or unpaid. Finish them before switching stringing off.`;
+}
+
 /**
  * "How your club runs" (docs/plans/six-feathers-onboarding.md).
  *
@@ -85,10 +94,13 @@ const STYLE_ORDER = ['first_come', 'members_first'] as const;
  */
 export default function ClubRunPage({ onOpenLateCancel }: { onOpenLateCancel?: () => void }) {
   const online = useOnline();
+  // The deployment-wide switch; with it off the club's own one would change nothing.
+  const stringingFlagOn = isFlagOn('NEXT_PUBLIC_FLAG_STRINGING');
   const [run, setRun] = useState<ClubRun | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [stringingError, setStringingError] = useState('');
   /* 'failed' and 'refused' are not BPM's defaults: rendering the settings off
      a dead fetch would let the next tap overwrite what the club has set. */
   const [loadState, setLoadState] = useState<'ok' | 'failed' | 'refused'>('ok');
@@ -143,16 +155,23 @@ export default function ClubRunPage({ onOpenLateCancel }: { onOpenLateCancel?: (
   async function persist(next: ClubRun) {
     setSaving(true);
     setError('');
+    setStringingError('');
     try {
       const res = await fetch(`${BASE}/api/admin/settings`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          run: { playersPerCourt: next.playersPerCourt, money: next.money, membersFirst: next.membersFirst, guests: next.guests, organiserFee: next.organiserFee },
+          run: { playersPerCourt: next.playersPerCourt, money: next.money, membersFirst: next.membersFirst, guests: next.guests, stringing: next.stringing, organiserFee: next.organiserFee },
         }),
       });
       if (!res.ok) {
-        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        const data = (await res.json().catch(() => ({}))) as { error?: string; open?: number };
+        if (data.error === 'stringing_open_jobs') {
+          // Said under the switch it is about, not at the foot of the page.
+          setStringingError(openJobsMessage(data.open ?? 0));
+          await load();
+          return;
+        }
         setError(data.error === 'no_group'
           ? 'This club has no settings record yet, so this can’t be saved.'
           : 'Couldn’t save. Try again.');
@@ -184,6 +203,12 @@ export default function ClubRunPage({ onOpenLateCancel }: { onOpenLateCancel?: (
           <CardSkeleton height={CLUB_RUN_HEIGHTS.money} />
           <CardSkeleton height={CLUB_RUN_HEIGHTS.fee} />
         </section>
+        {stringingFlagOn && (
+          <section className="flex flex-col gap-2">
+            <ProfileEyebrow>Add-ons</ProfileEyebrow>
+            <CardSkeleton height={CLUB_RUN_HEIGHTS.stringing} />
+          </section>
+        )}
       </div>
     );
   }
@@ -225,6 +250,7 @@ export default function ClubRunPage({ onOpenLateCancel }: { onOpenLateCancel?: (
   const busy = saving || !online;
   const perCourtOn = run.playersPerCourt !== null;
   const moneyOn = run.money === 'split';
+  const stringingOn = run.stringing === 'on';
   const rule = run.membersFirst;
   const sessionDay = session?.datetime ? weekdayOf(session.datetime) : null;
   const sessionEnd = rule && session?.datetime ? membersFirstEnd(session.datetime, rule) : null;
@@ -524,6 +550,40 @@ export default function ClubRunPage({ onOpenLateCancel }: { onOpenLateCancel?: (
           <SettingsList rows={[{ icon: 'schedule', label: 'Late cancellations', onClick: onOpenLateCancel }]} />
         )}
       </section>
+
+      {/* Services the club may or may not run, apart from how its week runs
+          (docs/plans/stringing-add-on.md). Not part of a style: switching one
+          never makes the club "Custom". Hidden with the deployment flag off,
+          where the switch would change nothing. */}
+      {stringingFlagOn && (
+        <section className="flex flex-col gap-2" aria-label="Add-ons">
+          <ProfileEyebrow>Add-ons</ProfileEyebrow>
+          <section className="glass-card" aria-label="Stringing">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="fs-md" style={{ margin: 0, color: 'var(--text-primary)', fontWeight: 600 }}>
+                  Stringing service
+                </p>
+                <p id="club-run-stringing" className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
+                  {stringingOn
+                    ? 'On · members can send rackets to be strung'
+                    : 'Off · no Stringing tab, bench or requests'}
+                </p>
+              </div>
+              <Switch
+                checked={stringingOn}
+                onChange={(next) => void persist(withSetting(run, 'stringing', next ? 'on' : 'off'))}
+                ariaLabel="Stringing service"
+                ariaDescribedBy="club-run-stringing"
+                disabled={busy}
+              />
+            </div>
+            {stringingError && (
+              <p className="field-error" role="alert" style={{ marginTop: 'var(--space-3)' }}>{stringingError}</p>
+            )}
+          </section>
+        </section>
+      )}
 
       {error && <p className="field-error" role="alert">{error}</p>}
     </div>

@@ -26,6 +26,7 @@ import { useCheckIn } from '@/components/stats/useCheckIn';
 import CheckInSheet from '@/components/stats/CheckInSheet';
 import { StatsSignInContext } from '@/components/stats/LockedCard';
 import type { Tab } from '@/components/HomeShell';
+import { useStringingHidden } from '@/lib/useClubRun';
 
 // Client-only (reads localStorage identity) — these three resolve an active
 // name at mount, so server-rendering them just produces markup the client
@@ -53,6 +54,8 @@ export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: Tab) =>
   // A page inside the Play register ("Your kudos"), shown in place of its
   // cards with the shell's chrome hidden, the way Equipment shows Your fit.
   const [playPage, setPlayPage] = useState<'kudos' | null>(null);
+  // No "Request stringing" from the racket page in a club without the service.
+  const stringingHidden = useStringingHidden();
   usePageBack(playPage !== null, () => setPlayPage(null));
   // Identity for the signed-out empty state, from the module that owns the
   // chain. `resolved` carries "not known yet" so the first paint doesn't flash
@@ -205,7 +208,7 @@ export default function SkillsTab({ onTabChange }: { onTabChange?: (tab: Tab) =>
       gearSlot={
         <GearRegister
           activeName={activeName}
-          onRequestStringing={onTabChange ? (lbs) => { requestStringingAt(lbs); onTabChange('stringing'); } : undefined}
+          onRequestStringing={onTabChange && !stringingHidden ? (lbs) => { requestStringingAt(lbs); onTabChange('stringing'); } : undefined}
         />
       }
     />

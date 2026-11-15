@@ -136,7 +136,6 @@ const REREADS: string[] = [
   'app/api/auth/nudge/route.ts#POST',
   'app/api/groups/route.ts#POST',
   'app/api/groups/switch/route.ts#POST',
-  'app/api/groups/join/route.ts#POST',
   'lib/oauthCallback.ts#finishOAuthCallback',
   'lib/pageGate.ts#decidePage',
 ];

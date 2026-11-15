@@ -26,6 +26,9 @@ export interface SettingsRow {
    * the row acts at once rather than opening anything.
    */
   danger?: boolean;
+  /** The row whose page is open on a foldable's right page, beside this
+   *  list: a solid tint (fill only) and `aria-current`. Never on one screen. */
+  selected?: boolean;
 }
 
 export default function SettingsList({ rows }: { rows: SettingsRow[] }) {
@@ -42,7 +45,8 @@ export default function SettingsList({ rows }: { rows: SettingsRow[] }) {
               onClick={row.onClick}
               // `.settings-row` owns the background so :active can flash it;
               // an inline background would outrank the press state.
-              className="settings-row"
+              className={row.selected ? 'settings-row settings-row--open' : 'settings-row'}
+              aria-current={row.selected ? 'page' : undefined}
               style={{
                 width: '100%',
                 display: 'flex',

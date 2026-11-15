@@ -1139,7 +1139,15 @@ export async function PATCH(req: NextRequest) {
     // is no reason to refuse it: the waitlist is what a full set of courts
     // overflows into (docs/plans/money-off-session-list.md).
     const endsWaitlisted = body.waitlisted === true || (body.waitlisted !== false && existing.waitlisted === true);
-    if ((body.removed === false || body.waitlisted === false) && !endsWaitlisted) {
+    // An organiser or admin may move someone off the waitlist into a FULL
+    // session on purpose (Grant, 2026-11-12: "promote waitlisted people even
+    // if the session is full"): `overCapacity: true` with the promotion. Only
+    // here — this path is admin-only (the 401 above), the client asks first,
+    // and a restore of a removed row is still capacity-checked. The session
+    // then reads over its cap ("13 of 12"); the automatic promotion fills
+    // free spots only, so it waits until the count is back under the cap.
+    const promoteOverCapacity = body.overCapacity === true && body.waitlisted === false && existing.waitlisted === true && body.removed !== false;
+    if ((body.removed === false || body.waitlisted === false) && !endsWaitlisted && !promoteOverCapacity) {
       const active = await scope.query<{ id: string }>('players', {
         where: ACTIVE_PLAYERS_WHERE,
         params: [{ name: '@sessionId', value: sessionId }],

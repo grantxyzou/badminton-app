@@ -48,30 +48,43 @@ afterEach(() => {
 });
 
 describe('StringDetailSheet', () => {
-  it('opens on a slim strip: type and feel, gauge and stock in words, and the price', () => {
+  it('says what it is under its name: type and feel, gauge and stock in words', () => {
     wrap(BG80, { fit: null, reason: 'needs_check_in' });
     const strip = screen.getByTestId('string-strip');
-    expect(within(strip).getByText('Power · Hard feel')).toBeDefined();
+    expect(within(strip).getByText('Repulsion · Hard feel')).toBeDefined();
     expect(within(strip).getByText('0.68 mm · In stock')).toBeDefined();
-    expect(within(strip).getByText('$32')).toBeDefined();
   });
 
-  it('leaves the description to the list, and drops the big type-coloured hero', () => {
+  /* The canvas, frame 3 (2026-11-12): the packet beside what it is for and the
+     maker's ratings as tinted bars; the price at the foot, beside its button
+     (Grant: "move price to the bottom"). */
+  it('shows how it plays as tinted bars, repulsion first, and the price last', () => {
     wrap(BG80, { fit: null, reason: 'needs_check_in' });
-    expect(screen.queryByText('All-round power string; stiff, crisp feedback with good tension hold')).toBeNull();
-    expect(screen.queryByText('Restring price')).toBeNull();
+    expect(screen.getByText('All-round power string; stiff, crisp feedback with good tension hold')).toBeDefined();
+    const bars = Array.from(screen.getByTestId('trait-bars').querySelectorAll<HTMLElement>('[data-trait]'));
+    expect(bars.map((b) => [b.dataset.trait, b.textContent])).toEqual([
+      ['power', 'Repulsion9'], ['durability', 'Durability7'], ['control', 'Control8'], ['sound', 'Sound8'],
+    ]);
+    const price = screen.getByTestId('string-price');
+    expect(price.textContent).toBe('Restring with BG80$32');
+    // The price follows everything else in the sheet's body.
+    expect(screen.getByRole('button', { name: 'Ratings and specs' }).compareDocumentPosition(price) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('keeps the ratings and specs closed until asked, then shows all four meters and whose they are', () => {
+  it('draws shock absorption when the maker gives it, under its full name', () => {
+    wrap({ ...BG80, attributes: { ...BG80.attributes, shockAbsorption: 6 } } as CatalogItem, { fit: null });
+    const bar = screen.getByTestId('trait-bars').querySelector<HTMLElement>('[data-trait="shock"]')!;
+    expect(bar.textContent).toBe('Shock absorption6');
+  });
+
+  it('keeps the specs closed until asked, then says whose ratings they are', () => {
     wrap(BG80, { fit: null, reason: 'needs_check_in' });
     const toggle = screen.getByRole('button', { name: 'Ratings and specs' });
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
     expect(screen.queryByText('Rated by Yonex, out of 10')).toBeNull();
-    expect(screen.queryByText('Sound')).toBeNull();
     expect(screen.queryByText('4 in the club play it')).toBeNull();
     fireEvent.click(toggle);
     expect(toggle.getAttribute('aria-expanded')).toBe('true');
-    for (const label of ['Power', 'Control', 'Durability', 'Sound']) expect(screen.getAllByText(label).length).toBeGreaterThan(0);
     expect(screen.getByText('Rated by Yonex, out of 10')).toBeDefined();
     expect(screen.getByText('4 in the club play it')).toBeDefined();
   });
@@ -87,16 +100,23 @@ describe('StringDetailSheet', () => {
     expect(screen.queryByText(/Rated by/)).toBeNull();
   });
 
-  it('leads with how it suits you, then the stringer’s note, then the ratings', async () => {
+  it('puts the stringer’s note in the same card as how it suits you (Grant: "should we combine?")', async () => {
     wrap(BG80, { fit: FIT }, vi.fn(), 'My go-to for hard hitters. I’d string it at 26 lb.');
     await screen.findByText('Yonex Astrox 88D Pro');
-    const order = ['How it suits you', 'Your stringer recommends', 'Ratings and specs'].map((text) => screen.getByText(text));
+    const card = document.querySelector<HTMLElement>('[data-verdict="good_match"]')!;
+    expect(within(card).getByTestId('stringer-note').textContent).toContain('My go-to for hard hitters. I’d string it at 26 lb.');
+    expect(within(card).getByText('Your stringer recommends')).toBeDefined();
+    // How it plays comes first, then the card, then the specs.
+    const order = [screen.getByTestId('trait-bars'), card, screen.getByRole('button', { name: 'Ratings and specs' })];
     for (let i = 1; i < order.length; i++) {
       expect(order[i - 1].compareDocumentPosition(order[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     }
-    // The strip sits above all three.
-    expect(screen.getByTestId('string-strip').compareDocumentPosition(order[0]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(screen.getByText('My go-to for hard hitters. I’d string it at 26 lb.')).toBeDefined();
+  });
+
+  it('keeps the stringer’s note when the engine cannot say', async () => {
+    wrap(BG80, { fit: null, reason: 'no_frame' }, vi.fn(), 'Hard hitters: 26 lb.');
+    expect(await screen.findByText('Hard hitters: 26 lb.')).toBeDefined();
+    expect(screen.queryByText('How it suits you')).toBeNull();
   });
 
   it('shows no stringer section when the stringer has written no note', async () => {

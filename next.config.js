@@ -88,7 +88,10 @@ const nextConfig = {
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+          // microphone=(self): the courtside board's voice scoring
+          // (docs/plans/voice-score.md) asks for the mic on our own pages;
+          // the browser still prompts. Camera and location stay shut.
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(self), geolocation=()' },
           {
             key: 'Strict-Transport-Security',
             value: 'max-age=31536000; includeSubDomains',

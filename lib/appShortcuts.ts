@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from 'next-intl';
 import { hasNativePlugin, isNative } from './native';
 import { requestStringing } from './stringingIntent';
 import { sharedFetch } from './sharedRead';
+import { useStringingHidden } from './useClubRun';
 
 /**
  * The menu a long press on the store app's icon opens
@@ -96,6 +97,8 @@ export function useAppShortcuts(): void {
   const [native] = useState(() => isNative());
   const [session, setSession] = useState<SessionFacts | null | undefined>(undefined);
   const [owed, setOwed] = useState<number | null>(null);
+  // A club with stringing switched off offers no "Request stringing" (docs/plans/stringing-add-on.md).
+  const stringingHidden = useStringingHidden();
 
   useEffect(() => {
     if (!native) return;
@@ -145,12 +148,14 @@ export function useAppShortcuts(): void {
         description: amount == null ? t('owedUnknown') : owed! > 0 ? t('owedAmount', { amount }) : t('allPaid'),
         iosIcon: 'dollarsign.circle',
       },
-      {
-        id: 'stringing',
-        title: t('stringing'),
-        description: t('stringingSub'),
-        iosIcon: 'wrench.and.screwdriver',
-      },
+      ...(stringingHidden
+        ? []
+        : [{
+            id: 'stringing' as const,
+            title: t('stringing'),
+            description: t('stringingSub'),
+            iosIcon: 'wrench.and.screwdriver',
+          }]),
     ]);
-  }, [native, session, owed, locale, t]);
+  }, [native, session, owed, locale, t, stringingHidden]);
 }

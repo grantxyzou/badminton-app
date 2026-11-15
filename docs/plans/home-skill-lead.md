@@ -2,7 +2,7 @@
 
 **Track:** Value-Hub Slice-0 (#101), through `docs/plans/skill-leads-stats.md` — whose 2026-10-15 reading fired its `reach` row ("the fix is off-tab; reopen the Home decision").
 **Status:** in-flight
-**Review on:** 2026-11-15 — four weeks on: is `reach` in `GET /api/admin/slice0` → `skill` at or above 0.5, and how many members are in `homeLeadTappers`? Below 0.5 with few tappers, the card comes off.
+**Review on:** 2026-11-15 — four weeks on: is `skill.reach` on `GET /api/reports/metrics` (the same count as `GET /api/admin/slice0` → `skill`) at or above 0.5, and what is `skill.homeLeadTappers`? Below 0.5 with few tappers, the card comes off.
 
 ## Problem
 

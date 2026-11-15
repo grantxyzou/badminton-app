@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { inviteUrl } from '@/lib/useInvites';
+import { clubLinkUrl } from '@/lib/clubLinkUrl';
 import { qrGrid } from '@/lib/qr';
 import { drawInvitePoster, posterWhen, type PosterContent } from '@/lib/invitePoster';
 import { shareOrSaveImage } from '@/lib/shareImage';
@@ -58,30 +58,21 @@ function usePosterFacts(): Facts {
 }
 
 interface Props {
-  /** The token the QR carries: a one-time invite's, or the club's door link's. */
+  /** The club's link (docs/plans/one-way-in.md, step 5): reusable, every join approved. */
   token: string;
-  /** A one-time invite's 8-character code; absent for the door link. */
-  code?: string;
-  /** When a one-time invite dies unused; absent for the door link. */
-  expiresAt?: string;
-  /** The club's door link (docs/plans/door-link.md): reusable, every join approved. */
-  door?: boolean;
   groupName?: string;
   /** The button's words; "Save as image" by default. */
   label?: string;
 }
 
 /**
- * "Save as image": the invite as a poster the organiser can send or show — the
- * club's name, who runs it, when and where it plays, and this one-time
- * invite's QR and code (Grant, 2026-11-05). Drawn by `lib/invitePoster.ts`.
- *
- * A one-time invite's poster says it works once, for one person, until it
- * expires: posted in a group chat it would let in only the first person to
- * scan it. The club's DOOR poster (`door`) is the one for a chat or a wall:
- * anyone can ask, and an organiser lets each person in.
+ * "Save poster": the club's link as a poster the organiser can send or put on
+ * a wall: the club's name, who runs it, when and where it plays, and the
+ * link's QR (Grant, 2026-11-05). Drawn by `lib/invitePoster.ts`. Anyone can
+ * scan it and ask; an organiser lets each person in. (It also drew one-time
+ * invites, with their code, until step 5 retired them.)
  */
-export default function InvitePosterButton({ token, code, expiresAt, door = false, groupName, label }: Props) {
+export default function InvitePosterButton({ token, groupName, label }: Props) {
   const t = useTranslations('groups.invite');
   const locale = useLocale();
   const { group } = useCurrentGroup();
@@ -96,7 +87,6 @@ export default function InvitePosterButton({ token, code, expiresAt, door = fals
     const organisers = facts.organisers.length
       ? new Intl.ListFormat(locale, { type: 'conjunction' }).format(facts.organisers)
       : null;
-    const until = expiresAt ? new Date(expiresAt).toLocaleDateString(locale, { month: 'short', day: 'numeric' }) : '';
     return {
       eyebrow: t('posterEyebrow'),
       club: groupName?.trim() || group?.name?.trim() || APP_NAME,
@@ -106,11 +96,11 @@ export default function InvitePosterButton({ token, code, expiresAt, door = fals
       cadence: when ? t('posterCadence', { day: when.day, time: when.time }) : null,
       location: facts.location,
       address: facts.address,
-      qr: qrGrid(inviteUrl(token)),
-      scanLine: door ? t('posterDoorScan') : t('posterScan'),
-      codeLine: !door && code ? t('posterCode') : null,
-      code: !door && code ? `${code.slice(0, 4)} ${code.slice(4)}` : null,
-      onceLine: door ? t('posterDoorLine') : t('posterOnce', { date: until }),
+      qr: qrGrid(clubLinkUrl(token)),
+      scanLine: t('posterDoorScan'),
+      codeLine: null,
+      code: null,
+      onceLine: t('posterDoorLine'),
       appName: APP_NAME,
     };
   }
@@ -126,7 +116,7 @@ export default function InvitePosterButton({ token, code, expiresAt, door = fals
       return;
     }
     setBusy(true);
-    const outcome = await shareOrSaveImage(canvas, door ? 'club-poster.png' : `invite-${code ?? 'poster'}.png`);
+    const outcome = await shareOrSaveImage(canvas, 'club-poster.png');
     setBusy(false);
     if (outcome.kind === 'error') setFailed(true);
     // iOS without a file share: show the picture so it can be pressed and held.

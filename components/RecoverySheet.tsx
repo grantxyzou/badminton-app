@@ -56,7 +56,7 @@ export default function RecoverySheet({ open, onClose, sessionId, onForgotPin }:
       </BottomSheetHeader>
       <BottomSheetBody>
         {success ? (
-          <p className="motion-fade" style={{ textAlign: 'center', fontSize: 18, color: 'var(--text-primary)' }}>
+          <p className="motion-fade sheet-success-line">
             {t('welcomeBack', { name: success })}
           </p>
         ) : (
