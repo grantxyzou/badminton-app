@@ -52,7 +52,22 @@ export interface ClubRun {
    * (on = 1) and is still written beside it for rollback.
    */
   guests: GuestCap;
+  /**
+   * The organiser's fee, in dollars, added to every player's share of a priced
+   * session (docs/plans/organiser-fee.md). `0` = none, the default. Copied
+   * onto each session at advance, so a change starts with the next session.
+   * Not part of any style: picking one keeps the club's fee.
+   */
+  organiserFee: number;
   stringing: ClubStringing;
+}
+
+/** The most a club may add per player, in dollars. */
+export const ORGANISER_FEE_MAX = 20;
+
+/** A fee in dollars: 0 to the cap, to the cent. */
+export function isOrganiserFee(v: unknown): v is number {
+  return typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= ORGANISER_FEE_MAX && Math.abs(Math.round(v * 100) - v * 100) < 1e-6;
 }
 
 export type GuestCap = 0 | 1 | 2;
@@ -70,7 +85,7 @@ type ClubRunValues = Omit<ClubRun, 'style'>;
  * "First come, first served" says nothing about them, so choosing it keeps
  * whatever the club has, and any number reads as that style.
  */
-type StyleValues = Omit<ClubRunValues, 'guests' | 'stringing'> & { guests: GuestCap | null };
+type StyleValues = Omit<ClubRunValues, 'guests' | 'stringing' | 'organiserFee'> & { guests: GuestCap | null };
 
 /**
  * Stringing for a club that never chose: on for BPM's style (BPM Core has a
@@ -101,7 +116,7 @@ export const CLUB_STYLES: Record<Exclude<ClubStyle, 'custom'>, { label: string; 
 export const PLAYERS_PER_COURT_MIN = 2;
 export const PLAYERS_PER_COURT_MAX = 12;
 
-const DEFAULT_RUN: ClubRun = { style: 'first_come', ...CLUB_STYLES.first_come.values, membersFirst: null, guests: 0, stringing: 'on' };
+const DEFAULT_RUN: ClubRun = { style: 'first_come', ...CLUB_STYLES.first_come.values, membersFirst: null, guests: 0, stringing: 'on', organiserFee: 0 };
 
 /** The old switch's answer, for a club whose `run` never named a number of guests. */
 function legacyGuests(settings: { guestsAllowed?: unknown } | null | undefined): GuestCap {
@@ -137,18 +152,20 @@ export function clubRunOf(settings: { run?: unknown; guestsAllowed?: unknown } |
     membersFirst:
       r.membersFirst === null ? null : isMembersFirst(r.membersFirst) ? { ...r.membersFirst } : base.membersFirst && { ...base.membersFirst },
     guests: isGuestCap(r.guests) ? r.guests : base.guests ?? legacyGuests(settings),
+    organiserFee: isOrganiserFee(r.organiserFee) ? r.organiserFee : 0,
     stringing: isClubStringing(r.stringing) ? r.stringing : STYLE_STRINGING[style],
   };
 }
 
-/** Start from a style: its values, in full. The stringing switch is the club's and is kept. */
-export function applyStyle(style: Exclude<ClubStyle, 'custom'>, current?: Partial<Pick<ClubRun, 'guests' | 'stringing'>>): ClubRun {
+/** Start from a style: its values, in full. The stringing switch and the organiser fee are the club's and are kept. */
+export function applyStyle(style: Exclude<ClubStyle, 'custom'>, current?: Partial<Pick<ClubRun, 'guests' | 'stringing' | 'organiserFee'>>): ClubRun {
   const values = CLUB_STYLES[style].values;
   return {
     style,
     ...values,
     membersFirst: values.membersFirst && { ...values.membersFirst },
     guests: values.guests ?? current?.guests ?? 0,
+    organiserFee: current?.organiserFee ?? 0,
     stringing: current?.stringing ?? STYLE_STRINGING[style],
   };
 }
@@ -164,6 +181,7 @@ export function withSetting<K extends keyof ClubRunValues>(run: ClubRun, key: K,
     money: run.money,
     membersFirst: run.membersFirst,
     guests: run.guests,
+    organiserFee: run.organiserFee,
     stringing: run.stringing,
     [key]: value,
   };
@@ -196,11 +214,11 @@ export function styleOf(values: Omit<ClubRunValues, 'stringing'>): ClubStyle {
  */
 export function parseClubRun(
   value: unknown,
-  current: { membersFirst?: MembersFirst | null; guests?: GuestCap; stringing?: ClubStringing } = {},
+  current: { membersFirst?: MembersFirst | null; guests?: GuestCap; stringing?: ClubStringing; organiserFee?: number } = {},
 ): ClubRun | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const v = value as Record<string, unknown>;
-  const known = new Set(['style', 'playersPerCourt', 'money', 'membersFirst', 'guests', 'stringing']);
+  const known = new Set(['style', 'playersPerCourt', 'money', 'membersFirst', 'guests', 'stringing', 'organiserFee']);
   if (Object.keys(v).some((k) => !known.has(k))) return null;
   if (!(v.playersPerCourt === null || isPlayersPerCourt(v.playersPerCourt))) return null;
   if (!(v.money === 'split' || v.money === 'off')) return null;
@@ -212,6 +230,9 @@ export function parseClubRun(
   // The same for guests: absent keeps what the club has.
   const guests = v.guests === undefined ? current.guests ?? 0 : v.guests;
   if (!isGuestCap(guests)) return null;
+  // And the fee: absent keeps the club's, so an older screen cannot zero it.
+  const organiserFee = v.organiserFee === undefined ? current.organiserFee ?? 0 : v.organiserFee;
+  if (!isOrganiserFee(organiserFee)) return null;
   // And for stringing: a screen from before the add-on never turns a shop off.
   const stringing = v.stringing === undefined ? current.stringing ?? 'on' : v.stringing;
   if (!isClubStringing(stringing)) return null;
@@ -220,6 +241,7 @@ export function parseClubRun(
     money: v.money,
     membersFirst: membersFirst === null ? null : { daysBefore: membersFirst.daysBefore, time: membersFirst.time },
     guests,
+    organiserFee,
     stringing,
   };
   return { style: styleOf(values), ...values };

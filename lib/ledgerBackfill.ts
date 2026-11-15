@@ -25,6 +25,7 @@
  * memberId goes under `~unlinked`; the reconcile reports those.
  */
 import { groupScope, type GroupScope } from './groupScope';
+import { invoiceGateOpen } from './stringingBilling';
 import { appendEntry, chargeEntry, coverEntry, courtCostEntry, shuttlePurchaseEntry, stringingChargeEntry, stringingPaymentEntry, type NewEntry, paymentEntryAtSettle } from './ledgerMirror';
 import { ensureLedger } from './storeCredit';
 import type { BirdPurchase, LedgerEntry, Player, Session, StringingJob } from './types';
@@ -85,7 +86,7 @@ export function sessionEntries(session: Session, rows: Player[]): NewEntry[] {
 const BILLABLE = new Set(['ready', 'picked_up']);
 export function jobEntries(job: StringingJob): NewEntry[] {
   const out: NewEntry[] = [];
-  const billable = typeof job.priceCents === 'number' && job.priceCents > 0 && BILLABLE.has(job.status);
+  const billable = typeof job.priceCents === 'number' && job.priceCents > 0 && BILLABLE.has(job.status) && invoiceGateOpen(job);
   if (billable) {
     const c = stringingChargeEntry(job, 0);
     if (c) out.push(c);

@@ -55,9 +55,9 @@ describe('ClubRunPage', () => {
     render(<ClubRunPage />);
     fireEvent.click(await screen.findByRole('radio', { name: /Members first/ }));
     // A style never switches the club's stringing: BPM's shop stays on.
-    await waitFor(() => expect(patches()).toEqual([{ playersPerCourt: 8, money: 'off', membersFirst: { daysBefore: 5, time: '23:59' }, guests: 2, stringing: 'on' }]));
+    await waitFor(() => expect(patches()).toEqual([{ playersPerCourt: 8, money: 'off', membersFirst: { daysBefore: 5, time: '23:59' }, guests: 2, stringing: 'on', organiserFee: 0 }]));
     await waitFor(() => expect(screen.getByRole('radio', { name: /Members first/ }).getAttribute('aria-checked')).toBe('true'));
-    expect(heard.at(-1)).toEqual({ style: 'members_first', playersPerCourt: 8, money: 'off', membersFirst: { daysBefore: 5, time: '23:59' }, guests: 2, stringing: 'on' });
+    expect(heard.at(-1)).toEqual({ style: 'members_first', playersPerCourt: 8, money: 'off', membersFirst: { daysBefore: 5, time: '23:59' }, guests: 2, stringing: 'on', organiserFee: 0 });
     window.removeEventListener(CLUB_RUN_EVENT, listen);
   });
 
@@ -65,7 +65,7 @@ describe('ClubRunPage', () => {
     stored = { style: 'members_first', playersPerCourt: 8, money: 'off' };
     render(<ClubRunPage />);
     fireEvent.click(await screen.findByRole('radio', { name: '6 per court' }));
-    await waitFor(() => expect(patches()).toEqual([{ playersPerCourt: 6, money: 'off', membersFirst: { daysBefore: 5, time: '23:59' }, guests: 2, stringing: 'off' }]));
+    await waitFor(() => expect(patches()).toEqual([{ playersPerCourt: 6, money: 'off', membersFirst: { daysBefore: 5, time: '23:59' }, guests: 2, stringing: 'off', organiserFee: 0 }]));
     expect(await screen.findByText(/Custom: your rules below/)).toBeDefined();
   });
 
@@ -75,10 +75,10 @@ describe('ClubRunPage', () => {
     const day = (await screen.findByRole('combobox')) as HTMLSelectElement;
     expect(day.value).toBe('5');
     fireEvent.change(day, { target: { value: '4' } });
-    await waitFor(() => expect(patches().at(-1)).toEqual({ playersPerCourt: 8, money: 'off', membersFirst: { daysBefore: 4, time: '23:59' }, guests: 2, stringing: 'off' }));
+    await waitFor(() => expect(patches().at(-1)).toEqual({ playersPerCourt: 8, money: 'off', membersFirst: { daysBefore: 4, time: '23:59' }, guests: 2, stringing: 'off', organiserFee: 0 }));
     expect(await screen.findByText(/Custom: your rules below/)).toBeDefined();
     fireEvent.click(screen.getByRole('switch', { name: 'Members first' }));
-    await waitFor(() => expect(patches().at(-1)).toEqual({ playersPerCourt: 8, money: 'off', membersFirst: null, guests: 2, stringing: 'off' }));
+    await waitFor(() => expect(patches().at(-1)).toEqual({ playersPerCourt: 8, money: 'off', membersFirst: null, guests: 2, stringing: 'off', organiserFee: 0 }));
     expect(screen.getByText(/whoever signs up first gets the spot/)).toBeDefined();
   });
 

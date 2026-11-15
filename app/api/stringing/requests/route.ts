@@ -23,6 +23,7 @@ import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { requireGroupMember } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
+import { newJobBilling } from '@/lib/stringingBilling';
 import { stringingServiceOnFor } from '@/lib/stringingService';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { isValidTension, formatJobNo } from '@/lib/stringing';
@@ -160,6 +161,7 @@ export async function POST(req: NextRequest) {
       createdAt: now,
       updatedAt: now,
       history: [{ status: 'requested', at: now, by: caller.memberId }],
+      ...newJobBilling(),
     };
 
     await scope.create('stringingJobs', job);

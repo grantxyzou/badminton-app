@@ -31,7 +31,7 @@ describe('/api/admin/settings — run', () => {
       money: 'split',
       membersFirst: null,
       guests: 0,
-      stringing: 'on',
+      stringing: 'on', organiserFee: 0,
     });
   });
 
@@ -42,7 +42,7 @@ describe('/api/admin/settings — run', () => {
       makeAdminRequest('PATCH', URL, { run: { style: 'first_come', playersPerCourt: 8, money: 'off', membersFirst, guests: 2 } }),
     );
     expect(res.status).toBe(200);
-    expect(groupSettings().run).toEqual({ style: 'members_first', playersPerCourt: 8, money: 'off', membersFirst, guests: 2, stringing: 'on' });
+    expect(groupSettings().run).toEqual({ style: 'members_first', playersPerCourt: 8, money: 'off', membersFirst, guests: 2, stringing: 'on', organiserFee: 0 });
     // The old switch is written beside it for rollback.
     expect(groupSettings().guestsAllowed).toBe(true);
     expect((await (await GET(makeAdminRequest('GET', URL))).json()).run.style).toBe('members_first');

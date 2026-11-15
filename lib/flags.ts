@@ -24,6 +24,8 @@ export type FlagName =
   | 'NEXT_PUBLIC_FLAG_PAYMENTS_AUTO'
   | 'NEXT_PUBLIC_FLAG_STORE_CREDIT'
   | 'NEXT_PUBLIC_FLAG_LEDGER_MIRROR'
+  | 'NEXT_PUBLIC_FLAG_CARD_PAY'
+  | 'NEXT_PUBLIC_FLAG_STRINGING_INVOICE'
   | 'NEXT_PUBLIC_FLAG_VOICE_SCORE';
 
 interface FlagMeta {
@@ -92,6 +94,20 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     plannedRemoval: '2026-11-21',
     note: 'Retire together with NEXT_PUBLIC_FLAG_PAYMENTS_AUTO after the 2026-11-07 review.',
   },
+  NEXT_PUBLIC_FLAG_CARD_PAY: {
+    description:
+      'Card payments (docs/plans/card-pay-prototype.md; docs/plans/payments.md Phase 3; ROADMAP non-goal lifted 2026-11-12). An organiser connects the club\'s own Stripe account (Connect, Accounts v2, direct charges), and a member pays their SETTLED session lines by card through Stripe Checkout; a signed webhook marks the rows paid (paidVia "card") and un-pays them when a refund made in Stripe says which. Read SERVER-side by /api/admin/card-pay and /api/payments/card/*, which 404 while it is off, and inert without STRIPE_SECRET_KEY. Turned on once the live key and webhook secret are in Azure App Settings.',
+    owner: 'grant',
+    plannedRemoval: '2026-12-17',
+    note: 'Ship + 2 weeks, assuming live by about 2026-12-03 — move it if going live slips. Retiring it deletes the flag check only: the STRIPE_SECRET_KEY check stays, because removing the key is the fast off switch (no rebuild).',
+  },
+  NEXT_PUBLIC_FLAG_STRINGING_INVOICE: {
+    description:
+      'Send an invoice for a restring (docs/plans/stringing-invoice.md). On, a job made from then on is stamped billOn "invoice" and becomes money owed only when its stringer or an organiser sends the invoice (push without the amount, email with it, or a shared picture), with one reminder to the player at day 3 and one to the sender at day 7. Read SERVER-side at job creation; jobs made while it is off bill at Ready as before, and an invoiced job keeps its invoice if it goes off.',
+    owner: 'grant',
+    plannedRemoval: '2026-12-31',
+    note: 'Ship + 2 weeks once on in production. Retiring it deletes the creation-time check only: billOn on a job is the record, not the flag.',
+  },
   NEXT_PUBLIC_FLAG_PAYMENTS_AUTO: {
     description:
       'E-transfer auto-detection (docs/plans/payments.md, Phase 1): the admin\'s Apps Script forwards Interac emails to POST /api/payments/etransfer, which marks matched rows paid and queues the rest; the "I\'ve sent it" button; and the soft hold (2+ unpaid settled sessions → sign-up lands on the waitlist). Read SERVER-side by every payments route and by the hold in POST /api/players; off, those routes 404 and sign-up is unchanged.',
@@ -126,6 +142,10 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_STORE_CREDIT;
     case 'NEXT_PUBLIC_FLAG_LEDGER_MIRROR':
       return process.env.NEXT_PUBLIC_FLAG_LEDGER_MIRROR;
+    case 'NEXT_PUBLIC_FLAG_CARD_PAY':
+      return process.env.NEXT_PUBLIC_FLAG_CARD_PAY;
+    case 'NEXT_PUBLIC_FLAG_STRINGING_INVOICE':
+      return process.env.NEXT_PUBLIC_FLAG_STRINGING_INVOICE;
     case 'NEXT_PUBLIC_FLAG_VOICE_SCORE':
       return process.env.NEXT_PUBLIC_FLAG_VOICE_SCORE;
     default: {

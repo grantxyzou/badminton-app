@@ -10,7 +10,8 @@ import { STRINGING_FLOW, type StringingStatus } from '@/lib/stringing';
 import { dueFor, dueStyle, formatReadyBy, todayIso } from '@/lib/stringingDue';
 import JobCard, { JobProgress, JobSpecLine, JobsHeading, PendingChangeLine, nextStepOf } from './JobCard';
 import { toneStageOf, type ToneStage } from '@/lib/stringingStatusTone';
-import type { StringerJob } from '@/lib/types';
+import type { StringerJob, StringingJob } from '@/lib/types';
+import StringingInvoiceCard from './StringingInvoiceCard';
 import StagePill from './StagePill';
 import { isRefused } from '@/lib/apiFetch';
 import { useTabReturn } from '@/lib/tabActivity';
@@ -261,6 +262,7 @@ export default function StringerJobsCard({ hasIdentity, showEmpty = false }: {
               stage={stage}
               today={today}
               holes={holes.forLabel(job.racketLabel).holes}
+              onInvoiceSent={(next) => setJobs((prev) => prev?.map((j) => (j.id === job.id ? { ...j, ...next } : j)) ?? prev)}
               action={nextStatus || undoable ? (
                 <>
                   {nextStatus && (
@@ -316,12 +318,13 @@ export default function StringerJobsCard({ hasIdentity, showEmpty = false }: {
  * waiting line are `JobCard.tsx`'s own components, which the bench's card
  * draws too (2026-11-12).
  */
-function StringerJobCard({ job, stage, today, holes, action }: {
+function StringerJobCard({ job, stage, today, holes, action, onInvoiceSent }: {
   job: StringerQueueJob;
   stage: ToneStage;
   today: string;
   holes: number | null;
   action?: ReactNode;
+  onInvoiceSent?: (job: StringerQueueJob) => void;
 }) {
   const t = useTranslations('home.stringing');
   const tAdmin = useTranslations('admin.stringing');
@@ -375,7 +378,37 @@ function StringerJobCard({ job, stage, today, holes, action }: {
             {action}
           </div>
         )}
+        {/* The invoice, once the racket is finished (docs/plans/stringing-
+            invoice.md). The server sends it on this, their OWN queue, only;
+            it is the one figure a stringer who is not an admin sees. */}
+        {job.invoice && (
+          <StringingInvoiceCard
+            bare
+            job={job}
+            view={job.invoice}
+            receiptJob={receiptJobOf(job)}
+            onSent={(sent) => onInvoiceSent?.(sent.job as StringerQueueJob)}
+          />
+        )}
       </div>
     </div>
   );
+}
+
+/** A stringer's view, rebuilt into the job the invoice picture draws. */
+function receiptJobOf(job: StringerQueueJob): StringingJob {
+  const inv = job.invoice!;
+  return {
+    ...job,
+    stringerId: null,
+    stringerName: null,
+    priceCents: inv.amount === null ? null : Math.round(inv.amount * 100),
+    paidAt: inv.paid ? job.createdAt : null,
+    acceptedAt: null,
+    sessionId: null,
+    updatedAt: job.createdAt,
+    history: [],
+    pendingEdit: null,
+    invoice: undefined,
+  } as StringingJob;
 }

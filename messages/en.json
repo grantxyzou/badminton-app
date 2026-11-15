@@ -19,6 +19,41 @@
       "noneAction": "Choose how to sign in"
     },
     "stringing": {
+      "invoice": {
+        "title": "Invoice {no}",
+        "amountDue": "Amount due",
+        "notSent": "Not sent yet.",
+        "notSentOwesNothing": "Not sent yet. {name} owes nothing until you send it.",
+        "sentAt": "Sent {time}",
+        "sentAgainAt": "Last sent {time} · sent {count} times",
+        "paid": "Paid",
+        "send": "Send invoice",
+        "sendAgain": "Send again",
+        "sharePicture": "Share as a picture",
+        "priceChanged": "The price changed since this invoice ({from} → {to}). Send it again so {name} has the right figure.",
+        "reachedPush": "Sent. {name} got a notification.",
+        "reachedEmail": "Sent. {name} got an email with the amount.",
+        "notReached": "Saved, but {name} has no notifications or email on file. Share the picture with them.",
+        "confirmTitle": "Send {name} the invoice",
+        "close": "Close",
+        "rowInvoice": "Invoice",
+        "rowRacket": "Racket",
+        "rowFor": "For",
+        "howMember": "{name} gets a notification, and an email with the amount if they have one. They can pay by card or e-transfer in the app.",
+        "howWalkUp": "{name} gets an email if they left one. Otherwise, share the picture with them after you send it.",
+        "startsOwing": "From now on this shows on {name}'s balance.",
+        "sendTo": "Send to {name}",
+        "sendAgainTo": "Send again to {name}",
+        "sending": "Sending…",
+        "error": {
+          "failed": "Couldn't send it. Check your connection and try again.",
+          "sending": "It was sent a moment ago.",
+          "job_paid": "This restring is already paid.",
+          "not_finished": "Mark the racket ready first.",
+          "not_priced": "This job has no price yet. Ask the organiser to set one.",
+          "cancelled": "This request was withdrawn."
+        }
+      },
       "cancelError": "Couldn't cancel that. Try again.",
       "cancelGo": "Cancel request",
       "cancelKeep": "Keep it",
@@ -200,7 +235,8 @@
         },
         "ready": {
           "title": "Your racket is ready",
-          "body": "Grab it at the next session."
+          "invoiced": "Invoice {no} is on your balance. Pay by card or e-transfer from Home.",
+        "body": "Grab it at the next session."
         },
         "sendCta": "Send the request",
         "requestSending": "Sending…",
@@ -539,6 +575,9 @@
       "etransfer": "E-transfer to {email}",
       "sentIt": "I\u2019ve sent it",
       "sentItDone": "Thanks \u2014 it\u2019ll be marked paid when the e-transfer arrives.",
+      "card": "Pay by card",
+      "cardBusy": "Opening card payment\u2026",
+      "cardError": "Couldn\u2019t open card payment \u2014 try again.",
       "sentItError": "Couldn\u2019t save that \u2014 try again."
     },
     "credit": {
@@ -2427,7 +2466,8 @@
           "title": "Archived",
           "empty": "Nothing archived yet.",
           "loadError": "Couldn't load the archive.",
-          "stillOwed": "Still owes {amount}"
+          "notInvoiced": "Not invoiced · {amount}",
+        "stillOwed": "Still owes {amount}"
         },
         "mine": "Mine",
         "all": "All",
@@ -2505,7 +2545,11 @@
           "receipt": {
             "title": "Receipt for {name}",
             "close": "Close",
-            "heading": "Stringing receipt",
+            "invoiceTitle": "Invoice for {name}",
+        "invoiceHeading": "Invoice {no}",
+        "invoicePayInApp": "Pay by card or e-transfer in {app}, or to your stringer.",
+        "invoicePayStringer": "Pay your stringer by e-transfer or at pickup. Quote the invoice number.",
+        "heading": "Stringing receipt",
             "for": "For {name}",
             "racket": "Racket",
             "string": "String",
@@ -3141,7 +3185,7 @@
     },
     "privacy": {
       "title": "Privacy policy",
-      "updated": "11 November 2026",
+      "updated": "12 November 2026",
       "sections": [
         {
           "h": "Who we are",
@@ -3195,6 +3239,7 @@
           "h": "Where it lives",
           "p": [
             "Data is stored in Microsoft Azure (Cosmos DB) and reached only over HTTPS. Sign-in with Google or Apple is handled by those providers under their own policies.",
+            "If your group takes card payments, you pay on a page run by Stripe, into your group's own Stripe account. Your card details go to Stripe and never reach %APP% or your group's organisers; we receive only whether the payment went through, its amount, and Stripe's reference for it. Stripe handles the payment under its own privacy policy.",
             "Some text in the app is written with the help of an AI service (Anthropic, in the United States) — for example, the summary on your Stats tab. It receives only what that text needs, which can include your name and the names of people you regularly play with. When it writes the verdict on your racket, it receives the racket and what the verdict found from your fit answers — including that something is sore, if you said so — and never your name. These two kinds of requests never mix: a request that includes your name never includes your fit answers, and vice versa. Under our agreement with them, what we send is not used to train their models.",
             "The organiser also uses that AI service to prepare a weekly summary of group totals and to read problem reports for patterns. It receives the totals, and problem reports with the name and internet address removed — nothing that says who did what.",
             "Because Azure and Anthropic's US operations are outside Canada, some of your data may be accessible to US authorities under US law while it's there."
@@ -3234,12 +3279,12 @@
     },
     "terms": {
       "title": "Terms of use",
-      "updated": "7 October 2026",
+      "updated": "13 November 2026",
       "sections": [
         {
           "h": "What this is",
           "p": [
-            "%APP% is a tool badminton groups use to organise weekly sessions. It's run by one person, the operator, as a volunteer, and provided as-is: it can go down or change without notice. It's free today; if a paid plan is ever introduced it will be announced in the app first, and nothing you've already done becomes payable after the fact. Using it means you're a member of a group on it, were invited by one, or are starting your own."
+            "%APP% is a tool badminton groups use to organise weekly sessions. It's run by one person, the operator, as a volunteer, and provided as-is: it can go down or change without notice. It's free while it's in beta, the stringing tools included (those for a limited time). Later it may offer paid options, such as a subscription or one-time purchases; any will be announced in the app first, and nothing you've already done becomes payable after the fact. What your group charges for a session or for stringing is the group's own, not %APP%'s. Using it means you're a member of a group on it, were invited by one, or are starting your own."
           ]
         },
         {
@@ -3257,7 +3302,9 @@
         {
           "h": "Money",
           "p": [
-            "The app records each person's share of a session and whether it has been paid. It does not take payments. Paying is arranged between you and your group's organisers, usually by e-transfer. Nothing in the app is a bill from anyone but your group's organisers, and none of it is financial advice or a financial service."
+            "The app records each person's share of a session and whether it has been paid. Paying is arranged between you and your group's organisers: usually by e-transfer, or by card where your group has turned card payments on.",
+            "A card payment goes to your group's own Stripe account, never to %APP% or its operator. Your group is the seller: a refund or a dispute is between you and your group's organisers. A group may add an organiser fee to every player's share, whatever way they pay; when it does, the receipt shows it.",
+            "Nothing in the app is a bill from anyone but your group's organisers, and none of it is financial advice or a financial service."
           ]
         },
         {
@@ -3294,7 +3341,7 @@
     },
     "support": {
       "title": "Support",
-      "updated": "7 October 2026",
+      "updated": "13 November 2026",
       "sections": [
         {
           "h": "Something not working?",
@@ -3311,7 +3358,9 @@
         {
           "h": "Questions about money",
           "p": [
-            "Your balance on the Home tab shows what you owe and for which sessions. If something looks wrong, tell your group's organiser — the app records payments, it doesn't take them."
+            "Your balance on the Home tab shows what you owe and for which sessions. If something looks wrong, tell your group's organiser.",
+            "Card payments, where your group has turned them on, go straight to your group's own Stripe account — never to %APP% or its operator.",
+            "Refunds: if a session is cancelled, or you paid for one you didn't play, ask your group's organiser. A card payment is refunded to the same card from the group's Stripe account, and your balance shows the session as owed again; an e-transfer is refunded by the organiser directly. %APP% itself holds no money, so it cannot refund anything on a group's behalf."
           ]
         }
       ],
@@ -3669,6 +3718,21 @@
     "assignment": {
       "title": "A racket for you to string",
       "body": "{name}'s {racket} is yours.",
+      "racket": "racket"
+    },
+    "invoice": {
+      "title": "Your restring bill is ready",
+      "body": "{racket}: open the app to pay by card or e-transfer.",
+      "racket": "Your racket"
+    },
+    "invoiceReminder": {
+      "title": "Your restring bill is still open",
+      "body": "{racket}, invoiced {days} days ago. Open the app to pay.",
+      "racket": "Your racket"
+    },
+    "invoiceUnpaid": {
+      "title": "A restring is still unpaid",
+      "body": "{jobNo} for {name} ({racket}) was invoiced {days} days ago.",
       "racket": "racket"
     },
     "requestWaiting": {

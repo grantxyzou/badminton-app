@@ -101,6 +101,7 @@ const ROUTES: Record<string, Entry> = {
   'admin/payments': admin('isAdminAuthedWithMember'),
   'admin/credit': admin('isAdminAuthedWithMember'),
   'admin/giftcards': admin('isAdminAuthedWithMember'),
+  'admin/card-pay': admin('isAdminAuthedWithMember'),
   'admin/settings': admin('isAdminAuthedWithMember'),
   'admin/slice0': admin(),
   'admin/metrics': admin(),

@@ -21,6 +21,7 @@ import { getContainer, ensureContainer } from './cosmos';
 import { isFlagOn } from './flags';
 import type { Group } from './types';
 import { runStringingNudges } from './stringingNudge';
+import { runInvoiceReminders } from './stringingInvoiceRemind';
 import { sweepStrayAccounts } from './strayAccounts';
 
 export const CRON_KEY_HEADER = 'x-cron-key';
@@ -48,6 +49,7 @@ export interface TickJob {
 /** Every timed job. Add one here; the route and the schedule need no change. */
 export const TICK_JOBS: TickJob[] = [
   { name: 'stringingNudge', run: runStringingNudges },
+  { name: 'stringingInvoiceRemind', run: runInvoiceReminders },
 ];
 
 /**

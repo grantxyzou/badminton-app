@@ -54,7 +54,7 @@ describe('summarizeLedger', () => {
       matchedBy,
     );
     expect(v.income).toEqual({ sessions: 1200, stringing: 3000, total: 4200 });
-    expect(v.collected).toEqual({ etransferAuto: 1200, etransferAdmin: 1200, manual: 700, credit: 600, total: 3700 });
+    expect(v.collected).toEqual({ etransferAuto: 1200, etransferAdmin: 1200, manual: 700, credit: 600, card: 0, total: 3700 });
     expect(v.covered).toBe(1200);
     expect(v.outlay).toEqual({ courts: 8000, shuttles: 24000, strings: 1500, other: 800, total: 34300 });
     expect(v.net).toBe(3700 - 34300);
