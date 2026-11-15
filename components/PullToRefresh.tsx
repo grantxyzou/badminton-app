@@ -28,11 +28,13 @@ import { HOLD, MIN_SPIN_MS, SCROLL_SETTLE_MS, TRIGGER, pullDistance, pullProgres
  *    a scroll that bounces off the top edge can't flip into a refresh halfway
  *    through.
  *
- * The body is the scroll container in this app, so listeners live on `document`.
+ * Listeners live on `document`, which hears the gesture whichever element
+ * scrolls.
  *
- * AND SO THE BODY IS WHAT SCROLLS (2026-09-17). `html, body { height: 100%;
- * overflow-x: hidden }` makes `<body>` the scroller: `window.scrollY` reads 0
- * however far down the page is, and a body `scroll` event does not bubble to
+ * WHICHEVER ELEMENT SCROLLS (2026-09-17). Until 2026-11-15 `html, body {
+ * height: 100%; overflow-x: hidden }` made `<body>` the scroller (the document
+ * scrolls now, `docs/plans/page-scroll.md`): `window.scrollY` read 0 however
+ * far down the page was, and a body `scroll` event does not bubble to
  * `window`. The "at the top" guard read `window.scrollY`, so it never once
  * refused — a pull could start mid-page, and scrolling up (a finger moving
  * down) armed a refresh. It went unnoticed while the trigger needed 283px.

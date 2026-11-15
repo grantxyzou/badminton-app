@@ -623,10 +623,21 @@ html {
   font-size: calc(100% * var(--ui-scale, 1));
 }
 
+/* THE PAGE SCROLLS, NOT THE BODY (docs/plans/page-scroll.md, 2026-11-15).
+   `height: 100%` with `overflow-x: hidden` made <body> a screen-sized scroll
+   box with the page scrolling inside it, and on the App Store app the Admin
+   console opened under a screen of blank space that a scroll repainted.
+   `clip` cuts sideways overflow WITHOUT making a scroll box (`hidden` forces
+   the other axis to `auto`); `hidden` stays first for a browser older than
+   `clip`, which keeps the old behaviour there. */
+html {
+  min-height: 100%;
+}
+
 html,
 body {
-  height: 100%;
   overflow-x: hidden;
+  overflow-x: clip;
   /* Disable double-tap-to-zoom (and the legacy 300ms tap delay) — pairs with
      the viewport scale cap in layout.tsx to make the iOS web app feel native.
      `manipulation` still permits scroll + panning, just not the zoom gestures. */
@@ -650,7 +661,7 @@ body {
    that nothing is, so it is confirmed on the device, not assumed. */
 @media (display-mode: standalone) {
   html {
-    height: 100lvh;
+    min-height: 100lvh;
   }
 }
 

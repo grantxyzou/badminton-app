@@ -52,8 +52,8 @@ export default function TopBar({ title, crumb, onBack: onBackProp, right, backLa
   const besideList = useBesideList();
   const onBack = besideList ? undefined : onBackProp;
 
-  // Scroll-condense (shared with PageHeader). Handles the <body>-is-scroller
-  // reality of this app — see useScrollCondensed.
+  // Scroll-condense (shared with PageHeader), on whichever element scrolls —
+  // see useScrollCondensed.
   useScrollCondensed(ref);
 
   useEffect(() => {

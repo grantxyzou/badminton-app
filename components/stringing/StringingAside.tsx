@@ -34,7 +34,7 @@ export function useStringingAside(): HTMLElement | null {
  */
 export function StringingAside({ id, children }: { id: string; children: ReactNode }) {
   const slot = useContext(AsideSlot);
-  // A page opened from far down the list comes into view (the body scrolls).
+  // A page opened from far down the list comes into view.
   usePaneDetailReveal(slot, slot ? id : null);
   if (!slot) return null;
   return createPortal(

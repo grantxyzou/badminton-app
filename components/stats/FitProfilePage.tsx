@@ -88,8 +88,8 @@ export default function FitProfilePage({ activeName, gear, picks, onBack, onOpen
   const [failed, setFailed] = useState<{ prefs: GearPrefs; message: string } | null>(null);
   const queue = useRef<Promise<unknown>>(Promise.resolve());
 
-  // The page opens at its TOP. The BODY is the scroller (lib/pageScroll.ts),
-  // so `window.scrollTo` moved nothing and the page opened wherever the
+  // The page opens at its TOP, through lib/pageScroll.ts. While the BODY
+  // scrolled, `window.scrollTo` moved nothing and the page opened wherever the
   // register had been scrolled to, past its first questions. Before paint, so
   // the old position never shows for a frame.
   useLayoutEffect(() => { scrollPageTo(0); }, []);

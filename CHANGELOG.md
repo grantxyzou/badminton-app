@@ -8,6 +8,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## The page scrolls the ordinary way (2026-11-15)
+
+- **Admin no longer opens under a screen of blank space.** On the App Store app, the console could open with an empty band above "At a glance" that only went away when you scrolled. The app's pages now scroll the way an ordinary web page does, rather than inside a screen-sized box, which is the path the phone's browser handles best. Nothing about where you are on a page, a sheet holding the page still, or each tab remembering its place changes.
+- **Admin remembers where you were.** A page you open from far down the console now opens at its top, and Back returns the console to exactly where you left it. The same goes for the stringing bench: open a job, go back, and the list is where it was.
+
 ## Join a club with its link: sign in, ask, and hear back by email (2026-11-13)
 
 - **A club's link now signs you in first, then asks to join.** Tap the link, use Apple, Google or a 6-digit code from your email, type the name the club will see, and ask. No password, and no page to keep open: you can close the app.
