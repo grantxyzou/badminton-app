@@ -1,8 +1,7 @@
 # Home skill lead — the one line on Home that says what Stats knows
 
 **Track:** Value-Hub Slice-0 (#101), through `docs/plans/skill-leads-stats.md` — whose 2026-10-15 reading fired its `reach` row ("the fix is off-tab; reopen the Home decision").
-**Status:** in-flight
-**Review on:** 2026-11-15 — four weeks on: is `skill.reach` on `GET /api/reports/metrics` (the same count as `GET /api/admin/slice0` → `skill`) at or above 0.5, and what is `skill.homeLeadTappers`? Below 0.5 with few tappers, the card comes off.
+**Status:** shipped; kept on its 2026-11-15 reading
 
 ## Problem
 
@@ -93,3 +92,11 @@ nobody acts on is a cost paid by everyone weekly.
 | `homeLeadTappers` | `app/api/admin/slice0/route.ts` |
 | Copy, both locales | `messages/en.json`, `messages/zh-CN.json` (`home.skillLead`) |
 | Tests | `__tests__/components/SkillLeadCard.test.tsx`, the slice0 and events route tests |
+
+## Review outcome (2026-11-15)
+
+Read from `skill` on `GET /api/reports/metrics`, the same count as slice0's (`countStatsReach`, #930), over Slice-0's window since 2026-08-16: roster **39**, Stats openers **24**, `reach` **0.615**, Home-lead tappers **10**.
+
+**The card stays.** `reach` clears the 0.5 bar it was built to clear; it read 0.472 (17 of 36) on 2026-10-15, before the card. And 10 of the 24 openers came to Stats from the card itself, so the rise is the card's doing, not only the window getting longer. The kill criterion did not fire, and nothing in this plan is waiting on a reading, so the review line is removed.
+
+One caveat for whoever reads `reach` next: it counts anyone who EVER opened Stats since 2026-08-16, so it can only rise. It says the door works; how often people come back is `repeat`, which `docs/plans/skill-leads-stats.md` reads next.
