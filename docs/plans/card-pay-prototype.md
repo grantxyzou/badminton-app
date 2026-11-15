@@ -1,7 +1,7 @@
 # Card payments
 
 **Track:** admin cost-automation (North Star pillar 3) — `docs/plans/payments.md` Phase 3. Began as a sandbox prototype ahead of its gate; the ROADMAP non-goal was lifted on purpose on 2026-11-12 (Decisions).
-**Status:** in-flight (built and proven against the Stripe sandbox; flag OFF in production until the live keys are in Azure)
+**Status:** in-flight (flag ON in production from 2026-11-15, once the live key and webhook secret were in Azure; going-live step 6, a real card payment, is next)
 **Review on:** 2027-01-15 — for each club taking cards, over its first four weeks: what share of its settled lines were paid by card (kill criterion: under 20%), and did any card payment need a person to fix it?
 
 ## Problem
@@ -19,6 +19,8 @@ If, once a club turns it on, fewer than 20% of that club's settled lines over fo
 - The native shell. Checkout opens by navigating the WebView; whether Apple Pay shows there, and whether it should open in the system browser sheet like OAuth, is unverified.
 
 ## Decisions
+
+- **Turned on 2026-11-15** (Grant: "keys are in"). The live Connect webhook is an event destination in Workbench with scope **Connected accounts** (the payments happen inside each club's account; Accounts v2 sends only the club's own account events to "Your account", which the app does not need because it reads the status itself), **Snapshot** payloads, API version `2026-10-28.endive` (the SDK's), and exactly `checkout.session.completed`, `checkout.session.async_payment_succeeded` and `charge.refunded`.
 
 - **2026-11-13 — Stringing jobs are paid by card too** (Grant: "I also use stripe to charge stringing services", then "Both" — describe it for Stripe's review AND build it). A finished, priced, unpaid job is a line in the same Checkout as the session shares (`stringing:<job>:<memberId>:<cents>` in the metadata), into the same club account: "Stringers string. Organisers handle the money." The webhook marks it paid only while it is still this member's, billable, at exactly the price charged. The ledger keeps keying a job's payment on `paidAt` (`stringingPaymentEntry`, every via), so the new additive `StringingJob.cardPaymentId` is what tells a redelivery the job is already paid by this Checkout, and `refundedPaymentId` does for a refund what it does on a session row.
 
