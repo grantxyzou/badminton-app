@@ -22,7 +22,7 @@ type SessionListRow = Pick<
  * stamps — rode along on every open of the picker and was never read.
  */
 const SESSION_LIST_SELECT =
-  'c.id, c.datetime, c.title, c.courts, c.costPerCourt, c.birdUsages, c.birdUsage, c.settled, c.eTransferRecipient';
+  'c.id, c.datetime, c.title, c.courts, c.costPerCourt, c.birdUsages, c.birdUsage, c.settled, c.eTransferRecipient, c.organiserFee';
 
 /**
  * GET /api/sessions — admin-only list of the club's sessions, newest first,

@@ -46,7 +46,7 @@ interface MoneyData {
   range: { key: RangeKey; from: string; to: string };
   generatedAt: string;
   income: { sessions: number; stringing: number; total: number };
-  collected: { etransferAuto: number; etransferAdmin: number; manual: number; credit: number; total: number };
+  collected: { etransferAuto: number; etransferAdmin: number; manual: number; credit: number; card?: number; total: number };
   covered: number;
   outstanding: { sessions: number; stringing: number; total: number; people: number };
   credit: { liability: number; members: number };
@@ -307,6 +307,9 @@ export default function LedgerPage({ onBack, onOpenSession, onOpenPastSessions }
             <BarRow label="E-transfer, matched by you" value={share(collected.etransferAdmin, collected.total)} detail={money(collected.etransferAdmin)} />
             <BarRow label="Marked paid" value={share(collected.manual, collected.total)} detail={money(collected.manual)} />
             <BarRow label="Store credit" value={share(collected.credit, collected.total)} detail={money(collected.credit)} />
+            {(collected.card ?? 0) > 0 && (
+              <BarRow label="Card" value={share(collected.card ?? 0, collected.total)} detail={money(collected.card ?? 0)} />
+            )}
           </div>
         )}
       </Section>

@@ -40,7 +40,8 @@ import {
   WALK_UP_NAME_MAX,
   WALK_UP_CONTACT_MAX,
 } from '@/lib/stringing';
-import { isBillable } from '@/lib/stringingBilling';
+import { isBillable, newJobBilling } from '@/lib/stringingBilling';
+import { invoiceRefusal, invoiceView } from '@/lib/stringingInvoiceView';
 import { emailWalkUp } from '@/lib/stringingWalkUpEmail';
 import type { StringingJob, PlayerStringingJob, StringerJob, StringerPendingEdit } from '@/lib/types';
 import { toPlayerPendingEdit } from '@/lib/stringingPendingEdit';
@@ -154,6 +155,10 @@ export function toStringerJob(job: StringingJob, opts: { contact?: boolean } = {
     ...stringerPendingEdit(job),
     ...(job.walkUp === true ? { walkUp: true } : {}),
     ...(job.walkUp === true && opts.contact && job.walkUpContact ? { walkUpContact: job.walkUpContact } : {}),
+    // Their OWN queue only (`contact` is that list's opt-in): a finished or
+    // invoiced job carries its invoice, the price with it, so the stringer can
+    // check the figure before they send (docs/plans/stringing-invoice.md).
+    ...(opts.contact && (job.invoice || invoiceRefusal(job) === null) ? { invoice: invoiceView(job) } : {}),
   };
 }
 
@@ -197,6 +202,7 @@ export function toPlayerJob(job: StringingJob): PlayerStringingJob {
     amountDue: isBillable(job) ? Math.round(job.priceCents!) / 100 : null,
     readyBy: job.readyBy,
     paid: job.paidAt !== null,
+    ...(job.invoice ? { invoice: { no: job.invoice.no, sentAt: job.invoice.sentAt } } : {}),
     pendingEdit: toPlayerPendingEdit(job),
     createdAt: job.createdAt,
     updatedAt: job.updatedAt,
@@ -479,6 +485,7 @@ export async function POST(req: NextRequest) {
       history: [{ status, at: now, by: admin.memberId ?? null }],
       ...(walkUp ? { walkUp: true } : {}),
       ...(walkUpContact ? { walkUpContact } : {}),
+      ...newJobBilling(),
     };
 
     const created = await scope.create('stringingJobs', job);

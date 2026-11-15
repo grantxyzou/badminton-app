@@ -26,6 +26,7 @@
  *     billing late.
  */
 import type { StringingJob } from './types';
+import { isFlagOn } from './flags';
 
 export interface StringingCharge {
   jobId: string;
@@ -40,14 +41,48 @@ export interface StringingCharge {
 /** Statuses at which the work is finished and the money is due. */
 const BILLABLE_STATUSES = new Set(['ready', 'picked_up']);
 
+/**
+ * SENT, OR NEVER WAITING ON A SEND (`docs/plans/stringing-invoice.md`).
+ *
+ * A job made with `billOn: 'invoice'` owes nothing until its invoice goes out;
+ * every other job (all of them before the flag, and every one made while it
+ * is off) bills at Ready, as it always did. The ONE reading of that rule:
+ * `isBillable` here, the ledger mirror's `billableShaped` and the backfill's
+ * `jobEntries` all call it, so the Balance card, the ledger and the reconcile
+ * cannot disagree about a job that is finished but not invoiced.
+ */
+export function invoiceGateOpen(job: { billOn?: string | null; invoice?: { sentAt?: string } | null }): boolean {
+  if (job.billOn !== 'invoice') return true;
+  return typeof job.invoice?.sentAt === 'string' && job.invoice.sentAt.length > 0;
+}
+
+/** Finished and priced and unpaid, whether or not it has been invoiced yet. */
+export function isFinishedUnpaid(job: { priceCents: number | null; paidAt: string | null; status: string }): boolean {
+  if (typeof job.priceCents !== 'number' || job.priceCents <= 0) return false;
+  if (job.paidAt !== null) return false;
+  return BILLABLE_STATUSES.has(job.status);
+}
+
 export function isBillable(job: {
   priceCents: number | null;
   paidAt: string | null;
   status: string;
+  billOn?: string | null;
+  invoice?: { sentAt?: string } | null;
 }): boolean {
-  if (typeof job.priceCents !== 'number' || job.priceCents <= 0) return false;
-  if (job.paidAt !== null) return false;
-  return BILLABLE_STATUSES.has(job.status);
+  return isFinishedUnpaid(job) && invoiceGateOpen(job);
+}
+
+/** Finished, priced, unpaid and waiting on an invoice the stringer has not sent. */
+export function awaitingInvoice(job: {
+  priceCents: number | null;
+  paidAt: string | null;
+  status: string;
+  billOn?: string | null;
+  invoice?: { sentAt?: string } | null;
+  cancelledAt?: string | null;
+}): boolean {
+  return !job.cancelledAt && isFinishedUnpaid(job) && !invoiceGateOpen(job);
 }
 
 /**
@@ -76,4 +111,14 @@ export function stringingTotal(charges: StringingCharge[]): number {
   // lines is the kind of thing people notice and stop trusting.
   const cents = charges.reduce((sum, c) => sum + Math.round(c.amount * 100), 0);
   return cents / 100;
+}
+
+/**
+ * What a NEW job is stamped with: `{ billOn: 'invoice' }` while
+ * `NEXT_PUBLIC_FLAG_STRINGING_INVOICE` is on, nothing otherwise. Read on the
+ * server at creation, so the flag decides only for jobs made from then on and
+ * turning it off strands no invoice (docs/plans/stringing-invoice.md).
+ */
+export function newJobBilling(): Pick<StringingJob, 'billOn'> {
+  return isFlagOn('NEXT_PUBLIC_FLAG_STRINGING_INVOICE') ? { billOn: 'invoice' } : {};
 }

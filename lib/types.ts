@@ -92,6 +92,13 @@ export interface Session {
    */
   membersFirst?: { daysBefore: number; time: string };
   /**
+   * The organiser's fee per player, in dollars, copied from the club's
+   * `ClubRun.organiserFee` when the session was created
+   * (docs/plans/organiser-fee.md). Added to every share by `costSplit`.
+   * Additive; absent = no fee.
+   */
+  organiserFee?: number;
+  /**
    * When the waitlist was let in: by the first visit after the window ended,
    * or early by an organiser. Present = the window is over and the promotion
    * has run. Additive.
@@ -114,6 +121,9 @@ export interface SettledSnapshot {
    *  (Σ costPerPerson over absorb-covered players). 0 / absent when nobody
    *  was covered. Drives the "You've covered $X this session" summary. */
   coveredTotal?: number;
+  /** The organiser's fee per player INCLUDED in `costPerPerson`
+   *  (docs/plans/organiser-fee.md). Absent / 0 = none. */
+  organiserFee?: number;
 }
 
 export interface BirdUsage {
@@ -160,10 +170,17 @@ export interface Player {
   coverMode?: 'absorb' | 'resplit';
   /** ISO — when `paid` last went true. Absent on rows marked before 2026-10. */
   paidAt?: string;
-  /** How it was marked: an admin's tap, or an e-transfer the inbox matched. */
-  paidVia?: 'manual' | 'etransfer' | 'credit';
-  /** The `payments` doc that paid it (`paidVia: 'etransfer'`). */
+  /** How it was marked: an admin's tap, an e-transfer the inbox matched, credit, or a card (Stripe Checkout, docs/plans/card-pay-prototype.md). */
+  paidVia?: 'manual' | 'etransfer' | 'credit' | 'card';
+  /** The `payments` doc that paid it (`paidVia: 'etransfer'`), or the Stripe Checkout Session id (`paidVia: 'card'`). */
   paymentId?: string;
+  /**
+   * The Stripe Checkout Session whose card payment for this row was REFUNDED
+   * in the Stripe Dashboard, which put the row back to unpaid
+   * (docs/plans/card-pay-prototype.md). Lets a redelivered or later partial
+   * refund know what it already undid. Additive; absent = never refunded.
+   */
+  refundedPaymentId?: string;
   /**
    * Waitlisted by the soft hold, not by a full session: the member owed for
    * too many past sessions at sign-up (docs/plans/payments.md). Cleared — and
@@ -251,8 +268,8 @@ export interface LedgerEntry {
   ref?: { kind: 'session' | 'stringing' | 'court' | 'purchase' | 'expense'; id: string; pk: string };
   meta?: {
     /** How a payment arrived. */
-    via?: 'manual' | 'etransfer' | 'credit';
-    /** The `payments` doc, for an e-transfer. */
+    via?: 'manual' | 'etransfer' | 'credit' | 'card';
+    /** The `payments` doc, for an e-transfer; the Checkout Session id, for a card. */
     paymentId?: string;
     coverMode?: 'absorb' | 'resplit';
     /** An expense's bucket. */
@@ -1170,6 +1187,14 @@ export interface StringingJob {
   /** Set when the player accepts the quote. */
   acceptedAt: string | null;
   paidAt: string | null;
+  /**
+   * The Stripe Checkout Session that paid this job by card
+   * (docs/plans/card-pay-prototype.md). Additive; absent = paid another way or
+   * unpaid. The ledger still keys the payment on `paidAt`, as for every via.
+   */
+  cardPaymentId?: string;
+  /** The Checkout Session whose card payment for this job was refunded in Stripe, putting it back to unpaid. */
+  refundedPaymentId?: string;
   /** Session the racket changes hands at, when there is one. */
   sessionId: string | null;
   createdAt: string;
@@ -1240,6 +1265,35 @@ export interface StringingJob {
    * member's job and on a walk-up with a phone number or no contact.
    */
   walkUpEmails?: { spec?: WalkUpEmailStamp; ready?: WalkUpEmailStamp };
+  /**
+   * WHEN THE JOB BECOMES MONEY OWED (`docs/plans/stringing-invoice.md`).
+   * `'invoice'`: only once the stringer or an organiser sends the invoice.
+   * Stamped at creation while `NEXT_PUBLIC_FLAG_STRINGING_INVOICE` is on.
+   * Absent (every older job, and every job made while the flag is off): at
+   * Ready, as it always was. Read only through `invoiceGateOpen`. Additive.
+   */
+  billOn?: 'invoice';
+  /** The invoice, once sent. Additive; absent until the first send. */
+  invoice?: StringingInvoice;
+}
+
+export interface StringingInvoice {
+  /** `INV-0006` for job `J-0006`: one per job. */
+  no: string;
+  /** The price it was sent at, in cents. A later re-price shows "changed since invoiced". */
+  amountCents: number;
+  /** The first send. Billing (for a `billOn: 'invoice'` job) starts here. */
+  sentAt: string;
+  /** The latest send: a resend moves this, never `sentAt`. */
+  lastSentAt: string;
+  /** Who sent it (member id), for the day-7 reminder. Null for an unknown sender. */
+  sentBy: string | null;
+  /** How many times it was sent, the first included. */
+  sends: number;
+  /** Day-3 reminder to the player, stamped BEFORE the push. */
+  playerRemindedAt?: string;
+  /** Day-7 reminder to the sender, stamped BEFORE the push. */
+  senderRemindedAt?: string;
 }
 
 /** One automatic email to a walk-up: when it was tried, and whether it went. */
@@ -1318,6 +1372,12 @@ export interface StringerJob {
   /** Their phone or email — on the assigned stringer's own queue only, never
    *  on the "Waiting for a stringer" list every stringer sees. */
   walkUpContact?: string;
+  /**
+   * The invoice, on the stringer's OWN queue only (docs/plans/stringing-invoice.md):
+   * the one place a stringer who is not an admin sees a price, for their own
+   * finished job, so they can check it before they send. Additive.
+   */
+  invoice?: import('./stringingInvoiceView').InvoiceView;
 }
 
 /** A pending change as a stringer may see it: the player's diff minus price. */
@@ -1355,6 +1415,8 @@ export interface PlayerStringingJob {
   pendingEdit: PlayerPendingEdit | null;
   createdAt: string;
   updatedAt: string;
+  /** Sent invoice: its number and when it first went (docs/plans/stringing-invoice.md). Additive. */
+  invoice?: { no: string; sentAt: string };
 }
 
 /** How one string suits a member's own racket — `GET /api/stringing/fit`

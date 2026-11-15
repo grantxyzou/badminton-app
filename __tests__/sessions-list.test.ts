@@ -39,7 +39,8 @@ vi.mock('@/lib/cosmos', async (importOriginal) => {
 const { GET } = await import('@/app/api/sessions/route');
 const { GET: anomaliesGet } = await import('@/app/api/admin/anomalies/route');
 
-const CONSUMER_FIELDS = ['id', 'datetime', 'title', 'courts', 'costPerCourt', 'birdUsages', 'birdUsage', 'settled', 'eTransferRecipient'];
+// `organiserFee` is read by the Payments card's receipt (docs/plans/organiser-fee.md).
+const CONSUMER_FIELDS = ['id', 'datetime', 'title', 'courts', 'costPerCourt', 'birdUsages', 'birdUsage', 'settled', 'eTransferRecipient', 'organiserFee'];
 
 describe('GET /api/sessions — bounded projection', () => {
   beforeEach(() => {
@@ -55,7 +56,7 @@ describe('GET /api/sessions — bounded projection', () => {
     expect(res.status).toBe(200);
     expect(sessionQueries).toHaveLength(1);
     const sql = sessionQueries[0];
-    expect(sql).toMatch(/^SELECT c\.id, c\.datetime, c\.title, c\.courts, c\.costPerCourt, c\.birdUsages, c\.birdUsage, c\.settled, c\.eTransferRecipient, c\.groupId FROM c/);
+    expect(sql).toMatch(/^SELECT c\.id, c\.datetime, c\.title, c\.courts, c\.costPerCourt, c\.birdUsages, c\.birdUsage, c\.settled, c\.eTransferRecipient, c\.organiserFee, c\.groupId FROM c/);
     expect(sql).not.toMatch(/SELECT \*/);
     expect(sql).toMatch(new RegExp(` ORDER BY c\\.id DESC OFFSET 0 LIMIT ${SESSION_CALENDAR_LIMIT}$`));
   });
@@ -66,6 +67,7 @@ describe('GET /api/sessions — bounded projection', () => {
       birdUsages: [{ purchaseId: 'pool', tubes: 1, costPerTube: 30, brand: 'Yonex', model: 'AS-50' }],
       settled: { at: '2026-05-14T00:00:00Z', costPerPerson: 10, totalCost: 110, courtTotal: 80, birdTotal: 30, playerCount: 11, playerNames: ['Lin'] },
       eTransferRecipient: { name: 'Club', email: 'club@example.com' },
+      organiserFee: 1.5,
     });
     const res = await GET(makeGetRequest('http://localhost/api/sessions', true));
     const [row] = (await res.json()) as Array<Record<string, unknown>>;

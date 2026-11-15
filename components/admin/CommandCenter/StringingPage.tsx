@@ -22,7 +22,7 @@ import type { StringingJob } from '@/lib/types';
 import SwipeRow from '@/components/primitives/SwipeRow';
 import ActionRow from '@/components/primitives/ActionRow';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
-import { isBillable } from '@/lib/stringingBilling';
+import { awaitingInvoice, isBillable } from '@/lib/stringingBilling';
 import StringingJobDetail from './StringingJobDetail';
 import StringingIntake from './StringingIntake';
 import StringShelfCard from './StringShelfCard';
@@ -392,7 +392,12 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
     const pinned = typeof job.prioritizedAt === 'string';
     // Exactly `isBillable`: finished, priced and unpaid. Shown only in the
     // archive, where the whole risk is money quietly going out of sight.
-    const owed = isBillable(job) ? (job.priceCents ?? 0) / 100 : null;
+    // Plus, for an invoice-billed job, finished work whose invoice has not
+    // gone (docs/plans/stringing-invoice.md): not owed yet, and exactly the
+    // money that would otherwise go quietly out of sight. On the live bench
+    // too, so "Not invoiced" is a nudge before the racket is archived.
+    const notInvoiced = awaitingInvoice(job);
+    const owed = (inArchive && isBillable(job)) || notInvoiced ? (job.priceCents ?? 0) / 100 : null;
     /* Waiting on the player (a proposed change they have not answered): only
        "Mark received" stays, as on the stringer's card — "Mark strung" here
        would string the racket the player has not agreed to (`nextStepOf`). */
@@ -425,7 +430,8 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
           today={today}
           holes={holes.forLabel(job.racketLabel).holes}
           pinned={pinned}
-          owed={inArchive ? owed : null}
+          owed={inArchive || notInvoiced ? owed : null}
+          notInvoiced={notInvoiced}
           waitingDays={!inArchive && isWaitingTooLong(job) ? waitingDays(job) : null}
           /* The player's own diff (racket, string, tension); the card's line
              never reads its price. */
@@ -668,7 +674,7 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
                 compact
                 icon="inventory_2"
                 title={t('archive.pickedUp')}
-                subtitle={t('archive.summary', { count: archivedJobs.length, owing: archivedJobs.filter((j) => isBillable(j)).length })}
+                subtitle={t('archive.summary', { count: archivedJobs.length, owing: archivedJobs.filter((j) => isBillable(j) || awaitingInvoice(j)).length })}
               />
               {archivedJobs.map((job) => renderJob(job, true))}
             </section>

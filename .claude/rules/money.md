@@ -54,6 +54,8 @@ paths:
 
 ## Gotchas
 
+- **`costPerPerson` INCLUDES the organiser fee** (`docs/plans/organiser-fee.md`, 2026-11-12). A club's `ClubRun.organiserFee` (dollars, default 0, not part of any style) is copied onto a session at advance as `Session.organiserFee`, and `costSplit` adds it to every share of a PRICED session — never an unpriced night, never re-spread by a resplit cover, forgiven with the share by an absorb cover. Settle freezes it as `SettledSnapshot.organiserFee`; the receipt shows it as its own line between "Split N ways" and "Per person". So `costPerPerson × playerCount ≠ totalCost` once a fee is set: never work a denominator back out of the two (`buildReceiptInput`'s fallback does, but only for legacy snapshots with no `playerCount`, which also predate the fee). The same fee for every player, however they pay: it is the club's price, NOT a card surcharge, which Canada caps at 2.4% on credit cards only.
+
 <!-- Moved word for word from the root CLAUDE.md "Gotchas" on 2026-11-09, to keep the always-loaded file short. -->
 
 - **Previous session snapshot**: `session.prevSessionDate` and `session.prevCostPerPerson` are frozen at advance time. `<PrevPaymentReminder />` renders below the sign-up card, gated on `hasIdentity` (not `isSignedUp`) — so players who played last week still see what they owe even before signing up for the next session (research finding 4.8). `hasIdentity` must be kept in sync with `setIdentity` / `clearIdentity` call sites. Not live-updated if the archived session is edited later.

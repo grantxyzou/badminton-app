@@ -184,6 +184,7 @@ export default function JobCard({
   holes = null,
   pinned = false,
   owed = null,
+  notInvoiced = false,
   onOpen,
   openLabel,
   more,
@@ -200,6 +201,8 @@ export default function JobCard({
   pinned?: boolean;
   /** Dollars still owed on an ARCHIVED job, shown in place of the due line. */
   owed?: number | null;
+  /** The money is finished work whose invoice has not gone (docs/plans/stringing-invoice.md). */
+  notInvoiced?: boolean;
   onOpen?: () => void;
   openLabel?: string;
   /** The ⋮ button, already built by the caller (it owns the sheet). */
@@ -300,7 +303,7 @@ export default function JobCard({
           <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{tAdmin('cancelledByPlayer')}</span>
         ) : owed !== null ? (
           <span className="fs-sm" style={{ fontWeight: 600, color: 'var(--sev-warn)' }}>
-            {tAdmin('archive.stillOwed', { amount: fmtMoney(owed) })}
+            {notInvoiced ? tAdmin('archive.notInvoiced', { amount: fmtMoney(owed) }) : tAdmin('archive.stillOwed', { amount: fmtMoney(owed) })}
           </span>
         ) : dueText ? (
           <span className="fs-sm" style={dueStyle(due.tone)}>{dueText}</span>

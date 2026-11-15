@@ -12,7 +12,10 @@ import StatusBadge from '@/components/primitives/StatusBadge';
 import MoneyInput from '@/components/primitives/MoneyInput';
 import ErrorState from '@/components/primitives/ErrorState';
 import StringingWalkUpSendCard from './StringingWalkUpSendCard';
+import StringingInvoiceCard from '@/components/stringing/StringingInvoiceCard';
+import { invoiceView } from '@/lib/stringingInvoiceView';
 import { useOnline } from '@/lib/useOnline';
+import { isFlagOn } from '@/lib/flags';
 import { formatReadyBy } from '@/lib/stringingDue';
 import { STRINGING_FLOW, PROPOSAL_REASON_MAX, formatPriceExact, playerStageFor, isWalkUpJob } from '@/lib/stringing';
 import type { StringingStatus } from '@/lib/stringing';
@@ -497,6 +500,22 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
             receipt to hand over. Its own component; the contact is shown to
             the stringer only, never drawn on the receipt. */}
         {walkUp && <StringingWalkUpSendCard job={local} onJobChange={(j) => { setLocal(j); onChanged(); }} />}
+
+        {/* THE INVOICE (docs/plans/stringing-invoice.md): once the racket is
+            finished and priced, or once one has gone. An invoice-billed job
+            owes nothing until it is sent. */}
+        {(isFlagOn('NEXT_PUBLIC_FLAG_STRINGING_INVOICE') || local.billOn === 'invoice') &&
+          (local.invoice || invoiceView(local).canSend) && (
+            <StringingInvoiceCard
+              job={local}
+              view={invoiceView(local)}
+              receiptJob={local}
+              onSent={(sent) => {
+                setLocal(sent.job as StringingJob);
+                onChanged();
+              }}
+            />
+          )}
 
         {/* ONE CARD: the price, and the way to change it.
             These were two — a green "Your price" card and a plain "Change this

@@ -336,3 +336,57 @@ export function buildRequestWaitingPayload(
     tag: safeTag(`str-${job.jobNo}-waiting`),
   };
 }
+
+/**
+ * "Your restring bill is ready" — the invoice, sent by the stringer or an
+ * organiser (docs/plans/stringing-invoice.md). The racket and how to pay, NO
+ * amount (the lock-screen rule): the figure is in the app and the email.
+ * Opens Home, where the Balance card carries the line and Pay by card.
+ */
+export function buildInvoicePayload(job: { jobNo: string; racketLabel?: string | null }, locale: PushLocale = 'en'): PushPayload {
+  const t = pushT(locale);
+  const racket = job.racketLabel?.trim() || t('invoice.racket');
+  return {
+    title: t('invoice.title'),
+    body: t('invoice.body', { racket }),
+    url: `${BASE}/?tab=home`,
+    // One tag per job: a resend or the day-3 reminder replaces it on the device.
+    tag: safeTag(`str-${job.jobNo}-invoice`),
+  };
+}
+
+/** Day 3: the player's one reminder. No amount, same tag as the invoice. */
+export function buildInvoiceReminderPayload(
+  job: { jobNo: string; racketLabel?: string | null },
+  days: number,
+  locale: PushLocale = 'en',
+): PushPayload {
+  const t = pushT(locale);
+  const racket = job.racketLabel?.trim() || t('invoiceReminder.racket');
+  return {
+    title: t('invoiceReminder.title'),
+    body: t('invoiceReminder.body', { racket, days: String(days) }),
+    url: `${BASE}/?tab=home`,
+    tag: safeTag(`str-${job.jobNo}-invoice`),
+  };
+}
+
+/**
+ * Day 7: to whoever sent the invoice, so they can ask in person. Player and
+ * racket, no amount. An admin or organiser opens the bench; a stringer their card.
+ */
+export function buildInvoiceUnpaidPayload(
+  job: { jobNo: string; memberName: string; racketLabel?: string | null },
+  days: number,
+  opens: 'admin' | 'stringing',
+  locale: PushLocale = 'en',
+): PushPayload {
+  const t = pushT(locale);
+  const racket = job.racketLabel?.trim() || t('invoiceUnpaid.racket');
+  return {
+    title: t('invoiceUnpaid.title'),
+    body: t('invoiceUnpaid.body', { jobNo: job.jobNo, name: job.memberName, racket, days: String(days) }),
+    url: `${BASE}/?tab=${opens}`,
+    tag: safeTag(`str-${job.jobNo}-unpaid`),
+  };
+}

@@ -41,6 +41,7 @@ export function buildReceiptInput(
   let courtTotal: number;
   let birdTotal: number;
   let splitCount: number;
+  let organiserFee: number;
 
   if (session.settled) {
     costPerPerson = session.settled.costPerPerson;
@@ -51,6 +52,7 @@ export function buildReceiptInput(
     // The frozen denominator; a snapshot that predates it is worked back out.
     splitCount = session.settled.playerCount
       ?? (costPerPerson > 0 ? Math.round(totalCost / costPerPerson) : 0);
+    organiserFee = session.settled.organiserFee ?? 0;
   } else {
     const split = costSplit(session, players);
     if (split.costPerPerson <= 0) {
@@ -62,6 +64,7 @@ export function buildReceiptInput(
     courtTotal = split.courtTotal;
     birdTotal = split.birdTotal;
     splitCount = split.denominator;
+    organiserFee = split.organiserFee;
   }
 
   // Cost is known from here. A receipt additionally needs someone to pay.
@@ -94,6 +97,7 @@ export function buildReceiptInput(
         birdTotal,
         tubes: totalTubes(normalizeBirdUsages(session)),
         splitCount,
+        ...(organiserFee > 0 ? { organiserFee } : {}),
       },
     },
   };

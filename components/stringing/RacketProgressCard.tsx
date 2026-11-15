@@ -95,7 +95,7 @@ export default function RacketProgressCard({
           tone="success"
           icon="check_circle"
           title={t('ready.title')}
-          body={t('ready.body')}
+          body={job.invoice && bill !== null ? t('ready.invoiced', { no: job.invoice.no }) : t('ready.body')}
           trailing={bill !== null ? <Money value={bill} size="lg" /> : undefined}
         />
       ) : null}
