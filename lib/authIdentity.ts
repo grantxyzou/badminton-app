@@ -202,6 +202,17 @@ export async function forgetAppleRefreshToken(sub: string): Promise<void> {
   }
 }
 
+/**
+ * Point an identity at a different member: an organiser linking a fresh
+ * account to the imported name it belongs to (docs/plans/one-way-in.md, step
+ * 4b). The provider-side key does not change, so the next sign-in with the
+ * same Google, Apple or email lands on the member it now points to.
+ */
+export async function reassignIdentity(identity: AuthIdentity, toMemberId: string): Promise<void> {
+  await ready();
+  await getContainer('identities').item(identity.id, identity.id).replace({ ...identity, memberId: toMemberId });
+}
+
 export async function listIdentitiesForMember(memberId: string): Promise<AuthIdentity[]> {
   await ready();
   const { resources } = await getContainer('identities')

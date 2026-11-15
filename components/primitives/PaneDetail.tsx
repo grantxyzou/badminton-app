@@ -50,7 +50,7 @@ export function usePaneDetailReveal(target: RefObject<HTMLElement | null> | HTML
       scrollPageTo(to);
       return;
     }
-    // The body scrolls (lib/pageScroll.ts), so it is the body that glides.
+    // The page's own scroller glides (the document's; docs/plans/page-scroll.md).
     const scroller = document.scrollingElement ?? document.documentElement;
     try {
       scroller.scrollTo({ top: to, behavior: 'smooth' });

@@ -68,7 +68,7 @@ export default async function Page() {
       <OnlineProvider>
         <SignedOutShell
           authProviders={authProviders}
-          noClub={outcome.kind === 'no-club' ? { memberName: outcome.memberName, groups: outcome.groups } : undefined}
+          noClub={outcome.kind === 'no-club' ? { memberName: outcome.memberName, groups: outcome.groups, asks: outcome.asks } : undefined}
         />
       </OnlineProvider>
     );

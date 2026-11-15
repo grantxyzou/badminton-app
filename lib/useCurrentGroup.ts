@@ -43,16 +43,24 @@ export interface GroupListEntry {
  * special-cases the flag. The 404 branch below stays for a build whose client
  * and server env disagree.
  *
- * Subscribes to `IDENTITY_EVENT` because a sign-in, a sign-out or a group switch
- * all change the answer inside the same tab, where `storage` events never fire.
+ * Subscribes to `IDENTITY_EVENT` because a sign-in or a sign-out changes the
+ * answer inside the same tab, where `storage` events never fire.
+ *
+ * AND TO `GROUP_EVENT`, which `refresh` sends: every screen that mounts this
+ * hook holds its OWN copy (fifteen of them), and a club switch, join or create
+ * changes no identity. Until 2026-11-15 `refresh` re-read only the caller's
+ * copy, so after a switch the tab bar kept the OLD club's rules and hid the
+ * Stringing tab in BPM Core, a club with stringing on (Grant: "Stringer tab is
+ * gone on BPM core, setting has it on"). Now one refresh re-reads them all.
  */
+export const GROUP_EVENT = 'badminton:group-changed';
 export function useCurrentGroup() {
   const [group, setGroup] = useState<CurrentGroup | null>(null);
   const [groups, setGroups] = useState<GroupListEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  const refresh = useCallback(async () => {
+  const load = useCallback(async () => {
     setError(false);
     if (!isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')) {
       setGroup(null);
@@ -101,11 +109,20 @@ export function useCurrentGroup() {
   }, []);
 
   useEffect(() => {
-    void refresh();
-    const onIdentity = () => void refresh();
-    window.addEventListener(IDENTITY_EVENT, onIdentity);
-    return () => window.removeEventListener(IDENTITY_EVENT, onIdentity);
-  }, [refresh]);
+    void load();
+    const reload = () => void load();
+    window.addEventListener(IDENTITY_EVENT, reload);
+    window.addEventListener(GROUP_EVENT, reload);
+    return () => {
+      window.removeEventListener(IDENTITY_EVENT, reload);
+      window.removeEventListener(GROUP_EVENT, reload);
+    };
+  }, [load]);
+
+  // Every copy re-reads, this one included (see GROUP_EVENT).
+  const refresh = useCallback(() => {
+    window.dispatchEvent(new Event(GROUP_EVENT));
+  }, []);
 
   return { group, groups, loading, error, refresh };
 }

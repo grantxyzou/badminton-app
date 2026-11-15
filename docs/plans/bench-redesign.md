@@ -55,3 +55,7 @@ Review of 2026-11-12 (Grant):
 | Bench row on the Stringing tab | `components/StringingTab.tsx`, `components/stringing/BenchEntryRow.tsx`, `components/HomeShell.tsx` |
 | Own-string price + note (PR 2) | `lib/stringingPricing.ts`, `app/api/stringing/pricing/route.ts`, `components/admin/CommandCenter/OtherPricesCard.tsx` |
 | Players read shelf prices (PR 2) | `components/stringing/StringingCard.tsx` ("View pricing"), `RequestStringingSheet.tsx` (Bring my own), `components/admin/CommandCenter/StringingIntake.tsx` (prefill) |
+
+## Note (2026-11-15)
+
+Asked again while another review was being read, Grant said **some shelf strings have no price**. On 2026-11-12 they were all priced, so a string has been added or changed since; #901 (2026-11-12) reworked the shelf sheet and added string types. Nothing here is broken: an unpriced string is a gap in the shelf's data, and the bench's Set-up page is where it gets a price. The kill criterion has not fired, since he did not say he could not find where to set the price. No review date is added.

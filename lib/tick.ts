@@ -21,6 +21,7 @@ import { getContainer, ensureContainer } from './cosmos';
 import { isFlagOn } from './flags';
 import type { Group } from './types';
 import { runStringingNudges } from './stringingNudge';
+import { sweepStrayAccounts } from './strayAccounts';
 
 export const CRON_KEY_HEADER = 'x-cron-key';
 
@@ -50,6 +51,20 @@ export const TICK_JOBS: TickJob[] = [
 ];
 
 /**
+ * A job about the whole deployment rather than one club, run once per tick:
+ * the 14-day cleanup of accounts in no club (docs/plans/one-way-in.md, step 6)
+ * belongs to no club, so running it per club would run it once per club.
+ */
+export interface DeploymentTickJob {
+  name: string;
+  run(now: number): Promise<TickJobResult>;
+}
+
+export const DEPLOYMENT_TICK_JOBS: DeploymentTickJob[] = [
+  { name: 'strayAccounts', run: async (now) => ({ ...(await sweepStrayAccounts(now)) }) },
+];
+
+/**
  * The clubs to run for: every Group doc that is not closed. With groups off
  * there is one club, BPM, whatever the container holds.
  *
@@ -76,8 +91,12 @@ export interface TickRun {
   jobs: Record<string, { ok: number; failed: number; totals: TickJobResult }>;
 }
 
-/** Run every job for every open club. One failure never stops the rest. */
-export async function runTick(now: number, jobs: TickJob[] = TICK_JOBS): Promise<TickRun> {
+/** Run every job for every open club, then each deployment job once. One failure never stops the rest. */
+export async function runTick(
+  now: number,
+  jobs: TickJob[] = TICK_JOBS,
+  deploymentJobs: DeploymentTickJob[] = DEPLOYMENT_TICK_JOBS,
+): Promise<TickRun> {
   const clubs = await openClubIds();
   const out: TickRun = { clubs: clubs.length, jobs: {} };
   for (const job of jobs) {
@@ -93,6 +112,14 @@ export async function runTick(now: number, jobs: TickJob[] = TICK_JOBS): Promise
       }
     }
     out.jobs[job.name] = summary;
+  }
+  for (const job of deploymentJobs) {
+    try {
+      out.jobs[job.name] = { ok: 1, failed: 0, totals: await job.run(now) };
+    } catch (err) {
+      out.jobs[job.name] = { ok: 0, failed: 1, totals: {} };
+      console.error(`[tick] ${job.name} failed:`, err);
+    }
   }
   return out;
 }

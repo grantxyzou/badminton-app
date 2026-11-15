@@ -66,8 +66,8 @@ export default function FrameDetailPage({ activeName, gear, frameId, onBack, onO
   const [open, setOpen] = useState<Section | null>(null);
 
   // Keyed by the register per frame, so a new frame is a fresh page: nothing
-  // to reset here but the scroll. The BODY is the scroller (lib/pageScroll.ts):
-  // `window.scrollTo` moved nothing, and the page reached its top only because
+  // to reset here but the scroll, through lib/pageScroll.ts. While the BODY
+  // scrolled, `window.scrollTo` moved nothing, and the page reached its top only because
   // it renders short while it loads and the browser clamped the old position.
   useLayoutEffect(() => { scrollPageTo(0); }, [frameId]);
   useEffect(() => {

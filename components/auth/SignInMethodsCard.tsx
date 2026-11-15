@@ -119,7 +119,7 @@ export default function SignInMethodsCard({ state, embedded = false }: SignInMet
      and, on the standalone card, the nudge subtitle saying it a third time. It
      is now a note on the PIN row itself, and only where no subtitle already
      says it (the sheet drops the card's header). */
-  const pinOnly = methods.hasPin && !methods.hasPassword && linked.length === 0;
+  const pinOnly = methods.hasPin && !methods.hasPassword && !methods.hasEmailCode && linked.length === 0;
   const pinNote = pinOnly && (embedded || !showNudge) ? t('methodPinOnly') : undefined;
 
   return (
@@ -139,7 +139,8 @@ export default function SignInMethodsCard({ state, embedded = false }: SignInMet
           password are managed elsewhere on Profile. */}
       <ul style={{ display: 'grid', gap: 'var(--space-2)', margin: '0', padding: '0', listStyle: 'none' }}>
         {methods.hasPin && <MethodRow label={t('methodPin')} note={pinNote} />}
-        {methods.hasPassword && <MethodRow label={methods.email || t('methodPassword')} />}
+        {/* An email signs in by password or by a code (docs/plans/one-way-in.md, step 3). */}
+        {(methods.hasPassword || methods.hasEmailCode) && <MethodRow label={methods.email || t('methodPassword')} />}
         {[...linkedCounts].map(([p, count]) => (
           <li key={p} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
             <span className="material-icons icon-sm" style={{ color: 'var(--accent)' }}>

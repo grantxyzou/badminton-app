@@ -34,6 +34,7 @@ const HAPPY: ClubMetrics = {
   clientErrors: { last7d: 0, members7d: 0, byTab: {} },
   appReady: { opens7d: 0, medianMs: null, slowMs: null, medianLaunchMs: null, byStart: {} },
   equipment: { racketSavers: 0, racketAndStringSavers: 0, racketShare: null },
+  skill: { since: '2026-08-16', rosterSize: 0, statsOpeners: 0, homeLeadTappers: 0, reach: null },
   newMemberPath: {
     since: '2026-10-07T07:00:00.000Z',
     joined: 4,

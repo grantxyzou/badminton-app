@@ -1,44 +1,32 @@
 'use client';
 
 import { useState } from 'react';
-import { useLocale, useTranslations } from 'next-intl';
+import { useTranslations } from 'next-intl';
 import { shareTextOrCopy } from '@/lib/shareText';
-import { inviteUrl } from '@/lib/useInvites';
+import { clubLinkUrl } from '@/lib/clubLinkUrl';
 
 interface Props {
+  /** The club's link (docs/plans/one-way-in.md, step 5). */
   token: string;
-  code: string;
   /** Names the club in the share sheet's title. */
   groupName?: string;
-  /** When this one-time invite dies unused; shown under the link. */
-  expiresAt?: string;
 }
 
 /**
- * The link and the code, with one way to send each.
+ * The club's link, with Copy and Share, on the "your club exists" step of
+ * Create a club. The same link the console's Club link card shows: anyone
+ * who opens it signs in and asks, and the organiser lets each person in.
+ * (Until step 5 this showed a one-time invite and its 8-character code.)
  *
- * Shared by the create-group success step and the admin `InviteCard` so the two
- * cannot drift — they are the same object shown at two moments, and a club that
- * saw one format on day one and another in March would reasonably wonder which
- * link is real.
- *
- * THE CODE IS NOT A FALLBACK FOR A BROKEN LINK, it is for the cases a link
- * cannot reach: read aloud in a gym, written on a whiteboard, typed by someone
- * whose messaging app mangles URLs. It is shown in mono and spaced in the
- * middle, because eight characters read back to someone across a court is the
- * job it has to do.
- *
- * The URL is built from `window.location.origin` (`inviteUrl`) rather than
+ * The URL is built from `window.location.origin` (`clubLinkUrl`) rather than
  * server-side: behind the Azure proxy, in the installed PWA and in the native
  * WebView the origin differs, and a link pointing at the wrong one is worse
  * than none.
  */
-export default function InviteShare({ token, code, groupName, expiresAt }: Props) {
+export default function ClubLinkShare({ token, groupName }: Props) {
   const t = useTranslations('groups.invite');
-  const locale = useLocale();
   const [copied, setCopied] = useState(false);
-
-  const url = token ? inviteUrl(token) : '';
+  const url = token ? clubLinkUrl(token) : '';
 
   async function copy() {
     if (!url) return;
@@ -62,7 +50,7 @@ export default function InviteShare({ token, code, groupName, expiresAt }: Props
     await shareTextOrCopy({ title: groupName || 'Badminton', text: url, url });
   }
 
-  if (!token || !code) return null;
+  if (!token) return null;
 
   return (
     <div style={{ display: 'grid', gap: 'var(--space-4)' }}>
@@ -82,11 +70,6 @@ export default function InviteShare({ token, code, groupName, expiresAt }: Props
         >
           {url}
         </p>
-        {expiresAt && (
-          <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
-            {t('onceUntil', { date: new Date(expiresAt).toLocaleDateString(locale, { month: 'short', day: 'numeric', timeZone: 'America/Vancouver' }) })}
-          </p>
-        )}
         <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
           <button type="button" onClick={copy} className="cc-btn cc-btn-secondary" style={{ flex: 1 }}>
             <span key={copied ? 'copied' : 'copy'} className="motion-fade">{copied ? t('copied') : t('copy')}</span>
@@ -97,22 +80,6 @@ export default function InviteShare({ token, code, groupName, expiresAt }: Props
         </div>
       </div>
 
-      <div style={{ display: 'grid', gap: 'var(--space-2)' }}>
-        <span className="section-label">{t('codeLabel')}</span>
-        <p
-          style={{
-            margin: 0,
-            fontFamily: 'var(--font-mono)',
-            fontSize: 'var(--fs-stat)',
-            letterSpacing: '0.12em',
-            color: 'var(--text-primary)',
-          }}
-        >
-          {/* Split in the middle: eight unbroken characters read aloud is a
-              guessing game about where the halves are. */}
-          {code.slice(0, 4)} {code.slice(4)}
-        </p>
-      </div>
     </div>
   );
 }

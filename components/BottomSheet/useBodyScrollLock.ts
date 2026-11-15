@@ -21,15 +21,14 @@ import { useEffect } from 'react';
  * took.
  */
 /*
- * `window.scrollY` / `window.scrollTo` below are deliberate, NOT the
- * body-is-the-scroller bug `lib/pageScroll.ts` fixes elsewhere. In this app
- * the BODY scrolls (`html, body { height: 100% }`), so `window.scrollY` is 0
- * and the pin is `top: -0px`; a fixed body is still its own scroller, so it
- * keeps its `scrollTop` and the page neither moves under the sheet nor after
- * it (measured 2026-11-11, Chromium: 400 before, open and after). Reading the
- * real offset with `pageScrollTop()` would pin `top: -400px` ON TOP of that
- * 400 and jump the page by the offset twice. On a page where the WINDOW
- * scrolls, the window numbers are the right ones.
+ * `window.scrollY` / `window.scrollTo` below are deliberate. The DOCUMENT
+ * scrolls (`docs/plans/page-scroll.md`), so this is the textbook lock: pin
+ * the body at `-scrollY`, and scroll back to it on release. Where the BODY
+ * still scrolls (a browser older than `overflow: clip` keeps the old rules),
+ * `window.scrollY` is 0, the pin is `top: -0px`, and the fixed body keeps its
+ * own `scrollTop`, so the page stays put there too (measured 2026-11-11).
+ * Never `pageScrollTop()` here: on that fallback it would pin the body's
+ * offset ON TOP of the scroll it keeps, and jump the page twice.
  */
 let holds = 0;
 let saved: { position: string; top: string; width: string; scrollY: number } | null = null;

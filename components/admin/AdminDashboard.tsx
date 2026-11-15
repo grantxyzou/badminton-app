@@ -17,8 +17,7 @@ import LedgerPage from './LedgerPage';
 import MetricsPage from './MetricsPage';
 import PaymentsCard from './CommandCenter/PaymentsCard';
 import AdminBackHeader from './AdminBackHeader';
-import InviteCard from './CommandCenter/InviteCard';
-import DoorPosterCard from './CommandCenter/DoorPosterCard';
+import ClubLinkCard from './CommandCenter/ClubLinkCard';
 import GiftCardsCard from './CommandCenter/GiftCardsCard';
 import SignInReadinessCard from './CommandCenter/SignInReadinessCard';
 import PaymentsInboxCard from './CommandCenter/PaymentsInboxCard';
@@ -34,6 +33,7 @@ import { isFlagOn } from '@/lib/flags';
 import { TabActiveContext, useTabActive, useTabReturn } from '@/lib/tabActivity';
 import { usePageBack } from '@/lib/pageStack';
 import { popView, pushView, topView } from '@/lib/viewTrail';
+import { useTrailScroll } from '@/lib/trailScroll';
 
 /*
  * The admin subtree's router. Every view is a Command Center page; the
@@ -124,12 +124,16 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
   const pane = usePaneMode();
   const pageMotion = pane ? undefined : 'animate-slideInRight';
   const detailRef = useRef<HTMLDivElement>(null);
+  // Each level keeps its own place: a page opens at its top, and Back returns
+  // to where that level was left (lib/trailScroll.ts). One screen only.
+  const rememberScroll = useTrailScroll(trail.length, !pane);
   const push = useCallback((next: AdminView) => {
+    if (next !== topView(trail, 'dashboard')) rememberScroll();
     setPopped(false);
     // The console is the bottom of the trail, never a page on it; the page
     // already on top is not stacked twice.
     setTrail((t) => pushView(t, next, 'dashboard'));
-  }, []);
+  }, [trail, rememberScroll]);
 
   const goBack = useCallback(() => {
     setRefreshKey(k => k + 1);
@@ -257,10 +261,9 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
     if (v === 'invite') {
       return (
         <div className={pane ? 'space-y-3' : 'animate-slideInRight space-y-3'}>
-          <AdminBackHeader onBack={goBack} title="Invite someone" />
-          <InviteCard enabled groupName={group?.name} bare />
-          {/* The club's door link, for a chat or a wall (docs/plans/door-link.md). */}
-          <DoorPosterCard groupName={group?.name} />
+          <AdminBackHeader onBack={goBack} title="Club link" />
+          {/* The one way anybody joins (docs/plans/one-way-in.md, step 5). */}
+          <ClubLinkCard groupName={group?.name} bare />
         </div>
       );
     }

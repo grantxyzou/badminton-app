@@ -20,7 +20,6 @@ export default function AskAccessSheet({
   sessionId,
   initialName = '',
   onSignedIn,
-  claim,
 }: {
   open: boolean;
   onClose: () => void;
@@ -28,12 +27,10 @@ export default function AskAccessSheet({
   initialName?: string;
   /** Fired once they are actually signed in. `hasPin` decides whether it is
    *  worth offering them one. */
-  onSignedIn: (result: { name: string; hasPin: boolean; email?: string }) => void;
-  claim?: { token: string; clubName: string } | null;
+  onSignedIn: (result: { name: string; hasPin: boolean }) => void;
 }) {
   const t = useTranslations('recovery');
-  const club = claim?.clubName ?? null;
-  const title = club ? t('claimTitle', { club }) : t('askTitle');
+  const title = t('askTitle');
 
   return (
     <BottomSheet open={open} onClose={onClose} ariaLabel={title}>
@@ -45,7 +42,6 @@ export default function AskAccessSheet({
         <AskAccessForm
           active={open}
           initialName={initialName}
-          claim={claim}
           onApproved={(result) => {
             setIdentity({ name: result.name, sessionId });
             onSignedIn(result);

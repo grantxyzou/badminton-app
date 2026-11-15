@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // @vitest-environment-options { "url": "http://localhost:3000/bpm" }
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, waitFor, fireEvent, act } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import enMessages from '../../messages/en.json';
 import { setIdentity } from '@/lib/identity';
@@ -47,7 +47,12 @@ vi.mock('@/components/SignInForm', () => ({
     </button>
   ),
 }));
-vi.mock('@/components/auth/EmailSignInForm', () => ({ default: () => <p>stub: email sign-in</p> }));
+vi.mock('@/components/auth/EmailSignInForm', () => ({
+  default: (props: Record<string, unknown>) => {
+    captured.EmailSignInForm = props;
+    return <p>stub: email sign-in</p>;
+  },
+}));
 vi.mock('@/components/auth/EmailSignUpForm', () => ({
   default: (props: Record<string, unknown>) => {
     captured.EmailSignUpForm = props;
@@ -55,6 +60,7 @@ vi.mock('@/components/auth/EmailSignUpForm', () => ({
   },
 }));
 vi.mock('@/components/auth/AskAccessForm', () => ({ default: capture('AskAccessForm') }));
+vi.mock('@/components/onboarding/DoorJoinPage', () => ({ default: capture('DoorJoinPage') }));
 vi.mock('@/components/auth/KeepAccountPage', () => ({ default: capture('KeepAccountPage') }));
 vi.mock('@/components/auth/ForgotPasswordSheet', () => ({ default: capture('ForgotPasswordSheet') }));
 vi.mock('@/components/auth/ChooseNameSheet', () => ({ default: capture('ChooseNameSheet') }));
@@ -125,7 +131,7 @@ afterEach(() => {
 describe('Welcome', () => {
   it('offers Sign up and Log in, and nothing about the club', () => {
     renderShell();
-    expect(screen.getByRole('button', { name: 'Sign up' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Join a club' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Log in' })).toBeDefined();
     expect(screen.queryByRole('navigation')).toBeNull();
   });
@@ -139,18 +145,23 @@ describe('Welcome', () => {
 });
 
 describe('Log in', () => {
-  it('offers Google, name-and-PIN, and "I play here already"', () => {
+  it('offers Google and an email code first, name-and-PIN behind "Other ways", and "I play here already"', () => {
     renderShell();
     fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
     expect(screen.getByText('Continue with Google')).toBeDefined();
+    // The email code first (docs/plans/one-way-in.md, step 6); the PIN a tap away.
+    expect(screen.getByRole('button', { name: 'Email me a code' })).toBeDefined();
+    expect(screen.queryByText('stub: PIN sign-in')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Other ways to log in' }));
     expect(screen.getByText('stub: PIN sign-in')).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'I play here already' }));
     // A page, not a sheet (Grant, 2026-11-08): a real person approves it.
     expect(screen.getByText('Can\'t sign in?')).toBeDefined();
-    expect(captured.AskAccessForm?.claim).toBeNull();
+    // No club link with it: the link signs in first (one-way-in step 4d).
+    expect(captured.AskAccessForm).not.toHaveProperty('claim');
     // Back goes to Log in, where they came from.
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
-    expect(screen.getByText('stub: PIN sign-in')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Email me a code' })).toBeDefined();
   });
 
   it('prefills "I play here already" with a stale local name', () => {
@@ -161,92 +172,99 @@ describe('Log in', () => {
     expect(captured.AskAccessForm?.initialName).toBe('Viktor');
   });
 
-  it('switches to email and routes "forgot" to the password sheet', () => {
+  it('the email form offers a code first and the password a tap away, and comes back from the PIN', () => {
     renderShell();
     fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Other ways to log in' }));
     fireEvent.click(screen.getByRole('button', { name: 'Use email instead' }));
+    // A code first (docs/plans/one-way-in.md, step 3).
+    expect(screen.getByRole('button', { name: 'Email me a code' })).toBeDefined();
+    expect(screen.queryByText('stub: email sign-in')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use my password instead' }));
     expect(screen.getByText('stub: email sign-in')).toBeDefined();
-    fireEvent.click(screen.getByRole('button', { name: 'Forgot password?' }));
+  });
+
+  it('routes "forgot" on the password route to the password sheet', () => {
+    renderShell();
+    fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Use my password instead' }));
+    act(() => (captured.EmailSignInForm?.onForgotPassword as () => void)());
     expect(captured.ForgotPasswordSheet?.open).toBe(true);
   });
 });
 
-describe('Sign up needs an invite', () => {
-  it('asks for a code when they did not come by the link', () => {
+describe('Join a club needs the club link (one-way-in step 5)', () => {
+  it('asks for the link when they did not come by it, and offers no account form', () => {
     renderShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
-    expect(screen.getByLabelText('Invite code')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Join a club' }));
+    expect(screen.getByLabelText("Your club's link")).toBeDefined();
     expect(screen.queryByText('stub: email sign-up')).toBeNull();
   });
 
-  it('a typed CODE resolves the club, then the account step carries the code', async () => {
+  it('a pasted link opens the club\'s page (sign in first, then ask)', async () => {
     renderShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
-    fireEvent.change(screen.getByLabelText('Invite code'), { target: { value: 'ABCD2345' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-
-    expect(await screen.findByText('Join BPM Badminton')).toBeDefined();
-    expect(String(fetchMock.mock.calls[0][0])).toContain('code=ABCD2345');
-    expect(captured.EmailSignUpForm?.inviteCode).toBe('ABCD2345');
-    expect(captured.EmailSignUpForm?.inviteToken).toBeUndefined();
-  });
-
-  it('a pasted LINK is read as a token, not a code', async () => {
-    renderShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Join a club' }));
     const token = 'a1'.repeat(16);
-    fireEvent.change(screen.getByLabelText('Invite code'), {
-      target: { value: `https://bpm.grantzou.com/bpm?join=${token}` },
+    fireEvent.change(screen.getByLabelText("Your club's link"), {
+      target: { value: `https://bpm.grantzou.com/bpm/j/${token}` },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await screen.findByText('Join BPM Badminton');
-    expect(captured.EmailSignUpForm?.inviteToken).toBe(token);
+    await waitFor(() => expect(captured.DoorJoinPage?.token).toBe(token));
+    expect(String(fetchMock.mock.calls[0][0])).toContain(`token=${token}`);
   });
 
-  it('an invite that does not resolve says so and goes no further', async () => {
+  it('an old invite code asks for the link, and checks nothing', async () => {
     renderShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
-    fireEvent.change(screen.getByLabelText('Invite code'), { target: { value: 'BADCODE1' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Join a club' }));
+    fireEvent.change(screen.getByLabelText("Your club's link"), { target: { value: 'ABCD2345' } });
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    expect(await screen.findByRole('alert')).toBeDefined();
-    expect(screen.queryByText('stub: email sign-up')).toBeNull();
+    expect((await screen.findByRole('alert')).textContent).toMatch(/Paste the whole link/);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(captured.DoorJoinPage).toBeUndefined();
   });
 
-  it('the invite survives the trip to Google', async () => {
+  it('a link that does not resolve says so and goes no further', async () => {
+    fetchMock.mockImplementation(() => json({ error: 'invite_not_found' }, 404));
     renderShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
-    fireEvent.change(screen.getByLabelText('Invite code'), { target: { value: 'ABCD2345' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Join a club' }));
+    fireEvent.change(screen.getByLabelText("Your club's link"), { target: { value: 'f'.repeat(32) } });
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await screen.findByText('Join BPM Badminton');
-    fireEvent.click(screen.getByText('Continue with Google'));
-    expect(JSON.parse(localStorage.getItem(RESUME_KEY) ?? '{}')).toMatchObject({ intent: 'join', code: 'ABCD2345' });
+    expect((await screen.findByRole('alert')).textContent).toMatch(/That link no longer works/);
+    expect(captured.DoorJoinPage).toBeUndefined();
   });
 });
 
 describe('landings', () => {
-  it('?join= opens Sign up already naming the club, and strips the credential from the URL', async () => {
+  it('?join= (where /bpm/j/<token> lands) opens the club\'s page, and strips the credential from the URL', async () => {
     const token = 'b2'.repeat(16);
     at(`?join=${token}`);
     renderShell();
-    expect(await screen.findByText('Join BPM Badminton')).toBeDefined();
-    expect(captured.EmailSignUpForm?.inviteToken).toBe(token);
+    await waitFor(() => expect(captured.DoorJoinPage?.token).toBe(token));
+    expect(captured.EmailSignUpForm).toBeUndefined();
     expect(window.location.search).not.toContain('join');
   });
 
-  it('?claim= opens the club’s ask page, and strips the link from the URL', async () => {
-    // docs/plans/claim-your-name.md: an imported name asks to be let in.
+  it('?claim= opens the club’s page (sign in first, then ask), and strips the link from the URL', async () => {
+    // docs/plans/one-way-in.md, step 4: the club's link is a page that signs
+    // in first, and nothing else (the name-only claim went in step 4d).
     const token = 'c3'.repeat(16);
     at(`?claim=${token}`);
     renderShell();
-    await waitFor(() => expect(captured.AskAccessForm?.claim).toEqual({ token, clubName: 'BPM Badminton' }));
-    expect(screen.getByText('Join BPM Badminton')).toBeDefined();
-    // A new person's name, not a stale one from this phone.
-    expect(captured.AskAccessForm?.initialName).toBe('');
-    expect(fetchMock.mock.calls.some(([u]) => String(u).includes(`/api/groups/preview?claim=${token}`))).toBe(true);
+    await waitFor(() => expect(captured.DoorJoinPage?.token).toBe(token));
+    expect(captured.AskAccessForm).toBeUndefined();
     expect(window.location.search).not.toContain('claim');
   });
 
-  it('the club’s door link on the one-link path opens the ask, not the sign-up form', async () => {
+  it('the club’s page offers no name-only claim (one-way-in step 4d)', async () => {
+    const token = 'c3'.repeat(16);
+    at(`?claim=${token}`);
+    renderShell();
+    await waitFor(() => expect(captured.DoorJoinPage?.token).toBe(token));
+    expect(captured.DoorJoinPage).not.toHaveProperty('onClaimName');
+  });
+
+  it('the club’s door link on the one-link path opens the club’s page, not the sign-up form', async () => {
     // docs/plans/door-link.md: /bpm/j/<token> redirects to ?join=, and the
     // preview says the token is the door rather than an invite.
     const token = 'e5'.repeat(16);
@@ -255,47 +273,32 @@ describe('landings', () => {
     );
     at(`?join=${token}`);
     renderShell();
-    await waitFor(() => expect(captured.AskAccessForm?.claim).toEqual({ token, clubName: 'BPM Badminton' }));
+    await waitFor(() => expect(captured.DoorJoinPage?.token).toBe(token));
     expect(captured.EmailSignUpForm).toBeUndefined();
     expect(window.location.search).not.toContain('join');
   });
 
-  it('a person let in through the door gets the "Keep your account" page, and goes in when they leave it', async () => {
-    const token = 'f6'.repeat(16);
-    at(`?claim=${token}`);
+  it('a person let in from "I play here already" with nothing to sign in with gets "Keep your account", and goes in when they leave it', async () => {
     renderShell();
-    await waitFor(() => expect(captured.AskAccessForm?.claim).toBeTruthy());
-    (captured.AskAccessForm!.onApproved as (r: { name: string; hasPin: boolean; email?: string }) => void)({
-      name: 'Akane Yamaguchi',
-      hasPin: false,
-      email: 'akane@example.com',
-    });
-    // The account step first, with the email they typed, and not signed in yet:
-    // writing the identity would reload this screen out from under it.
+    fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
+    fireEvent.click(screen.getByRole('button', { name: 'I play here already' }));
+    (captured.AskAccessForm!.onApproved as (r: { name: string; hasPin: boolean }) => void)({ name: 'Akane Yamaguchi', hasPin: false });
+    // The account step first, and not signed in yet: writing the identity
+    // would reload this screen out from under it.
     await waitFor(() => expect(captured.KeepAccountPage?.name).toBe('Akane Yamaguchi'));
-    expect(captured.KeepAccountPage?.initialEmail).toBe('akane@example.com');
     expect(sessionStorage.getItem(RELOAD_MARK)).toBeNull();
     (captured.KeepAccountPage!.onDone as () => void)();
     await waitFor(() => expect(sessionStorage.getItem(RELOAD_MARK)).not.toBeNull());
     expect(JSON.parse(localStorage.getItem('badminton_identity') ?? '{}').name).toBe('Akane Yamaguchi');
   });
 
-  it('a claim link that no longer resolves says so, and opens nothing', async () => {
-    fetchMock.mockImplementation((input: RequestInfo | URL) =>
-      String(input).includes('/api/groups/preview') ? json({ error: 'invite_not_found' }, 404) : json({}),
-    );
-    at(`?claim=${'d4'.repeat(16)}`);
-    renderShell();
-    expect((await screen.findByRole('alert')).textContent).toMatch(/link has been replaced/);
-    expect(captured.AskAccessForm).toBeUndefined();
-  });
-
-  it('a new Google identity gets the name sheet, carrying the invite that rode the excursion', () => {
-    localStorage.setItem(RESUME_KEY, JSON.stringify({ intent: 'join', code: 'ABCD2345', at: Date.now() }));
+  it('a new Google identity gets the name sheet, carrying the club link that rode the excursion', () => {
+    localStorage.setItem(RESUME_KEY, JSON.stringify({ intent: 'join', token: 'c4'.repeat(16), at: Date.now() }));
     at('?authFlow=name');
     renderShell();
     expect(captured.ChooseNameSheet?.open).toBe(true);
-    expect(captured.ChooseNameSheet?.inviteCode).toBe('ABCD2345');
+    expect(captured.ChooseNameSheet?.inviteToken).toBe('c4'.repeat(16));
+    expect(captured.ChooseNameSheet).not.toHaveProperty('inviteCode');
   });
 
   it('leaves ?tab and ?intent in the URL for the app to act on after signing in', () => {
@@ -317,6 +320,7 @@ describe('signing in hands control to the server', () => {
   it('reloads once an identity is written — any way in', async () => {
     renderShell();
     fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Other ways to log in' }));
     fireEvent.click(screen.getByText('stub: PIN sign-in'));
     // jsdom cannot navigate; the reload guard's mark is the observable proof
     // that a reload was attempted.
@@ -366,16 +370,16 @@ describe('after an admin lets someone in', () => {
 describe('multi-group OFF: nothing of this exists', () => {
   it('Sign up explains, and offers no "Start your own club"', () => {
     renderShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
-    expect(screen.getByText(/No invite\? Ask someone/)).toBeDefined();
-    expect(screen.queryByRole('button', { name: /Start your own group/ })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Join a club' }));
+    expect(screen.getByText(/No link\? Ask someone/)).toBeDefined();
+    expect(screen.queryByRole('button', { name: /Start your own club/ })).toBeNull();
   });
 
   it('ignores a noClub prop — a no-club member cannot exist with groups off', () => {
     renderShell(ORGANISER);
-    expect(screen.getByRole('button', { name: 'Sign up' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Join a club' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Log in' })).toBeDefined();
-    expect(screen.queryByRole('button', { name: 'Create a group' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Create a club' })).toBeNull();
   });
 });
 
@@ -387,8 +391,8 @@ describe('multi-group ON — a stranger', () => {
   it('Welcome is still two buttons; the create door is a link on Sign up, opening the ACCOUNT step', async () => {
     renderShell();
     expect(screen.getAllByRole('button')).toHaveLength(2);
-    fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
-    fireEvent.click(screen.getByRole('button', { name: /Start your own group/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Join a club' }));
+    fireEvent.click(screen.getByRole('button', { name: /Start your own club/ }));
     await waitFor(() => expect(captured.CreateGroupPage).toBeDefined());
     expect(captured.CreateGroupPage?.startAtAuth).toBe(true);
     expect(captured.CreateGroupPage?.defaultName).toBeUndefined();
@@ -396,8 +400,8 @@ describe('multi-group ON — a stranger', () => {
 
   it('after the account step the page hands over: the resume is MARKED and the shell reloads', async () => {
     renderShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
-    fireEvent.click(screen.getByRole('button', { name: /Start your own group/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Join a club' }));
+    fireEvent.click(screen.getByRole('button', { name: /Start your own club/ }));
     await waitFor(() => expect(captured.CreateGroupPage).toBeDefined());
     (captured.CreateGroupPage?.onSignedIn as () => void)();
     expect(JSON.parse(localStorage.getItem(RESUME_KEY) ?? '{}')).toMatchObject({ intent: 'create' });
@@ -406,8 +410,8 @@ describe('multi-group ON — a stranger', () => {
 
   it('an identity written while the create page is open does NOT reload on its own — the page owns that moment', async () => {
     renderShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Sign up' }));
-    fireEvent.click(screen.getByRole('button', { name: /Start your own group/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Join a club' }));
+    fireEvent.click(screen.getByRole('button', { name: /Start your own club/ }));
     await waitFor(() => expect(captured.CreateGroupPage).toBeDefined());
     setIdentity({ name: 'Organiser', sessionId: '' });
     await new Promise((r) => setTimeout(r, 20));
@@ -425,11 +429,11 @@ describe('multi-group ON — a stranger', () => {
   });
 
   it('a join resume still gets the name sheet WITHOUT noGroup', () => {
-    localStorage.setItem(RESUME_KEY, JSON.stringify({ intent: 'join', code: 'ABCD2345', at: Date.now() }));
+    localStorage.setItem(RESUME_KEY, JSON.stringify({ intent: 'join', token: 'c4'.repeat(16), at: Date.now() }));
     at('?authFlow=name');
     renderShell();
     expect(captured.ChooseNameSheet?.noGroup).toBe(false);
-    expect(captured.ChooseNameSheet?.inviteCode).toBe('ABCD2345');
+    expect(captured.ChooseNameSheet?.inviteToken).toBe('c4'.repeat(16));
   });
 });
 
@@ -440,10 +444,10 @@ describe('multi-group ON — signed in, in no club', () => {
 
   it('a brand-new organiser gets three doors and no Sign up / Log in, on the welcome stage', async () => {
     renderShell(ORGANISER);
-    expect(screen.getByRole('button', { name: 'Create a group' })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'I have an invite' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Create a club' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'I have a club link' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeDefined();
-    expect(screen.queryByRole('button', { name: 'Sign up' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Join a club' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Log in' })).toBeNull();
     expect(document.querySelector('[data-signed-out-welcome]')).not.toBeNull();
     await new Promise((r) => setTimeout(r, 20));
@@ -452,7 +456,7 @@ describe('multi-group ON — signed in, in no club', () => {
 
   it('Create a club opens the page on its FORM, named after the member', async () => {
     renderShell(ORGANISER);
-    fireEvent.click(screen.getByRole('button', { name: 'Create a group' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create a club' }));
     await waitFor(() => expect(captured.CreateGroupPage).toBeDefined());
     expect(captured.CreateGroupPage?.startAtAuth).toBe(false);
     expect(captured.CreateGroupPage?.defaultName).toBe('Organiser');
@@ -495,7 +499,7 @@ describe('multi-group ON — signed in, in no club', () => {
     await waitFor(() => expect(captured.GroupsPage).toBeDefined());
     expect((captured.GroupsPage?.groups as NoClub['groups']).map((g) => g.id)).toEqual(['club-a', 'club-b']);
     expect(captured.GroupsPage?.onBack).toBeUndefined();
-    expect(screen.queryByRole('button', { name: 'Create a group' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Create a club' })).toBeNull();
     (captured.GroupsPage?.onSwitched as () => void)();
     expect(hardReload).toHaveBeenCalledTimes(1);
     (captured.GroupsPage?.onCreateAnother as () => void)();

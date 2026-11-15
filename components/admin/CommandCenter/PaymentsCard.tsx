@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
 import ResetAccessSheet from '../ResetAccessSheet';
 import CoverSheet, { type CoverSheetMode } from '../CoverSheet';
-import InviteCard from './InviteCard';
+import ClubLinkCard from './ClubLinkCard';
 import { useRevealReady } from '@/components/primitives/Reveal';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import CardHeader from '@/components/primitives/CardHeader';
@@ -1060,8 +1060,8 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
           </button>
         </BottomSheetHeader>
         <BottomSheetBody>
-          {/* The club's own invite card: one link, one person, seven days. */}
-          {inviteFor !== null && <InviteCard bare />}
+          {/* The club's link: they sign in, ask, and an organiser lets them in. */}
+          {inviteFor !== null && <ClubLinkCard bare />}
         </BottomSheetBody>
       </BottomSheet>
 

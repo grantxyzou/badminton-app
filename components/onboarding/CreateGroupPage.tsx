@@ -8,7 +8,7 @@ import EmailSignUpForm from '@/components/auth/EmailSignUpForm';
 import EmailSignInForm from '@/components/auth/EmailSignInForm';
 import { getIdentity, setIdentity, IDENTITY_EVENT } from '@/lib/identity';
 import { clearOnboardingResume, markOnboardingResume } from '@/lib/onboardingResume';
-import InviteShare from './InviteShare';
+import ClubLinkShare from './ClubLinkShare';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -55,7 +55,7 @@ interface Props {
  * brings Escape-to-close and the edge swipe-back gesture, which a sheet's drag
  * handle only approximates.
  *
- * IT DOES NOT LEAVE ON SUCCESS. It swaps to a success step holding the invite
+ * IT DOES NOT LEAVE ON SUCCESS. It swaps to a success step holding the club's
  * link, the same argument `AdvanceSessionForm`'s success screen makes: the
  * moment a club exists is the moment its organiser wants to invite people, and
  * a screen that vanishes sends them hunting through Admin for a link they were
@@ -77,7 +77,7 @@ export default function CreateGroupPage({
   const [rosterName, setRosterName] = useState(defaultName ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [created, setCreated] = useState<{ name: string; token: string; code: string; expiresAt?: string } | null>(null);
+  const [created, setCreated] = useState<{ name: string; token: string } | null>(null);
   const [step, setStep] = useState<'auth' | 'form'>(startAtAuth ? 'auth' : 'form');
   const [credMode, setCredMode] = useState<'signup' | 'signin'>('signup');
   const [mailNote, setMailNote] = useState<string | null>(null);
@@ -201,9 +201,7 @@ export default function CreateGroupPage({
       setIdentity({ name: data.rosterName ?? rosterName.trim(), sessionId });
       setCreated({
         name: data.group?.name ?? trimmed,
-        token: data.invite?.token ?? '',
-        code: data.invite?.code ?? '',
-        expiresAt: data.invite?.expiresAt,
+        token: data.link?.token ?? '',
       });
       onCreated?.();
     } catch {
@@ -297,7 +295,7 @@ export default function CreateGroupPage({
           // The club exists now — the one moment on this page worth marking.
           <div key="created" className="status-celebrate" style={{ display: 'grid', gap: 'var(--space-5)' }}>
             <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', margin: 0 }}>{t('createdHint')}</p>
-            <InviteShare token={created.token} code={created.code} groupName={created.name} expiresAt={created.expiresAt} />
+            <ClubLinkShare token={created.token} groupName={created.name} />
             <button type="button" onClick={onDone} className="cc-btn cc-btn-primary cc-btn-lg" style={{ width: '100%' }}>
               {t('done')}
             </button>

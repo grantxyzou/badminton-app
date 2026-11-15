@@ -22,7 +22,7 @@ export interface InviteInput {
 export function parseInviteInput(raw: string, origin = 'http://localhost'): InviteInput {
   const trimmed = raw.trim();
   if (!trimmed) return {};
-  if (/^https?:\/\//i.test(trimmed) || trimmed.includes('?join=') || trimmed.includes(INVITE_LINK_SEGMENT)) {
+  if (/^https?:\/\//i.test(trimmed) || trimmed.includes('?join=') || trimmed.includes('?claim=') || trimmed.includes(INVITE_LINK_SEGMENT)) {
     try {
       const url = new URL(trimmed, origin);
       // The one link: the token is the segment after `/j/`, whatever base the
@@ -32,7 +32,8 @@ export function parseInviteInput(raw: string, origin = 'http://localhost'): Invi
         const tail = url.pathname.slice(at + INVITE_LINK_SEGMENT.length).replace(/\/$/, '');
         if (isInviteToken(tail)) return { token: tail.toLowerCase() };
       }
-      const token = url.searchParams.get('join');
+      // A link sent before `/j/`: `?join=`, or a club link's `?claim=`.
+      const token = url.searchParams.get('join') ?? url.searchParams.get('claim');
       if (token) return { token };
     } catch {
       // Not a URL after all — fall through and try it as a token or a code.

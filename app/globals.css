@@ -623,10 +623,21 @@ html {
   font-size: calc(100% * var(--ui-scale, 1));
 }
 
+/* THE PAGE SCROLLS, NOT THE BODY (docs/plans/page-scroll.md, 2026-11-15).
+   `height: 100%` with `overflow-x: hidden` made <body> a screen-sized scroll
+   box with the page scrolling inside it, and on the App Store app the Admin
+   console opened under a screen of blank space that a scroll repainted.
+   `clip` cuts sideways overflow WITHOUT making a scroll box (`hidden` forces
+   the other axis to `auto`); `hidden` stays first for a browser older than
+   `clip`, which keeps the old behaviour there. */
+html {
+  min-height: 100%;
+}
+
 html,
 body {
-  height: 100%;
   overflow-x: hidden;
+  overflow-x: clip;
   /* Disable double-tap-to-zoom (and the legacy 300ms tap delay) — pairs with
      the viewport scale cap in layout.tsx to make the iOS web app feel native.
      `manipulation` still permits scroll + panning, just not the zoom gestures. */
@@ -650,7 +661,7 @@ body {
    that nothing is, so it is confirmed on the device, not assumed. */
 @media (display-mode: standalone) {
   html {
-    height: 100lvh;
+    min-height: 100lvh;
   }
 }
 
@@ -1423,21 +1434,18 @@ html[data-swiping="release"] .bpm-topbar__back {
               color 0.15s ease;
 }
 
-/* Page shell nudges right + dims slightly, so the gesture reads as
-   "pushing the screen aside" even though no back-stack renders under. */
-html[data-swiping] [data-page-shell] {
-  transform: translateX(calc(var(--swipe-back, 0) * 18px));
-  opacity: calc(1 - var(--swipe-back, 0) * 0.18);
-}
-html[data-swiping="release"] [data-page-shell] {
-  transition: transform var(--duration-normal) var(--ease-out-quart),
-              opacity var(--duration-normal) var(--ease-out-quart);
-}
+/* THE PAGE ITSELF DOES NOT MOVE (2026-11-15). It used to nudge 18px right
+   and dim while the finger dragged. On the App Store app that slid the cards
+   out from under the sticky top bar, turned the bar's frost see-through (a
+   transformed, translucent ancestor is a new backdrop root), and repainted
+   every glass card on every touchmove: Grant's "the back is still like this"
+   screenshot, and much of "janky". The glow and the chevron carry the
+   gesture on their own. Never put a transform or opacity on
+   `[data-page-shell]` for this (`__tests__/page-scroll-canary.test.ts`). */
 
 @media (prefers-reduced-motion: reduce) {
   html[data-swiping="release"]::before,
-  html[data-swiping="release"] .bpm-topbar__back,
-  html[data-swiping="release"] [data-page-shell] { transition-duration: 0ms; }
+  html[data-swiping="release"] .bpm-topbar__back { transition-duration: 0ms; }
 }
 
 /* ── 02 Aurora background ──
@@ -9138,6 +9146,14 @@ html:root .courtside {
   font-size: var(--fs-md);
   color: var(--text-secondary);
   min-height: calc(var(--fs-md) * var(--lh-normal));
+}
+/* What to say next: quieter than the status line above it, always under it. */
+.courtside-voice-hint {
+  margin: 0;
+  text-align: center;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+  color: var(--text-muted);
 }
 .courtside-voice-ask {
   display: flex;

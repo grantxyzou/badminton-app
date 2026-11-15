@@ -31,7 +31,7 @@ describe('<AdvanceSessionForm /> for a group with no session yet', () => {
   it('reads no_active_session as the first session, with no error and nothing to archive', async () => {
     stubSession(() => new Response(JSON.stringify({ error: 'no_active_session' }), { status: 404 }));
     render(<AdvanceSessionForm onBack={() => {}} />);
-    expect(await screen.findByText("Creates your group's first session.")).toBeDefined();
+    expect(await screen.findByText("Creates your club's first session.")).toBeDefined();
     expect(screen.queryByText(/Couldn.t load the current session/)).toBeNull();
     expect(screen.queryByText(/will be archived/)).toBeNull();
   });

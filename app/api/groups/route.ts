@@ -10,9 +10,10 @@
  * Three writes, in this order, and the order matters:
  *   1. `createGroup` — the group doc, then the owner's membership, which
  *      reserves their roster name (a fresh group, so it cannot be taken).
- *   2. `mintInvite` — so the group is shareable the moment it exists. A club
- *      that has to go looking for its invite link is a club whose first
- *      session has nobody in it.
+ *   2. `rotateClaimLink` — the club's LINK, so the group is shareable the
+ *      moment it exists. A club that has to go looking for its link is a club
+ *      whose first session has nobody in it. (A one-time invite until
+ *      docs/plans/one-way-in.md, step 5.)
  *   3. `completeSignIn` — re-mint both cookies FOR THE NEW GROUP, so the
  *      creator lands inside it as owner without a second round trip. That call
  *      also verifies the membership it is minting for, which is why the group
@@ -24,7 +25,7 @@ import { completeSignIn } from '@/lib/authSession';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { getContainer } from '@/lib/cosmos';
 import { createGroup, listMembershipsForMember, readGroup, RosterNameTakenError } from '@/lib/groups';
-import { mintInvite } from '@/lib/invites';
+import { rotateClaimLink } from '@/lib/claimLinks';
 import {
   groupsOn,
   featureOff,
@@ -94,13 +95,14 @@ export async function POST(req: NextRequest) {
     // membership and their name reservation all exist, so a 500 would be a lie:
     // the caller reads "nothing happened", retries, and ends up owning a second
     // club while the first still counts against MAX_OWNED_GROUPS. Both remaining
-    // steps are recoverable on their own — the invite card mints lazily, and a
-    // sign-in re-mints cookies — so neither is allowed to fail the request.
-    let invite: Awaited<ReturnType<typeof mintInvite>> = null;
+    // steps are recoverable on their own — the Club link card makes a link on
+    // its own, and a sign-in re-mints cookies — so neither may fail the request.
+    let link: { token: string } | null = null;
     try {
-      invite = await mintInvite(group.id, member.id);
+      const made = await rotateClaimLink(group.id, member.id);
+      link = made ? { token: made.token } : null;
     } catch (err) {
-      console.error('POST /api/groups: club created, invite mint failed (recoverable):', err);
+      console.error('POST /api/groups: club created, club link failed (recoverable):', err);
     }
 
     const res = NextResponse.json(
@@ -108,7 +110,7 @@ export async function POST(req: NextRequest) {
         group: { id: group.id, name: group.name, settings: memberVisibleSettings(group.settings) },
         role: 'owner',
         rosterName,
-        invite,
+        link,
       },
       { status: 201 },
     );

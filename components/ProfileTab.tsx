@@ -190,7 +190,7 @@ export default function ProfileTab({
   usePageBack(view !== 'root', () => setView((v) => (v === 'name' || v === 'contact-email' ? 'profile' : 'root')));
   // A page opens at its TOP, and Back returns to the same place in the list.
   // Before, a row near the foot of Profile (Support, Report a problem)
-  // opened its page half-way down. The BODY is the scroller (lib/pageScroll.ts).
+  // opened its page half-way down. The scroll goes through lib/pageScroll.ts.
   // Where the list was is noted while it is on screen, because by the time
   // the view has changed a shorter page has already clamped it.
   // Only while Profile is the tab on screen: it is kept mounted behind the

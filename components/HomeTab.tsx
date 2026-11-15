@@ -331,9 +331,14 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       try {
         const res = await sharedFetch('/api/auth/methods');
         if (res.ok) {
-          const m = (await res.json()) as { hasPin?: boolean; hasPassword?: boolean; linked?: string[] };
+          const m = (await res.json()) as { hasPin?: boolean; hasPassword?: boolean; hasEmailCode?: boolean; linked?: string[] };
           if (cancelled) return;
-          const has = m.hasPin === true || m.hasPassword === true || (Array.isArray(m.linked) && m.linked.length > 0);
+          // An email a code can go to is a way back in too (docs/plans/one-way-in.md, step 3).
+          const has =
+            m.hasPin === true ||
+            m.hasPassword === true ||
+            m.hasEmailCode === true ||
+            (Array.isArray(m.linked) && m.linked.length > 0);
           setHasCredential(has);
           return;
         }
@@ -1093,7 +1098,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 style={{ paddingInline: 0, fontWeight: 600 }}
                 onClick={() => {
                   setKeepOpen(true);
-                  // The BODY scrolls (lib/pageScroll.ts); window.scrollTo moved nothing.
+                  // lib/pageScroll.ts: right whichever element scrolls.
                   scrollPageTo(0);
                 }}
               >

@@ -7,7 +7,7 @@ import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { PICK_KINDS, GEAR_SURFACE_KINDS, USAGE_KINDS, ERROR_KINDS, TIMING_KINDS, GUIDE_KINDS, isCheckInSource } from '@/lib/events';
 import { SKILLS } from '@/lib/assessment';
 import { rosterMembers } from '@/lib/roster';
-import { countGearSavers } from '@/lib/metricsMath';
+import { countGearSavers, countStatsReach, SKILL_SINCE } from '@/lib/metricsMath';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +20,8 @@ const GAME_THRESHOLD = 0.3;
  * in GET below — this is the default measurement window, and reading the
  * criterion against anything earlier is measuring a surface that wasn't there.
  */
-const CLOCK_RESTART = '2026-08-16';
+// Slice-0's clock lives with the shared counts, so the report reads the same window.
+const CLOCK_RESTART = SKILL_SINCE;
 
 const norm = (s: string) => s.trim().toLowerCase();
 
@@ -185,13 +186,12 @@ export async function GET(req: NextRequest) {
     /** How long opening took on real phones (docs/plans/startup-speed.md): opens timed and the typical one. */
     const appReadyMs: number[] = [];
     const gearSurfaceMembers = new Map<string, Set<string>>();
-    const statsOpeners = new Set<string>();
+    // Who opened Stats, and who came from Home's skill lead (docs/plans/home-skill-lead.md):
+    // counted by `countStatsReach`, the one count `clubMetrics` uses too.
+    let statsOpeners = 0;
+    let homeLeadTappers = 0;
     const checkInOpeners = new Set<string>();
     const openBySource: Record<string, number> = { strip: 0, trend: 0, learn: 0, unknown: 0 };
-    // Members whose Stats open was LED from Home (`stats_open { source: 'home' }`,
-    // docs/plans/home-skill-lead.md). A subset of `statsOpeners`; it is what
-    // says whether the card moved `reach` or was merely on screen.
-    const homeLeadTappers = new Set<string>();
 
     try {
       await ensureContainer('events', '/memberId');
@@ -265,10 +265,6 @@ export async function GET(req: NextRequest) {
             // stats_open" rather than to `checkin_open`, so the day a third
             // kind joins the guard above it would be silently counted as a
             // check-in open — a misclassification that reads as real data.
-            if (e.kind === 'stats_open') {
-              statsOpeners.add(rk);
-              if (e.source === 'home') homeLeadTappers.add(rk);
-            }
             if (e.kind === 'checkin_open') {
               checkInOpeners.add(rk);
               const src = isCheckInSource(e.source) ? e.source : 'unknown';
@@ -278,6 +274,7 @@ export async function GET(req: NextRequest) {
         }
       }
       anyTappers = taps.size;
+      ({ statsOpeners, homeLeadTappers } = countStatsReach(events, rosterKey, since));
       repeatTappers = [...taps.values()].filter((n) => n > 1).length;
     } catch (err) {
       // Container may not exist yet on a deployment that hasn't taken a tap.
@@ -413,8 +410,8 @@ export async function GET(req: NextRequest) {
        */
       skill: {
         rosterSize,
-        statsOpeners: statsOpeners.size,
-        homeLeadTappers: homeLeadTappers.size,
+        statsOpeners,
+        homeLeadTappers,
         checkInOpeners: checkInOpeners.size,
         openBySource,
         checkedInWindow,
@@ -422,8 +419,8 @@ export async function GET(req: NextRequest) {
         repeatCheckedIn,
         partialSaves,
         rates: {
-          reach: ratio(statsOpeners.size, rosterSize),
-          entry: ratio(checkInOpeners.size, statsOpeners.size),
+          reach: ratio(statsOpeners, rosterSize),
+          entry: ratio(checkInOpeners.size, statsOpeners),
           finish: ratio(checkedInWindow, checkInOpeners.size),
           repeat: ratio(repeatCheckedIn, rosterSize),
         },

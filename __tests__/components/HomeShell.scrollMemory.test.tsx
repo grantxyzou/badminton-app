@@ -8,10 +8,12 @@ import enMessages from '../../messages/en.json';
 /**
  * Each tab keeps its own scroll position (`.claude/rules/app-shell.md`).
  *
- * In this app the BODY is the scroller (`html, body { height: 100% }`), so
- * `window.scrollY` reads 0 however far down the page is, `window.scrollTo`
- * moves nothing, and a body `scroll` event never reaches a `window` listener
- * (`lib/pageScroll.ts`). The shell read and wrote the window until 2026-11-10,
+ * Until 2026-11-15 the BODY was the scroller (`html, body { height: 100% }`;
+ * `docs/plans/page-scroll.md`), so `window.scrollY` read 0 however far down
+ * the page was, `window.scrollTo` moved nothing, and a body `scroll` event
+ * never reached a `window` listener (`lib/pageScroll.ts`). A browser older
+ * than `overflow: clip` still has those rules, so this harder case is the one
+ * tested. The shell read and wrote the window until 2026-11-10,
  * so the memory was never written and every tab shared one position: Home
  * scrolled to 100, Stats opened at 100, and coming back to Home after Stats
  * landed wherever Stats had been, clamped to Home's height.

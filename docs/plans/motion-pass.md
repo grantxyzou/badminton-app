@@ -2,7 +2,7 @@
 
 **Track:** design-system standardization program (PRODUCT.md → Design Principle #5, "the details are the product"); requested directly by the owner on 2026-09-16
 **Status:** in-flight
-**Review on:** 2026-11-15 — of the six deferred items still open on 2026-10-15 (sheet height, keyboard lift, gear sub-page pop, conditionally-mounted sheets, register-switch skeletons, 3D canvas crossfade), which got a PR?
+**Review on:** 2026-12-13 — of the six deferred items (sheet height, keyboard lift, gear sub-page pop, conditionally-mounted sheets, register-switch skeletons, 3D canvas crossfade), has any got a PR? If still none, close the list as "won't do unless a player names one" rather than carrying it forward again.
 
 ## Problem
 
@@ -78,3 +78,14 @@ The four audits (Home/shell, Stats, Admin, Profile + sheets + primitives) ranked
 - **`AccessRequestsCard` collapsing its last row before the card goes**, **`KudosReceivedCard` fading in** (its `Frame` is defined inside render, so any class animation would replay on every render; hoist `Frame` first), **`StringTensionCard` / `SummaryGreeting` reserving height while loading**, **Racket avatar sheet chips with no selected style** (a missing state, not missing motion).
 - **Copy / share "Copied" swaps in admin receipts and setup** — the invite share got the crossfade; the rest were judged fine as text swaps.
 - **Stepper values ticking in the stringing request sheet** — rapid taps would restart the tick on every press.
+
+## Review outcome (2026-11-15)
+
+Read from `main`'s history since 2026-10-15 and the code: **none of the six deferred items got a PR.**
+
+- Sheet height: `BottomSheetBody` still has no `ResizeObserver`.
+- Keyboard lift: nothing in `components/BottomSheet/` reads `visualViewport`.
+- Conditionally-mounted sheets: `CheckInSheet` still returns `null` while closed (line 178), and `GearRegister` still mounts four sheets with `&&`.
+- The gear sub-page pop, the register-switch skeletons and the 3D canvas crossfade are untouched.
+
+The sheet work in that month went elsewhere: every sheet's ✕ became one button (#841), main buttons were pinned in the footer (#879), and fields were named (#911, #913). Nobody has reported any of the six from a phone. Carried forward once; the next review decides whether the list closes.

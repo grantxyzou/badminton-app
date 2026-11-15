@@ -275,7 +275,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
 
       <form onSubmit={handleAdvance}>
         <div className="glass-card p-5 space-y-3">
-          <p className="fs-sm text-gray-400">{firstSession ? "Creates your group's first session." : 'Creates a new session. The current session will be archived.'}</p>
+          <p className="fs-sm text-gray-400">{firstSession ? "Creates your club's first session." : 'Creates a new session. The current session will be archived.'}</p>
 
           <Label text="Title">
             <input

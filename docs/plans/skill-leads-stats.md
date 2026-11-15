@@ -4,7 +4,7 @@
 the measurement below is what makes that readout legible. This is not Track 1 (#102);
 Track 1 is what it unblocks.
 **Status:** shipped 2026-09-10 (measurement + door + chart); read 2026-10-15, see below
-**Review on:** 2026-11-15 — has the Home decision been reopened (see the 2026-10-15 reading), and has `reach` moved?
+**Review on:** 2027-01-15 — with `reach` passing (0.615 on 2026-11-15), the criterion's last row: has `repeat` (members with two or more check-ins ÷ roster, `GET /api/admin/slice0` → `skill.rates.repeat`; 0.167 on 2026-10-15) moved? If not, two months on from the pass, per-member skill tracking is not what this club wants and the check-in stops gating anything else.
 
 **Read 2026-10-15** (Grant, `GET /api/admin/slice0`, cohort since 2026-08-16): roster 36, Stats openers 17, check-in openers 8, checked in within the window 10, ever 12, repeat 6 → `reach` **0.472**, `entry` 0.471, `finish` 1.25, `repeat` 0.167. `entry` and `finish` pass their bars; `reach` fails its 0.5 bar by one person, so the `reach` row is the one that fires: **the fix is off-tab — reopen the "Home is out of scope" decision.** `repeat` is the lowest number but its row only applies once the other three pass. Two caveats on the measurement: `finish` above 1.0 means two check-ins reached the sheet without a recorded `checkin_open` (a mount site not firing `source`), and the route's top-level `verdict: kill` is the recCard/games criterion from Slice-0, not this one — do not act on it.
 
@@ -132,3 +132,9 @@ to say.
 | The chart | `components/stats/LevelTrendChart.tsx` (new) |
 | Hosts the chart; drops its own fetch and both sheet mounts | `components/stats/SkillTrendCard.tsx` |
 | Drops its sheet mount | `components/stats/LearnRegister.tsx` |
+
+## Review outcome (2026-11-15)
+
+**The Home decision was reopened** and shipped as `docs/plans/home-skill-lead.md`: one line on Home's account group leading to Stats.
+
+**`reach` moved from 0.472 to 0.615**: roster 39, Stats openers 24, 10 of them from that Home line. Read from `skill` on `GET /api/reports/metrics` (`countStatsReach`, #930), the same count slice0 makes. The `reach` row no longer fires. `entry` (0.471) and `finish` (1.25) passed on 2026-10-15, so the criterion's last row is the one left: `repeat` (0.167 then). The review moves two months on, as the criterion says, to read it. `repeat` is not in the report yet, so read slice0, or add it beside `skill` the way #930 added reach.

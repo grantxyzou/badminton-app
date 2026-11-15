@@ -24,7 +24,6 @@ import { POST as signupPost } from '@/app/api/auth/signup/route';
 import { GET as bandsGet } from '@/app/api/stats/club/bands/route';
 import { memberCookieValue } from './helpers';
 import { POST as playersPost } from '@/app/api/players/route';
-import { mintInvite } from '@/lib/invites';
 import { GET as settingsGet, PATCH as settingsPatch } from '@/app/api/admin/settings/route';
 
 /** A club that has never chosen how it runs reads as BPM runs (lib/clubRun.ts). */
@@ -234,22 +233,15 @@ describe('GET /api/members/me?name= (the sign-up probe)', () => {
   });
 });
 
-describe('email sign-up joins the group (POST /api/auth/signup)', () => {
-  it('flag ON: refuses a name whose reservation lingers, and joins a fresh account to this group', async () => {
+describe('email sign-up joins no group (POST /api/auth/signup)', () => {
+  it('flag ON: an account made to create a club is on no roster, and claims no name', async () => {
     on();
-    // Members-only: a new account needs an invite, so both attempts carry one.
     seedGroup('bpm', { ownerMemberId: ADMIN_MEMBER_ID });
-    const gone = seedMember('Ghost', { active: false });
-    await reserveRosterName('bpm', 'Ghost', gone.id);
-    const first = await mintInvite('bpm', ADMIN_MEMBER_ID);
-    const taken = await signupPost(makeRequest('POST', 'http://x/api/auth/signup', { name: 'Ghost', email: 'ghost@example.com', password: 'correct-horse-battery', inviteToken: first!.token }));
-    expect(taken.status).toBe(409);
-    const second = await mintInvite('bpm', ADMIN_MEMBER_ID);
-    const res = await signupPost(makeRequest('POST', 'http://x/api/auth/signup', { name: 'Fresh', email: 'fresh@example.com', password: 'correct-horse-battery', inviteToken: second!.token }));
+    // docs/plans/one-way-in.md, step 5: a new account joins a club only when
+    // an organiser lets it in, so sign-up reserves nothing in any club.
+    const res = await signupPost(makeRequest('POST', 'http://x/api/auth/signup', { name: 'Fresh', email: 'fresh@example.com', password: 'correct-horse-battery', noGroup: true }));
     expect(res.status).toBe(201);
-    const id = await resolveActiveMemberId('bpm', 'Fresh');
-    expect(id).not.toBeNull();
-    expect((await readMembership('bpm', id!))?.joinedVia).toBe('link');
+    expect(await resolveActiveMemberId('bpm', 'Fresh')).toBeNull();
   });
 });
 
