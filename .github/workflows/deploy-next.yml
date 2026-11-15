@@ -127,10 +127,11 @@ jobs:
           # Read server-side; nothing visible changes. See lib/flags.ts.
           NEXT_PUBLIC_FLAG_LEDGER_MIRROR: 'true'
           # Card payments through Stripe (docs/plans/card-pay-prototype.md;
-          # ROADMAP non-goal lifted 2026-11-12). OFF until STRIPE_SECRET_KEY and
-          # STRIPE_WEBHOOK_SECRET are in Azure App Settings; then 'true' and deploy.
+          # ROADMAP non-goal lifted 2026-11-12). ON since 2026-11-15: the live
+          # STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET are in Azure App Settings
+          # (Grant: "keys are in"), the webhook listening on connected accounts.
           # Fast off switch without a rebuild: delete STRIPE_SECRET_KEY.
-          NEXT_PUBLIC_FLAG_CARD_PAY: 'false'
+          NEXT_PUBLIC_FLAG_CARD_PAY: 'true'
           NEXT_PUBLIC_FLAG_STRINGING_INVOICE: 'false'
           # ON as of 2026-08-27: the admin bench (job list, job detail, intake)
           # and /api/stringing/*. Players see the shop only once its own
