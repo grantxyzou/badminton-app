@@ -1,7 +1,7 @@
 # One way in: the club link, an email code, and the organiser's yes
 
 **Track:** members-only (`docs/plans/members-only.md`), how a new person gets in, and the multi-group critical path's onboarding of a second club (`docs/plans/six-feathers-onboarding.md`)
-**Status:** in-flight (all six steps built 2026-11-14; not yet merged or deployed)
+**Status:** shipped 2026-11-14 (all six steps, #917)
 **Review on:** 2026-12-15 — since the account-first club link shipped, did any newcomer need the organiser to send them something (a new link, a code, "try again") to get in, and how many accounts were never approved?
 
 ## Problem
