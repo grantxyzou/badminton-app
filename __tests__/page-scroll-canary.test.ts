@@ -33,3 +33,11 @@ describe('the page scrolls, not the body', () => {
     expect(css).toMatch(/html\s*\{\s*min-height:\s*100lvh/);
   });
 });
+
+describe('the swipe back never moves the page', () => {
+  it('no swipe rule transforms or dims the page shell', () => {
+    // It slid the cards out from under the sticky bar and made the bar's
+    // frost see-through on the App Store app (2026-11-15).
+    expect(css).not.toMatch(/data-swiping[^{]*\[data-page-shell\]\s*\{/);
+  });
+});

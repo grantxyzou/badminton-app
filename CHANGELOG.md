@@ -11,6 +11,7 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 ## Swipe back that works, and the Stringing tab after a club switch (2026-11-15)
 
 - **Swiping back is easier and smoother.** It now counts from a thumb a little in from the edge, at any speed once you've dragged far enough, and with a natural arc. While you drag across, the page holds still instead of scrolling under your finger.
+- **The page no longer slides while you swipe back.** It used to shift right and dim under your finger, which made the top bar see-through and cut the cards off at the edge. Now only the green edge glow and the back arrow move. A swipe also no longer gets dropped when the page refreshes in the middle of it.
 - **Switching clubs updates the whole app.** After moving from a club with stringing off to one with it on, the Stringing tab could stay hidden until the app restarted. Every screen now re-reads the club you switched to, and a setting saved in one club is never applied to another.
 
 ## The page scrolls the ordinary way (2026-11-15)

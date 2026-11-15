@@ -51,22 +51,30 @@ export default function TopBar({ title, crumb, onBack: onBackProp, right, backLa
   // no Back, no edge swipe and no Escape closing it (components/primitives/PaneDetail.tsx).
   const besideList = useBesideList();
   const onBack = besideList ? undefined : onBackProp;
+  /* The listeners read the LATEST Back through a ref and are attached once
+     per "has a Back". Keyed on the function itself, a page that passes a new
+     arrow on every render (Roster's) tore them down and re-attached them
+     whenever its parent re-rendered, and the teardown's settle() dropped a
+     swipe in progress: one cause of "not always work" (2026-11-15). */
+  const backRef = useRef(onBack);
+  useEffect(() => { backRef.current = onBack; }, [onBack]);
+  const hasBack = !!onBack;
 
   // Scroll-condense (shared with PageHeader), on whichever element scrolls —
   // see useScrollCondensed.
   useScrollCondensed(ref);
 
   useEffect(() => {
-    if (!onBack) return;
+    if (!hasBack) return;
     const onKey = (e: KeyboardEvent) => {
       // An open sheet answers Escape first (BottomSheet listens on document,
       // which hears it before window) and marks it handled: Escape closes the
       // sheet, never the sheet AND the page under it.
-      if (e.key === 'Escape' && !e.defaultPrevented && isBarOnScreen(ref.current)) onBack();
+      if (e.key === 'Escape' && !e.defaultPrevented && isBarOnScreen(ref.current)) backRef.current?.();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onBack]);
+  }, [hasBack]);
 
   // Edge swipe-back gesture with live micro-interaction. A touch that
   // starts in the left 24px gutter and travels mostly horizontally
@@ -74,8 +82,8 @@ export default function TopBar({ title, crumb, onBack: onBackProp, right, backLa
   //
   // During the drag we write a 0..1 progress to `--swipe-back` on
   // `<html>` and toggle `data-swiping="true"`. CSS rules consume these
-  // to nudge the back chevron, glow the left edge, and dim the page —
-  // giving the gesture rubber-band feel without rendering a back-stack.
+  // to nudge the back chevron and glow the left edge. The page itself
+  // never moves (globals.css, "THE PAGE ITSELF DOES NOT MOVE").
   // On commit we navigate; on cancel we drop `data-swiping` so the
   // springback transition runs.
   // Edge swipe-back gesture with live micro-interaction. A touch that
@@ -87,13 +95,13 @@ export default function TopBar({ title, crumb, onBack: onBackProp, right, backLa
   //     transforms track the finger 1:1).
   //   - `data-swiping="release"` for ~260ms after release while the
   //     springback transition runs.
-  //   - attribute absent at rest. CRITICAL: the gating attribute is
-  //     what lets us *omit* `transform` on the page shell at rest —
-  //     even `translateX(0)` would establish a containing block and
-  //     break `position: fixed` descendants (the project's documented
-  //     "containing-block trap").
+  //   - attribute absent at rest, so the glow and the chevron's nudge
+  //     paint only during a gesture. Nothing ever transforms the page
+  //     shell: even `translateX(0)` would establish a containing block
+  //     and break `position: fixed` descendants (the "containing-block
+  //     trap"), and while dragging it broke the top bar's frost.
   useEffect(() => {
-    if (!onBack) return;
+    if (!hasBack) return;
     const root = document.documentElement;
     // Outlives the `--duration-normal` (250ms) release transitions in globals.css.
     const RELEASE_MS = 260;
@@ -190,7 +198,7 @@ export default function TopBar({ title, crumb, onBack: onBackProp, right, backLa
         setVar(1);
         requestAnimationFrame(() => {
           settle();
-          if (isBarOnScreen(ref.current)) onBack();
+          if (isBarOnScreen(ref.current)) backRef.current?.();
         });
       } else {
         beginRelease();
@@ -208,7 +216,7 @@ export default function TopBar({ title, crumb, onBack: onBackProp, right, backLa
       document.removeEventListener('touchcancel', onCancel);
       settle();
     };
-  }, [onBack]);
+  }, [hasBack]);
 
   return (
     <div ref={ref} className="bpm-topbar">

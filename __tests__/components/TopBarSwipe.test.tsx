@@ -102,6 +102,20 @@ describe('edge swipe back', () => {
     expect(touch('touchmove', 200, 300).defaultPrevented).toBe(false);
   });
 
+  it('survives the page re-rendering with a new Back mid-swipe (Roster passes a new one every render)', async () => {
+    const first = vi.fn();
+    const second = vi.fn();
+    const { rerender } = render(<TopBar title="Roster" onBack={() => first()} />);
+    touch('touchstart', 8, 400);
+    touch('touchmove', 80, 400);
+    rerender(<TopBar title="Roster" onBack={() => second()} />);
+    touch('touchmove', 150, 400);
+    touch('touchend', 150, 400);
+    await frame();
+    expect(first).not.toHaveBeenCalled();
+    expect(second).toHaveBeenCalledTimes(1);
+  });
+
   it('a touch away from the edge is never held or taken as Back', async () => {
     const onBack = page();
     touch('touchstart', 120, 400);
