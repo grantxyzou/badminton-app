@@ -2,7 +2,7 @@
 
 **Track:** Store launch — Sign in with Apple is required once the native app offers Google, and it rides the same hand-off, so it would open a second door into both gaps below.
 **Status:** shipped 2026-09-15 — #430, #435; pop-up sign-in confirmed on Grant's iPhone
-**Read 2026-11-12:** No follow-up on the Nov 6 stuck case; native app adoption is slow so few people have exercised the path. No ongoing reports of a stuck sign-in. Review again when native installs grow — if someone reports it, capture: which app, Google or Apple, what they saw.
+**Read 2026-11-15:** Grant does not remember which app the 2026-11-06 case used, or whether it was Google or Apple, so the kill criterion still cannot be judged; nothing new has been reported since. **Read 2026-11-12:** No follow-up on the Nov 6 stuck case; native app adoption is slow so few people have exercised the path. No ongoing reports of a stuck sign-in. Review again when native installs grow — if someone reports it, capture: which app, Google or Apple, what they saw.
 **Review on:** 2026-12-12 — any new stuck-sign-in reports in the native app?
 
 ## Problem
