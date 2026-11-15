@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
       at('purchases', readStringPurchases(scope)),
       at('catalog', readStringCatalog()),
       // Every job, archived included: a racket strung last winter still used a set.
-      at('jobs', scope.query<StringingJob>('stringingJobs', { select: 'c.id, c.stringLabel, c.status, c.archivedAt, c.stringColor' })),
+      at('jobs', scope.query<StringingJob>('stringingJobs', { select: 'c.id, c.stringLabel, c.status, c.archivedAt, c.stringColor, c.ownString' })),
       // A deleted job's set stays used (`recordStringUse`).
       at('uses', readStringUses(scope)),
     ]);

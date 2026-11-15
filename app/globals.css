@@ -5629,6 +5629,14 @@ html:root .glass-card.bpm-job-card--open {
   background: rgba(0, 0, 0, 0.03);
   border-color: rgba(0, 0, 0, 0.2);
 }
+/* Ticked, in light mode too. The rule above has the same specificity as
+   `:checked` and comes later, so without this a ticked box stayed the pale
+   unticked fill in light mode (found on the bench's "Their own string",
+   docs/plans/string-stock-audit-fixes.md; the Roster's boxes had it too). */
+[data-theme="light"] .cc-checkbox input[type="checkbox"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
 [data-theme="light"] .cc-checkbox:hover input[type="checkbox"]:not(:checked) {
   border-color: rgba(0, 0, 0, 0.35);
 }

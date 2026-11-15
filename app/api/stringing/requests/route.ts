@@ -147,7 +147,11 @@ export async function POST(req: NextRequest) {
       status: 'requested',
       racketLabel,
       stringLabel,
-      ...(stringColor ? { stringColor } : {}),
+      // "I have my own": the stock counts no set for it
+      // (docs/plans/string-stock-audit-fixes.md). A colour is the shelf's
+      // business, so an own-string request keeps none.
+      ...(stringColor && body.ownString !== true ? { stringColor } : {}),
+      ...(body.ownString === true ? { ownString: true } : {}),
       tensionMains: body.tensionMains,
       tensionCrosses: body.tensionCrosses,
       method: 'Zach · 2 strings, 4 knots',

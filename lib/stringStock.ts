@@ -156,9 +156,10 @@ export interface StringUse {
   deletedAt: string;
 }
 
-/** A job's string has gone in: deleting it must leave its set counted. */
-export function usesASet(job: Pick<StringingJob, 'status'>): boolean {
-  return STRUNG_STATUSES.has(job.status);
+/** A job's string has gone in, and it was the club's: deleting it must leave
+ *  its set counted. A player's own string never used one. */
+export function usesASet(job: Pick<StringingJob, 'status' | 'ownString'>): boolean {
+  return STRUNG_STATUSES.has(job.status) && job.ownString !== true;
 }
 
 export async function recordStringUse(scope: GroupScope, job: Pick<StringingJob, 'id' | 'stringLabel' | 'stringColor'>): Promise<void> {
@@ -181,7 +182,7 @@ export async function readStringUses(scope: GroupScope): Promise<StringUse[]> {
   return rows.filter((r) => r.kind === STRING_USE_KIND);
 }
 
-type CountedJob = Pick<StringingJob, 'id' | 'stringLabel' | 'status' | 'archivedAt' | 'stringColor'>;
+type CountedJob = Pick<StringingJob, 'id' | 'stringLabel' | 'status' | 'archivedAt' | 'stringColor' | 'ownString'>;
 
 /** The jobs the stock counts: every job still stored, plus each deleted one's set. */
 export function withDeletedUses(jobs: readonly CountedJob[], uses: readonly StringUse[]): CountedJob[] {

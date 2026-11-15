@@ -462,6 +462,12 @@ export default function StringShelfSheet(props: Props) {
                     </span>
                   )}
                 </div>
+                {/* Strung past every metre logged: almost always a reel nobody
+                    logged (docs/plans/string-stock-audit-fixes.md). Said here,
+                    where "Log a purchase" is, instead of reading as "None left". */}
+                {(line.overdrawnSets ?? 0) > 0 && (
+                  <p className="field-warn" style={{ margin: 0 }}>{t('shelf.sheet.overdrawn', { count: line.overdrawnSets })}</p>
+                )}
                 {/* Per colour, once a purchase says one (docs/plans/string-stock-by-colour.md):
                     what the request sheet offers a member is read from these. */}
                 {(line.byColour?.length ?? 0) > 0 && (

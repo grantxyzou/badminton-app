@@ -56,8 +56,9 @@ export async function readShelfExtras(
     readStringPurchases(scope),
     readStringCatalog(),
     // Every job, archived included: a racket strung last winter still used a set.
-    // `stringColor` so a strung job uses up its own colour's pool.
-    scope.query<StringingJob>('stringingJobs', { select: 'c.id, c.stringLabel, c.status, c.archivedAt, c.stringColor' }),
+    // `stringColor` so a strung job uses up its own colour's pool; `ownString`
+    // so a player's own string takes nothing off the shelf.
+    scope.query<StringingJob>('stringingJobs', { select: 'c.id, c.stringLabel, c.status, c.archivedAt, c.stringColor, c.ownString' }),
     readClubGearDocs(groupId),
     readStringUses(scope),
   ]);

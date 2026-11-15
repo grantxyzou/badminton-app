@@ -1151,6 +1151,11 @@ export interface StringingJob {
    *  is matched by `labelKey(stringLabel)`, so "BG80 · Yellow" in the label
    *  would stop the job counting against its reel. Absent = not chosen. */
   stringColor?: string;
+  /** The player brought the string (the request sheet's "I have my own", or
+   *  the bench marking it): the job uses no set from the club's shelf
+   *  (docs/plans/string-stock-audit-fixes.md). Additive since 2026-11-15;
+   *  absent on every older job, which counts as the club's string. */
+  ownString?: boolean;
   tensionMains: number;
   tensionCrosses: number;
   /** Free text, e.g. "Zach · 2 strings, 4 knots". A note, not an enum: the
@@ -1296,6 +1301,8 @@ export interface StringerJob {
   racketLabel: string;
   stringLabel: string;
   stringColor?: string;
+  /** The player's own string goes in, not one from the reel. Absent = the club's. */
+  ownString?: boolean;
   tensionMains: number;
   tensionCrosses: number;
   method: string;

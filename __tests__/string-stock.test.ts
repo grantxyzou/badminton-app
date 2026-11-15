@@ -36,7 +36,7 @@ describe('summarizeStringStock', () => {
     // Offered, used once, never bought: a line with no price and nothing left.
     expect(ex).toMatchObject({ label: 'Exbolt 63', catalogId: null, usedSets: 1, purchasedMetres: 0, remainingMetres: 0, costPerSetCents: null, usedCostCents: null });
     expect(s.unmatched).toEqual([{ label: 'Aerobite', usedSets: 1 }]);
-    expect(s.totals).toEqual({ purchasedCostCents: 19000, usedSets: 3, usedCostCents: 1000, remainingValueCents: 19000 });
+    expect(s.totals).toEqual({ overdrawnSets: 0, purchasedCostCents: 19000, usedSets: 3, usedCostCents: 1000, remainingValueCents: 19000 });
   });
 
   it('stock for a string no longer offered still shows, and remaining never goes below zero', () => {

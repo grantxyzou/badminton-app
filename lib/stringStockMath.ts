@@ -53,8 +53,16 @@ export interface StringStockLine {
    */
   byColour: StringColourStock[];
   /** Sets left in the untagged ("Mixed / not sure") pool: untagged metres
-   *  less every strung job that no tagged colour took. */
+   *  less every strung job that no tagged colour took, and less what a tagged
+   *  colour used past its own reels. */
   mixedRemainingSets: number;
+  /**
+   * Whole sets strung past every metre logged — almost always a reel nobody
+   * logged (docs/plans/string-stock-audit-fixes.md). 0 until a purchase
+   * exists: a string with none logged already reads "No stock logged".
+   * ADDITIVE on the admin stock read.
+   */
+  overdrawnSets: number;
 }
 
 export interface StringColourStock {
@@ -68,7 +76,7 @@ export interface StringStockSummary {
   lines: StringStockLine[];
   /** Jobs whose label matches no offered string, by label. */
   unmatched: Array<{ label: string; usedSets: number }>;
-  totals: { purchasedCostCents: number; usedSets: number; usedCostCents: number; remainingValueCents: number };
+  totals: { purchasedCostCents: number; usedSets: number; usedCostCents: number; remainingValueCents: number; overdrawnSets: number };
 }
 
 export function summarizeStringStock(input: {
@@ -82,8 +90,9 @@ export function summarizeStringStock(input: {
    */
   aliases?: Readonly<Record<string, string>>;
   purchases: readonly StringPurchase[];
-  /** `stringColor` is optional: a job read without it counts in the mixed pool. */
-  jobs: readonly Pick<StringingJob, 'stringLabel' | 'status' | 'archivedAt' | 'stringColor'>[];
+  /** `stringColor` is optional: a job read without it counts in the mixed pool.
+   *  `ownString`: the player brought the string, so the job uses no set. */
+  jobs: readonly Pick<StringingJob, 'stringLabel' | 'status' | 'archivedAt' | 'stringColor' | 'ownString'>[];
   catalog: ReadonlyMap<string, CatalogItem>;
   /** The club's own colours, so a job's "Teal" finds `custom:…`'s pool. */
   customColours?: readonly CustomColour[];
@@ -108,7 +117,7 @@ export function summarizeStringStock(input: {
       purchasedMetres: 0, purchasedCostCents: 0, purchases: 0, purchaseIds: [],
       usedSets: 0, usedMetres: 0, remainingMetres: 0, remainingSets: 0,
       costPerSetCents: null, usedCostCents: null,
-      byColour: [], mixedRemainingSets: 0,
+      byColour: [], mixedRemainingSets: 0, overdrawnSets: 0,
     });
   }
 
@@ -123,9 +132,16 @@ export function summarizeStringStock(input: {
     return aliasTo.get(k) ?? k;
   };
 
-  // Latest purchase per string decides the price; purchases sorted by date then createdAt.
+  // The latest purchase per string decides the price — but not a one-off
+  // (docs/plans/string-stock-audit-fixes.md): the latest PAID REEL wins, else
+  // the latest paid purchase of any kind, else the latest purchase (a string
+  // only ever given to the club costs $0). A single retail set bought after a
+  // reel, or a gifted reel logged last, used to set the price of every set.
+  // Purchases sorted by date then createdAt, so the last write per map wins.
   const sorted = input.purchases.slice().sort((a, b) => (a.date + a.createdAt < b.date + b.createdAt ? -1 : 1));
-  const latestPerMetre = new Map<string, number>();
+  const reelPerMetre = new Map<string, number>();
+  const paidPerMetre = new Map<string, number>();
+  const anyPerMetre = new Map<string, number>();
   // An offered label is renamed more often than a reel changes: "BG65" on the
   // shelf becomes "Yonex BG65 white" and every purchase logged under the old
   // spelling would read as a different string, leaving the new one "unknown".
@@ -149,7 +165,7 @@ export function summarizeStringStock(input: {
         purchasedMetres: 0, purchasedCostCents: 0, purchases: 0, purchaseIds: [],
         usedSets: 0, usedMetres: 0, remainingMetres: 0, remainingSets: 0,
         costPerSetCents: null, usedCostCents: null,
-        byColour: [], mixedRemainingSets: 0,
+        byColour: [], mixedRemainingSets: 0, overdrawnSets: 0,
       };
       byKey.set(key, line);
     }
@@ -158,7 +174,14 @@ export function summarizeStringStock(input: {
     line.purchasedCostCents += p.totalCostCents;
     line.purchases += 1;
     line.purchaseIds.push(p.id);
-    if (metres > 0) latestPerMetre.set(key, p.totalCostCents / metres);
+    if (metres > 0) {
+      const perMetre = p.totalCostCents / metres;
+      anyPerMetre.set(key, perMetre);
+      if (p.totalCostCents > 0) {
+        paidPerMetre.set(key, perMetre);
+        if (p.unit === 'reel') reelPerMetre.set(key, perMetre);
+      }
+    }
     const pool = poolsOf(key);
     if (isReelColourId(p.color)) pool.colourMetres.set(p.color, (pool.colourMetres.get(p.color) ?? 0) + metres);
     else pool.mixedMetres += metres;
@@ -192,6 +215,9 @@ export function summarizeStringStock(input: {
   const unmatched = new Map<string, { label: string; usedSets: number }>();
   for (const j of input.jobs) {
     if (!STRUNG_STATUSES.has(j.status)) continue;
+    // The player's own string went in, not the club's (the request sheet's
+    // "I have my own", or the bench marking it): no set came off the shelf.
+    if (j.ownString === true) continue;
     const own = keyOf(j.stringLabel ?? '');
     if (!own) continue;
     const key = byKey.has(own) ? own : renamed.get(own) ?? byOtherName(j.stringLabel) ?? own;
@@ -211,32 +237,53 @@ export function summarizeStringStock(input: {
 
   const lines = [...byKey.entries()].map(([lineKey, line]) => {
     const pool = poolsOf(lineKey);
-    const setsLeft = (metres: number, used: number) => Math.floor(Math.max(0, metres - used * line.setMetres) / line.setMetres);
+    const s = line.setMetres;
     const tagged = [...pool.colourMetres.keys()];
     // Palette colours in palette order, then sets and club colours sorted by id
     // (combo:… before custom:…), so the order never depends on which of two
     // purchases logged in the same millisecond was read first.
     const order = [...STRING_PALETTE.filter((c) => pool.colourMetres.has(c)), ...tagged.filter((c) => !isStringColourId(c)).sort()];
-    const byColour: StringColourStock[] = order.map((color) => {
-      const purchasedMetres = pool.colourMetres.get(color) ?? 0;
-      const usedSets = pool.colourUsed.get(color) ?? 0;
-      return { color, purchasedMetres, usedSets, remainingSets: setsLeft(purchasedMetres, usedSets) };
-    });
-    const mixedRemainingSets = setsLeft(pool.mixedMetres, pool.mixedUsed);
+    // A tagged colour that runs dry takes the rest from the MIXED pool — the
+    // one pool that could have held that colour (docs/plans/string-stock-
+    // audit-fixes.md). What the mixed pool cannot cover either is string
+    // nobody logged: `overdrawnSets`. Never from another tagged colour, whose
+    // reel we know was something else.
+    let spillMetres = 0;
+    const colourLeft = new Map<ReelColourId, number>();
+    for (const color of order) {
+      const bought = pool.colourMetres.get(color) ?? 0;
+      const used = (pool.colourUsed.get(color) ?? 0) * s;
+      colourLeft.set(color, Math.max(0, bought - used));
+      spillMetres += Math.max(0, used - bought);
+    }
+    const mixedUsedMetres = pool.mixedUsed * s + spillMetres;
+    const mixedLeft = Math.max(0, pool.mixedMetres - mixedUsedMetres);
+    const unloggedMetres = Math.max(0, mixedUsedMetres - pool.mixedMetres);
+    const byColour: StringColourStock[] = order.map((color) => ({
+      color,
+      purchasedMetres: pool.colourMetres.get(color) ?? 0,
+      usedSets: pool.colourUsed.get(color) ?? 0,
+      remainingSets: Math.floor((colourLeft.get(color) ?? 0) / s),
+    }));
+    const mixedRemainingSets = Math.floor(mixedLeft / s);
+    // The line's metres left are the SUM of its pools, so the colours can
+    // never add up to more than the total. With no tagged purchase this is
+    // exactly what it always was: bought less used, never below zero.
+    const remainingMetres = [...colourLeft.values()].reduce((a, b) => a + b, mixedLeft);
     const key = labelKey(line.label);
-    const perMetre = latestPerMetre.get(key);
-    const costPerSetCents = perMetre === undefined ? null : Math.round(perMetre * line.setMetres);
-    const usedMetres = line.usedSets * line.setMetres;
-    const remainingMetres = Math.max(0, line.purchasedMetres - usedMetres);
+    const perMetre = reelPerMetre.get(key) ?? paidPerMetre.get(key) ?? anyPerMetre.get(key);
+    const costPerSetCents = perMetre === undefined ? null : Math.round(perMetre * s);
     return {
       ...line,
-      usedMetres,
+      usedMetres: line.usedSets * s,
       remainingMetres,
-      remainingSets: Math.floor(remainingMetres / line.setMetres),
+      remainingSets: Math.floor(remainingMetres / s),
       costPerSetCents,
       usedCostCents: costPerSetCents === null ? null : line.usedSets * costPerSetCents,
       byColour,
       mixedRemainingSets,
+      // Whole sets: a few metres short is a reel's slack, not a missing reel.
+      overdrawnSets: line.purchases > 0 ? Math.floor(unloggedMetres / s) : 0,
     };
   });
 
@@ -246,8 +293,9 @@ export function summarizeStringStock(input: {
       usedSets: t.usedSets + l.usedSets,
       usedCostCents: t.usedCostCents + (l.usedCostCents ?? 0),
       remainingValueCents: t.remainingValueCents + (l.costPerSetCents === null ? 0 : Math.round((l.remainingMetres / l.setMetres) * l.costPerSetCents)),
+      overdrawnSets: t.overdrawnSets + l.overdrawnSets,
     }),
-    { purchasedCostCents: 0, usedSets: 0, usedCostCents: 0, remainingValueCents: 0 },
+    { purchasedCostCents: 0, usedSets: 0, usedCostCents: 0, remainingValueCents: 0, overdrawnSets: 0 },
   );
   return { lines, unmatched: [...unmatched.values()].sort((a, b) => b.usedSets - a.usedSets), totals };
 }
