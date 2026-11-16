@@ -45,13 +45,14 @@ Sources: developer.android.com/develop/adaptive-apps/guides/foldables/support-fo
 
 ## Questions for Grant before step 2
 
-- Which Fold model and One UI version is the phone? (Settings → About phone.)
-- Held open in the hand, or on the bench? The hinge split already serves the bench.
-- Does the outer screen need voice (step 3), or is tapping on the inner screen enough?
+- ~~Which Fold model and One UI version is the phone?~~ Answered 2026-11-16, see Decisions.
+- ~~Held open in the hand, or on the bench?~~ Answered 2026-11-16, see Decisions.
+- Does the outer screen need voice (step 3), or is tapping on the inner screen enough? Open.
 
 ## Decisions
 
-<Appended as they are made.>
+- **The phone is a Galaxy Z Fold 8 on One UI 9** (Grant, 2026-11-16). Newer than anything Google or Samsung document for dual-screen mode (Google names only the Pixel Fold; Samsung documents rear display mode from One UI 6.0), so the docs neither promise nor rule it out. Step 1's probe is still the only answer.
+- **Held open in the hand** (Grant, 2026-11-16), not on the bench. The hinge split from foldable-layout step 3 does not serve this: with the phone open flat in the hand, the outer screen is the only one facing the court. This is the case the plan exists for.
 
 ## Shape
 
