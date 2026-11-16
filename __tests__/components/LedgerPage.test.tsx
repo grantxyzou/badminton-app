@@ -137,7 +137,7 @@ describe('<LedgerPage />', () => {
     expect(screen.getByText('ledger ≠ app')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'See what' }));
     await waitFor(() => expect(screen.getByText(/Paid, but the ledger still shows it owed/)).toBeTruthy());
-    expect(screen.getByText(/ledger \$15\.00 · app \$0\.00/)).toBeTruthy();
+    expect(screen.getByText(/Cara has paid this, but the ledger still shows \$15\.00 owed/)).toBeTruthy();
   });
 
   it('Add expense posts cents, note, date and category, then refetches', async () => {
