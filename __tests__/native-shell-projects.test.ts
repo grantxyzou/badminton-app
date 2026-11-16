@@ -189,14 +189,14 @@ describe('ios/', () => {
     expect(plist).toContain('<key>NSPhotoLibraryUsageDescription</key>');
   });
 
-  it('registers the fold plugin, in the target, reading the division region on iOS 27', () => {
+  it('registers the fold plugin, in the target, reading the division region on iOS 27.1 (where the SDK declares it)', () => {
     expect(read('ios', 'App', 'App', 'MainViewController.swift')).toContain('registerPluginInstance(BpmFoldPlugin())');
     const pbx = read('ios', 'App', 'App.xcodeproj', 'project.pbxproj');
     expect(pbx).toMatch(/\/\* BpmFoldPlugin\.swift in Sources \*\/,/);
     expect(pbx).toMatch(/path = BpmFoldPlugin\.swift;/);
     const plugin = read('ios', 'App', 'App', 'BpmFoldPlugin.swift');
     expect(plugin).toContain('jsName = "BpmFold"');
-    expect(plugin).toContain('#available(iOS 27.0, *)');
+    expect(plugin).toContain('#available(iOS 27.1, *)');
     expect(plugin).toContain('reservedRegions(kind: .division');
     // The three answers lib/fold.ts reads, in the web posture API's words.
     for (const posture of ['"folded"', '"flat"', '"unknown"']) expect(plugin).toContain(`"posture": ${posture}`);

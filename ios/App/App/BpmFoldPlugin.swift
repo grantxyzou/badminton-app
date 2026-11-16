@@ -6,13 +6,14 @@ import UIKit
 ///
 /// On iPhone Duo, UIKit describes the hinge as a DIVISION reserved region on
 /// any view it crosses — active only while the device is partly open, absent
-/// when it is flat or closed (`UIView.reservedRegions(kind:options:)`, iOS 27).
+/// when it is flat or closed (`UIView.reservedRegions(kind:options:)`, iOS 27.1:
+/// the SDK marks it 27.1, and a 27.0 check failed the archive, 2026-11-16).
 /// This plugin reads it off the WebView and answers in the WebView's own
 /// coordinates, which are the page's CSS pixels, so `lib/fold.ts` can lay the
 /// courtside scoreboard out on either side of it.
 ///
 /// `posture` is the web Device Posture API's vocabulary: `folded` while a
-/// division is active, `flat` otherwise, `unknown` on iOS before 27 (the
+/// division is active, `flat` otherwise, `unknown` on iOS before 27.1 (the
 /// region API does not exist there, and nothing folds). There is no event for
 /// a region changing that reaches a WebView, so the page asks again while the
 /// scoreboard is open (`NATIVE_FOLD_POLL_MS`).
@@ -36,7 +37,7 @@ public class BpmFoldPlugin: CAPPlugin, CAPBridgedPlugin {
                 call.resolve(["posture": "unknown"])
                 return
             }
-            if #available(iOS 27.0, *) {
+            if #available(iOS 27.1, *) {
                 // Active regions only (the default): an inactive division is a
                 // flat phone, which is what `flat` says.
                 let divisions = view.reservedRegions(kind: .division, options: [])
