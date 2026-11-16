@@ -241,3 +241,25 @@ describe('GAP 6 — FIXED: an organiser un-ticks a row paid with store credit th
     expect(await codes()).toEqual([]);
   });
 });
+
+describe('GAP 7 — FIXED: "paid" cannot clear a resplit cover past the guard an uncover meets', () => {
+  it('on a settled bill someone has paid, paid: true on the resplit-covered row answers 409 paid_would_change and the row keeps its cover', async () => {
+    await doSettle();
+    const linId = String(rowOf('Lin').id);
+    // Lin is covered by resplit: Viktor carries the whole $60.
+    expect((await patchPlayer(makeAdminRequest('PATCH', `${BASE}/players`, { id: linId, writtenOff: true, coverMode: 'resplit' }))).status).toBe(200);
+    expect((await settle(makeAdminRequest('POST', `${BASE}/session/settle`, { resettle: true }))).status).toBe(200);
+    expect(rowOf('Viktor').owedAmount).toBe(60);
+    expect(rowOf('Lin')).toMatchObject({ owedAmount: 0, writtenOff: true, coverMode: 'resplit' });
+    await pay(String(rowOf('Viktor').id));
+
+    // An uncover is refused here (the bill Viktor paid would move); so is the
+    // paid tap, which clears the cover through the paid mutex — the same move.
+    expect((await patchPlayer(makeAdminRequest('PATCH', `${BASE}/players`, { id: linId, writtenOff: false }))).status).toBe(409);
+    const res = await patchPlayer(makeAdminRequest('PATCH', `${BASE}/players`, { id: linId, paid: true }));
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: 'paid_would_change' });
+    expect(rowOf('Lin')).toMatchObject({ paid: false, writtenOff: true, coverMode: 'resplit', owedAmount: 0 });
+    expect(await codes()).toEqual([]);
+  });
+});

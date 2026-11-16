@@ -103,10 +103,10 @@ const rowStyle = {
   color: 'inherit',
 };
 
-function Section({ title, subtitle, action, children, ariaLabel }: { title: string; subtitle?: string; action?: React.ReactNode; children: React.ReactNode; ariaLabel?: string }) {
+function Section({ title, subtitle, action, badge, children, ariaLabel }: { title: string; subtitle?: string; action?: React.ReactNode; badge?: React.ReactNode; children: React.ReactNode; ariaLabel?: string }) {
   return (
     <section className="glass-card p-5 flex flex-col gap-3" aria-label={ariaLabel ?? title}>
-      <CardHeader title={title} subtitle={subtitle} action={action} compact />
+      <CardHeader title={title} subtitle={subtitle} action={action} badge={badge} compact />
       {children}
     </section>
   );
@@ -245,6 +245,18 @@ export default function LedgerPage({ onBack, onOpenSession, onOpenPastSessions }
     : mismatched
       ? `${reconcile.mismatches}${reconcile.truncated ? '+' : ''} ${reconcile.mismatches === 1 ? 'line doesn’t' : 'lines don’t'} match · checked ${ago(reconcile.lastAt)}`
       : `Ledger checked ${ago(reconcile.lastAt)} · clean`;
+  // THE LEDGER-SOURCED FIGURES SAY SO WHEN THEY ARE IN DOUBT (docs/plans/
+  // money-audit.md, transparency item 3). Collected and Net come from the
+  // ledger; Still owed is live from the rows. While the check is red or
+  // stale, the two can disagree, and a figure read on its own has no way to
+  // say which to trust — so the ledger's own cards carry the mark, and the
+  // live card carries none, because it is the one that is right.
+  const unchecked = !reconcile || mismatched || stale;
+  const checkBadge = unchecked ? (
+    <StatusBadge variant="phase" tone="amber">
+      {mismatched ? `${reconcile!.mismatches}${reconcile!.truncated ? '+' : ''} ${reconcile!.mismatches === 1 ? 'line' : 'lines'} off` : 'Unchecked'}
+    </StatusBadge>
+  ) : undefined;
 
   return (
     <div className="space-y-3 motion-busy" aria-busy={loading || undefined}>
@@ -280,7 +292,7 @@ export default function LedgerPage({ onBack, onOpenSession, onOpenPastSessions }
       </div>
 
       {/* ── In and out ── */}
-      <Section title="In and out" subtitle={`${money(data.covered)} covered by you · ${bySession.length} session${bySession.length === 1 ? '' : 's'} settled`}>
+      <Section title="In and out" subtitle={`${money(data.covered)} covered by you · ${bySession.length} session${bySession.length === 1 ? '' : 's'} settled`} badge={checkBadge}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 'var(--space-3)' }}>
           <div className="cc-tile cc-tile-static cc-tile-money">
             <span className="num">{fmtMoneyTile(collected.total)}</span>
@@ -295,10 +307,17 @@ export default function LedgerPage({ onBack, onOpenSession, onOpenPastSessions }
             <span className="lbl">Net</span>
           </div>
         </div>
+        {unchecked && (
+          <Muted>
+            {mismatched
+              ? `Collected and Net come from the ledger, which disagrees with what people see on ${reconcile!.mismatches}${reconcile!.truncated ? '+' : ''} ${reconcile!.mismatches === 1 ? 'line' : 'lines'}. Still owed below is live and right; tap See what to fix the ledger.`
+              : `Collected and Net come from the ledger, which hasn’t been checked against what people see ${reconcile ? `since ${ago(reconcile.lastAt)}` : 'yet'}. Still owed below is live and right.`}
+          </Muted>
+        )}
       </Section>
 
       {/* ── Collected by ── */}
-      <Section title="Collected by">
+      <Section title="Collected by" badge={checkBadge}>
         {collected.total === 0 ? (
           <Muted>Nothing collected in this window.</Muted>
         ) : (
@@ -308,7 +327,7 @@ export default function LedgerPage({ onBack, onOpenSession, onOpenPastSessions }
             <BarRow label="Marked paid" value={share(collected.manual, collected.total)} detail={money(collected.manual)} />
             <BarRow label="Store credit" value={share(collected.credit, collected.total)} detail={money(collected.credit)} />
             {(collected.card ?? 0) > 0 && (
-              <BarRow label="Card" value={share(collected.card ?? 0, collected.total)} detail={money(collected.card ?? 0)} />
+              <BarRow label="Card · before Stripe’s fee" value={share(collected.card ?? 0, collected.total)} detail={money(collected.card ?? 0)} />
             )}
           </div>
         )}
@@ -318,7 +337,6 @@ export default function LedgerPage({ onBack, onOpenSession, onOpenPastSessions }
       <Section
         title="Still owed"
         subtitle="Right now, everyone — finalized bills only, not just this range"
-        action={mismatched ? <StatusBadge variant="phase" tone="amber">ledger ≠ app</StatusBadge> : undefined}
       >
         {outstanding.total === 0 ? (
           <p className="fs-md" style={{ margin: 0, color: 'var(--accent)', fontWeight: 600 }}>

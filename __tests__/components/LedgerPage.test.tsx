@@ -87,6 +87,9 @@ describe('<LedgerPage />', () => {
     expect(within(by).getByText('E-transfer, matched on its own')).toBeTruthy();
     expect(within(by).getByText('$120.00')).toBeTruthy();
     expect(within(by).getByText('Store credit')).toBeTruthy();
+    // A clean, recent check: the ledger's figures carry no doubt.
+    expect(screen.queryByText('Unchecked')).toBeNull();
+    expect(screen.queryByText(/lines? off/)).toBeNull();
 
     const owed = screen.getByRole('region', { name: 'Still owed' });
     expect(within(owed).getByText('$15')).toBeTruthy(); // the tile, short
@@ -114,15 +117,28 @@ describe('<LedgerPage />', () => {
     expect(screen.getByText(/not income until you settle/i)).toBeTruthy();
   });
 
-  it('reconcile null reads "not checked yet"; mismatches read amber, badge the owed card, and open the sheet', async () => {
+  it('reconcile null reads "not checked yet" and marks the ledger figures Unchecked; mismatches read amber, mark them "N lines off", and open the sheet', async () => {
     mockFetch({ ledger: { ...HAPPY, reconcile: null } });
     render(<LedgerPage onBack={() => {}} />);
     await waitFor(() => expect(screen.getByText(/Ledger not checked yet/)).toBeTruthy());
-    expect(screen.queryByText('ledger ≠ app')).toBeNull();
+    // The mark sits on the LEDGER's cards (In and out, Collected by) — never on
+    // Still owed, which is live from the rows and the figure to trust
+    // (docs/plans/money-audit.md, transparency item 3).
+    expect(within(screen.getByRole('region', { name: 'In and out' })).getByText('Unchecked')).toBeTruthy();
+    expect(within(screen.getByRole('region', { name: 'Collected by' })).getByText('Unchecked')).toBeTruthy();
+    expect(within(screen.getByRole('region', { name: 'Still owed' })).queryByText('Unchecked')).toBeNull();
+    expect(screen.getByText(/hasn’t been checked against what people see yet\. Still owed below is live and right/)).toBeTruthy();
+    cleanup();
+
+    // Stale: a clean check, but three days old.
+    mockFetch({ ledger: { ...HAPPY, reconcile: { ...HAPPY.reconcile, lastAt: new Date(Date.now() - 3 * 86_400_000).toISOString() } } });
+    render(<LedgerPage onBack={() => {}} />);
+    await waitFor(() => expect(screen.getAllByText('Unchecked')).toHaveLength(2));
+    expect(screen.getByText(/hasn’t been checked against what people see since 3 days ago/)).toBeTruthy();
     cleanup();
 
     mockFetch({
-      ledger: { ...HAPPY, reconcile: { ...HAPPY.reconcile, mismatches: 2 } },
+      ledger: { ...HAPPY, collected: { ...HAPPY.collected, card: 1000, total: 25000 }, reconcile: { ...HAPPY.reconcile, mismatches: 2 } },
       reconcile: {
         lastAt: HAPPY.reconcile.lastAt,
         checked: 9,
@@ -134,7 +150,11 @@ describe('<LedgerPage />', () => {
     render(<LedgerPage onBack={() => {}} />);
     await waitFor(() => expect(screen.getByRole('status')).toBeTruthy());
     expect(screen.getByRole('status').textContent).toMatch(/2 lines don’t match/);
-    expect(screen.getByText('ledger ≠ app')).toBeTruthy();
+    expect(screen.getAllByText('2 lines off')).toHaveLength(2);
+    expect(within(screen.getByRole('region', { name: 'Still owed' })).queryByText(/lines off/)).toBeNull();
+    expect(screen.getByText(/disagrees with what people see on 2 lines\. Still owed below is live and right/)).toBeTruthy();
+    // Card money is what Stripe charged, not what it paid out (Stripe item 4).
+    expect(screen.getByText('Card · before Stripe’s fee')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'See what' }));
     await waitFor(() => expect(screen.getByText(/Paid, but the ledger still shows it owed/)).toBeTruthy());
     expect(screen.getByText(/Cara has paid this, but the ledger still shows \$15\.00 owed/)).toBeTruthy();

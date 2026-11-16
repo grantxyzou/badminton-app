@@ -1124,10 +1124,15 @@ export async function PATCH(req: NextRequest) {
     // difference never collected (audit, 2026-11-05). Refused before any
     // write, so the cover and the bill never disagree; covering it yourself
     // ("absorb") moves nobody and stays open.
+    // `paid: true` alone clears a cover through the paid mutex above, so it
+    // is the same move as an uncover and takes the same check (audit gap 7,
+    // 2026-11-16): without it the row read "paid $0" past the guard.
     const wasResplit = existing.writtenOff === true && existing.coverMode === 'resplit';
-    const willResplit = typeof body.writtenOff === 'boolean'
-      ? body.writtenOff === true && updates.coverMode === 'resplit'
-      : wasResplit;
+    const willResplit = updates.writtenOff === true
+      ? updates.coverMode === 'resplit'
+      : updates.writtenOff === false
+        ? false
+        : wasResplit;
     if (sessionDoc?.settled && wasResplit !== willResplit) {
       const billed = await scope.query<{ id: string; paid?: boolean; settledAt?: string }>('players', {
         where: 'c.sessionId = @sessionId AND IS_DEFINED(c.settledAt)',

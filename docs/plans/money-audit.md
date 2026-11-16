@@ -160,6 +160,7 @@ Also a stale comment: `lib/cardPay.ts`'s header still says the flag "stays off i
 
 ## Decisions
 
+- **Transparency item 3 and Stripe item 4's label shipped; gaps 7 and 8 closed** (2026-11-16; Grant: "keep going until the work can stop at a good place"). The money view's LEDGER cards (In and out, Collected by) carry an amber `Unchecked` / `N lines off` mark and one sentence under the tiles while the Ledger check is red, stale or never run; the mark left Still owed, which is live from the rows and the figure to trust. "Card" reads "Card · before Stripe's fee" (the fee itself is not recorded — one extra Stripe read per payment, not taken). Gap 7: `PATCH { paid: true }` on a resplit-covered row takes the `paid_would_change` check an uncover does. Gap 8: `applyAllocations` pays a FROZEN line only at the allocation's amount (a job at its price); an assign that cannot land every line leaves the payment in the queue as `changed_while_matching` with what did land, as the automatic path always has — never a "matched" payment whose lines are still owed. An unsettled estimate assigned by ref is still a person deciding and is not amount-checked. `__tests__/payments-assign-amount.test.ts` opens the race window by re-pricing the row inside a mocked `computeOwed`.
 - **Evidence as pinned-wrong tests, not failing tests** (2026-11-16). A test that asserted the right answer would turn `main` red until each fix landed; a test that pins today's wrong answer keeps the gate green, proves the gap with numbers, and fails, naming the fix, the moment the gap closes. The alternative, `it.fails`, would also stay green but hides what the app actually does.
 - **No fix in the audit PR** (#954), by the brief: Grant approves each one first.
 - **Stripe item 1 shipped first** (2026-11-16; Grant: "yes start with item 1"): `fileCardReview` in `lib/cardPay.ts` writes a `source: 'card'` review row for each outcome the webhook cannot act on, into the e-transfer queue rather than a queue of its own. Decision recorded in `docs/plans/card-pay-prototype.md`; the rule in `.claude/rules/money.md`.
@@ -175,7 +176,7 @@ Also a stale comment: `lib/cardPay.ts`'s header still says the flag "stays off i
 | Piece | File |
 |---|---|
 | This audit | `docs/plans/money-audit.md` |
-| Evidence (gaps 1–6) | `__tests__/money-audit-gaps.test.ts` |
+| Evidence (gaps 1–7) | `__tests__/money-audit-gaps.test.ts` |
 | Stripe item 1: card review rows | `lib/cardPay.ts` (`fileCardReview`), `lib/paymentsInbox.ts` (`applyAllocations` via, `resolvePayment`), `components/admin/CommandCenter/PaymentsInboxCard.tsx`, `__tests__/group-card-review.test.ts` |
 | Gap 6 fix | `lib/creditReview.ts`, `app/api/players/route.ts` and `app/api/stringing/jobs/[id]/route.ts` (PATCH), `app/api/admin/payments/assign/route.ts` (`return_credit`), `components/admin/CommandCenter/PaymentsInboxCard.tsx`, `__tests__/group-credit-untick.test.ts` |
 | Gap 4 fix | `lib/outstandingBalance.ts`, `app/api/members/me/route.ts` (DELETE), `components/auth/DeleteAccountSheet.tsx`, `__tests__/group-account-delete-balance.test.ts` |
@@ -183,3 +184,6 @@ Also a stale comment: `lib/cardPay.ts`'s header still says the flag "stays off i
 | Transparency item 1 | `lib/types.ts` (`StringingJob.paidVia`), the four writers, `lib/ledgerMirror.ts`, `lib/ledgerBackfill.ts`, `__tests__/stringing-paid-via.test.ts` |
 | Gap 3 fix | `app/api/players/route.ts` (PATCH), `components/admin/CommandCenter/PaymentsCard.tsx` (`togglePaid`), `__tests__/players-patch-etag.test.ts` |
 | Gap 2 fix | `app/api/session/settle/route.ts` (DELETE), `components/admin/CommandCenter/NextSessionCard.tsx` (`editBill`), `__tests__/session-settle.test.ts` |
+| Transparency item 3 + Stripe item 4 label | `components/admin/LedgerPage.tsx` (`checkBadge`), `__tests__/components/LedgerPage.test.tsx` |
+| Gap 7 fix | `app/api/players/route.ts` (PATCH, `willResplit`), `__tests__/money-audit-gaps.test.ts` GAP 7 |
+| Gap 8 fix | `lib/paymentsInbox.ts` (`applyAllocations`, `resolvePayment`), `__tests__/payments-assign-amount.test.ts` |
