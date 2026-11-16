@@ -8,6 +8,15 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Stringing review: four fixes and less loading (2026-11-16)
+
+- **Job numbers never repeat.** A job deleted from the archive used to hand its number to the next job, and two jobs logged at the same moment could share one; invoices carry the job's number, so they repeated too. Each club now counts from a number that only goes up, starting after the highest tag it already has.
+- **A stringer who is not an admin never receives a price.** Their screen showed none, but the answer to a status tap carried the job's price and payment. It now carries what their queue does.
+- **Two shelf saves at once no longer erase one.** A stringer's reel colours and an organiser's prices saved together used to keep only the later one. The second is now refused with "try again".
+- **Paying for a job ends a proposed new price.** A player asked to agree to a new price on a job they had already paid could never accept it, and the bench kept saying "Waiting on {name}". Paying now withdraws the ask.
+- **Less loading on the Stringing tab.** A stringer's queue, the shelf list and the prices are each read once per screen rather than once per card, and moving a racket along or pinning or archiving a job updates the list in place instead of reading the whole bench again.
+- **The stringing switch stays** for another month as the one way to turn stringing off for every club at once; each club still turns it on or off for itself.
+
 ## Count the string shelf with a photo (2026-11-16)
 
 - **Take one photo of the string shelf and the app counts it.** Lay the reels and packets out so the labels show; the app proposes what it sees (which string, reel or packet, how full each reel looks), and you check every line before saving. Anything it can't read is listed as "not sure" for you to name or leave out.

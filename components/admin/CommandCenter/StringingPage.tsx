@@ -19,6 +19,7 @@ import { toPlayerPendingEdit } from '@/lib/stringingPendingEdit';
 import CardHeader from '@/components/primitives/CardHeader';
 import StatusBadge from '@/components/primitives/StatusBadge';
 import type { StringingJob } from '@/lib/types';
+import { benchOrder, isArchived } from '@/lib/stringingOrder';
 import SwipeRow from '@/components/primitives/SwipeRow';
 import ActionRow from '@/components/primitives/ActionRow';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
@@ -264,8 +265,22 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
       /* BOTH lists, always. Archiving happens mostly FROM the bench, and
          skipping the archive reload there left the "Archived (N)" count stale
          and the job missing from the archive the admin taps into a second
-         later — which is precisely the honest count this row was added for. */
-      await Promise.all([load(), loadArchive()]);
+         later — which is precisely the honest count this row was added for.
+         The answer IS the changed job, so both lists take it in place rather
+         than reading every job again (code review, 2026-11-16); an answer
+         without one reloads both, as before. */
+      const changed = ((await res.json().catch(() => null)) as { job?: StringingJob } | null)?.job;
+      if (changed?.id === job.id) {
+        const place = (list: StringingJob[] | null, archived: boolean) => {
+          if (!list) return list;
+          const rest = list.filter((j) => j.id !== changed.id);
+          return isArchived(changed) === archived ? [...rest, changed].sort(benchOrder) : rest;
+        };
+        setJobs((prev) => place(prev, false));
+        setArchivedJobs((prev) => place(prev, true));
+      } else {
+        await Promise.all([load(), loadArchive()]);
+      }
     } catch {
       // The sheet STAYS OPEN saying so. Closing on failure would look like it
       // worked, which is the lying-empty-state rule wearing a different hat.
