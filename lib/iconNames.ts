@@ -77,6 +77,7 @@ export const ICON_NAMES = [
   'pause',
   'payments',
   'person',
+  'photo_camera',
   'person_add',
   'person_remove',
   'radio_button_checked',

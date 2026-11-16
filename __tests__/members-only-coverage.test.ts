@@ -77,6 +77,9 @@ const ROUTES: Record<string, Entry> = {
   'stringing/strings': GATED,
   // The string inventory (docs/plans/string-inventory.md): read-only admin summary.
   'stringing/stock': admin('isAdminAuthed'),
+  // The stocktake's sheet (docs/plans/string-photo-stocktake.md): an admin or
+  // one of the club's stringers, re-read per call; sets only, no money.
+  'stringing/stocktake': { kind: 'authed', helper: 'stocktakeCaller' },
   'stringing/pricing': GATED,
   // A stringer's grommet counts (docs/plans/grommet-holes.md): the racket page reads them.
   'stringing/holes': GATED,

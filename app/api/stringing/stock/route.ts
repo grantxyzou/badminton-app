@@ -16,13 +16,10 @@ import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { resolveGroupId } from '@/lib/groupContext';
 import { groupScope } from '@/lib/groupScope';
 import { isFlagOn } from '@/lib/flags';
-import { readOfferedStringsWithLinks } from '@/lib/stringingStrings';
-import {
-  STOCK_JOB_SELECT, StringStockError, countedJob, deleteStringPurchase, logStringPurchase, readStringCatalog, readStringPurchases, readStringUses, summarizeStringStock, validatePurchase, withDeletedUses,
-} from '@/lib/stringStock';
+import { StringStockError, deleteStringPurchase, logStringPurchase, validatePurchase } from '@/lib/stringStock';
+import { loadStringStock } from '@/lib/stringStocktake';
 import { mirrorStringPurchase, mirrorStringPurchaseDeleted } from '@/lib/ledgerMirror';
 import { forgetShelfExtras } from '@/lib/stringShelfRead';
-import type { StringingJob } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,18 +38,12 @@ export async function GET(req: NextRequest) {
   const at = <T,>(name: string, p: Promise<T>): Promise<T> => p.catch((err) => { step = name; throw err; });
   try {
     const groupId = resolveGroupId(req);
-    const scope = groupScope(groupId);
-    const [offered, purchases, catalog, jobs, uses] = await Promise.all([
-      at('offered', readOfferedStringsWithLinks(groupId)),
-      at('purchases', readStringPurchases(scope)),
-      at('catalog', readStringCatalog()),
-      // Every job, archived included: a racket strung last winter still used a set.
-      at('jobs', scope.query<StringingJob>('stringingJobs', { select: STOCK_JOB_SELECT })),
-      // A deleted job's set stays used (`recordStringUse`).
-      at('uses', readStringUses(scope)),
-    ]);
-    if (!offered) { step = 'offered'; throw new Error('offered strings unreadable'); }
-    const summary = summarizeStringStock({ offered: offered.strings, links: offered.links, aliases: offered.aliases, purchases, jobs: withDeletedUses(jobs.map(countedJob), uses), catalog, customColours: offered.customColours, now: new Date() });
+    // The one stock loader (lib/stringStocktake.ts): purchases, every job,
+    // deleted jobs' uses and the stocktakes, as every other stock reader.
+    const { offered, purchases, summary } = await loadStringStock(groupId, { now: new Date(), at }).catch((err) => {
+      if ((err as { step?: string }).step) step = (err as { step: string }).step;
+      throw err;
+    });
     // `aliases` rides here, on the admin read, so the bench can show and undo
     // them (docs/plans/bench-redesign.md); the public strings read omits them.
     return NextResponse.json({ ...summary, purchases, aliases: offered.aliases, customColours: offered.customColours });

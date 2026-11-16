@@ -6561,6 +6561,15 @@ input[type="range"].reel-hue:focus-visible {
 }
 .bpm-chip:hover { background: var(--glass-bg); }
 .bpm-chip:disabled { opacity: 0.5; pointer-events: none; }
+/* A chip that is one of a set of answers (the stocktake's "how full is the
+   reel"): chosen is a solid green tint with accent text, never a ring
+   (DESIGN.md §12, the fill-only rule). */
+.bpm-chip[aria-pressed="true"],
+.bpm-chip[aria-pressed="true"]:hover {
+  background: var(--inner-card-green-bg);
+  color: var(--accent);
+  font-weight: 600;
+}
 
 /* The one number a screen is really asking about.
    Home's spots-left count: the thing that decides whether you tap. Big enough

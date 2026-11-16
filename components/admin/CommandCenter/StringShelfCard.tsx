@@ -20,6 +20,7 @@ import { clubCombos } from '@/lib/stringShelf';
 import StringShelfSheet, { type ShelfEdits, type ShelfSheetMode } from './StringShelfSheet';
 import StringPurchaseSheet from './StringPurchaseSheet';
 import { ColourDots } from '@/components/stringing/StringColours';
+import StocktakeSheet from '@/components/stringing/StocktakeSheet';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -98,6 +99,7 @@ export default function StringShelfCard() {
   const [sheet, setSheet] = useState<{ mode: ShelfSheetMode; label: string; n: number } | null>(null);
   const [purchase, setPurchase] = useState<{ label: string; n: number } | null>(null);
   const [jobsOpen, setJobsOpen] = useState(false);
+  const [counting, setCounting] = useState(false);
   // "The shelf is full" — said, rather than the typed name silently vanishing.
   const [full, setFull] = useState(false);
   const [renameError, setRenameError] = useState<'name_taken' | 'invalid_name' | null>(null);
@@ -311,6 +313,7 @@ export default function StringShelfCard() {
   const offeredKeys = new Set((shelf?.strings ?? []).map(labelKey));
   const offShelf = (stock?.lines ?? []).filter((l) => !offeredKeys.has(labelKey(l.label)) && l.purchases > 0);
   const jobLabels = stock?.unmatched ?? [];
+  const lastCountedAt = (stock?.lines ?? []).reduce<string | null>((latest, l) => (l.lastCount && (!latest || l.lastCount.at > latest) ? l.lastCount.at : latest), null);
   const totals = stock?.totals;
   const subtitle =
     totals && (totals.usedSets > 0 || totals.purchasedCostCents > 0)
@@ -340,7 +343,8 @@ export default function StringShelfCard() {
         <ul style={{ listStyle: 'none', padding: 0 }} className="flex flex-col gap-2">
           {shelf.strings.map((label) => {
             const line = lineFor(label);
-            const hasStock = !!line && line.purchases > 0;
+            // Known stock: bought, or counted in a stocktake (docs/plans/string-photo-stocktake.md).
+            const hasStock = !!line && (line.purchases > 0 || !!line.lastCount);
             const low = hasStock && line.remainingSets <= LOW_STOCK_SETS;
             // More strung than was ever logged: a reel nobody logged, said
             // rather than hidden behind "None left" (string-stock-audit-fixes).
@@ -395,6 +399,26 @@ export default function StringShelfCard() {
             );
           })}
         </ul>
+      )}
+
+      {/* STOCKTAKE — count what is really on the shelf; the count wins
+          (docs/plans/string-photo-stocktake.md). */}
+      {ready && shelf.strings.length > 0 && (
+        <div className="bpm-inner-row">
+          <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+            <span className="fs-md" style={{ color: 'var(--text-primary)' }}>{t('shelf.stocktake')}</span>
+            <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>
+              {lastCountedAt ? t('shelf.lastCounted', { date: new Date(lastCountedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'America/Vancouver' }) }) : t('shelf.neverCounted')}
+            </span>
+          </span>
+          <button type="button" className="cc-btn cc-btn-secondary" onClick={() => setCounting(true)}>
+            <span className="material-icons icon-sm" aria-hidden="true">photo_camera</span>
+            {t('shelf.countNow')}
+          </button>
+        </div>
+      )}
+      {counting && (
+        <StocktakeSheet onClose={() => setCounting(false)} onSaved={() => void loadStock().catch(() => setLoadError(true))} />
       )}
 
       {/* ADD — catalog matches for what is typed; Enter adds it as typed. */}

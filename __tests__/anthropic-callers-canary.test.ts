@@ -22,6 +22,7 @@ import { describe, expect, it } from 'vitest';
 const EXPECTED: ReadonlyArray<{ file: string; route: string; persona: 'yes' | 'no'; why: string }> = [
   { file: 'app/api/claude/route.ts', route: '/api/claude', persona: 'yes', why: 'admin prose: announcements, release notes' },
   { file: 'app/api/stats/insight/route.ts', route: '/api/stats/insight', persona: 'yes', why: 'member-facing weekly read on Stats' },
+  { file: 'app/api/stringing/stocktake/scan/route.ts', route: '/api/stringing/stocktake/scan', persona: 'no', why: 'reads a shelf photo for a stocktake; returns structured counts, no prose, so no voice' },
   { file: 'app/api/equipment/fit-verdict/route.ts', route: '/api/equipment/fit-verdict', persona: 'no', why: 'racket-fit verdict, flag-gated; worded by its own prompt, not the shared voice (recorded, not endorsed — see the governance plan)' },
 ];
 

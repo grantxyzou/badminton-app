@@ -8,6 +8,14 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Count the string shelf with a photo (2026-11-16)
+
+- **Take one photo of the string shelf and the app counts it.** Lay the reels and packets out so the labels show; the app proposes what it sees (which string, reel or packet, how full each reel looks), and you check every line before saving. Anything it can't read is listed as "not sure" for you to name or leave out.
+- **Two ways to count a part-used reel**: by eye (full, ¾, ½, ¼), or on a kitchen scale. Type the scale reading and the empty reel's weight; the app works out the metres. It remembers the empty-reel weight for next time.
+- **The count becomes the shelf.** From then on, only jobs strung after it and reels bought after it move the figures. The summary shows what the app thought against what you counted, and why they usually differ.
+- **Stringers can count too**, from their own shelf card. They see sets, never prices.
+- **No photo? Count by hand** in the same sheet.
+
 ## How long each string lasts (2026-11-16)
 
 - **The shelf says how long each string lasts.** Each string on the bench's shelf now shows its recent rate and runway, like "18 sets left · lasts about 9 weeks". When it's running low it says "reorder soon" or "reorder now", on the same lines the shuttles use (under 4 weeks, under 2). A string nobody has used lately says so.

@@ -1,5 +1,6 @@
 import type { CatalogItem, StringingJob, StringPurchase } from './types';
 import { colourIdOf, isReelColourId, isStringColourId, STRING_PALETTE, type CustomColour, type ReelColourId } from './stringPalette';
+import type { StringCount } from './stringStocktakeMath';
 
 /**
  * The string inventory's ARITHMETIC — client-safe, no I/O (the sheet and
@@ -49,8 +50,8 @@ export function stringWeeksLeft(remainingSets: number, setsPerWeek: number | nul
 }
 
 /** `null` when there is no telling: no purchase logged, or nothing strung lately. */
-export function stringReorder(line: Pick<StringStockLine, 'purchases' | 'remainingSets' | 'setsPerWeek'>): StringReorder | null {
-  if (line.purchases === 0) return null;
+export function stringReorder(line: Pick<StringStockLine, 'purchases' | 'remainingSets' | 'setsPerWeek'> & { lastCount?: StringStockLine['lastCount'] }): StringReorder | null {
+  if (line.purchases === 0 && !line.lastCount) return null;
   const weeks = stringWeeksLeft(line.remainingSets, line.setsPerWeek);
   if (weeks === null) return null;
   if (weeks < STRING_REORDER_NOW_WEEKS) return 'now';
@@ -113,6 +114,13 @@ export interface StringStockLine {
   weeksLeft: number | null;
   /** `stringReorder`: now / soon / ok, or `null` when there is no telling. ADDITIVE. */
   reorder: StringReorder | null;
+  /**
+   * The latest stocktake of this string (docs/plans/string-photo-stocktake.md):
+   * when, and the sets counted. From then on the shelf starts from the count —
+   * purchases logged after it and jobs strung after it move it. `null` = never
+   * counted. ADDITIVE.
+   */
+  lastCount: { at: string; sets: number; source: 'photo' | 'hand' } | null;
 }
 
 export interface StringColourStock {
@@ -146,6 +154,8 @@ export function summarizeStringStock(input: {
   jobs: readonly (Pick<StringingJob, 'stringLabel' | 'status' | 'archivedAt' | 'stringColor' | 'ownString'> & { strungAt?: string })[];
   /** The moment the usage rate is measured to; without it there is no rate. */
   now?: Date;
+  /** Saved stocktakes; each string starts from its latest one. */
+  counts?: readonly StringCount[];
   catalog: ReadonlyMap<string, CatalogItem>;
   /** The club's own colours, so a job's "Teal" finds `custom:…`'s pool. */
   customColours?: readonly CustomColour[];
@@ -171,7 +181,7 @@ export function summarizeStringStock(input: {
       usedSets: 0, usedMetres: 0, remainingMetres: 0, remainingSets: 0,
       costPerSetCents: null, usedCostCents: null,
       byColour: [], mixedRemainingSets: 0, overdrawnSets: 0,
-      setsPerWeek: null, weeksLeft: null, reorder: null,
+      setsPerWeek: null, weeksLeft: null, reorder: null, lastCount: null,
     });
   }
 
@@ -204,6 +214,35 @@ export function summarizeStringStock(input: {
   // strung under the old name still used a set of that reel.
   const byCatalog = new Map<string, string>();
   for (const [key, line] of byKey) if (line.catalogId && !byCatalog.has(line.catalogId)) byCatalog.set(line.catalogId, key);
+
+  // A STOCKTAKE resets a string (docs/plans/string-photo-stocktake.md): its
+  // latest count becomes the pools' starting metres, and only what happened
+  // AFTER it moves them — a purchase logged later, a job strung later. Before
+  // the count is history: still bought, still used, still costed, but no
+  // longer what decides what is on the shelf.
+  const countByKey = new Map<string, { atMs: number; at: string; source: 'photo' | 'hand'; sets: number }>();
+  for (const c of (input.counts ?? []).slice().sort((a, b) => (a.countedAt < b.countedAt ? -1 : 1))) {
+    const atMs = Date.parse(c.countedAt);
+    if (!Number.isFinite(atMs)) continue;
+    const seen = new Set<string>();
+    for (const l of c.lines) {
+      const key = keyOf(l.label);
+      const line = byKey.get(key);
+      if (!line) continue;
+      const pool = poolsOf(key);
+      if (!seen.has(key)) {
+        // A later count of this string replaces an earlier one outright.
+        seen.add(key);
+        pool.colourMetres.clear();
+        pool.mixedMetres = 0;
+        countByKey.set(key, { atMs, at: c.countedAt, source: c.source, sets: 0 });
+      }
+      const metres = Math.max(0, l.sets) * line.setMetres;
+      countByKey.get(key)!.sets += Math.max(0, l.sets);
+      if (isReelColourId(l.color)) pool.colourMetres.set(l.color, (pool.colourMetres.get(l.color) ?? 0) + metres);
+      else pool.mixedMetres += metres;
+    }
+  }
   const renamed = new Map<string, string>();
   for (const p of sorted) {
     const own = keyOf(p.label);
@@ -220,7 +259,7 @@ export function summarizeStringStock(input: {
         usedSets: 0, usedMetres: 0, remainingMetres: 0, remainingSets: 0,
         costPerSetCents: null, usedCostCents: null,
         byColour: [], mixedRemainingSets: 0, overdrawnSets: 0,
-      setsPerWeek: null, weeksLeft: null, reorder: null,
+      setsPerWeek: null, weeksLeft: null, reorder: null, lastCount: null,
       };
       byKey.set(key, line);
     }
@@ -237,6 +276,9 @@ export function summarizeStringStock(input: {
         if (p.unit === 'reel') reelPerMetre.set(key, perMetre);
       }
     }
+    // A purchase logged before the string's latest count is already in it.
+    const counted = countByKey.get(key);
+    if (counted && !(Date.parse(p.createdAt) > counted.atMs)) continue;
     const pool = poolsOf(key);
     if (isReelColourId(p.color)) pool.colourMetres.set(p.color, (pool.colourMetres.get(p.color) ?? 0) + metres);
     else pool.mixedMetres += metres;
@@ -286,6 +328,10 @@ export function summarizeStringStock(input: {
     if (line) {
       line.usedSets += 1;
       if (Number.isFinite(strungMs)) strungMsByKey.set(key, [...(strungMsByKey.get(key) ?? []), strungMs]);
+      // Strung before the latest count (or with no date to tell): its set was
+      // already gone when the shelf was counted.
+      const counted = countByKey.get(key);
+      if (counted && !(strungMs > counted.atMs)) continue;
       const pool = poolsOf(key);
       const colour = colourIdOf(j.stringColor, input.customColours);
       if (colour && pool.colourMetres.has(colour)) pool.colourUsed.set(colour, (pool.colourUsed.get(colour) ?? 0) + 1);
@@ -348,6 +394,10 @@ export function summarizeStringStock(input: {
       ? null
       : (strungMsByKey.get(lineKey) ?? []).filter((t) => t >= windowStartMs && t <= (nowMs as number)).length / windowWeeks;
     const remainingSets = Math.floor(remainingMetres / s);
+    const counted = countByKey.get(lineKey);
+    const lastCount = counted ? { at: counted.at, sets: counted.sets, source: counted.source } : null;
+    // Known stock: something was bought, or somebody counted it.
+    const known = line.purchases > 0 || counted !== undefined;
     return {
       ...line,
       usedMetres: line.usedSets * s,
@@ -358,10 +408,11 @@ export function summarizeStringStock(input: {
       byColour,
       mixedRemainingSets,
       // Whole sets: a few metres short is a reel's slack, not a missing reel.
-      overdrawnSets: line.purchases > 0 ? Math.floor(unloggedMetres / s) : 0,
+      overdrawnSets: known ? Math.floor(unloggedMetres / s) : 0,
       setsPerWeek,
-      weeksLeft: line.purchases > 0 ? stringWeeksLeft(remainingSets, setsPerWeek) : null,
-      reorder: stringReorder({ purchases: line.purchases, remainingSets, setsPerWeek }),
+      weeksLeft: known ? stringWeeksLeft(remainingSets, setsPerWeek) : null,
+      reorder: stringReorder({ purchases: line.purchases, remainingSets, setsPerWeek, lastCount }),
+      lastCount,
     };
   });
 
@@ -398,8 +449,8 @@ export type StockBand = 'in' | 'low' | 'out';
 
 /** Null when no purchase has been logged: unknown, never "out". A reel the
  *  stringer has not logged yet would otherwise read as an empty shelf. */
-export function stockBand(line: Pick<StringStockLine, 'purchases' | 'remainingSets'>): StockBand | null {
-  if (line.purchases === 0) return null;
+export function stockBand(line: Pick<StringStockLine, 'purchases' | 'remainingSets'> & { lastCount?: StringStockLine['lastCount'] }): StockBand | null {
+  if (line.purchases === 0 && !line.lastCount) return null;
   if (line.remainingSets === 0) return 'out';
   return line.remainingSets <= LOW_STOCK_SETS ? 'low' : 'in';
 }

@@ -1,10 +1,6 @@
-import { groupScope } from './groupScope';
 import { stringingServiceOnFor } from './stringingService';
-import { readOfferedStringsWithLinks } from './stringingStrings';
-import {
-  STOCK_JOB_SELECT, countedJob, readStringCatalog, readStringPurchases, readStringUses, summarizeStringStock, withDeletedUses,
-  type StringStockSummary,
-} from './stringStock';
+import type { StringStockSummary } from './stringStock';
+import { loadStringStock } from './stringStocktake';
 import { STRINGING_FLOW, type StringingStatus } from './stringing';
 import type { StringingJob } from './types';
 
@@ -92,19 +88,7 @@ export function buildStringShelfReport(summary: StringStockSummary, jobs: readon
  */
 export async function readStringShelfReport(groupId: string, now: Date): Promise<StringShelfReport | null> {
   if (!(await stringingServiceOnFor(groupId))) return null;
-  const scope = groupScope(groupId);
-  const [offered, purchases, catalog, jobs, uses] = await Promise.all([
-    readOfferedStringsWithLinks(groupId),
-    readStringPurchases(scope),
-    readStringCatalog(),
-    scope.query<StringingJob>('stringingJobs', { select: STOCK_JOB_SELECT }),
-    readStringUses(scope),
-  ]);
-  if (!offered) throw new Error('offered strings unreadable');
-  const summary = summarizeStringStock({
-    offered: offered.strings, links: offered.links, aliases: offered.aliases, purchases,
-    jobs: withDeletedUses(jobs.map(countedJob), uses), catalog, customColours: offered.customColours, now,
-  });
+  const { summary, jobs } = await loadStringStock(groupId, { now });
   // Jobs still stored: a deleted job is gone from the bench, so it is not a stage.
   return buildStringShelfReport(summary, jobs);
 }
