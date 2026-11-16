@@ -6,6 +6,7 @@ import PlayerProfileSheet from './CommandCenter/PlayerProfileSheet';
 import BarRow from './metrics/BarRow';
 import AddExpenseSheet, { CATEGORY_LABEL, type ExpenseCategory } from './ledger/AddExpenseSheet';
 import ReconcileSheet from './ledger/ReconcileSheet';
+import LedgerEntriesSheet from './ledger/LedgerEntriesSheet';
 import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
 import StatusBadge from '@/components/primitives/StatusBadge';
@@ -141,6 +142,7 @@ export default function LedgerPage({ onBack, onOpenSession, onOpenPastSessions }
   const [loadError, setLoadError] = useState(false);
   const [profile, setProfile] = useState<{ memberId: string | null; name: string } | null>(null);
   const [reconcileOpen, setReconcileOpen] = useState(false);
+  const [entriesOpen, setEntriesOpen] = useState(false);
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [expenseKey, setExpenseKey] = useState(0);
   const [removing, setRemoving] = useState<string | null>(null);
@@ -314,6 +316,12 @@ export default function LedgerPage({ onBack, onOpenSession, onOpenPastSessions }
               : `Collected and Net come from the ledger, which hasn’t been checked against what people see ${reconcile ? `since ${ago(reconcile.lastAt)}` : 'yet'}. Still owed below is live and right.`}
           </Muted>
         )}
+        {/* The entries behind these sums, dated, like a bank statement (docs/plans/ledger-entries.md). */}
+        <button type="button" className="bpm-row-link" onClick={() => setEntriesOpen(true)}>
+          <span className="material-icons icon-sm" aria-hidden="true">receipt_long</span>
+          <span className="fs-sm">Every entry behind these numbers, with dates</span>
+          <span className="material-icons icon-sm" aria-hidden="true">chevron_right</span>
+        </button>
       </Section>
 
       {/* ── Collected by ── */}
@@ -544,6 +552,7 @@ export default function LedgerPage({ onBack, onOpenSession, onOpenPastSessions }
       </Section>
 
       <PlayerProfileSheet open={profile !== null} onClose={() => setProfile(null)} memberId={profile?.memberId ?? null} initialName={profile?.name} />
+      <LedgerEntriesSheet open={entriesOpen} onClose={() => setEntriesOpen(false)} range={range} />
       <ReconcileSheet open={reconcileOpen} onClose={() => setReconcileOpen(false)} onChanged={() => void load()} onOpenSession={onOpenSession} />
       <AddExpenseSheet key={expenseKey} open={expenseOpen} onClose={() => setExpenseOpen(false)} onSaved={refresh} />
     </div>
