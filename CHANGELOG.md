@@ -8,6 +8,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Packet pictures on the string shelf list (2026-11-16)
+
+- **Each string on the bench's shelf list, and on a stringer's, now shows its packet**, the same picture players see. A string not linked to the catalog keeps a blank space the same size, so the names still line up.
+
 ## Count the string shelf by scanning barcodes (2026-11-16)
 
 - **The stocktake scans barcodes now, instead of reading a photo.** Point the camera at each packet and reel: a packet counts itself, and a reel asks how full it is. The first time a barcode is new, you tell the app which string, which colour, and packet or reel; after that it knows.

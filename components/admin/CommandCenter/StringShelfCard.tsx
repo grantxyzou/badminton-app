@@ -21,6 +21,7 @@ import StringShelfSheet, { type ShelfEdits, type ShelfSheetMode } from './String
 import StringPurchaseSheet from './StringPurchaseSheet';
 import { ColourDots } from '@/components/stringing/StringColours';
 import StocktakeSheet from '@/components/stringing/StocktakeSheet';
+import { ShelfPack, shelfHasPacks } from '@/components/stringing/StringPackImage';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -342,6 +343,7 @@ export default function StringShelfCard() {
       {ready && shelf.strings.length > 0 && (
         <ul style={{ listStyle: 'none', padding: 0 }} className="flex flex-col gap-2">
           {shelf.strings.map((label) => {
+            const withPacks = shelfHasPacks(shelf.strings, shelf.links);
             const line = lineFor(label);
             // Known stock: bought, or counted in a stocktake (docs/plans/string-photo-stocktake.md).
             const hasStock = !!line && (line.purchases > 0 || !!line.lastCount);
@@ -364,6 +366,7 @@ export default function StringShelfCard() {
             return (
               <li key={label}>
                 <ListRow
+                  leading={<ShelfPack catalogId={shelf.links[label]} reserve={withPacks} />}
                   onClick={() => openSheet('offered', label)}
                   ariaLabel={t('shelf.openRow', { name: label })}
                   title={<span className="fs-md" style={{ color: 'var(--text-primary)', overflowWrap: 'anywhere' }}>{label}</span>}

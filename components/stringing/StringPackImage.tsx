@@ -59,3 +59,20 @@ export default function StringPackImage({ catalogId, size, coil }: {
     </>
   );
 }
+
+/**
+ * A shelf list's leading packet (Grant, 2026-11-16: "add the packet render to
+ * strings inventory list"): the string's packet when its catalog link has a
+ * picture; otherwise, when another row in the same list shows one
+ * (`reserve`), an empty box the same size so every name still lines up; and
+ * nothing at all on a shelf with no pictures.
+ */
+export function ShelfPack({ catalogId, reserve }: { catalogId: string | null | undefined; reserve: boolean }) {
+  if (stringPackSrc(catalogId)) return <StringPackImage catalogId={catalogId} size="row" />;
+  return reserve ? <span className="string-pack-img string-pack-row" aria-hidden="true" /> : null;
+}
+
+/** Whether any of these shelf strings has a packet picture: the lists reserve the space only then. */
+export function shelfHasPacks(labels: readonly string[], links: Record<string, string | undefined>): boolean {
+  return labels.some((label) => !!stringPackSrc(links[label]));
+}

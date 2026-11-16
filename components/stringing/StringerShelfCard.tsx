@@ -9,6 +9,7 @@ import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import ListRow from '@/components/primitives/ListRow';
+import { ShelfPack, shelfHasPacks } from '@/components/stringing/StringPackImage';
 import { ColourDots, useReelColourName } from './StringColours';
 import ReelColourPicker from './ReelColourPicker';
 import { clubCombos, makerColourIds, parseShelf, type Shelf } from '@/lib/stringShelf';
@@ -97,6 +98,7 @@ export default function StringerShelfCard({ hasIdentity }: { hasIdentity: boolea
             return (
               <ListRow
                 key={label}
+                leading={<ShelfPack catalogId={shelf.links[label]} reserve={shelfHasPacks(shelf.strings, shelf.links)} />}
                 onClick={() => setPicked(label)}
                 ariaLabel={t('edit', { name: label })}
                 title={<span className="fs-md" style={{ color: 'var(--text-primary)' }}>{label}</span>}
