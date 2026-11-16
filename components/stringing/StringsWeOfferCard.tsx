@@ -47,6 +47,7 @@ import StringListSheet, { type ListSort } from './StringListSheet';
 import { useTabActive } from '@/lib/tabActivity';
 import { isRefused } from '@/lib/apiFetch';
 import type { FitVerdict } from '@/lib/types';
+import { sharedFetch } from '@/lib/sharedRead';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 /** `--duration-sheet` in globals.css: a sheet's close, waited out before a hand-off. */
@@ -138,7 +139,7 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`${BASE}/api/stringing/strings`, { cache: 'no-store' })
+    sharedFetch('/api/stringing/strings')
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (cancelled) return;
@@ -154,7 +155,7 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`${BASE}/api/stringing/pricing`, { cache: 'no-store' })
+    sharedFetch('/api/stringing/pricing')
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (cancelled) return;
