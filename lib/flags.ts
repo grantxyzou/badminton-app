@@ -73,7 +73,8 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     description:
       'The stringing service (design "Stringing", Aug 2026). Stage 1 is the BENCH only: the stringingJobs container plus the admin-side job list, job detail and intake form. Gates the /api/stringing/* routes server-side as well as the UI, because the price a stringer charges is admin-only data and a client flag cannot protect it. The player side landed too: the Home card, the request sheet, and the admin-controlled shop sign. It is behind this flag TRANSITIVELY rather than directly -- StringingCard never calls isFlagOn; it reads GET /api/stringing/shop, which 404s when the flag is off, which the card treats as UNKNOWN and renders as the "Coming soon" state. That indirection is load-bearing: tidying up the 404 handling in that card would silently un-gate the feature. Turning this off hides the bench and 404s the routes; no player-visible surface changes either way.',
     owner: 'grant',
-    plannedRemoval: '2026-11-15',
+    plannedRemoval: '2026-12-15',
+    note: 'Kept past its 2026-11-15 date (Grant, 2026-11-16): it is the one app-wide kill switch for stringing, which takes money. Each club already turns stringing on or off itself (`run.stringing`, docs/plans/stringing-add-on.md), so retiring this loses only the switch for every club at once. Ask again on the new date.',
   },
   NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER: {
     description: 'Skill-scored equipment recommendations: the racket engine (lib/racketRecommend.ts) AND the string pairing engine (lib/stringPair.ts), both reached through GET /api/recommend. On for bpm-next, off on bpm-stable, which falls back to the coarse stage-derived racket pick. Renamed from NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER when string pairing landed and the old name stopped describing what it gates.',

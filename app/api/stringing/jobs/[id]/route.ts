@@ -29,6 +29,7 @@ import { mirrorStringingChanged, mirrorStringingDeleted } from '@/lib/ledgerMirr
 import { recordStringUse, usesASet } from '@/lib/stringStock';
 import { forgetShelfExtras } from '@/lib/stringShelfRead';
 import type { StringingJob, PendingEdit, WalkUpEmailStamp } from '@/lib/types';
+import { toStringerJob } from '../route';
 
 export const dynamic = 'force-dynamic';
 
@@ -364,6 +365,12 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       // Boolean in, timestamp out: "when" is worth keeping and "whether" is
       // recoverable from it, never the other way round.
       next.paidAt = body.paid === true ? (job.paidAt ?? now) : null;
+      /* PAYING WITHDRAWS A PROPOSED NEW PRICE (code review, 2026-11-16). A paid
+         bill is never re-priced, so `accept` refuses it (`job_paid`), and the
+         player was left with a prompt they could only fail at while the bench
+         read "Waiting on {name}". The ask is over: it goes, like archiving. */
+      const pricePending = next.pendingEdit?.priceCents !== undefined && next.pendingEdit.priceCents !== next.priceCents;
+      if (next.paidAt && !job.paidAt && pricePending) next.pendingEdit = null;
     }
 
     if (body.claim === true && admin.authed) {
@@ -549,8 +556,14 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       await notifyPlayerOfPendingEdit(next);
     }
 
+    const answered: StringingJob = readyStamp ? { ...next, walkUpEmails: { ...next.walkUpEmails, ready: readyStamp } } : next;
+    /* A stringer who is not an admin gets THEIR projection back, never the
+       raw job: the answer to a status tap or a Take it carried the price, the
+       payment and the pending edit's figures, which `toStringerJob` exists to
+       strip (code review, 2026-11-16). Their own queue's shape: the contact
+       and, on a finished job, the invoice, as the invoice route answers. */
     return NextResponse.json({
-      job: readyStamp ? { ...next, walkUpEmails: { ...next.walkUpEmails, ready: readyStamp } } : next,
+      job: admin.authed ? answered : toStringerJob(answered, { contact: true }),
     });
   } catch (err) {
     console.error(`PATCH /api/stringing/jobs/${id} failed:`, err);

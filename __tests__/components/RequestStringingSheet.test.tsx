@@ -7,6 +7,7 @@ import RequestStringingSheet from '../../components/stringing/RequestStringingSh
 import type { UseGear } from '@/components/stats/useGear';
 import { resetCatalogCache } from '@/components/stats/useCatalog';
 import enMessages from '../../messages/en.json';
+import { resetSharedReads } from '../../lib/sharedRead';
 
 /**
  * The intake form, in two steps (docs/plans/stringing-canvas-redesign.md):
@@ -70,6 +71,9 @@ beforeEach(() => {
   vi.stubGlobal('navigator', { ...global.navigator, onLine: true });
   // The catalog read is cached per page; each test brings its own.
   resetCatalogCache();
+  // So are the shared reads (the shelf and the prices): a request one test
+  // left unanswered must not be handed to the next.
+  resetSharedReads();
 });
 afterEach(() => {
   cleanup();

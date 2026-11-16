@@ -14,6 +14,7 @@ import type { StringerJob, StringingJob } from '@/lib/types';
 import StringingInvoiceCard from './StringingInvoiceCard';
 import StagePill from './StagePill';
 import { isRefused } from '@/lib/apiFetch';
+import { sharedFetch } from '@/lib/sharedRead';
 import { useTabReturn } from '@/lib/tabActivity';
 import { useHoleLookup } from '@/components/stringing/useHoleLookup';
 import { isWaitingTooLong, waitingDays } from '@/lib/stringingWaiting';
@@ -92,7 +93,9 @@ export default function StringerJobsCard({ hasIdentity, showEmpty = false }: {
     setLoadError(false);
     setRefused(false);
     try {
-      const res = await fetch(`${BASE}/api/stringing/jobs?view=stringer`, { cache: 'no-store' });
+      // Shared with the Stringing tab's own "is this a stringer" ask, which
+      // reads the same answer in the same moment (code review, 2026-11-16).
+      const res = await sharedFetch('/api/stringing/jobs?view=stringer');
       if (isRefused(res)) {
         setJobs(null);
         setRefused(true);
@@ -125,12 +128,18 @@ export default function StringerJobsCard({ hasIdentity, showEmpty = false }: {
         body: JSON.stringify({ memberId: job.memberId, status }),
       });
       if (!res.ok) throw new Error(`advance ${res.status}`);
+      /* The answer IS the moved job, in this card's own shape (the server
+         projects it for a stringer), so the card takes it rather than reading
+         the whole queue again (code review, 2026-11-16). An answer without a
+         job (an older server) still reloads. */
+      const moved = ((await res.json().catch(() => null)) as { job?: StringerQueueJob } | null)?.job;
       // Remember the move only once it LANDED (a failed one has nothing to
       // undo); an undo clears the offer rather than offering to undo the
       // undo. `to` is kept so the offer can be withdrawn if the reload shows
       // somebody else moved the job in between (final review).
       setLastMove(undo ? null : { jobId: job.id, from: job.status, to: status });
-      await load();
+      if (moved?.id === job.id) setJobs((prev) => prev?.map((j) => (j.id === moved.id ? moved : j)) ?? prev);
+      else await load();
     } catch {
       setSaveError(true);
     } finally {

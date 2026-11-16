@@ -20,6 +20,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { ensureContainer } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
+import { nextJobSequence } from '@/lib/stringingJobNo';
 import { resolveGroupId } from '@/lib/groupContext';
 import { requireGroupMember } from '@/lib/auth';
 import { isFlagOn } from '@/lib/flags';
@@ -134,7 +135,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'too_many_open' }, { status: 409 });
     }
 
-    const sequence = (await scope.count('stringingJobs')) + 1;
+    const sequence = await nextJobSequence(scope);
 
     const job: StringingJob = {
       id: `job-${randomBytes(8).toString('hex')}`,

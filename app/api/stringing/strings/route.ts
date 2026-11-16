@@ -163,6 +163,7 @@ export async function PATCH(req: NextRequest) {
     // refused — the list is what is being saved. Absent `links` keeps the
     // ones already stored for labels that survive, so an older client that
     // sends only `strings` does not wipe them.
+    const raw = await readShelfDoc(groupId);
     const prior = await readOfferedStringsWithLinks(groupId);
     // The club's own colours, with any this save adds — before the colour
     // lists, which may name them.
@@ -198,7 +199,7 @@ export async function PATCH(req: NextRequest) {
     // the map it changed: a stale phone sending all five would write its old
     // copies of the other four back over another device's edits. The list
     // itself is always sent, and replacing it is what the caller means.
-    await groupScope(groupId).upsert('clubSettings', doc);
+    if (!(await saveShelfDoc(groupId, raw, doc))) return changedElsewhere();
     // The list changed, so the stock and count keyed by it may have too.
     forgetShelfExtras(groupId);
     // Aliases go back to the admin who saved them; the public GET never lists them.
@@ -208,6 +209,38 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'write_failed' }, { status: 503 });
   }
 }
+
+/**
+ * The shelf list is READ, changed and written back, so the write is
+ * conditional on the version that was read (code review, 2026-11-16): it was
+ * an `upsert`, and a stringer's colours saved a moment after the organiser's
+ * prices wrote the whole doc from the older read, so one change vanished
+ * behind a 200. The raw doc is read FIRST, so anything landing after it fails
+ * the etag and answers 409 `changed_elsewhere` (the sheet says try again). A
+ * club with no list yet creates it, and a create racing another loses the
+ * same way.
+ */
+type ShelfDoc = OfferedStringsDoc & { _etag?: string };
+
+function readShelfDoc(groupId: string): Promise<ShelfDoc | undefined> {
+  return groupScope(groupId).read<ShelfDoc>('clubSettings', stringsDocId(groupId));
+}
+
+async function saveShelfDoc(groupId: string, raw: ShelfDoc | undefined, doc: OfferedStringsDoc): Promise<boolean> {
+  const scope = groupScope(groupId);
+  if (!raw) {
+    try {
+      await scope.create('clubSettings', doc);
+      return true;
+    } catch (err) {
+      if ((err as { code?: unknown })?.code === 409) return false;
+      throw err;
+    }
+  }
+  return (await scope.replace('clubSettings', { ...doc, _etag: raw._etag })) !== undefined;
+}
+
+const changedElsewhere = () => NextResponse.json({ error: 'changed_elsewhere' }, { status: 409 });
 
 const RENAME_STATUS = { invalid_name: 400, not_offered: 404, name_taken: 409 } as const;
 const COLOUR_STATUS: Record<CustomColourError, number> = {
@@ -246,6 +279,7 @@ async function setColours(req: NextRequest, value: unknown, addColours: unknown,
   try {
     await ensureClubSettings();
     const groupId = resolveGroupId(req);
+    const raw = await readShelfDoc(groupId);
     const prior = await readOfferedStringsWithLinks(groupId);
     if (!prior) return NextResponse.json({ error: 'write_failed' }, { status: 503 });
     // A stringer never gets here with `addColours` (the key check above), so
@@ -257,7 +291,7 @@ async function setColours(req: NextRequest, value: unknown, addColours: unknown,
     if (!colours) return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
     const next: OfferedStringsRead = { ...prior, colours, customColours };
     const doc = docOf(groupId, next, memberId);
-    await groupScope(groupId).upsert('clubSettings', doc);
+    if (!(await saveShelfDoc(groupId, raw, doc))) return changedElsewhere();
     forgetShelfExtras(groupId);
     return answer(next, stringer);
   } catch (err) {
@@ -273,13 +307,14 @@ async function rename(req: NextRequest, op: unknown, memberId: string | null, st
   try {
     await ensureClubSettings();
     const groupId = resolveGroupId(req);
+    const raw = await readShelfDoc(groupId);
     const prior = await readOfferedStringsWithLinks(groupId);
     if (!prior) return NextResponse.json({ error: 'write_failed' }, { status: 503 });
     const result = renameOffered(prior, from, to);
     if (!result.ok) return NextResponse.json({ error: result.error }, { status: RENAME_STATUS[result.error] });
     const next = result.value;
     const doc = docOf(groupId, next, memberId);
-    await groupScope(groupId).upsert('clubSettings', doc);
+    if (!(await saveShelfDoc(groupId, raw, doc))) return changedElsewhere();
     forgetShelfExtras(groupId);
     return answer(next, stringer);
   } catch (err) {
