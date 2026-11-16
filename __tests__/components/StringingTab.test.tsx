@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // @vitest-environment-options { "url": "http://localhost:3000/bpm" }
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, within, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import StringingTab from '../../components/StringingTab';
 import { resetCatalogCache } from '@/components/stats/useCatalog';
@@ -73,6 +73,14 @@ describe('everyone gets Racket and Strings', () => {
     expect(screen.queryByRole('button', { name: R.bench })).toBeNull();
     expect(await screen.findByRole('button', { name: 'Submit a request' })).toBeDefined();
     expect(urls.some((u) => u.includes('/stringing/jobs') && !u.includes('view='))).toBe(false);
+  });
+
+  it('lists Strings we offer first, then Submit request, then the bench (Grant, 2026-11-16: "swap")', async () => {
+    stubFetch();
+    wrap(<StringingTab isAdmin />);
+    const group = await screen.findByRole('group', { name: enMessages.nav.stringing });
+    const names = within(group).getAllByRole('button').map((b) => b.textContent);
+    expect(names).toEqual([R.strings, R.racket, R.bench]);
   });
 
   it('holds the service card behind its skeleton until the player\'s rackets have answered', async () => {
