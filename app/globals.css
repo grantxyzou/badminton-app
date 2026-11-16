@@ -8188,6 +8188,9 @@ html:root .glass-card.inventory-row-card { padding: var(--space-2) var(--space-3
   font-size: var(--fs-2xs);
   font-weight: 700;
 }
+/* A swatch as dark as the pill (black, navy) keeps a faint light edge, so
+   the circle still reads; the pill itself stays fill-only. */
+.bench-spec-letter[data-dark='true'] { box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.55); }
 .bench-spec-lb { font-family: var(--font-mono); font-weight: 600; }
 /* A pair the player chose: the NUMBERS in amber, never a ring (fill only). */
 .bench-spec--custom .bench-spec-lb { color: #fbbf24; }

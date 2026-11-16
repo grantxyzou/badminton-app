@@ -13,6 +13,7 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 - **The bench's live jobs are one card of rows, grouped by where the racket is**: Received, Strung, Ready for pickup and Requested, each with its count. Picked up is folded at the bottom; tap it to open.
 - **Each row leads with the racket's picture and name**, then the player, the due date with a calendar icon, an "Unpaid" tag when it owes, and the job number with its status.
 - **Mains and crosses are two stacked pills**: a letter in the string's colour (each side its own colour for a two-colour set), the tension, and the string.
+- **A black or navy string's letter keeps a faint light edge**, so it still shows on the dark pill.
 - **A player's own request stands out**: "Custom request" when the crosses are not the usual mains + 2 or the strings differ, and the tensions turn amber.
 - **Grommet holes show as a pill when the racket's count is known.**
 - **The next-step button left the row.** Open the job to move its status. Swipe and the ⋮ menu still pin and archive.

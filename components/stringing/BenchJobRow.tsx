@@ -8,7 +8,7 @@ import { dueFor, dueStyle, formatReadyBy } from '@/lib/stringingDue';
 import { toneStageOf } from '@/lib/stringingStatusTone';
 import { fmtMoney } from '@/lib/fmt';
 import { racketHeadSrc } from '@/lib/racketLook';
-import { reelColourFill, swatchInk } from '@/lib/stringShelf';
+import { blendsWithDarkPill, reelColourFill, swatchInk } from '@/lib/stringShelf';
 import { jobSides, type JobSide } from '@/lib/stringingSides';
 
 /**
@@ -81,6 +81,7 @@ export default function BenchJobRow({
     <span className={custom ? 'bench-spec bench-spec--custom' : 'bench-spec'}>
       <span
         className="bench-spec-letter"
+        data-dark={s.colour && blendsWithDarkPill(s.colour) ? 'true' : undefined}
         style={s.colour ? { background: reelColourFill(s.colour), color: swatchInk(s.colour) } : undefined}
       >
         {letter}

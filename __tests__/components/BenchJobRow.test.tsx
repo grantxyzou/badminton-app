@@ -5,6 +5,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import BenchJobRow from '../../components/stringing/BenchJobRow';
 import BenchList from '../../components/stringing/BenchList';
 import { benchGroups } from '../../lib/benchGroups';
+import { blendsWithDarkPill } from '../../lib/stringShelf';
 import enMessages from '../../messages/en.json';
 import type { StringingJob } from '../../lib/types';
 
@@ -86,6 +87,19 @@ describe('BenchJobRow', () => {
     const letters = screen.getByTestId('bench-row').querySelectorAll<HTMLElement>('.bench-spec-letter');
     expect(letters).toHaveLength(2);
     expect(letters[0].style.background).not.toBe(letters[1].style.background);
+  });
+
+  it('a black string’s circle keeps a light edge on the dark pill; a yellow one needs none', () => {
+    row({ stringColor: 'Black' });
+    const black = screen.getByTestId('bench-row').querySelector<HTMLElement>('.bench-spec-letter')!;
+    expect(black.dataset.dark).toBe('true');
+    cleanup();
+    row({ stringColor: 'Yellow' });
+    const yellow = screen.getByTestId('bench-row').querySelector<HTMLElement>('.bench-spec-letter')!;
+    expect(yellow.dataset.dark).toBeUndefined();
+    expect(blendsWithDarkPill('navy')).toBe(true);
+    expect(blendsWithDarkPill('white')).toBe(false);
+    expect(blendsWithDarkPill('red')).toBe(false);
   });
 
   it('shows grommet holes only when counted', () => {
