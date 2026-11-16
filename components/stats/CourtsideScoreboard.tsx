@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import { useBodyScrollLock } from '@/components/BottomSheet/useBodyScrollLock';
-import { splitForFold, useFold } from '@/lib/fold';
+import { splitForFold, useDualScreen, useFold, type AreaStatus } from '@/lib/fold';
 import StatusBadge from '@/components/primitives/StatusBadge';
 import { isFlagOn } from '@/lib/flags';
 import { primeHaptics, tapSuccess } from '@/lib/haptics';
@@ -96,6 +96,10 @@ export default function CourtsideScoreboard({ open, onClose, onSave }: Props) {
   const [interval, setInterval_] = useState(false);
   const intervalTimer = useRef<number | null>(null);
   const fold = useFold();
+  // Can this phone show the score on its OUTER screen? Asked only in the
+  // store app on Android (docs/plans/outer-screen-scoreboard.md, step 1); null
+  // everywhere else, and on a one-screen phone the line stays hidden.
+  const outer = useDualScreen(open);
   const viewport = useViewportSize();
   const gridRef = useRef<HTMLDivElement | null>(null);
   const voiceFlag = isFlagOn('NEXT_PUBLIC_FLAG_VOICE_SCORE');
@@ -210,6 +214,16 @@ export default function CourtsideScoreboard({ open, onClose, onSave }: Props) {
   if (!open || typeof document === 'undefined') return null;
 
   const sideName = sideOf;
+  const outerText = (s: AreaStatus) =>
+    s === 'available'
+      ? t('outer.available')
+      : s === 'unavailable'
+        ? t('outer.unavailable')
+        : s === 'active'
+          ? t('outer.active')
+          : s === 'unsupported'
+            ? t('outer.unsupported')
+            : t('outer.unknown');
   const problemText = (p: VoiceProblem) =>
     p === 'denied' ? t('voice.denied') : p === 'network' ? t('voice.network') : t('voice.failed');
   // What to say next, worked out from the board: the rally winner's points
@@ -364,6 +378,11 @@ export default function CourtsideScoreboard({ open, onClose, onSave }: Props) {
           </button>
         </div>
         {!onSave && <p className="courtside-note">{t('saveNeedsSession')}</p>}
+        {outer?.outerScreen && (
+          <p className="courtside-note" data-testid="outer-screen-probe">
+            <StatusBadge variant="accent">{t('voice.preview')}</StatusBadge> {outerText(outer.dualScreen)}
+          </p>
+        )}
       </section>
     </div>,
     document.body,

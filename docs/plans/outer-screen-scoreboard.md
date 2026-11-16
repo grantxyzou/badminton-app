@@ -1,7 +1,7 @@
 # The score on a foldable's outer screen
 
 **Track:** ROADMAP critical path, "capture game/win-loss data", by way of `docs/plans/foldable-layout.md` step 4 ("the two-screen scoreboard, outer screen faces the players").
-**Status:** intent
+**Status:** in-flight (step 1 built 2026-11-16; waits on a store build)
 **Review on:** 2026-12-14 — has the probe build reported what Grant's Fold answers for dual-screen mode (UNSUPPORTED / UNAVAILABLE / AVAILABLE)? If UNSUPPORTED, this plan stops at step 1.
 
 ## Problem
@@ -47,18 +47,31 @@ Sources: developer.android.com/develop/adaptive-apps/guides/foldables/support-fo
 
 - ~~Which Fold model and One UI version is the phone?~~ Answered 2026-11-16, see Decisions.
 - ~~Held open in the hand, or on the bench?~~ Answered 2026-11-16, see Decisions.
-- Does the outer screen need voice (step 3), or is tapping on the inner screen enough? Open.
+- ~~Does the outer screen need voice (step 3)?~~ No, answered 2026-11-16, see Decisions.
 
 ## Decisions
 
 - **The phone is a Galaxy Z Fold 8 on One UI 9** (Grant, 2026-11-16). Newer than anything Google or Samsung document for dual-screen mode (Google names only the Pixel Fold; Samsung documents rear display mode from One UI 6.0), so the docs neither promise nor rule it out. Step 1's probe is still the only answer.
 - **Held open in the hand** (Grant, 2026-11-16), not on the bench. The hinge split from foldable-layout step 3 does not serve this: with the phone open flat in the hand, the outer screen is the only one facing the court. This is the case the plan exists for.
+- **No voice** (Grant, 2026-11-16: "build step 1, no voice"). Step 3 is dropped: the outer screen shows the score and the scorer taps on the inner one. The store app keeps hiding the mic.
+- **Step 1 is a line on the board, not a flag** (2026-11-16). The probe lives in the existing `BpmFold` plugin (`getDualScreen`), not a new one, because it reads the same WindowManager the fold does. The board shows one Preview line only when the store app reports an outer screen; a browser, an iPhone build (no `getDualScreen`, the call rejects) and Android builds up to versionCode 7 show nothing, and a one-screen phone shows nothing because the plugin reports `outerScreen: false`. So no flag is needed to keep it from members who cannot use it, and step 2 replaces the line with the button.
+- **The window-area API needs an opt-in** (2026-11-16). Every class in `androidx.window.area` 1.3.0 carries `@ExperimentalWindowApi`, so `BpmFoldPlugin` carries `@OptIn(markerClass = ExperimentalWindowApi.class)` (from `annotation-experimental`, which `appcompat` → `core` puts on the compile path), pinned by `__tests__/native-shell-projects.test.ts`. The plugin was compiled here against the real androidx.window 1.3.0, core 1.13 and Kotlin jars with stand-ins for Capacitor's classes; the release build on Grant's machine is the first full Android build of it.
+
+## Reading the probe (step 1)
+
+1. Build and upload the Android shell as `native/README.md` says ("Android: the signed bundle, from the shell"), bumping `versionCode` from what the Play Store holds.
+2. On the Fold 8, update the app from the Play Store, open it unfolded, then Stats → Play → Keep score.
+3. The line under the buttons reads one of:
+   - "Outer screen: this phone can show the score there." (`available`): go to step 2.
+   - "… supported, but not right now. Open the phone flat and try again." (`unavailable`): open it flat and reopen the board; supported, so step 2 too.
+   - "… this phone can't show the score there." (`unsupported`): the kill criterion. Stop, and record it here.
+   - No line at all: the app is still the old build, or the phone reported no outer screen; say which.
 
 ## Shape
 
-| Piece | File (proposed) |
+| Piece | File |
 | --- | --- |
-| Capability probe and dual-screen session | `android/app/src/main/java/com/motioncraft/bpm/BpmFoldPlugin.java`, or a new `BpmOuterScreenPlugin.java` registered in `MainActivity.java` |
-| The page's side | `lib/fold.ts` (or a new `lib/outerScreen.ts`), behind `isNative()` with a dynamic import, as `__tests__/native-imports.test.ts` requires |
-| The button and the pushes | `components/stats/CourtsideScoreboard.tsx` |
-| Native view on the outer screen | inside the plugin; the score widget's layouts (`BpmScoreWidgetProvider.java`) are the closest existing drawing of a big native score |
+| The probe (step 1): `getDualScreen` → `{ outerScreen, dualScreen, rearDisplay }` | `android/app/src/main/java/com/motioncraft/bpm/BpmFoldPlugin.java` |
+| The page's side: `dualScreenFromNative`, `getDualScreen`, `useDualScreen` | `lib/fold.ts`; tests `__tests__/fold-dual-screen.test.ts` |
+| The Preview line (step 1); the button and the pushes (step 2, proposed) | `components/stats/CourtsideScoreboard.tsx`, strings `stats.courtside.outer`; tests `__tests__/components/CourtsideScoreboard.outer.test.tsx` |
+| Native view on the outer screen (step 2, proposed) | inside the plugin; the score widget's layouts (`BpmScoreWidgetProvider.java`) are the closest existing drawing of a big native score |

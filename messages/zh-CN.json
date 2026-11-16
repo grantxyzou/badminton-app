@@ -2049,6 +2049,13 @@
       "newGame": "新一局",
       "save": "保存比赛",
       "saveNeedsSession": "保存需要本周的活动才能记录。",
+      "outer": {
+        "available": "外屏：这部手机可以在外屏显示比分。",
+        "unavailable": "外屏：支持，但现在不可用。请把手机完全展开后再试。",
+        "active": "外屏：正在被其他应用使用。",
+        "unsupported": "外屏：这部手机无法在外屏显示比分。",
+        "unknown": "外屏：正在检查…"
+      },
       "close": "关闭",
       "voice": {
         "preview": "预览",
