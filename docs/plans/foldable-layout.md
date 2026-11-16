@@ -433,6 +433,8 @@ Apple's list-detail, the shape Stringing took the same day:
    what people get, which is still right on a flat-open phone.
 4. The two-screen scoreboard (outer screen faces the players), native (Apple's
    scene accessories), only if step 3's board gets used at a session.
+   Asked for on 2026-11-13 (Grant, Galaxy Z Fold); its own plan is
+   `docs/plans/outer-screen-scoreboard.md`.
 
 The side tab bar on the Duo's OUTER screen (step 2's non-goal) can now be a
 plugin answer too: `BpmFold` could report which display the app is on, and the

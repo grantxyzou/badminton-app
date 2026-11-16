@@ -14,6 +14,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 - The ledger records the $30 that arrived, not the $45 bill, so the money page's Collected is what the club received. Profile's "what you paid" counts the same way.
 - Marking someone paid still means paid in full; nothing about the tap changed.
 
+## Inventory: the search stays tidy when it sticks (2026-11-16)
+
+- **When you scroll a long strings list, the search and filters stick below the bell, language and theme buttons** instead of under them, and their background spans the whole screen like the top bar, rather than a strip across the card.
+- **The list no longer jumps by a pixel** as the search sticks.
+
 ## The money page says when its ledger figures are in doubt (2026-11-16)
 
 - **Collected and Net carry an amber "Unchecked" or "N lines off" mark while the Ledger check is red, three days old or has never run**, with a line under them saying that Still owed is live and right. Before, the red check sat at the top and the figures below it read as settled truth.
