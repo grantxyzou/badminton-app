@@ -23,7 +23,9 @@ export async function POST(req: NextRequest) {
   const member = await requireGroupMember(req);
   if (!member) return unauthorized();
   try {
-    const { url } = await startCardCheckout(resolveGroupId(req), member.memberId);
+    // `{ native: true }` from the store apps: Checkout returns to /pay/done.
+    const body = (await req.json().catch(() => null)) as { native?: unknown } | null;
+    const { url } = await startCardCheckout(resolveGroupId(req), member.memberId, Date.now(), { native: body?.native === true });
     return NextResponse.json({ url });
   } catch (err) {
     if (err instanceof CardPayError) return NextResponse.json({ error: err.code }, { status: 409 });

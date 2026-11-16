@@ -91,6 +91,13 @@ submitted by Grant on device.
   acknowledges; `HandoffCodeSheet` takes it in both shells. Codes ride in URL
   FRAGMENTS, never the query. `lib/authHandoff.ts`'s docblock carries the full
   argument; `docs/plans/oauth-handoff-gaps.md` the history and decisions.
+- **Card payment runs in the SYSTEM browser sheet too** (2026-11-16,
+  `docs/plans/card-pay-prototype.md`): navigating the WebView to Stripe handed
+  it to Safari, and the return opened the website. The app sends
+  `{ native: true }`, opens Checkout with `@capacitor/browser`, and Stripe
+  returns to `/pay/done`, whose button is `bpm://pay/return` (close the sheet,
+  Home, resume). A new hand-off to a third-party page follows the same shape:
+  a sheet, a landing on our domain, a custom-scheme way home.
 - **Push is one server transport for both platforms**: `@capacitor-firebase/messaging`
   hands back an FCM token on iOS and Android (Firebase relays to APNs), and
   `lib/fcm.ts` sends via FCM HTTP v1 with zero dependencies. `PushSubscriptionDoc`

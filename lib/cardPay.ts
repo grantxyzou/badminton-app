@@ -242,7 +242,12 @@ export function linesFromMetadata(metadata: Record<string, string> | null | unde
  * A Stripe-hosted Checkout page for this member's settled session lines, as a
  * direct charge on the club's account. Returns the page's URL.
  */
-export async function startCardCheckout(groupId: string, memberId: string, now = Date.now()): Promise<{ url: string; lines: number; amountCents: number }> {
+export async function startCardCheckout(
+  groupId: string,
+  memberId: string,
+  now = Date.now(),
+  opts: { native?: boolean } = {},
+): Promise<{ url: string; lines: number; amountCents: number }> {
   const stripe = must();
   const settings = await readCardPay(groupId);
   if (!settings) throw new CardPayError('club_not_connected');
@@ -265,11 +270,18 @@ export async function startCardCheckout(groupId: string, memberId: string, now =
 
   // A double tap within ten minutes gets the SAME page, not a second charge.
   const key = createHash('sha256')
-    .update([groupId, memberId, ...lines.map(encodeLine), String(Math.floor(now / 600_000))].join('|'))
+    .update([groupId, memberId, ...lines.map(encodeLine), String(Math.floor(now / 600_000)), opts.native ? 'native' : 'web'].join('|'))
     .digest('hex')
     .slice(0, 40);
 
   const base = appBase();
+  // The store apps open Checkout in the system browser sheet, a separate
+  // browser: sending it back to `/?tab=home` would load the website inside
+  // that sheet. It lands on /pay/done instead, whose button opens
+  // `bpm://pay/return` and hands the person back to the app.
+  const back = opts.native
+    ? { success_url: `${base}/pay/done`, cancel_url: `${base}/pay/done?cancelled=1` }
+    : { success_url: `${base}/?tab=home&card=paid`, cancel_url: `${base}/?tab=home` };
   const session = await stripe.checkout.sessions.create(
     {
       mode: 'payment',
@@ -284,8 +296,7 @@ export async function startCardCheckout(groupId: string, memberId: string, now =
       client_reference_id: memberId,
       metadata,
       payment_intent_data: { metadata },
-      success_url: `${base}/?tab=home&card=paid`,
-      cancel_url: `${base}/?tab=home`,
+      ...back,
     },
     { stripeAccount: settings.stripeAccountId, idempotencyKey: `bpm-checkout:${key}` },
   );

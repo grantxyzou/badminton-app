@@ -660,7 +660,14 @@
       "card": "Pay by card",
       "cardBusy": "Opening card payment\u2026",
       "cardError": "Couldn\u2019t open card payment \u2014 try again.",
-      "sentItError": "Couldn\u2019t save that \u2014 try again."
+      "sentItError": "Couldn\u2019t save that \u2014 try again.",
+      "done": {
+        "title": "Payment sent",
+        "body": "Stripe has your payment. Your balance in the app updates in a few seconds.",
+        "cancelledTitle": "Payment cancelled",
+        "cancelledBody": "Nothing was charged.",
+        "back": "Back to the %APP_SHORT% app"
+      }
     },
     "credit": {
       "label": "Your credit",
