@@ -226,15 +226,32 @@ describe('DELETE /api/session/settle', () => {
     expect(res.status).toBe(404);
   });
 
-  it('clears settled snapshot and per-player owed/settledAt, preserves paid', async () => {
+  it('is refused while anyone is marked paid, naming them, and touches nothing', async () => {
+    seedPlayer(SID, 'Alice', { paid: true });
+    seedPlayer(SID, 'Bob', { paid: false });
+    await POST(makeAdminRequest('POST', 'http://localhost:3000/api/session/settle'));
+
+    const res = await DELETE(makeAdminRequest('DELETE', 'http://localhost:3000/api/session/settle'));
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: 'bill_has_payments', names: ['Alice'] });
+    const store = getStore();
+    expect((store['sessions'] as Array<{ id: string; settled?: unknown }>).find((s) => s.id === SID)!.settled).toBeDefined();
+    const alice = (store['players'] as Array<{ name: string; owedAmount?: number; paid?: boolean }>).find((p) => p.name === 'Alice')!;
+    expect(alice.owedAmount).toBeDefined();
+    expect(alice.paid).toBe(true);
+  });
+
+  it('clears settled snapshot and per-player owed/settledAt once nobody is paid, preserving paid: false', async () => {
     seedPlayer(SID, 'Alice', { paid: true });
     seedPlayer(SID, 'Bob', { paid: false });
     await POST(makeAdminRequest('POST', 'http://localhost:3000/api/session/settle'));
 
     // Sanity: stamps applied
     const storeBefore = getStore();
-    const aliceBefore = (storeBefore['players'] as Array<{ name: string; owedAmount?: number }>).find((p) => p.name === 'Alice')!;
+    const aliceBefore = (storeBefore['players'] as Array<{ name: string; owedAmount?: number; paid?: boolean }>).find((p) => p.name === 'Alice')!;
     expect(aliceBefore.owedAmount).toBeDefined();
+    // The organiser un-ticks Alice first (what the 409 asks for).
+    aliceBefore.paid = false;
 
     const unsettleRes = await DELETE(makeAdminRequest('DELETE', 'http://localhost:3000/api/session/settle'));
     expect(unsettleRes.status).toBe(200);
@@ -248,7 +265,7 @@ describe('DELETE /api/session/settle', () => {
     const bob = players.find((p) => p.name === 'Bob')!;
     expect(alice.owedAmount).toBeUndefined();
     expect(alice.settledAt).toBeUndefined();
-    expect(alice.paid).toBe(true); // PRESERVED — paid is independently meaningful
+    expect(alice.paid).toBe(false);
     expect(bob.paid).toBe(false);
   });
 

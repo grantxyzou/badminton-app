@@ -102,36 +102,39 @@ describe('GAP 1 — hard-deleting a PAID settled row keeps its payment and voids
   });
 });
 
-describe('GAP 2 — unsettling a session someone already paid keeps their payment and voids their charge', () => {
-  it('DELETE /api/session/settle: −$30 open for a row that still says paid', async () => {
+describe('GAP 2 — FIXED: "Edit the bill" is refused while anyone is marked paid', () => {
+  it('DELETE /api/session/settle answers 409 bill_has_payments with the names, and the ledger does not move', async () => {
     await doSettle();
     const id = String(rowOf('Lin').id);
     await pay(id);
-    expect((await unsettle(makeAdminRequest('DELETE', `${BASE}/session/settle`))).status).toBe(200);
-    expect(rowOf('Lin').paid).toBe(true); // the route keeps `paid` on purpose
-    // TODAY: flagged daily until someone re-settles.
-    expect(live(id)).toBe(-3000);
-    expect(await codes()).toEqual([['amount_mismatch', 'session', -3000, 0]]);
+    const res = await unsettle(makeAdminRequest('DELETE', `${BASE}/session/settle`));
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: 'bill_has_payments', names: ['Lin'] });
+    expect(rowOf('Lin')).toMatchObject({ paid: true, owedAmount: 30 });
+    expect(live(id)).toBe(0); // charge +30, payment −30, both still standing
+    expect(await codes()).toEqual([]);
   });
 
-  it('and a fresh settle at a DIFFERENT price leaves the paid row at a figure nobody paid (the re-settle guard is skipped)', async () => {
+  it('the way through: un-tick, edit, settle at the new price, tick again — every step leaves the books clean', async () => {
     await doSettle();
     const id = String(rowOf('Lin').id);
     await pay(id);
-    await unsettle(makeAdminRequest('DELETE', `${BASE}/session/settle`));
-    // The admin fixes the court cost: $60 → $90 of courts, $45 each.
+    expect((await patchPlayer(makeAdminRequest('PATCH', `${BASE}/players`, { id, paid: false }))).status).toBe(200);
+    expect(live(id)).toBe(3000); // the payment is voided; Lin owes $30 again
+    expect((await unsettle(makeAdminRequest('DELETE', `${BASE}/session/settle`))).status).toBe(200);
+    expect(live(id)).toBe(0); // and now the charge is voided too
     const s = (getStore()['sessions'] as Array<Record<string, unknown>>).find((x) => x.id === SID)!;
     s.costPerCourt = 45;
     await new Promise((r) => setTimeout(r, 2));
-    // A plain POST (not `resettle: true`) never runs the `paid_would_change` check.
     expect((await doSettle()).status).toBe(200);
+    expect(rowOf('Lin')).toMatchObject({ paid: false, owedAmount: 45 });
+    expect(live(id)).toBe(4500);
+    expect(await codes()).toEqual([]);
+    await new Promise((r) => setTimeout(r, 2));
+    await pay(id);
     expect(rowOf('Lin')).toMatchObject({ paid: true, owedAmount: 45 });
-    // TODAY: new charge +$45, old payment −$30 (its id is keyed on paidAt, so
-    // the settle's payment write 409s) → +$15 open on a row that says paid.
-    // FIXED: POST settle refuses `paid_would_change` whenever a row is paid,
-    // not only on a re-settle — so this settle answers 409.
-    expect(live(id)).toBe(1500);
-    expect(await codes()).toEqual([['missing_payment', 'session', 1500, 0]]);
+    expect(live(id)).toBe(0); // charge +45, payment −45 under a new paidAt
+    expect(await codes()).toEqual([]);
   });
 });
 

@@ -8,6 +8,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## "Edit the bill" waits until nobody on it is marked paid (2026-11-16)
+
+- **Editing a finalized bill is refused while anyone is marked paid**, and the message names them. Before, the edit kept their payment but dropped the bill it paid, and finalizing again at a different cost could leave someone marked "paid $45" who paid $30 — with nobody told. Un-tick them in Payments, edit the bill, finalize, then tick them again at the new amount.
+
 ## Inventory: the string shelf as a list (2026-11-16)
 
 - **"Strings, stock, prices & holes" is now Inventory, and the strings are one plain list** with each string's packet, what is left and its price, rather than a tile per string.
