@@ -8,6 +8,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## The stocktake photo no longer closes the iPhone app (2026-11-16)
+
+- **Tapping "Take a photo" in the stocktake closed the App Store app on iPhone.** iOS ends any app that opens the camera without saying why it needs it, and the app had never said. The next iPhone build (8) says so; until it is installed, the iPhone app counts the shelf by hand and offers no photo, rather than closing. The web and Android were never affected.
+
 ## A daily AI allowance for each club (2026-11-16)
 
 - **Every club now has its own daily allowance for each AI feature**, so a busy second club can't run up the app's AI bill: 60 writing helps, 300 Stats reads, 300 racket-fit verdicts and 30 shelf photos a day. A saved answer that's simply shown again doesn't count.

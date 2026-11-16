@@ -7,6 +7,7 @@ import ErrorState from '@/components/primitives/ErrorState';
 import StringPackImage from '@/components/stringing/StringPackImage';
 import { useOnline } from '@/lib/useOnline';
 import { photoToJpegBase64 } from '@/lib/photoDownscale';
+import { cameraUsable } from '@/lib/nativeCamera';
 import { MAX_PHOTO_BASE64 } from '@/lib/stringStocktakeScan';
 import {
   FULLNESS_ORDER, metresByWeight, setsByEye, setsByWeight, type Fullness,
@@ -79,7 +80,9 @@ export default function StocktakeSheet({ onClose, onSaved }: { onClose: () => vo
       const d = await res.json();
       if (!Array.isArray(d.strings)) throw new Error('shape');
       setStrings(d.strings as SheetString[]);
-      setPhotoOn(d.photo === true);
+      // The store iPhone app before build 8 is ended by iOS when the camera
+      // opens (no usage description), so it counts by hand (lib/nativeCamera.ts).
+      setPhotoOn(d.photo === true && (await cameraUsable()));
     } catch {
       setLoadError(true);
     }

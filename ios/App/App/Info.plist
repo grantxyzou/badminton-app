@@ -42,6 +42,13 @@
 	<false/>
 	<key>NSCalendarsUsageDescription</key>
 	<string>Lets you add this week's badminton session to your calendar.</string>
+	<!-- A photo field (the string-shelf stocktake) opens the camera. Without
+	     these keys iOS ends the app the moment the camera or the photo
+	     library is asked for: the stocktake "crashed and quit" (2026-11-16). -->
+	<key>NSCameraUsageDescription</key>
+	<string>Lets you take a photo of the string shelf to count what is left.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Lets you choose a photo of the string shelf to count what is left.</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>
