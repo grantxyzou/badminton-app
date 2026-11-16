@@ -300,7 +300,7 @@ change if Azure reports it taken.
 
 ### Callers
 
-Three routes call the SDK:
+Four routes call the SDK:
 
 - `POST /api/claude` — admin-only prose (announcements, release notes). Uses
   the async `isAdminAuthedWithMember` check, accepting the cost, because it
@@ -308,6 +308,10 @@ Three routes call the SDK:
 - `GET /api/stats/insight` — the member-facing weekly read on Stats.
 - `GET /api/equipment/fit-verdict` — the racket-fit verdict (its flag retired
   2026-10-19; with no API key it answers without AI words).
+- `POST /api/stringing/stocktake/scan` — reads one photo of the string shelf
+  for a stocktake (`docs/plans/string-photo-stocktake.md`): an admin or a
+  stringer of the club, 20 an hour per caller and 30 a day per person. The
+  photo is never stored; with no API key the sheet offers counting by hand.
 
 The browser never calls Anthropic directly. The shared voice in
 `lib/aiPersona.ts` is opt-in per caller (see

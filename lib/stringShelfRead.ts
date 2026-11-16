@@ -1,8 +1,8 @@
-import { groupScope } from './groupScope';
-import { STOCK_JOB_SELECT, colourStockOf, countedJob, labelKey, readStringCatalog, readStringPurchases, readStringUses, stockBand, summarizeStringStock, withDeletedUses, type ColourStock, type StockBand } from './stringStock';
+import { colourStockOf, labelKey, stockBand, type ColourStock, type StockBand } from './stringStock';
+import { loadStringStock } from './stringStocktake';
 import { readClubGearDocs } from './clubGearDocs';
 import { tallyClubGear } from './clubGear';
-import type { CatalogItem, StringingJob } from './types';
+import type { CatalogItem } from './types';
 import type { CustomColour } from './stringPalette';
 
 /**
@@ -45,25 +45,19 @@ export async function readShelfExtras(
   groupId: string,
   strings: string[],
   links: Record<string, string>,
-  aliases: Record<string, string> = {},
-  customColours: readonly CustomColour[] = [],
+  // Kept for the callers; the loader reads the club's own aliases and colours.
+  _aliases: Record<string, string> = {},
+  _customColours: readonly CustomColour[] = [],
 ): Promise<ShelfExtras> {
   const cached = cacheEnabled() ? shelfCache.get(groupId) : undefined;
   if (cached && Date.now() - cached.at < SHELF_TTL_MS) return cached.value;
 
-  const scope = groupScope(groupId);
-  const [purchases, catalog, jobs, gear, uses] = await Promise.all([
-    readStringPurchases(scope),
-    readStringCatalog(),
-    // Every job, archived included: a racket strung last winter still used a set.
-    // `stringColor` so a strung job uses up its own colour's pool; `ownString`
-    // so a player's own string takes nothing off the shelf.
-    scope.query<StringingJob>('stringingJobs', { select: STOCK_JOB_SELECT }),
+  // The one stock loader (lib/stringStocktake.ts), so the band a player reads
+  // counts exactly as the bench does — counts, colours and own strings alike.
+  const [{ summary, catalog }, gear] = await Promise.all([
+    loadStringStock(groupId),
     readClubGearDocs(groupId),
-    readStringUses(scope),
   ]);
-
-  const summary = summarizeStringStock({ offered: strings, links, aliases, purchases, jobs: withDeletedUses(jobs.map(countedJob), uses), catalog, customColours });
   const offeredKeys = new Map(strings.map((l) => [labelKey(l), l]));
   const stock: Record<string, StockBand> = {};
   const colourStock: Record<string, ColourStock> = {};

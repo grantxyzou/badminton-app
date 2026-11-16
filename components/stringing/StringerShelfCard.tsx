@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import StocktakeSheet from '@/components/stringing/StocktakeSheet';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '@/components/BottomSheet';
 import { useRevealReady } from '@/components/primitives/Reveal';
 import CardHeader from '@/components/primitives/CardHeader';
@@ -39,6 +40,8 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
  */
 export default function StringerShelfCard({ hasIdentity }: { hasIdentity: boolean }) {
   const t = useTranslations('home.stringing.shelfEdit');
+  const tStock = useTranslations('home.stringing.stocktake');
+  const [counting, setCounting] = useState(false);
   const online = useOnline();
   const [shelf, setShelf] = useState<Shelf | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -108,6 +111,19 @@ export default function StringerShelfCard({ hasIdentity }: { hasIdentity: boolea
           })}
         </div>
       )}
+
+      {/* The stocktake: the stringer is the one at the shelf (Grant,
+          2026-11-15: "Admins and stringers"; docs/plans/string-photo-stocktake.md). */}
+      {shelf.strings.length > 0 && (
+        <div className="bpm-inner-row">
+          <span className="fs-md" style={{ color: 'var(--text-primary)', minWidth: 0 }}>{tStock('button')}</span>
+          <button type="button" className="cc-btn cc-btn-secondary" disabled={!online} onClick={() => setCounting(true)}>
+            <span className="material-icons icon-sm" aria-hidden="true">photo_camera</span>
+            {tStock('buttonShort')}
+          </button>
+        </div>
+      )}
+      {counting && <StocktakeSheet onClose={() => setCounting(false)} />}
 
       {picked !== null && (
         <StringerShelfSheet

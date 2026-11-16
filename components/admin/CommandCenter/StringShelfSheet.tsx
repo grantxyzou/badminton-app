@@ -352,7 +352,7 @@ export default function StringShelfSheet(props: Props) {
   const margin = line && line.costPerSetCents !== null && typeof props.price === 'number'
     ? props.price - line.costPerSetCents
     : null;
-  const hasStock = !!line && line.purchases > 0;
+  const hasStock = !!line && (line.purchases > 0 || !!line.lastCount);
   const remainingPct = hasStock && line.purchasedMetres > 0
     ? Math.max(0, Math.min(100, (line.remainingMetres / line.purchasedMetres) * 100))
     : 0;

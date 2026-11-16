@@ -31,3 +31,11 @@ export const PROSE_MODEL = 'claude-sonnet-5';
  * better judgment on what is worth saying. Rationale in the route's own docstring.
  */
 export const INSIGHT_MODEL = 'claude-sonnet-4-6';
+
+/**
+ * Reading a photo of the string shelf for a stocktake
+ * (docs/plans/string-photo-stocktake.md): which strings, reels or packets, how
+ * full. Counting small printed labels in a phone photo is the hard part, so
+ * the current Opus; a person checks every line before anything is saved.
+ */
+export const STOCKTAKE_MODEL = 'claude-opus-5-5';
