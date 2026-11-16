@@ -409,8 +409,12 @@ export async function mirrorRowDeleted(scope: GroupScope, row: Pick<Player, 'id'
  * older rule left with a payment and nothing under it, the next time anyone
  * touches the job. `prev` is the job before the write.
  */
-export async function mirrorStringingChanged(scope: GroupScope, prev: StringingJob, next: StringingJob, via: 'manual' | 'etransfer' | 'credit' | 'card' = 'manual', paymentId?: string): Promise<void> {
+export async function mirrorStringingChanged(scope: GroupScope, prev: StringingJob, next: StringingJob, via?: 'manual' | 'etransfer' | 'credit' | 'card', paymentId?: string): Promise<void> {
   if (!on()) return;
+  // The job carries its own `paidVia` since 2026-11-16; a caller that still
+  // names the method wins, an older job with neither reads as `manual`.
+  const how = via ?? next.paidVia ?? 'manual';
+  const ref = paymentId ?? next.paymentId;
   try {
     const was = ledgerHoldsCharge(prev);
     const is = ledgerHoldsCharge(next);
@@ -424,7 +428,7 @@ export async function mirrorStringingChanged(scope: GroupScope, prev: StringingJ
       }
     }
     if (!prev.paidAt && next.paidAt) {
-      const e = stringingPaymentEntry(next, via, paymentId);
+      const e = stringingPaymentEntry(next, how, ref);
       if (e) await appendEntry(scope, e);
     }
     if (prev.paidAt && !next.paidAt) await voidLive(scope, prev.memberId, prev.id, 'payment', 'unpaid');

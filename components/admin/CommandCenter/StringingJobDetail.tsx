@@ -587,6 +587,7 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
           {local.paidAt && (
             <div className="fs-sm" style={{ color: 'var(--accent)', fontWeight: 600 }}>
               {t('paidOn', { date: formatReadyBy(local.paidAt.slice(0, 10)) ?? local.paidAt.slice(0, 10) })}
+              {local.paidVia && ` · ${t(`paidVia_${local.paidVia}`)}`}
             </div>
           )}
           {local.readyBy && (

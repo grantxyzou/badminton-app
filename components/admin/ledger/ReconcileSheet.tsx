@@ -93,6 +93,8 @@ function title(m: Mismatch): string {
 }
 
 /** Where the job or row stands now, as the app sees it. */
+const VIA_WORD: Record<string, string> = { manual: 'by hand', etransfer: 'by e-transfer', card: 'by card', credit: 'with credit' };
+
 function facts(m: Mismatch): string {
   const s = m.detail?.subject;
   if (!s) return '';
@@ -100,7 +102,7 @@ function facts(m: Mismatch): string {
   const out: string[] = [];
   if (s.kind === 'stringing') {
     if (s.status) out.push(STATUS[s.status] ?? s.status);
-    out.push(s.paidAt ? `paid ${day(s.paidAt)}` : 'not paid');
+    out.push(s.paidAt ? `paid ${day(s.paidAt)}${s.paidVia ? ` ${VIA_WORD[s.paidVia] ?? s.paidVia}` : ''}` : 'not paid');
     if (s.billsOnInvoice) out.push(s.invoiced ? 'invoiced' : 'not invoiced');
     if (s.withdrawn) out.push('withdrawn');
     if (s.archived) out.push('archived');

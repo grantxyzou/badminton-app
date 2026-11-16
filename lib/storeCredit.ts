@@ -350,8 +350,8 @@ async function markRowPaid(
   }
   const job = await scope.read<StringingJob>('stringingJobs', line.ref, line.pk);
   if (!job) return 'gone';
-  if (job.paidAt !== null) return job.paidAt === opts.spendAt ? 'credit' : 'already';
-  const written = await scope.replace('stringingJobs', { ...job, paidAt: opts.spendAt, updatedAt: opts.now }, line.pk);
+  if (job.paidAt !== null) return job.paidVia === 'credit' || job.paidAt === opts.spendAt ? 'credit' : 'already';
+  const written = await scope.replace('stringingJobs', { ...job, paidAt: opts.spendAt, paidVia: 'credit' as const, updatedAt: opts.now }, line.pk);
   if (!written) return 'gone';
   await mirrorStringingChanged(scope, job, written, 'credit');
   return 'paid';

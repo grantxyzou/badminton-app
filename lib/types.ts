@@ -1188,6 +1188,15 @@ export interface StringingJob {
   acceptedAt: string | null;
   paidAt: string | null;
   /**
+   * HOW it was paid, like `Player.paidVia` (2026-11-16, docs/plans/money-audit.md,
+   * transparency item 1). Additive; absent on a job paid before this existed,
+   * which the backfill and the money view read as `manual`. Cleared with
+   * `paidAt` on every un-pay. The ledger still keys the payment on `paidAt`.
+   */
+  paidVia?: 'manual' | 'etransfer' | 'credit' | 'card';
+  /** The `payments` doc that paid it (`etransfer`), or the Stripe Checkout Session id (`card`). */
+  paymentId?: string;
+  /**
    * The Stripe Checkout Session that paid this job by card
    * (docs/plans/card-pay-prototype.md). Additive; absent = paid another way or
    * unpaid. The ledger still keys the payment on `paidAt`, as for every via.

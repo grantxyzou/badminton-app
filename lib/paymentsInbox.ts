@@ -185,6 +185,8 @@ export async function applyAllocations(
   scope: GroupScope,
   allocations: PaymentAllocation[],
   paymentId: string,
+  /** How the money came. A card review row assigned by hand is still card money, under its Checkout id. */
+  via: 'etransfer' | 'card' = 'etransfer',
 ): Promise<PaymentAllocation[]> {
   const now = new Date().toISOString();
   const landed: PaymentAllocation[] = [];
@@ -192,7 +194,7 @@ export async function applyAllocations(
     if (a.kind === 'session') {
       const row = await scope.read<Player & Record<string, unknown>>('players', a.ref, a.pk);
       if (!row || row.paid === true || row.writtenOff === true) continue;
-      const ok = await scope.replace('players', { ...row, paid: true, paidAt: now, paidVia: 'etransfer', paymentId }, a.pk);
+      const ok = await scope.replace('players', { ...row, paid: true, paidAt: now, paidVia: via, paymentId }, a.pk);
       if (ok) {
         landed.push(a);
         await mirrorPaid(scope, ok as unknown as Player);
@@ -200,10 +202,10 @@ export async function applyAllocations(
     } else {
       const job = await scope.read<StringingJob>('stringingJobs', a.ref, a.pk);
       if (!job || job.paidAt !== null) continue;
-      const ok = await scope.replace('stringingJobs', { ...job, paidAt: now, updatedAt: now }, a.pk);
+      const ok = await scope.replace('stringingJobs', { ...job, paidAt: now, paidVia: via, paymentId, updatedAt: now }, a.pk);
       if (ok) {
         landed.push(a);
-        await mirrorStringingChanged(scope, job, ok, 'etransfer', paymentId);
+        await mirrorStringingChanged(scope, job, ok, via, paymentId);
       }
     }
   }

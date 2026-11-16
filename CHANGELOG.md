@@ -8,6 +8,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## A restring remembers how it was paid (2026-11-16)
+
+- **A stringing job now records how it was paid** — by hand, e-transfer, card or credit — beside when. The job page and the Ledger check say it, and the money page's "collected by method" counts restrings correctly; before, every restring read as "marked paid" whatever actually happened.
+- Jobs paid before today have no method on record and keep counting as marked by hand.
+
 ## Two "paid" taps at once count once (2026-11-16)
 
 - **Marking someone paid from two phones at the same moment, or a slow double tap, records one payment**, not two. The second tap sees the first one landed and changes nothing. Before, both wrote, and the Ledger check flagged a double payment the next morning.
