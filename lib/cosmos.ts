@@ -478,6 +478,34 @@ function seedDevScenarioIfRequested(containerName: string) {
   if (scenario === 'metrics-history') seedDevMetricsHistory(now);
   if (scenario === 'six-feathers') seedDevSixFeathers(now);
 
+  // One card payment Stripe sent that the webhook could not apply
+  // (lib/cardPay.ts `fileCardReview`): the Checkout charged more than the lines
+  // it was for. It sits under "Needs a look" so the inbox's card row can be
+  // seen on the mock store — e-transfers are deliberately NOT set up here, so
+  // this is also the "card rows with no Gmail script" state.
+  mockStore.payments ??= [];
+  if (!mockStore.payments.find((p) => p.id === 'card:cs_dev_mismatch')) {
+    mockStore.payments.push({
+      id: 'card:cs_dev_mismatch',
+      groupId: BPM_GROUP_ID,
+      source: 'card',
+      card: { checkoutId: 'cs_dev_mismatch', kind: 'payment' },
+      senderName: 'Lin',
+      amountCents: 4500,
+      memo: null,
+      subject: 'Stripe Checkout cs_dev_mismatch',
+      receivedAt: new Date(now.getTime() - 3 * 60 * 60 * 1000).toISOString(),
+      authenticated: true,
+      status: 'review',
+      reason: 'card_amount_mismatch',
+      memberId: 'dev-member-lin',
+      payerName: 'Lin',
+      allocations: [],
+      suggestions: [{ memberId: 'dev-member-lin', name: 'Lin', owedCents: 0, proposed: [] }],
+      createdAt: now.toISOString(),
+    });
+  }
+
   g._devScenarioSeeded = true;
   console.warn(
     `[dev] SEED_DEV_SCENARIO=${scenario}: seeded session ${sessionId} ` +
