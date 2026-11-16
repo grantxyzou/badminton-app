@@ -365,6 +365,15 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       // Boolean in, timestamp out: "when" is worth keeping and "whether" is
       // recoverable from it, never the other way round.
       next.paidAt = body.paid === true ? (job.paidAt ?? now) : null;
+      // HOW, beside when (docs/plans/money-audit.md, transparency item 1): a
+      // tick here is the stringer's own hand; an un-tick forgets the method
+      // and the payment link with it, as the session row's does.
+      if (body.paid === true) {
+        if (!job.paidAt) next.paidVia = 'manual';
+      } else {
+        next.paidVia = undefined;
+        next.paymentId = undefined;
+      }
       /* PAYING WITHDRAWS A PROPOSED NEW PRICE (code review, 2026-11-16). A paid
          bill is never re-priced, so `accept` refuses it (`job_paid`), and the
          player was left with a prompt they could only fail at while the bench

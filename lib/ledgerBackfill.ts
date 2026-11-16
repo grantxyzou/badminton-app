@@ -90,7 +90,9 @@ export function jobEntries(job: StringingJob): NewEntry[] {
     if (c) out.push(c);
   }
   if (job.paidAt && typeof job.priceCents === 'number' && job.priceCents > 0) {
-    const p = stringingPaymentEntry(job, 'manual');
+    // The job's own `paidVia` since 2026-11-16; before it, every backfilled
+    // stringing payment read as "Marked paid" in the money view.
+    const p = stringingPaymentEntry(job, job.paidVia ?? 'manual', job.paymentId);
     if (p) out.push(p);
   }
   return out;

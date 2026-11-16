@@ -2655,6 +2655,10 @@
           }
         },
         "paidBadge": "Paid",
+        "paidVia_manual": "marked by hand",
+        "paidVia_etransfer": "by e-transfer",
+        "paidVia_card": "by card",
+        "paidVia_credit": "with credit",
         "paidOn": "Paid {date}",
         "markUnpaid": "Mark unpaid",
         "claim": "Take this one",

@@ -163,6 +163,7 @@ Also a stale comment: `lib/cardPay.ts`'s header still says the flag "stays off i
 - **Evidence as pinned-wrong tests, not failing tests** (2026-11-16). A test that asserted the right answer would turn `main` red until each fix landed; a test that pins today's wrong answer keeps the gate green, proves the gap with numbers, and fails, naming the fix, the moment the gap closes. The alternative, `it.fails`, would also stay green but hides what the app actually does.
 - **No fix in the audit PR** (#954), by the brief: Grant approves each one first.
 - **Stripe item 1 shipped first** (2026-11-16; Grant: "yes start with item 1"): `fileCardReview` in `lib/cardPay.ts` writes a `source: 'card'` review row for each outcome the webhook cannot act on, into the e-transfer queue rather than a queue of its own. Decision recorded in `docs/plans/card-pay-prototype.md`; the rule in `.claude/rules/money.md`.
+- **Transparency item 1 shipped** (2026-11-16; Grant: "add paidVia to stringing jobs next"): `StringingJob.paidVia` and `paymentId`, additive, stamped by the four payment paths and the bench tick, cleared by every un-pay, read by the mirror, the backfill, the Ledger check's description and the job page. Ids unchanged.
 - **Gap 3 fixed with the etag** (2026-11-16; Grant: "do gap 3 next"): `PATCH /api/players` (the admin tap and the self-report flag) writes with `replace`; a lost race answers 200 with the row when it already holds what was asked, else 409 `changed_elsewhere`, and `PaymentsCard` reloads on that. The gap 3 evidence test now asserts one payment.
 - **Gap 2 fixed as the 409** (2026-11-16; Grant: "do gap 2 next"): `DELETE /api/session/settle` answers `bill_has_payments` with the names while any billed row is paid, and the card's "Edit the bill" says what to do. `paidAmount` (transparency item 2) stays the fuller fix and is not in this change. The evidence tests for gap 2 now assert the right answer.
 
@@ -173,5 +174,6 @@ Also a stale comment: `lib/cardPay.ts`'s header still says the flag "stays off i
 | This audit | `docs/plans/money-audit.md` |
 | Evidence (gaps 1–6) | `__tests__/money-audit-gaps.test.ts` |
 | Stripe item 1: card review rows | `lib/cardPay.ts` (`fileCardReview`), `lib/paymentsInbox.ts` (`applyAllocations` via, `resolvePayment`), `components/admin/CommandCenter/PaymentsInboxCard.tsx`, `__tests__/group-card-review.test.ts` |
+| Transparency item 1 | `lib/types.ts` (`StringingJob.paidVia`), the four writers, `lib/ledgerMirror.ts`, `lib/ledgerBackfill.ts`, `__tests__/stringing-paid-via.test.ts` |
 | Gap 3 fix | `app/api/players/route.ts` (PATCH), `components/admin/CommandCenter/PaymentsCard.tsx` (`togglePaid`), `__tests__/players-patch-etag.test.ts` |
 | Gap 2 fix | `app/api/session/settle/route.ts` (DELETE), `components/admin/CommandCenter/NextSessionCard.tsx` (`editBill`), `__tests__/session-settle.test.ts` |

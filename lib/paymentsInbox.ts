@@ -202,7 +202,7 @@ export async function applyAllocations(
     } else {
       const job = await scope.read<StringingJob>('stringingJobs', a.ref, a.pk);
       if (!job || job.paidAt !== null) continue;
-      const ok = await scope.replace('stringingJobs', { ...job, paidAt: now, updatedAt: now }, a.pk);
+      const ok = await scope.replace('stringingJobs', { ...job, paidAt: now, paidVia: via, paymentId, updatedAt: now }, a.pk);
       if (ok) {
         landed.push(a);
         await mirrorStringingChanged(scope, job, ok, via, paymentId);

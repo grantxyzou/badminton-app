@@ -400,7 +400,7 @@ async function markJobCardPaid(scope: GroupScope, line: CardLine, memberId: stri
     if (!isBillable(job) || job.priceCents !== line.amountCents) return 'not_applied';
     const written = await scope.replace<StringingJob>(
       'stringingJobs',
-      { ...job, paidAt, cardPaymentId: checkoutId, updatedAt: new Date().toISOString() },
+      { ...job, paidAt, paidVia: 'card', paymentId: checkoutId, cardPaymentId: checkoutId, updatedAt: new Date().toISOString() },
       line.pk,
     );
     if (written) {
@@ -564,7 +564,7 @@ export async function applyRefund(charge: Stripe.Charge, eventAccount: string | 
     } else {
       const written = await scope.replace<StringingJob>(
         'stringingJobs',
-        { ...h.doc, paidAt: null, cardPaymentId: undefined, refundedPaymentId: session.id, updatedAt: new Date().toISOString() },
+        { ...h.doc, paidAt: null, paidVia: undefined, paymentId: undefined, cardPaymentId: undefined, refundedPaymentId: session.id, updatedAt: new Date().toISOString() },
         h.line.pk,
       );
       if (!written) continue;

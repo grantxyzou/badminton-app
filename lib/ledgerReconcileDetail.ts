@@ -36,6 +36,7 @@ export type MismatchSubject =
       racket: string | null;
       status: string | null;
       paidAt: string | null;
+      paidVia: string | null;
       invoiced: boolean;
       billsOnInvoice: boolean;
       archived: boolean;
@@ -83,6 +84,7 @@ async function subjectOf(scope: GroupScope, m: Mismatch): Promise<MismatchSubjec
     racket: job?.racketLabel ?? null,
     status: job?.status ?? null,
     paidAt: job?.paidAt ?? null,
+    paidVia: job?.paidVia ?? null,
     invoiced: typeof job?.invoice?.sentAt === 'string',
     billsOnInvoice: job?.billOn === 'invoice',
     archived: typeof job?.archivedAt === 'string' && job.archivedAt.length > 0,
