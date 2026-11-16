@@ -56,6 +56,29 @@ export function invoiceGateOpen(job: { billOn?: string | null; invoice?: { sentA
   return typeof job.invoice?.sentAt === 'string' && job.invoice.sentAt.length > 0;
 }
 
+/**
+ * Does the LEDGER hold a charge for this job? A priced job that is PAID always
+ * does, whatever its status or invoice: the money came in, so the bill it paid
+ * exists. Otherwise only once it is billable-shaped (finished, and invoiced
+ * when it bills on an invoice).
+ *
+ * Before 2026-11-16 a job paid while it was not billable-shaped (paid at pickup
+ * before its invoice was sent, paid before Ready, paid and then withdrawn) got
+ * a payment and no charge, and the reconcile reported the lone payment as an
+ * amount mismatch every day. The mirror and the backfill both read this.
+ */
+export function ledgerHoldsCharge(job: {
+  priceCents: number | null;
+  paidAt: string | null;
+  status: string;
+  billOn?: string | null;
+  invoice?: { sentAt?: string } | null;
+}): boolean {
+  if (typeof job.priceCents !== 'number' || job.priceCents <= 0) return false;
+  if (typeof job.paidAt === 'string' && job.paidAt.length > 0) return true;
+  return BILLABLE_STATUSES.has(job.status) && invoiceGateOpen(job);
+}
+
 /** Finished and priced and unpaid, whether or not it has been invoiced yet. */
 export function isFinishedUnpaid(job: { priceCents: number | null; paidAt: string | null; status: string }): boolean {
   if (typeof job.priceCents !== 'number' || job.priceCents <= 0) return false;
