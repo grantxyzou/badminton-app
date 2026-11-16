@@ -179,7 +179,11 @@ const toAllocation = (l: OwedLine): PaymentAllocation => ({ kind: l.kind, ref: l
 
 /**
  * Mark each allocated line paid. Returns the allocations that actually landed;
- * a row already paid, covered or gone is skipped (see the header).
+ * a row already paid, covered or gone is skipped (see the header) — and so is
+ * a line that no longer owes the amount the allocation was made for (a
+ * re-settle between match and write; audit gap 8, 2026-11-16): paying $45 of
+ * line with a $30 transfer is a guess, and the card path has refused it all
+ * along. The caller sees the shortfall and leaves the payment in the queue.
  */
 export async function applyAllocations(
   scope: GroupScope,
@@ -194,6 +198,9 @@ export async function applyAllocations(
     if (a.kind === 'session') {
       const row = await scope.read<Player & Record<string, unknown>>('players', a.ref, a.pk);
       if (!row || row.paid === true || row.writtenOff === true) continue;
+      // A FROZEN line only: an admin may assign an unsettled estimate by ref,
+      // and that is a person deciding (see `resolvePayment`).
+      if (typeof row.settledAt === 'string' && Math.round((row.owedAmount ?? 0) * 100) !== a.amountCents) continue;
       const ok = await scope.replace('players', { ...row, paid: true, paidAt: now, paidVia: via, paymentId }, a.pk);
       if (ok) {
         landed.push(a);
@@ -202,6 +209,7 @@ export async function applyAllocations(
     } else {
       const job = await scope.read<StringingJob>('stringingJobs', a.ref, a.pk);
       if (!job || job.paidAt !== null) continue;
+      if (Math.round(job.priceCents ?? 0) !== a.amountCents) continue;
       const ok = await scope.replace('stringingJobs', { ...job, paidAt: now, paidVia: via, paymentId, updatedAt: now }, a.pk);
       if (ok) {
         landed.push(a);
@@ -442,17 +450,21 @@ export async function resolvePayment(
 
   await releaseHoldIfSettled(scope, identity.memberId);
 
+  // A line that would not take the payment (paid meanwhile, or re-settled at
+  // another amount) keeps the payment IN THE QUEUE with what did land on
+  // record, exactly as the automatic path does — never a "matched" payment
+  // whose lines are still owed.
+  const fullyLanded = landed.length === chosen.length;
   const next: EtransferPayment = {
     ...payment,
-    status: 'matched',
-    reason: undefined,
+    status: fullyLanded ? 'matched' : 'review',
+    reason: fullyLanded ? undefined : 'changed_while_matching',
     memberId: identity.memberId,
     payerName,
     // KEEP what an earlier, partial auto-match already paid: those rows carry
     // this payment's id, and replacing the list would orphan them.
     allocations: [...payment.allocations, ...landed],
-    matchedBy: action.adminId,
-    resolvedAt: now,
+    ...(fullyLanded ? { matchedBy: action.adminId, resolvedAt: now } : {}),
   };
   return (await scope.replace('payments', next)) ?? next;
 }

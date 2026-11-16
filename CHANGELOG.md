@@ -8,6 +8,13 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## The money page says when its ledger figures are in doubt (2026-11-16)
+
+- **Collected and Net carry an amber "Unchecked" or "N lines off" mark while the Ledger check is red, three days old or has never run**, with a line under them saying that Still owed is live and right. Before, the red check sat at the top and the figures below it read as settled truth.
+- **"Card" on the money page now reads "Card · before Stripe's fee"**: it is what was charged, not what Stripe paid out.
+- **Marking someone paid can no longer quietly undo a resplit cover on a bill others have paid** — it is refused the same way un-covering is.
+- **An e-transfer assigned to a line whose bill changed in the same moment stays in "Needs a look"** instead of paying the new amount with the old transfer.
+
 ## Un-ticking a credit payment goes through "Needs a look" (2026-11-16)
 
 - **Un-ticking a line that was paid with store credit now asks, then files it under "Needs a look"** instead of changing it on the spot. There you choose: **return the credit** (the line goes back to owed and the credit returns to the member's balance, together) or **keep it paid**. Before, the un-tick went through and the member's next visit quietly paid the line again with the same credit.
