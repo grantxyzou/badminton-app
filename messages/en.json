@@ -1274,6 +1274,7 @@
       "body": "This removes your PIN, your equipment, your stats and your notifications. It can't be undone.",
       "keepsNote": "Past sessions keep an unnamed line, so everyone else's split still adds up.",
       "debtWarning": "It doesn't cancel anything you still owe.",
+      "balanceOutstanding": "You still owe {amount} in {club}. Pay it, or ask your organiser to cover it, then try again.",
       "confirm": "Delete my account",
       "cancel": "Never mind",
       "working": "Deleting…",

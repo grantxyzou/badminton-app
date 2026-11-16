@@ -46,10 +46,13 @@ export default function DeleteAccountSheet({
   const online = useOnline();
   const [working, setWorking] = useState(false);
   const [error, setError] = useState(false);
+  /** The server refused because they still owe: the amount and the club, so the sheet can say where. */
+  const [owed, setOwed] = useState<{ amount: string; club: string } | null>(null);
 
   async function handleDelete() {
     setWorking(true);
     setError(false);
+    setOwed(null);
     try {
       const res = await fetch(`${BASE}/api/members/me`, {
         method: 'DELETE',
@@ -58,6 +61,14 @@ export default function DeleteAccountSheet({
         cache: 'no-store',
       });
       if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string; cents?: number; clubs?: { name: string; cents: number }[] };
+        if (data.error === 'balance_outstanding') {
+          // Not a failure: a balance stands in the way (docs/plans/money-audit.md, gap 4).
+          const club = data.clubs?.[0];
+          setOwed({ amount: `$${((club?.cents ?? data.cents ?? 0) / 100).toFixed(2)}`, club: club?.name ?? '' });
+          setWorking(false);
+          return;
+        }
         // Legible-fail: the sheet stays open saying so, rather than closing on
         // a failure and leaving someone to guess whether it worked.
         setError(true);
@@ -109,6 +120,11 @@ export default function DeleteAccountSheet({
           it just above. */}
       <BottomSheetFooter>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+          {owed && (
+            <p className="field-warn" role="alert">
+              {t('balanceOutstanding', { amount: owed.amount, club: owed.club })}
+            </p>
+          )}
           {error && (
             <p className="field-error" role="alert">
               {t('error')}
