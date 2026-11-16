@@ -17,6 +17,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 - **A player's own request stands out**: "Custom request" when the crosses are not the usual mains + 2 or the strings differ, and the tensions turn amber.
 - **Grommet holes show as a pill when the racket's count is known.**
 - **The next-step button left the row.** Open the job to move its status. Swipe and the ⋮ menu still pin and archive.
+## Two "paid" taps at once count once (2026-11-16)
+
+- **Marking someone paid from two phones at the same moment, or a slow double tap, records one payment**, not two. The second tap sees the first one landed and changes nothing. Before, both wrote, and the Ledger check flagged a double payment the next morning.
+- **A tap that lands on a row someone else just changed differently is refused and the card reloads**, instead of writing over their change.
 
 ## "Edit the bill" waits until nobody on it is marked paid (2026-11-16)
 

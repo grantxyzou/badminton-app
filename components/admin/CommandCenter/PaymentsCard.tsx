@@ -348,6 +348,13 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
         // Roll back + surface so admin doesn't think they misclicked.
         setAllPlayers((prev) => prev.map((p) => (p.id === player.id ? { ...p, paid: !next } : p)));
         const data = await res.json().catch(() => ({}));
+        if (data.error === 'changed_elsewhere') {
+          // The row changed under this tap (another phone, the inbox, a
+          // card payment): the list is stale, so show what is there now.
+          setToggleError(`${player.name}'s row just changed elsewhere — refreshed.`);
+          await load();
+          return;
+        }
         setToggleError(`Couldn't update ${player.name}: ${data.error ?? `HTTP ${res.status}`}`);
       }
     } catch {

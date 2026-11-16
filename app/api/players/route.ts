@@ -1025,10 +1025,16 @@ export async function PATCH(req: NextRequest) {
           !timingSafeEqual(Buffer.from(storedToken), Buffer.from(providedToken))) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
       }
-      const updated = await scope.upsert<Record<string, unknown> & { id: string }>('players', {
-        ...existing,
-        selfReportedPaid: true,
-      });
+      // Under the etag (gap 3): a payment landing in the same moment must not
+      // be written over by this flag. A lost race re-reads and re-applies once.
+      let updated = await scope.replace<Record<string, unknown> & { id: string }>('players', { ...existing, selfReportedPaid: true }, sessionId);
+      if (!updated) {
+        const fresh = await scope.read<Record<string, unknown> & { id: string }>('players', id, sessionId);
+        if (!fresh) return NextResponse.json({ error: 'Player not found' }, { status: 404 });
+        updated = fresh.selfReportedPaid === true
+          ? fresh
+          : ((await scope.replace<Record<string, unknown> & { id: string }>('players', { ...fresh, selfReportedPaid: true }, sessionId)) ?? fresh);
+      }
       return NextResponse.json(publicPlayer(updated));
     }
 
@@ -1160,7 +1166,30 @@ export async function PATCH(req: NextRequest) {
       }
     }
 
-    const updated = await scope.upsert('players', { ...existing, ...updates });
+    /* UNDER THE ETAG (docs/plans/money-audit.md, gap 3, 2026-11-16). This was
+       an `upsert`: two "paid" taps at once — two phones, or one slow double
+       tap — both read `paid !== true`, both wrote, and both mirrored a
+       payment under their own `paidAt`, so the ledger held −$60 against a
+       $30 charge; and either could overwrite an e-transfer or card payment
+       landing in the same moment. `replace` sends the etag the read above
+       returned, and `undefined` means the row changed (or went) under us.
+       Then: the row re-read already holds everything this request asked for
+       → the other tap did the work; answer with that row and mirror nothing.
+       It holds something else → 409 `changed_elsewhere`, and the phone
+       reloads. Never a second write over a decision made on stale data. */
+    const updated = await scope.replace('players', { ...existing, ...updates }, sessionId);
+    if (!updated) {
+      const fresh = await scope.read<Record<string, unknown> & { id: string }>('players', id, sessionId);
+      if (!fresh) return NextResponse.json({ error: 'Player not found' }, { status: 404 });
+      // The ASK, not the stamps: the other tap's `paidAt` is a millisecond
+      // off this one's and means the same thing.
+      const asked: Record<string, unknown> = {};
+      for (const k of ['paid', 'removed', 'waitlisted', 'writtenOff'] as const) if (typeof body[k] === 'boolean') asked[k] = body[k];
+      if (body.writtenOff === true) asked.coverMode = updates.coverMode;
+      const satisfied = Object.entries(asked).every(([k, v]) => (fresh[k] ?? false) === v);
+      if (!satisfied) return NextResponse.json({ error: 'changed_elsewhere' }, { status: 409 });
+      return NextResponse.json(publicPlayer(fresh));
+    }
     // An admin removed someone: their guest leaves with them (docs/plans/plus-one.md).
     const guestsGone = body.removed === true && existing.removed !== true && typeof existing.memberId === 'string'
       ? await removeGuests(scope, sessionId, existing.memberId, false)
