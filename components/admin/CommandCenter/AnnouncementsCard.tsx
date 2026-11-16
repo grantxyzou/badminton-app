@@ -5,6 +5,7 @@ import { renderMarkdown } from '@/lib/miniMarkdown';
 import { useReportFetchFailure } from '@/lib/useOnline';
 import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
 import Collapse from '@/components/primitives/Collapse';
+import { sharedFetch } from '@/lib/sharedRead';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -26,6 +27,18 @@ export default function AnnouncementsCard({ refreshKey = 0 }: AnnouncementsCardP
   const [draft, setDraft] = useState('');
   const [polished, setPolished] = useState('');
   const [polishing, setPolishing] = useState(false);
+  // The AI polish is the operator's alone (`POST /api/claude` refuses anyone
+  // else; Grant, 2026-11-16). Hidden until `GET /api/admin` says so: a button
+  // whose every tap is refused is worse than no button.
+  const [operator, setOperator] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    sharedFetch('/api/admin')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { operator?: boolean } | null) => { if (!cancelled) setOperator(d?.operator === true); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState('');
   const [composing, setComposing] = useState(false);
@@ -235,15 +248,17 @@ export default function AnnouncementsCard({ refreshKey = 0 }: AnnouncementsCardP
             >
               Cancel
             </button>
-            <button
-              type="button"
-              onClick={handlePolish}
-              disabled={polishing || posting || !draft.trim()}
-              className="cc-btn cc-btn-secondary disabled:opacity-50"
-              title="Use AI to polish the wording"
-            >
-              {polishing ? 'Polishing…' : '✨ AI polish'}
-            </button>
+            {operator && (
+              <button
+                type="button"
+                onClick={handlePolish}
+                disabled={polishing || posting || !draft.trim()}
+                className="cc-btn cc-btn-secondary disabled:opacity-50"
+                title="Use AI to polish the wording"
+              >
+                {polishing ? 'Polishing…' : '✨ AI polish'}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => handlePost(draft)}

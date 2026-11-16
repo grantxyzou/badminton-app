@@ -8,6 +8,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## AI limits sized to real use (2026-11-16)
+
+- **The AI writing help is the operator's alone.** Other clubs' admins no longer see "AI polish" on announcements, and the server refuses them.
+- **Each club's daily AI limits came down to what clubs actually use**: 100 Stats reads, 100 racket-fit verdicts and 10 shelf photos a day.
+- **Each person has their own daily limit too**: 5 Stats reads and 10 racket-fit verdicts, so one person can't use up their club's share. Going over still never breaks anything: Stats shows your last read and the fit uses its standard wording.
+
 ## The stocktake photo no longer closes the iPhone app (2026-11-16)
 
 - **Tapping "Take a photo" in the stocktake closed the App Store app on iPhone.** iOS ends any app that opens the camera without saying why it needs it, and the app had never said. The next iPhone build (8) says so; until it is installed, the iPhone app counts the shelf by hand and offers no photo, rather than closing. The web and Android were never affected.

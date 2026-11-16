@@ -4,7 +4,7 @@ import { getContainer, ensureContainer } from '@/lib/cosmos';
 import { verifyMemberAuth, requireMember, isAdminAuthedWithMember } from '@/lib/auth';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { resolveGroupId } from '@/lib/groupContext';
-import { takeClubAiCall } from '@/lib/aiBudget';
+import { takeMemberAiCall } from '@/lib/aiBudget';
 import { groupScope, groupDocId } from '@/lib/groupScope';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { readGearOrNull } from '@/lib/racketFitInput';
@@ -174,10 +174,11 @@ export async function GET(req: NextRequest) {
       console.warn('fit-verdict cache read failed (non-fatal):', err);
     }
 
-    // The club's daily allowance on the shared key (lib/aiBudget.ts): over it,
-    // the templated words, exactly as with no key.
-    if (!takeClubAiCall(groupId, 'fitVerdict')) {
-      console.warn('[club-ai-cap]', { feature: 'fitVerdict', groupId });
+    // The person's and the club's daily allowance on the shared key
+    // (lib/aiBudget.ts): over either, the templated words, exactly as with no key.
+    const overFit = takeMemberAiCall(groupId, memberId, 'fitVerdict');
+    if (overFit) {
+      console.warn('[club-ai-cap]', { feature: 'fitVerdict', groupId, over: overFit });
       return NextResponse.json({ facts, checkInLevel, copy: null });
     }
 
