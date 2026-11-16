@@ -296,7 +296,7 @@ change if Azure reports it taken.
 | SDK | `@anthropic-ai/sdk` |
 | Models | `PROSE_MODEL = claude-sonnet-5`, `INSIGHT_MODEL = claude-sonnet-4-6` (`lib/aiModels.ts`) |
 | Max output tokens | per caller: `POST /api/claude` 8192 (`MAX_OUTPUT_TOKENS`, `lib/claudeLimits.ts`), the Stats read 600 (`MAX_OUTPUT_TOKENS_CARDS` in its route), the fit verdict 400 (its route's `MAX_OUTPUT_TOKENS`) |
-| Rate limit | `POST /api/claude`: 10 requests/min per IP, before auth, then the operator only, 30 a day (since 2026-11-16) |
+| Rate limit | `POST /api/claude`: 10 requests/min per IP, before auth, then the operator only, 30 a day (Grant, 2026-11-16) |
 
 ### Callers
 
