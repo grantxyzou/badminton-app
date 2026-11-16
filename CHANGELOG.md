@@ -8,6 +8,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Card payments that need a look show up in the inbox (2026-11-16)
+
+- **A card payment the app couldn't apply now waits for you under "Needs a look"**, beside the e-transfers, instead of disappearing into a server log: a charge that doesn't match the lines it was for, one from a Stripe account that isn't the club's, card money with nothing left to pay that couldn't be refunded, and a refund made in Stripe that matches no single payment. Each row says which it is and names the Checkout.
+- **Marking such a row paid records it as paid by card**, under the same Stripe id the automatic path would have used, so a repeat from Stripe changes nothing. A refund row can only be dismissed — the money already went back.
+- **The inbox shows card rows even if e-transfers aren't set up.**
+
 ## Inventory: the string shelf as a list (2026-11-16)
 
 - **"Strings, stock, prices & holes" is now Inventory, and the strings are one plain list** with each string's packet, what is left and its price, rather than a tile per string.

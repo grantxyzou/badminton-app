@@ -1,10 +1,9 @@
 /**
  * CARD PAYMENTS — a SANDBOX PROTOTYPE (docs/plans/card-pay-prototype.md).
  *
- * "Card payments processing" is still a locked ROADMAP non-goal. This module
- * exists so the shape can be seen working against a Stripe sandbox; the flag
- * (`NEXT_PUBLIC_FLAG_CARD_PAY`) stays off in production until that is changed
- * on purpose.
+ * Began as a sandbox prototype while "card payments processing" was a locked
+ * ROADMAP non-goal; the non-goal was lifted on 2026-11-12 and the flag
+ * (`NEXT_PUBLIC_FLAG_CARD_PAY`) has been ON in production since 2026-11-15.
  *
  * THE MONEY FLOW (Stripe Connect, a SaaS platform with direct charges):
  *   - Each CLUB is its own Stripe account. An organiser connects it once
@@ -26,7 +25,14 @@
  * (paid another way meanwhile, covered, re-priced, removed) is REFUNDED to the
  * card, never carried as an overpayment nobody asked for. A Checkout Session
  * whose amount does not match the lines it carries, or that arrives from an
- * account other than the club's own, is ignored and logged for a person.
+ * account other than the club's own, is ignored — and WRITTEN DOWN FOR A
+ * PERSON as a `review` row in the club's `payments` container (`source:
+ * 'card'`), the same queue the e-transfer inbox fills, so it shows under
+ * "Needs a look" (docs/plans/money-audit.md, 2026-11-16: until then these
+ * were a `console.error` nobody read). The row's id is derived from the
+ * Checkout Session (and the charge, for a refund), so a redelivered event
+ * finds it and writes nothing; a write that fails throws, so the webhook
+ * answers 500 and Stripe redelivers.
  */
 import Stripe from 'stripe';
 import { createHash } from 'crypto';
@@ -36,9 +42,9 @@ import { computeOwed, settledLines, type OwedLine } from './owedBalance';
 import { resolveIdentity } from './playerIdentity';
 import { mirrorPaid, mirrorStringingChanged, mirrorUnpaid } from './ledgerMirror';
 import { isBillable } from './stringingBilling';
-import { releaseHoldIfSettled } from './paymentsInbox';
+import { ensurePayments, releaseHoldIfSettled } from './paymentsInbox';
 import { requireOutboundOrigin } from './appOrigin';
-import type { Player, StringingJob } from './types';
+import type { EtransferPayment, Player, StringingJob } from './types';
 import { APP_NAME } from './brand';
 
 export const CARD_PAY_SETTINGS_ID = 'card-pay';
@@ -304,6 +310,53 @@ export async function startCardCheckout(
   return { url: session.url, lines: lines.length, amountCents };
 }
 
+// ── What a person has to look at ────────────────────────────────────────────
+
+export type CardReviewReason = 'card_amount_mismatch' | 'card_account_mismatch' | 'card_unapplied_not_refunded' | 'card_refund_no_line';
+
+/**
+ * File a Stripe outcome the webhook could not act on where the organiser will
+ * see it: a `review` row in `payments`, beside the e-transfers. Keyed on the
+ * Checkout Session (and the charge, for a refund) so a redelivery 409s and is
+ * swallowed; any other failure THROWS, so the webhook answers 500 and Stripe
+ * tries again — a lost alert is the one outcome this exists to prevent.
+ */
+async function fileCardReview(
+  groupId: string,
+  input: { checkoutId: string; chargeId?: string; kind: 'payment' | 'refund'; memberId: string | null; amountCents: number; reason: CardReviewReason; at?: number },
+): Promise<void> {
+  await ensurePayments();
+  const scope = groupScope(groupId);
+  const bareId = input.kind === 'refund' ? `card:${input.checkoutId}:refund:${input.chargeId ?? 'charge'}` : `card:${input.checkoutId}`;
+  const identity = input.memberId ? await resolveIdentity({ memberId: input.memberId }, groupId).catch(() => null) : null;
+  const payerName = identity?.member?.name ?? null;
+  const now = new Date().toISOString();
+  const doc: EtransferPayment = {
+    id: groupDocId(groupId, bareId),
+    source: 'card',
+    card: { checkoutId: input.checkoutId, ...(input.chargeId ? { chargeId: input.chargeId } : {}), kind: input.kind },
+    senderName: payerName,
+    amountCents: input.amountCents,
+    memo: null,
+    subject: input.kind === 'refund' ? `Stripe refund ${input.chargeId ?? ''}`.trim() : `Stripe Checkout ${input.checkoutId}`,
+    receivedAt: input.at ? new Date(input.at * 1000).toISOString() : now,
+    // Stripe signed the event: the money (or the refund) is real.
+    authenticated: true,
+    status: 'review',
+    reason: input.reason,
+    memberId: input.memberId,
+    ...(payerName ? { payerName } : {}),
+    allocations: [],
+    ...(payerName ? { suggestions: [{ memberId: input.memberId, name: payerName, owedCents: 0, proposed: [] }] } : {}),
+    createdAt: now,
+  };
+  try {
+    await scope.create('payments', doc);
+  } catch (err) {
+    if (!isConflict(err)) throw err; // already filed by an earlier delivery
+  }
+}
+
 // ── The webhook ─────────────────────────────────────────────────────────────
 
 type LineOutcome = 'paid' | 'ours' | 'not_applied';
@@ -375,8 +428,10 @@ export async function applyPaidCheckout(session: Stripe.Checkout.Session, eventA
 
   const settings = await readCardPay(groupId);
   if (!settings) return { ignored: 'unknown_club' };
+  const charged = session.amount_total ?? 0;
   if (!eventAccount || settings.stripeAccountId !== eventAccount) {
     console.error('[card-pay] checkout from an account that is not the club\'s', { groupId, session: session.id });
+    await fileCardReview(groupId, { checkoutId: session.id, kind: 'payment', memberId, amountCents: charged, reason: 'card_account_mismatch', at: session.created });
     return { ignored: 'account_mismatch' };
   }
   const lines = linesFromMetadata(session.metadata);
@@ -384,6 +439,7 @@ export async function applyPaidCheckout(session: Stripe.Checkout.Session, eventA
   if (lines.length === 0 || total !== session.amount_total || session.currency !== CURRENCY) {
     // We built this session; a mismatch is a bug or tampering, and a person decides.
     console.error('[card-pay] checkout amount does not match its lines', { groupId, session: session.id, total, charged: session.amount_total });
+    await fileCardReview(groupId, { checkoutId: session.id, kind: 'payment', memberId, amountCents: charged, reason: 'card_amount_mismatch', at: session.created });
     return { ignored: 'amount_mismatch' };
   }
 
@@ -411,6 +467,7 @@ export async function applyPaidCheckout(session: Stripe.Checkout.Session, eventA
       refundedCents = unappliedCents;
     } else {
       console.error('[card-pay] cannot refund an unapplied line: no payment intent', { session: session.id, unappliedCents });
+      await fileCardReview(groupId, { checkoutId: session.id, kind: 'payment', memberId, amountCents: unappliedCents, reason: 'card_unapplied_not_refunded', at: session.created });
     }
   }
   if (applied > 0 && isFlagOn('NEXT_PUBLIC_FLAG_PAYMENTS_AUTO')) {
@@ -490,6 +547,7 @@ export async function applyRefund(charge: Stripe.Charge, eventAccount: string | 
   const target = fresh === stillPaidCents ? stillPaid : oneLine.length === 1 ? oneLine : null;
   if (!target) {
     console.error('[card-pay] a refund made in Stripe matches no paid line — left for a person', { groupId, charge: charge.id, fresh, stillPaidCents });
+    await fileCardReview(groupId, { checkoutId: session.id, chargeId: charge.id, kind: 'refund', memberId, amountCents: fresh, reason: 'card_refund_no_line', at: charge.created });
     return { review: 'amount_matches_no_line' };
   }
 
