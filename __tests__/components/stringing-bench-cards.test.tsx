@@ -57,29 +57,29 @@ afterEach(() => {
 
 describe('the bench list', () => {
   it('lists every racket under one heading counting what is open and late', async () => {
-    // No outer card since 2026-11-12 (the canvas): the heading is plain and
-    // each racket is its own card — StringingBench.test.tsx pins the shape.
+    // One card of rows under a plain heading since 2026-11-16 (canvas Option
+    // A, docs/plans/stringing-jobs-list.md) — BenchJobRow.test.tsx pins a row.
     const late = { ...base, id: 'job-2', jobNo: 'J-0003', racketLabel: 'Astrox 100ZZ', status: 'received', readyBy: '2026-01-01' } as StringingJob;
     respond([base, late]);
     wrap(<StringingPage onBack={() => {}} />);
-    const card = await screen.findByRole('region', { name: 'Stringing jobs' });
-    expect(card.className).not.toContain('glass-card');
-    expect(within(card).getByText('2 open · 1 late')).toBeDefined();
-    expect(within(card).getByText('Arcsaber 11 Pro')).toBeDefined();
-    expect(within(card).getAllByText('Exbolt 63 · 27/29 lb · for Kento')).toHaveLength(2);
-    expect(within(card).getByText(/days late/)).toBeDefined();
+    const section = await screen.findByRole('region', { name: 'Stringing jobs' });
+    expect(section.className).not.toContain('glass-card');
+    expect(within(section).getByText('2 open · 1 late')).toBeDefined();
+    expect(within(section).getByText('Arcsaber 11 Pro')).toBeDefined();
+    expect(within(section).getAllByText('Kento')).toHaveLength(2);
+    expect(within(section).getByText(/days late/)).toBeDefined();
   });
 
-  it('moves a job on from its own card, with the status sent as a PATCH', async () => {
+  it('offers no next step on the row: the row opens the job, where the status moves', async () => {
     const fetchMock = respond([base]);
     wrap(<StringingPage onBack={() => {}} />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Mark received' }));
-    await waitFor(() => {
-      const patch = fetchMock.mock.calls.find((c) => c[1]?.method === 'PATCH');
-      expect(patch).toBeDefined();
-      expect(String(patch![0])).toContain('/api/stringing/jobs/job-1');
-      expect(JSON.parse(String(patch![1].body))).toEqual({ memberId: 'member-kento', status: 'received' });
-    });
+    const open = await screen.findByRole('button', { name: /^Open this job · Arcsaber 11 Pro · J-0005/ });
+    expect(screen.queryByRole('button', { name: /^Mark / })).toBeNull();
+    fireEvent.click(open);
+    // The job's page, which holds the status steps, takes the list's place.
+    await waitFor(() => expect(screen.queryByTestId('bench-list')).toBeNull());
+    expect(screen.getByText('J-0005', { exact: false })).toBeDefined();
+    expect(fetchMock.mock.calls.some((c) => c[1]?.method === 'PATCH')).toBe(false);
   });
 
   it('titles the ⋮ sheet with the racket, then the job and whose it is', async () => {

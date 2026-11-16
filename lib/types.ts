@@ -304,7 +304,10 @@ export interface EtransferPayment {
   /** `etx:${sha256(ref or messageId)}`, prefixed `<groupId>:` outside BPM — a re-sent email is the same doc. */
   id: string;
   groupId?: string;
-  source: 'etransfer';
+  /** `'card'` since 2026-11-16: a Stripe outcome the webhook could not apply, for a person to look at (`lib/cardPay.ts`). */
+  source: 'etransfer' | 'card';
+  /** A card row's Stripe ids: the Checkout Session, and the charge for a refund. A `refund` row is money OUT and cannot be assigned. */
+  card?: { checkoutId: string; chargeId?: string; kind: 'payment' | 'refund' };
   senderName: string | null;
   amountCents: number | null;
   memo: string | null;

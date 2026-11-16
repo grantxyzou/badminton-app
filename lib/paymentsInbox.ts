@@ -340,7 +340,7 @@ export function appliedCents(payment: Pick<EtransferPayment, 'allocations'>): nu
 }
 
 export class AssignError extends Error {
-  constructor(readonly code: 'not_found' | 'already_resolved' | 'not_owed' | 'unknown_person') {
+  constructor(readonly code: 'not_found' | 'already_resolved' | 'not_owed' | 'unknown_person' | 'not_a_payment') {
     super(code);
   }
 }
@@ -392,9 +392,16 @@ export async function resolvePayment(
   if (!payment) throw new AssignError('not_found');
   if (payment.status !== 'review') throw new AssignError('already_resolved');
   const now = new Date().toISOString();
+  // A card row (lib/cardPay.ts `fileCardReview`): the money is in Stripe under
+  // its Checkout Session, so a row it is assigned to is paid BY CARD under
+  // that id — the id the webhook would have used — and a bank-name alias
+  // means nothing for it. A refund row is money going OUT; it is dismissed,
+  // never assigned.
+  const isCard = payment.source === 'card';
+  const rowPaymentId = isCard ? payment.card?.checkoutId ?? payment.id : payment.id;
 
   if (action.kind === 'ignore') {
-    if (action.remember && (action.memberId || action.name)) {
+    if (!isCard && action.remember && (action.memberId || action.name)) {
       const who = await resolveIdentity(action.memberId ? { memberId: action.memberId } : { name: action.name }, groupId);
       if (action.memberId && !who.memberId) throw new AssignError('unknown_person');
       await rememberSender(scope, payment.senderName, who.member?.name ?? action.name ?? '', who.memberId);
@@ -403,6 +410,7 @@ export async function resolvePayment(
     return (await scope.replace('payments', next)) ?? next;
   }
 
+  if (isCard && payment.card?.kind === 'refund') throw new AssignError('not_a_payment');
   if (!action.memberId && !action.name) throw new AssignError('unknown_person');
   const identity = await resolveIdentity(action.memberId ? { memberId: action.memberId } : { name: action.name }, groupId);
   if (action.memberId && !identity.memberId) throw new AssignError('unknown_person');
@@ -425,10 +433,10 @@ export async function resolvePayment(
     if (chosen.length === 0) throw new AssignError('not_owed');
   }
 
-  const landed = await applyAllocations(scope, chosen.map(toAllocation), payment.id);
+  const landed = await applyAllocations(scope, chosen.map(toAllocation), rowPaymentId, isCard ? 'card' : 'etransfer');
   const payerName = identity.member?.name ?? action.name ?? '';
 
-  if (action.remember) await rememberSender(scope, payment.senderName, payerName, identity.memberId);
+  if (!isCard && action.remember) await rememberSender(scope, payment.senderName, payerName, identity.memberId);
 
   await releaseHoldIfSettled(scope, identity.memberId);
 
