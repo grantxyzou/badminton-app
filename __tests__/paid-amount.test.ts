@@ -37,7 +37,7 @@ const scope = () => groupScope('bpm');
 const doSettle = (sid = SID) => settle(makeAdminRequest('POST', `${BASE}/session/settle?sessionId=${sid}`));
 const tap = (id: string, paid: boolean) => patchPlayer(makeAdminRequest('PATCH', `${BASE}/players`, { id, paid, sessionId: SID }));
 const byRef = (paymentId: string, refs: string[]) => assign(makeAdminRequest('POST', `${BASE}/admin/payments/assign`, { paymentId, action: 'assign', memberId: lin.id, refs }));
-const owed = async () => computeOwed(scope(), { memberId: lin.id, names: ['Lin'] });
+const owed = async () => computeOwed(scope(), { memberId: lin.id, names: new Set(['Lin']) });
 let msg = 0;
 const email = (dollars: string) => ({
   messageId: `<m${++msg}@interac>`,
@@ -91,7 +91,7 @@ describe('a $30 transfer assigned by hand to a $45 line', () => {
     expect(livePayments(id)).toEqual([[`payment:${id}:pay-1`, -3000]]);
     expect(await codes()).toEqual([]); // charge +45, payment −30, live owes 15
     // Profile's "what you paid" counts the $30 that came, not the $45 bill.
-    const months = await memberPayments(scope(), { memberId: lin.id, names: ['Lin'] }, 12);
+    const months = await memberPayments(scope(), { memberId: lin.id, names: new Set(['Lin']) }, 12);
     expect(months.reduce((s, m) => s + m.sessions, 0)).toBe(3000);
   });
 
