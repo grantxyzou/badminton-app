@@ -138,31 +138,18 @@ describe('GAP 2 — FIXED: "Edit the bill" is refused while anyone is marked pai
   });
 });
 
-<<<<<<< HEAD
 describe('GAP 3 — FIXED: the admin "paid" tap writes under the etag, so two at once pay once', () => {
-=======
-describe('GAP 3 — the admin "paid" tap is an unconditional upsert, so two at once both write', () => {
->>>>>>> origin/main
   const RealDate = Date;
   afterEach(() => {
     globalThis.Date = RealDate;
   });
 
-<<<<<<< HEAD
   it('two taps on two phones: both answer 200, the row is paid once, the ledger holds ONE payment', async () => {
     await doSettle();
     const id = String(rowOf('Lin').id);
     // Each `new Date()` reads one ms later than the last, as two phones'
     // requests would: without this both taps stamp the same `paidAt` and the
     // second payment id would collide anyway, hiding whether the write raced.
-=======
-  it('two taps on two phones: the row is paid once and the ledger holds TWO payments', async () => {
-    await doSettle();
-    const id = String(rowOf('Lin').id);
-    // Each `new Date()` reads one ms later than the last, as two phones'
-    // requests would. Without this both taps stamp the same `paidAt`, the
-    // second payment id collides with the first, and the race hides.
->>>>>>> origin/main
     let tick = 0;
     globalThis.Date = class extends RealDate {
       constructor(...args: unknown[]) {
@@ -177,22 +164,11 @@ describe('GAP 3 — the admin "paid" tap is an unconditional upsert, so two at o
     const [a, b] = await Promise.all([pay(id), pay(id)]);
     globalThis.Date = RealDate;
     expect([a.status, b.status]).toEqual([200, 200]);
-<<<<<<< HEAD
     // The loser re-read the row, found it already paid, and mirrored nothing.
     const payments = ledger().filter((e) => e.kind === 'payment' && e.ref?.id === id);
     expect(payments).toHaveLength(1);
     expect(live(id)).toBe(0); // charge +30, one payment −30
     expect(await codes()).toEqual([]);
-=======
-    const payments = ledger().filter((e) => e.kind === 'payment' && e.ref?.id === id);
-    // TODAY: both requests read `paid !== true`, both upserted, both mirrored
-    // under their own `paidAt` → −$60 against a $30 charge.
-    // FIXED: PATCH writes with `replace` (etag) like the inbox, card and
-    // credit paths; the loser re-reads `paid: true` and writes nothing.
-    expect(payments).toHaveLength(2);
-    expect(live(id)).toBe(-3000);
-    expect(await codes()).toEqual([['amount_mismatch', 'session', -3000, 0]]);
->>>>>>> origin/main
   });
 });
 

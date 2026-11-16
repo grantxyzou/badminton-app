@@ -8,7 +8,6 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
-<<<<<<< HEAD
 ## Two "paid" taps at once count once (2026-11-16)
 
 - **Marking someone paid from two phones at the same moment, or a slow double tap, records one payment**, not two. The second tap sees the first one landed and changes nothing. Before, both wrote, and the Ledger check flagged a double payment the next morning.
@@ -17,16 +16,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 ## "Edit the bill" waits until nobody on it is marked paid (2026-11-16)
 
 - **Editing a finalized bill is refused while anyone is marked paid**, and the message names them. Before, the edit kept their payment but dropped the bill it paid, and finalizing again at a different cost could leave someone marked "paid $45" who paid $30 — with nobody told. Un-tick them in Payments, edit the bill, finalize, then tick them again at the new amount.
-=======
-## "Edit the bill" waits until nobody on it is marked paid (2026-11-16)
-
-- **Editing a finalized bill is refused while anyone is marked paid**, and the message names them. Before, the edit kept their payment but dropped the bill it paid, and finalizing again at a different cost could leave someone marked "paid $45" who paid $30 — with nobody told. Un-tick them in Payments, edit the bill, finalize, then tick them again at the new amount.
 ## Card payments that need a look show up in the inbox (2026-11-16)
 
 - **A card payment the app couldn't apply now waits for you under "Needs a look"**, beside the e-transfers, instead of disappearing into a server log: a charge that doesn't match the lines it was for, one from a Stripe account that isn't the club's, card money with nothing left to pay that couldn't be refunded, and a refund made in Stripe that matches no single payment. Each row says which it is and names the Checkout.
 - **Marking such a row paid records it as paid by card**, under the same Stripe id the automatic path would have used, so a repeat from Stripe changes nothing. A refund row can only be dismissed — the money already went back.
 - **The inbox shows card rows even if e-transfers aren't set up.**
->>>>>>> origin/main
 
 ## Inventory: the string shelf as a list (2026-11-16)
 
