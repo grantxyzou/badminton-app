@@ -122,6 +122,33 @@ These are not bugs in what anyone is charged. They are places where the app's ow
 
 5. **What a member sees is consistent.** Home's balance, "Pay with credit", the e-transfer candidates and Profile's "what you paid" all read the ROWS through `computeOwed` / `loadOwedInputs`, never the ledger, so a member can never see a number the organiser's row does not. That is the right design, and it is why every gap above is the ORGANISER's problem to notice, not the member's.
 
+### How BPM stays true with Stripe (Grant, 2026-11-16: "how do BPM stay true with Stripe?")
+
+The card path (`lib/cardPay.ts`, `app/api/payments/card/webhook/route.ts`, `docs/plans/card-pay-prototype.md`) is **one-directional**: Stripe tells BPM what happened, and BPM never asks Stripe what it holds.
+
+**Stripe → BPM is strong.** Every event is signature-verified before anything is read; the event's `account` must equal the club's connected account (so one club's money can never mark another club's rows paid); the Checkout's `amount_total` and currency must equal the lines in its metadata; each row is marked paid under the etag and only while it is still this member's, settled, unpaid and at exactly the amount charged; the ledger payment is keyed on the Checkout Session id, so a redelivery collides and changes nothing; a line that can no longer be paid is refunded to the card under an idempotency key; a refund made in the Dashboard un-pays rows only when its amount names them. A webhook the app answers with a non-2xx (a 500 from a thrown apply, a 404 while the flag or key is off, a connection dropped by a deploy restart) is retried by Stripe for about three days. `group-card-pay.test.ts` holds all of it.
+
+**BPM → Stripe does not exist.** Nothing in the app lists the club's Checkout Sessions, charges, refunds or disputes and compares them with the rows. So these are invisible in the app:
+
+| What Stripe knows | What BPM shows | Why |
+|---|---|---|
+| A webhook Stripe gave up on after three days of failures (or one sent to an endpoint later disabled) | The row still owed, the member's card charged | No pull from Stripe; only the member complaining would surface it |
+| A **chargeback / dispute** on a card payment | The row stays paid | `charge.dispute.*` is not subscribed; only the three events in the plan are |
+| A Dashboard refund whose amount matches no single line ("left for a person") | Nothing: a `console.error` nobody reads | The e-transfer path writes a `review` row the organiser sees in "Needs a look"; the card path has no review row |
+| A Checkout whose amount or account did not match (`amount_mismatch`, `account_mismatch`) | Nothing: `console.error` | Same |
+| **Stripe's fee** on each payment | `collected.card` is the GROSS amount | BPM records what was owed, Stripe pays out the net; the club's bank statement will never equal the money view's card figure |
+| A payment taken in Stripe outside the app (a Dashboard payment link, a manual charge) | Nothing | Not a Checkout the app built; no metadata to match |
+
+The last two are by design and only need saying on the money view. The first four are the same shape as the "logged for a person" rule the e-transfer inbox was built to replace: a message in a log is not a message to a person.
+
+**Smallest fixes, in order:**
+1. **A card review row.** Every card outcome that is not "applied" or "already ours" (`amount_mismatch`, `account_mismatch`, `amount_matches_no_line`, a refund with no payment intent) writes the same kind of `review` row the e-transfer inbox writes, so it appears in "Needs a look" with the Checkout id, the amount and the reason. No new container: the `payments` container already holds review rows.
+2. **Subscribe to `charge.dispute.created`** (and `.closed`), and treat a dispute like a Dashboard refund of the disputed amount: un-pay the rows it names, or a review row when it names none.
+3. **A daily pull from Stripe**, on the same `POST /api/payments/remind` tick the Ledger check runs on: list the club account's Checkout Sessions with `payment_status: 'paid'` created since the last check, and for each one whose metadata lines are not all paid by that Checkout id, write a review row. That is the Ledger check's twin for Stripe: not a second writer, a reader that names the differences.
+4. **Say "before Stripe's fee" beside the card figure** on the money view, and record `balance_transaction.fee` on the payment entry's `meta` when the webhook has it (the Checkout's payment intent carries the charge; one extra read per payment) so a later "net" column is possible.
+
+Also a stale comment: `lib/cardPay.ts`'s header still says the flag "stays off in production"; it has been on since 2026-11-15 (`deploy-next.yml`, `NEXT_PUBLIC_FLAG_CARD_PAY: 'true'`). A docs-truth fix, not a money one.
+
 ### Recommended order, revised
 
 1. **Gap 2**: ship the 409 on "Edit the bill" now (one line, no schema), and schedule `paidAmount` (transparency item 2) as the real fix.
