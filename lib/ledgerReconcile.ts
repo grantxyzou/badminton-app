@@ -35,6 +35,7 @@ import { getMirrorFailures, UNLINKED_LEDGER_ID } from './ledgerMirror';
 import { computeOwedForRoster } from './owedBalance';
 import { notePaymentsSettings, readPaymentsSettings } from './paymentsInbox';
 import { accountOf, ensureLedger } from './storeCredit';
+import { isBillable } from './stringingBilling';
 import type { LedgerEntry, Player, StringingJob } from './types';
 
 export type MismatchCode = 'missing_charge' | 'missing_payment' | 'stale_charge' | 'amount_mismatch';
@@ -105,8 +106,8 @@ async function rowState(scope: GroupScope, ref: OpenRef, id: string): Promise<{ 
   const job = await scope.read<StringingJob>('stringingJobs', id, ref.pk);
   if (!job) return null;
   const paid = typeof job.paidAt === 'string';
-  const billable = !paid && typeof job.priceCents === 'number' && job.priceCents > 0 && (job.status === 'ready' || job.status === 'picked_up');
-  return { paid, owedCents: billable ? Math.round(job.priceCents!) : 0 };
+  // The one rule (lib/stringingBilling.ts): a job waiting on its invoice owes nothing yet.
+  return { paid, owedCents: isBillable(job) ? Math.round(job.priceCents!) : 0 };
 }
 
 export async function runReconcile(groupId: string, now: number = Date.now()): Promise<ReconcileResult> {

@@ -36,7 +36,7 @@ import { randomBytes } from 'crypto';
 import { isFlagOn } from './flags';
 import { ensureLedger } from './storeCredit';
 import type { GroupScope } from './groupScope';
-import { invoiceGateOpen } from './stringingBilling';
+import { ledgerHoldsCharge } from './stringingBilling';
 import type { BirdPurchase, LedgerEntry, Player, Session, SettledSnapshot, StringingJob, StringPurchase } from './types';
 
 export const CLUB_LEDGER_ID = '~club';
@@ -401,28 +401,27 @@ export async function mirrorRowDeleted(scope: GroupScope, row: Pick<Player, 'id'
   }
 }
 
-const BILLABLE = new Set(['ready', 'picked_up']);
-// The invoice gate too (docs/plans/stringing-invoice.md): a `billOn: 'invoice'`
-// job is charged when its invoice is sent, not when it reaches Ready.
-const billableShaped = (j: Pick<StringingJob, 'priceCents' | 'status' | 'billOn' | 'invoice'>) =>
-  typeof j.priceCents === 'number' && j.priceCents > 0 && BILLABLE.has(j.status) && invoiceGateOpen(j);
-
 /**
- * After a stringing job changed (price, status, paid). A charge exists only
- * while the job is billable-shaped; a price change or a status moving
- * backwards voids the old one. `prev` is the job before the write.
+ * After a stringing job changed (price, status, paid, anything). The ledger
+ * holds a charge while `ledgerHoldsCharge` says so: a price change or a move
+ * out of it voids the live one. While it holds one, a job with NO live charge
+ * gets one, whatever the transition: that heals a job a missed write or an
+ * older rule left with a payment and nothing under it, the next time anyone
+ * touches the job. `prev` is the job before the write.
  */
 export async function mirrorStringingChanged(scope: GroupScope, prev: StringingJob, next: StringingJob, via: 'manual' | 'etransfer' | 'credit' | 'card' = 'manual', paymentId?: string): Promise<void> {
   if (!on()) return;
   try {
-    const was = billableShaped(prev);
-    const is = billableShaped(next);
+    const was = ledgerHoldsCharge(prev);
+    const is = ledgerHoldsCharge(next);
     const priceChanged = prev.priceCents !== next.priceCents;
     if (was && (!is || priceChanged)) await voidLive(scope, prev.memberId, prev.id, 'charge', priceChanged ? 'price_changed' : 'not_billable');
-    if (is && (!was || priceChanged)) {
-      const n = (await entriesFor(scope, next.memberId, next.id)).filter((e) => e.kind === 'charge').length;
-      const e = stringingChargeEntry(next, n);
-      if (e) await appendEntry(scope, e);
+    if (is) {
+      const entries = await entriesFor(scope, next.memberId, next.id);
+      if (live(entries, 'charge').length === 0) {
+        const e = stringingChargeEntry(next, entries.filter((x) => x.kind === 'charge').length);
+        if (e) await appendEntry(scope, e);
+      }
     }
     if (!prev.paidAt && next.paidAt) {
       const e = stringingPaymentEntry(next, via, paymentId);
@@ -435,8 +434,15 @@ export async function mirrorStringingChanged(scope: GroupScope, prev: StringingJ
   }
 }
 
-export async function mirrorStringingDeleted(scope: GroupScope, job: Pick<StringingJob, 'id' | 'memberId'>): Promise<void> {
+/**
+ * After an archived job is deleted. An UNPAID job's charge is voided (the bill
+ * goes with it). A PAID job's books stay as they are, charge and payment: the
+ * money was collected, and voiding the charge alone left the payment standing
+ * as money nobody was asked for.
+ */
+export async function mirrorStringingDeleted(scope: GroupScope, job: Pick<StringingJob, 'id' | 'memberId' | 'paidAt'>): Promise<void> {
   if (!on()) return;
+  if (typeof job.paidAt === 'string' && job.paidAt.length > 0) return;
   try {
     await voidLive(scope, job.memberId, job.id, 'charge', 'job_deleted');
   } catch (err) {

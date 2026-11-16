@@ -259,3 +259,86 @@ describe('a plus-one (docs/plans/plus-one.md)', () => {
     expect(r.unlisted).toBe(1); // still only the legacy Old Row
   });
 });
+
+/**
+ * A stringing job PAID while it was not billable-shaped — at pickup before its
+ * invoice went out, before Ready, or paid and then withdrawn — got a payment
+ * and no charge, and a paid job deleted from the archive lost its charge and
+ * kept its payment. Both read as "Grant · stringing · ledger −$40 · app $0"
+ * on the Ledger check (2026-11-16).
+ */
+describe('a paid stringing job always has its charge', () => {
+  const job = (over: Partial<StringingJob>): StringingJob =>
+    ({
+      id: 'job-9', groupId: 'bpm', memberId: lin.id, memberName: 'Lin', jobNo: 'J-0009', racketLabel: 'Astrox', stringLabel: 'BG80',
+      status: 'ready', priceCents: 4000, paidAt: null, createdAt: '2026-11-16T01:00:00Z', updatedAt: '2026-11-16T01:00:00Z', history: [],
+      billOn: 'invoice', ...over,
+    }) as StringingJob;
+  const live9 = () => ledger().filter((e) => e.ref?.id === 'job-9');
+  const net9 = () => live9().reduce((n, e) => n + (e.account === 'member_owed' || e.account === undefined ? e.amountCents : 0), 0);
+
+  beforeEach(async () => {
+    await backfill();
+  });
+
+  it('paid at pickup before the invoice was sent: a charge and a payment, and the check is clean', async () => {
+    const { mirrorStringingChanged } = await import('@/lib/ledgerMirror');
+    const before = job({});
+    seedDoc('stringingJobs', before as unknown as Record<string, unknown>);
+    await mirrorStringingChanged(groupScope('bpm'), before, job({ paidAt: '2026-11-16T02:00:00Z' }));
+    expect(live9().map((e) => [e.kind, e.amountCents])).toEqual([['charge', 4000], ['payment', -4000]]);
+    expect(net9()).toBe(0);
+  });
+
+  it('paid before Ready, then withdrawn: still a charge under the payment', async () => {
+    const { mirrorStringingChanged } = await import('@/lib/ledgerMirror');
+    const a = job({ status: 'strung', billOn: undefined });
+    const b = job({ status: 'strung', billOn: undefined, paidAt: '2026-11-16T02:00:00Z' });
+    await mirrorStringingChanged(groupScope('bpm'), a, b);
+    await mirrorStringingChanged(groupScope('bpm'), b, { ...b, cancelledAt: '2026-11-16T03:00:00Z' });
+    expect(net9()).toBe(0);
+  });
+
+  it('un-paying it takes both back out', async () => {
+    const { mirrorStringingChanged } = await import('@/lib/ledgerMirror');
+    const paid = job({ paidAt: '2026-11-16T02:00:00Z' });
+    await mirrorStringingChanged(groupScope('bpm'), job({}), paid);
+    await mirrorStringingChanged(groupScope('bpm'), paid, job({}));
+    expect(net9()).toBe(0);
+    expect(live9().filter((e) => e.kind === 'void').length).toBe(2);
+  });
+
+  it('a job left with a lone payment heals the next time anyone touches it', async () => {
+    const { mirrorStringingChanged } = await import('@/lib/ledgerMirror');
+    const paid = job({ paidAt: '2026-11-16T02:00:00Z' });
+    seedDoc('stringingJobs', paid as unknown as Record<string, unknown>);
+    seedDoc('ledger', {
+      id: 'payment:job-9:1763258400000', groupId: 'bpm', memberId: lin.id, account: 'member_owed', kind: 'payment', amountCents: -4000,
+      ref: { kind: 'stringing', id: 'job-9', pk: lin.id }, createdAt: '2026-11-16T02:00:00Z',
+    });
+    expect((await runReconcile('bpm')).mismatches.map((m) => [m.code, m.ledgerCents])).toEqual([['amount_mismatch', -4000]]);
+    await mirrorStringingChanged(groupScope('bpm'), paid, { ...paid, archivedAt: '2026-11-16T03:00:00Z' } as StringingJob);
+    expect((await runReconcile('bpm')).mismatches).toEqual([]);
+  });
+
+  it('the backfill writes the charge too, for a paid job never invoiced', async () => {
+    const { jobEntries } = await import('@/lib/ledgerBackfill');
+    expect(jobEntries(job({ paidAt: '2026-11-16T02:00:00Z' })).map((e) => [e.kind, e.amountCents])).toEqual([['charge', 4000], ['payment', -4000]]);
+    // Unpaid and not invoiced: nothing yet.
+    expect(jobEntries(job({}))).toEqual([]);
+  });
+
+  it('deleting a PAID job keeps its charge and payment; an unpaid one loses its charge', async () => {
+    const { mirrorStringingChanged, mirrorStringingDeleted } = await import('@/lib/ledgerMirror');
+    const paid = job({ billOn: undefined, paidAt: '2026-11-16T02:00:00Z' });
+    await mirrorStringingChanged(groupScope('bpm'), job({ billOn: undefined }), paid);
+    await mirrorStringingDeleted(groupScope('bpm'), paid);
+    expect(net9()).toBe(0);
+    expect(live9().some((e) => e.kind === 'void')).toBe(false);
+
+    const unpaid = { ...job({ billOn: undefined }), id: 'job-10' } as StringingJob;
+    await mirrorStringingChanged(groupScope('bpm'), { ...unpaid, status: 'strung' } as StringingJob, unpaid);
+    await mirrorStringingDeleted(groupScope('bpm'), unpaid);
+    expect(ledger().filter((e) => e.ref?.id === 'job-10').reduce((n, e) => n + e.amountCents, 0)).toBe(0);
+  });
+});
