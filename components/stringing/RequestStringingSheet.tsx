@@ -23,6 +23,7 @@ import {
   playerTensionText,
 } from '@/lib/stringing';
 import { usePush } from '@/lib/usePush';
+import { sharedFetch } from '@/lib/sharedRead';
 
 /** The request refusals that have their own sentence under `home.stringing.error`. */
 const KNOWN_REQUEST_ERRORS = new Set(['shop_closed', 'too_many_open', 'invalid_tension', 'invalid_request', 'unauthorized', 'rate_limited']);
@@ -221,7 +222,7 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    fetch(`${BASE}/api/stringing/pricing`, { cache: 'no-store' })
+    sharedFetch('/api/stringing/pricing')
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         // A well-formed answer sets the figure outright, "Ask" (null) included,
@@ -238,7 +239,7 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`${BASE}/api/stringing/strings`, { cache: 'no-store' })
+    sharedFetch('/api/stringing/strings')
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (cancelled) return;

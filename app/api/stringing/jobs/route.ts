@@ -22,6 +22,7 @@ import { randomBytes } from 'crypto';
 import { ensureContainer } from '@/lib/cosmos';
 import { readMembership } from '@/lib/groups';
 import { groupScope } from '@/lib/groupScope';
+import { nextJobSequence } from '@/lib/stringingJobNo';
 import { resolveGroupId } from '@/lib/groupContext';
 import { stringingServiceOnFor } from '@/lib/stringingService';
 import { canStringIn } from '@/lib/roster';
@@ -454,7 +455,7 @@ export async function POST(req: NextRequest) {
     // Job NUMBER only — the id stays random. A sequential id would be
     // enumerable, and this number is printed on a tag anyone can read.
     // Per group: each club's tags count from J-0001.
-    const sequence = (await scope.count('stringingJobs')) + 1;
+    const sequence = await nextJobSequence(scope);
 
     const job: StringingJob = {
       id: `job-${randomBytes(8).toString('hex')}`,

@@ -19,6 +19,7 @@ import { useCatalog } from '@/components/stats/useCatalog';
 import { useOnline } from '@/lib/useOnline';
 import { isRefused } from '@/lib/apiFetch';
 import { useTabReturn } from '@/lib/tabActivity';
+import { sharedFetch } from '@/lib/sharedRead';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -51,7 +52,7 @@ export default function StringerShelfCard({ hasIdentity }: { hasIdentity: boolea
   const load = useCallback(async () => {
     setLoadError(false);
     try {
-      const res = await fetch(`${BASE}/api/stringing/strings`, { cache: 'no-store' });
+      const res = await sharedFetch('/api/stringing/strings');
       if (!res.ok) throw new Error(`strings ${res.status}`);
       const parsed = parseShelf(await res.json());
       // A throttled read answers every field null: unknown, which is not "no strings".

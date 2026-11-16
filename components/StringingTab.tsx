@@ -20,8 +20,8 @@ import AdminSignInCard from '@/components/admin/AdminSignInCard';
 import { STRINGING_HEIGHTS } from '@/components/TabFallbacks';
 import { StringingAside, StringingAsideProvider } from '@/components/stringing/StringingAside';
 import { usePaneMode } from '@/lib/paneMode';
+import { sharedFetch } from '@/lib/sharedRead';
 
-const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 // Admin code, so it stays out of the tab's chunk until an admin opens the
 // Bench (the bundle-split rule HomeShell keeps for whole tabs).
@@ -110,7 +110,8 @@ export default function StringingTab({ isAdmin = false, adminSession = true, onA
   useEffect(() => {
     if (!flagOn || isAdmin || !hasIdentity) return;
     let cancelled = false;
-    fetch(`${BASE}/api/stringing/jobs?view=stringer`, { cache: 'no-store' })
+    // The stringer card reads this same answer as it mounts: one request.
+    sharedFetch('/api/stringing/jobs?view=stringer')
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (!cancelled) setStringer(d?.canString === true); })
       .catch(() => { if (!cancelled) setStringer(false); });

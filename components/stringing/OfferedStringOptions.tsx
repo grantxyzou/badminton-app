@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-
-const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
+import { sharedFetch } from '@/lib/sharedRead';
 
 /**
  * The club's offered strings as suggestions on a free-text string field
@@ -16,7 +15,7 @@ export default function OfferedStringOptions({ id }: { id: string }) {
   const [labels, setLabels] = useState<string[]>([]);
   useEffect(() => {
     let cancelled = false;
-    fetch(`${BASE}/api/stringing/strings`, { cache: 'no-store' })
+    sharedFetch('/api/stringing/strings')
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
         if (!cancelled && d && Array.isArray(d.strings)) setLabels(d.strings.filter((s: unknown): s is string => typeof s === 'string'));

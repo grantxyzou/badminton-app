@@ -90,7 +90,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         // The PATCH refuses to re-price a PAID job (`job_paid`); a proposal
         // made before the payment must not slip the same change in by being
         // accepted after it (audit, 2026-11-05).
-        if (job.paidAt) return NextResponse.json({ error: 'job_paid' }, { status: 409 });
+        if (job.paidAt) {
+          /* Paid some other way meanwhile (the inbox, credit): the ask is
+             over, so it is withdrawn here rather than left as a prompt that
+             fails every time (code review, 2026-11-16). Best-effort: a write
+             that loses its etag leaves it for the next look. */
+          await scope.replace('stringingJobs', { ...job, pendingEdit: null, updatedAt: now }, caller.memberId);
+          return NextResponse.json({ error: 'job_paid' }, { status: 409 });
+        }
         next.priceCents = pending.priceCents;
       }
       // The field that has existed since Stage 1 with nothing ever writing it.
