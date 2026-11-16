@@ -34,9 +34,15 @@ describe('the camera gate', () => {
     expect(iosBuildHasCamera(undefined)).toBe(false);
   });
 
-  it('is open on the web and on Android', async () => {
+  it('is open on the web', async () => {
     expect(await cameraUsable()).toBe(true);
+  });
+
+  it('is shut on an Android build without the CAMERA permission, and open from versionCode 7', async () => {
     asNative('android');
+    getInfo = async () => ({ build: '6' });
+    expect(await cameraUsable()).toBe(false);
+    getInfo = async () => ({ build: '7' });
     expect(await cameraUsable()).toBe(true);
   });
 

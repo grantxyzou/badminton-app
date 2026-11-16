@@ -106,4 +106,10 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Android 13+ runtime permission; the messaging plugin prompts. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- The stocktake's barcode scanner reads the live camera in the WebView
+         (docs/plans/string-barcode-stocktake.md). Capacitor asks for this at
+         runtime when the page asks for video; undeclared, the ask is refused
+         at once. Optional, so Play still lists the app on a phone with none. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
 </manifest>

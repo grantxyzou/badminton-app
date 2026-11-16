@@ -151,7 +151,7 @@ Set globally in `next.config.js` `headers()`:
 - `X-Frame-Options: DENY`
 - `X-Content-Type-Options: nosniff`
 - `Referrer-Policy: strict-origin-when-cross-origin`
-- `Permissions-Policy: camera=(), microphone=(), geolocation=()`
+- `Permissions-Policy: camera=(self), microphone=(self), geolocation=()` (the stocktake's barcode scanner and the courtside board's voice scoring ask on our own pages; nothing embedded may)
 - `Strict-Transport-Security: max-age=31536000; includeSubDomains` — `preload`
   is deliberately NOT set (one-way submission; Grant's call)
 The `Content-Security-Policy` is NOT among them since 2026-11-05: `proxy.ts`
@@ -300,7 +300,7 @@ change if Azure reports it taken.
 
 ### Callers
 
-Four routes call the SDK:
+Three routes call the SDK:
 
 - `POST /api/claude` — the OPERATOR's prose (announcements, release notes;
   Grant, 2026-11-16: "This is only for me"). `isOperator` in
@@ -309,14 +309,13 @@ Four routes call the SDK:
 - `GET /api/stats/insight` — the member-facing weekly read on Stats.
 - `GET /api/equipment/fit-verdict` — the racket-fit verdict (its flag retired
   2026-10-19; with no API key it answers without AI words).
-- `POST /api/stringing/stocktake/scan` — reads one photo of the string shelf
-  for a stocktake (`docs/plans/string-photo-stocktake.md`): an admin or a
-  stringer of the club, 20 an hour per caller and 30 a day per person. The
-  photo is never stored; with no API key the sheet offers counting by hand.
 
-**All four share the one key, so the three a club can reach also spend from a
-daily allowance per CLUB** (`lib/aiBudget.ts`, `docs/plans/club-ai-cap.md`):
-100 Stats reads, 100 fit verdicts and 10 shelf photos a club a day, and a
+The string stocktake's photo was a fourth until 2026-11-16; the shelf is
+scanned by barcode now, with no model call (`docs/plans/string-barcode-stocktake.md`).
+
+**All three share the one key, so the two a club's members reach also spend
+from a daily allowance per CLUB** (`lib/aiBudget.ts`, `docs/plans/club-ai-cap.md`):
+100 Stats reads and 100 fit verdicts a club a day, and a
 member's own Stats reads and fit verdicts also from a daily allowance per
 PERSON (5 and 10), checked first. Taken only before a real model call. Over
 either, a feature falls back as it does with no key, and the route logs

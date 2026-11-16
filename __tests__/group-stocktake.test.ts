@@ -2,14 +2,16 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { GET as stockGET, POST as stockPOST } from '@/app/api/stringing/stock/route';
 import { PATCH as stringsPATCH } from '@/app/api/stringing/strings/route';
 import { GET as countGET, POST as countPOST } from '@/app/api/stringing/stocktake/route';
-import { POST as scanPOST } from '@/app/api/stringing/stocktake/scan/route';
+import { POST as barcodePOST } from '@/app/api/stringing/stocktake/barcode/route';
 import { __resetCatalogSeedForTests } from '@/lib/catalogSeed';
 import { resetShelfCache } from '@/lib/stringShelfRead';
 import { resetMockStore, getStore, seedDoc, makeAdminRequest, setupAdminPin, seedTestAdminMember } from './helpers';
 
 /**
- * The two-club gate for the stocktake (docs/plans/string-photo-stocktake.md):
- * another club's count never resets BPM's shelf, and a BPM count is stamped bpm.
+ * The two-club gate for the stocktake (docs/plans/string-photo-stocktake.md,
+ * docs/plans/string-barcode-stocktake.md): another club's count never resets
+ * BPM's shelf, another club's barcode never reaches BPM's scanner, and BPM's
+ * own are stamped bpm.
  */
 
 const BASE = 'http://localhost:3000/api';
@@ -46,8 +48,21 @@ describe('stocktake group isolation', () => {
     expect(groups).toEqual(['bpm', 'other']);
   });
 
-  it('the photo route answers for the caller’s own club only (no key here: it stops before any read)', async () => {
-    const res = await scanPOST(makeAdminRequest('POST', `${BASE}/stringing/stocktake/scan`, { image: 'aGVsbG8=', mediaType: 'image/jpeg' }));
-    expect(res.status).toBe(503);
+  it("another club's barcode is not BPM's, and BPM's own is stamped bpm", async () => {
+    await stringsPATCH(makeAdminRequest('PATCH', `${BASE}/stringing/strings`, { strings: ['BG80'] }));
+    // The other club taught the same code as BG80 (BPM offers BG80 too).
+    seedDoc('clubSettings', {
+      id: 'other:stringBarcode:34393035353338393030303030', groupId: 'other', kind: 'stringBarcode',
+      code: '4905538900000', label: 'BG80', form: 'packet', taughtBy: 'x', taughtAt: '2026-11-01T00:00:00Z',
+    });
+    const before = await (await countGET(makeAdminRequest('GET', `${BASE}/stringing/stocktake`))).json();
+    expect(before.barcodes).toEqual([]);
+
+    const taught = await barcodePOST(makeAdminRequest('POST', `${BASE}/stringing/stocktake/barcode`, { code: '4905538911111', label: 'bg80', form: 'reel' }));
+    expect(taught.status).toBe(201);
+    const after = await (await countGET(makeAdminRequest('GET', `${BASE}/stringing/stocktake`))).json();
+    expect(after.barcodes).toEqual([{ code: '4905538911111', label: 'BG80', form: 'reel', color: null }]);
+    const groups = (getStore()['clubSettings'] as Array<{ kind?: string; groupId?: string }>).filter((r) => r.kind === 'stringBarcode').map((r) => r.groupId).sort();
+    expect(groups).toEqual(['bpm', 'other']);
   });
 });

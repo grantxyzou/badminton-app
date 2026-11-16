@@ -1,9 +1,11 @@
 /**
- * The string stocktake (docs/plans/string-photo-stocktake.md).
+ * The string stocktake (docs/plans/string-photo-stocktake.md, scanning since
+ * docs/plans/string-barcode-stocktake.md).
  *   GET  — what the counter needs, per shelf string: what the app says is
- *          there, how long a set and a reel are, the last weigh-in's empty-reel
- *          weight and grams per metre. Sets only, never money: a stringer who
- *          is not an admin reads it too.
+ *          there (in all and per colour), how long a set and a reel are, the
+ *          last weigh-in's empty-reel weight and grams per metre; and the
+ *          barcodes the club has taught. Sets only, never money: a stringer
+ *          who is not an admin reads it too.
  *   POST — save a count. The server re-adds every line itself (the client's
  *          "you count 15" is a preview), stores it as a `stringCount` row, and
  *          from then on the shelf starts from it.
@@ -21,6 +23,8 @@ import {
   StocktakeError, gramsPerMetre, lastWeighIn, loadStringStock, saveStringCount, shelfSizes, stocktakeCaller, validateCount,
 } from '@/lib/stringStocktake';
 import { labelKey, numberAttr } from '@/lib/stringStock';
+import { groupScope } from '@/lib/groupScope';
+import { barcodeAnswers, readStringBarcodes } from '@/lib/stringBarcodes';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,7 +40,7 @@ export async function GET(req: NextRequest) {
   if (!caller) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   if (!(await stringingServiceOnFor(groupId))) return off();
   try {
-    const loaded = await loadStringStock(groupId);
+    const [loaded, barcodes] = await Promise.all([loadStringStock(groupId), readStringBarcodes(groupScope(groupId))]);
     const sizes = shelfSizes(loaded);
     const strings = loaded.offered.strings.map((label) => {
       const catalogId = loaded.offered.links[label] ?? null;
@@ -55,13 +59,16 @@ export async function GET(req: NextRequest) {
         tareGrams: weigh?.tareGrams ?? null,
         colours: loaded.offered.colours?.[label] ?? [],
         lastCount: line?.lastCount ?? null,
+        // What the app says per TAGGED colour, and in the mixed pool: the
+        // reconcile compares a scanned colour with its own pool.
+        byColour: (line?.byColour ?? []).map((c) => ({ color: c.color, appSets: c.remainingSets })),
+        mixedSets: line?.mixedRemainingSets ?? 0,
       };
     });
     return NextResponse.json({
       strings,
       customColours: loaded.offered.customColours,
-      // Without a key the photo step is not offered; counting by hand still is.
-      photo: Boolean(process.env.ANTHROPIC_API_KEY),
+      barcodes: barcodeAnswers(barcodes, loaded.offered.strings),
     });
   } catch (err) {
     console.error('GET /api/stringing/stocktake failed', err);

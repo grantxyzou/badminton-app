@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { GET as stockGET, POST as stockPOST } from '@/app/api/stringing/stock/route';
 import { PATCH as stringsPATCH } from '@/app/api/stringing/strings/route';
 import { POST as jobsPOST } from '@/app/api/stringing/jobs/route';
@@ -10,23 +10,16 @@ import { summarizeStringStock } from '@/lib/stringStock';
 import {
   gramsPerMetre, metresByWeight, setsByEye, setsByWeight, lastWeighIn, DEFAULT_GRAMS_PER_METRE, type StringCount,
 } from '@/lib/stringStocktakeMath';
-import { buildScanPrompt, checkScanReply } from '@/lib/stringStocktakeScan';
-import { STOCKTAKE_MODEL } from '@/lib/aiModels';
 import type { StringPurchase } from '@/lib/types';
 import type { ReelColourId } from '@/lib/stringPalette';
 import { resetMockStore, getStore, seedMember, makeRequest, makeAdminRequest, memberCookieValue, setupAdminPin, seedTestAdminMember } from './helpers';
 
 /**
- * The photo stocktake (docs/plans/string-photo-stocktake.md; Grant,
- * 2026-11-15: "taking a picture in app gives the stocking inventory", part
- * reels "fullness by eye and weigh it", counted by "Admins and stringers").
+ * The stocktake (docs/plans/string-photo-stocktake.md; Grant, 2026-11-15:
+ * part reels "fullness by eye and weigh it", counted by "Admins and
+ * stringers"). Scanning replaced the photo (docs/plans/string-barcode-stocktake.md);
+ * a count saved from a photo before then still reads as one.
  */
-
-const parse = vi.fn();
-vi.mock('@anthropic-ai/sdk', () => {
-  class APIError extends Error { status = 500; }
-  return { default: class { static APIError = APIError; beta = { messages: { parse: (...a: unknown[]) => parse(...a) } }; } };
-});
 
 // ── The arithmetic ─────────────────────────────────────────────────────────
 
@@ -101,29 +94,6 @@ describe('a count resets the shelf', () => {
   });
 });
 
-describe('reading the photo’s reply', () => {
-  it('keeps only this shelf’s labels; anything else is "not sure", never guessed', () => {
-    const items = checkScanReply({ items: [
-      { label: 'bg80', kind: 'reel', count: 1, fullness: 'half', colour: 'White' },
-      { label: 'Some other string', kind: 'packet', count: 3, fullness: null, colour: null },
-      { label: 'Exbolt 63', kind: 'packet', count: 400, fullness: 'full', colour: ' ' },
-      { label: 'BG80', kind: 'reel', count: 0, fullness: null, colour: null },
-    ] }, ['BG80', 'Exbolt 63']);
-    expect(items).toEqual([
-      { label: 'BG80', kind: 'reel', count: 1, fullness: 'half', colour: 'White' },
-      { label: null, kind: 'packet', count: 3, fullness: null, colour: null },
-      { label: 'Exbolt 63', kind: 'packet', count: 50, fullness: null, colour: null },
-      { label: 'BG80', kind: 'reel', count: 1, fullness: 'full', colour: null },
-    ]);
-  });
-
-  it('the prompt names every shelf string and its colours', () => {
-    const p = buildScanPrompt([{ label: 'BG80', catalogName: 'Yonex BG80', colours: ['White', 'Yellow'] }, { label: 'House string', colours: [] }]);
-    expect(p).toContain('"BG80" (Yonex BG80) — colours: White, Yellow');
-    expect(p).toContain('"House string"');
-  });
-});
-
 // ── Through the routes ──────────────────────────────────────────────────────
 
 const BASE = 'http://localhost:3000/api';
@@ -135,7 +105,6 @@ describe('the stocktake routes', () => {
     __resetCatalogSeedForTests();
     resetShelfCache();
     setupAdminPin();
-    parse.mockReset();
     process.env.NEXT_PUBLIC_FLAG_STRINGING = 'true';
     await seedTestAdminMember();
     await stringsPATCH(makeAdminRequest('PATCH', `${BASE}/stringing/strings`, { strings: ['BG80', 'Exbolt 63'] }));
@@ -143,7 +112,6 @@ describe('the stocktake routes', () => {
   });
   afterEach(() => {
     delete process.env.NEXT_PUBLIC_FLAG_STRINGING;
-    delete process.env.ANTHROPIC_API_KEY;
   });
 
   const asMember = (name: string, id: string) => ({ Cookie: `member_session=${memberCookieValue(name, id)}` });
@@ -156,7 +124,8 @@ describe('the stocktake routes', () => {
     const body = await admin.json();
     expect(body.strings.map((s: { label: string }) => s.label)).toEqual(['BG80', 'Exbolt 63']);
     expect(body.strings[0]).toMatchObject({ appSets: 20, setMetres: 10, reelMetres: 200, tareGrams: null, lastCount: null });
-    expect(body.photo).toBe(false);
+    expect(body.barcodes).toEqual([]);
+    expect(body).not.toHaveProperty('photo');
     expect(JSON.stringify(body)).not.toMatch(/Cents|price|cost/i);
     expect((await countGET(makeRequest('GET', `${BASE}/stringing/stocktake`, undefined, asMember('Zach', zach.id)))).status).toBe(200);
     expect((await countGET(makeRequest('GET', `${BASE}/stringing/stocktake`, undefined, asMember('Lin', lin.id)))).status).toBe(401);
@@ -166,7 +135,7 @@ describe('the stocktake routes', () => {
   it('saving re-adds every line on the server, and the shelf starts from the count', async () => {
     const zach = seedMember('Zach', { canString: true });
     const res = await countPOST(makeRequest('POST', `${BASE}/stringing/stocktake`, {
-      source: 'photo',
+      source: 'scan',
       lines: [
         // The client claims 999; the server works it out: ¾ of a 200 m reel + 2 packets = 17.
         { label: 'bg80', packets: 2, reels: [{ by: 'eye', fullness: 'three_quarters' }], sets: 999 },
@@ -192,7 +161,7 @@ describe('the stocktake routes', () => {
     const stock = await (await stockGET(makeAdminRequest('GET', `${BASE}/stringing/stock`))).json();
     const bg80 = stock.lines.find((l: { label: string }) => l.label === 'BG80');
     expect(bg80.remainingSets).toBe(16);
-    expect(bg80.lastCount).toMatchObject({ sets: 17, source: 'photo' });
+    expect(bg80.lastCount).toMatchObject({ sets: 17, source: 'scan' });
     const ex = stock.lines.find((l: { label: string }) => l.label === 'Exbolt 63');
     expect(ex.remainingSets).toBe(12);
 
@@ -209,52 +178,8 @@ describe('the stocktake routes', () => {
     expect((await post({ source: 'hand', lines: [{ label: 'BG80', reels: [{ by: 'eye', fullness: 'mostly' }] }] })).status).toBe(400);
     expect((await post({ source: 'hand', lines: [{ label: 'BG80', packets: -1 }] })).status).toBe(400);
     expect((await post({ source: 'hand', lines: [] })).status).toBe(400);
+    // The photo is gone: a client still sending it is refused, never stored as one.
+    expect((await post({ source: 'photo', lines: [{ label: 'BG80', packets: 1 }] })).status).toBe(400);
     expect((await post({ source: 'hand', lines: [{ label: 'BG80', packets: 1 }] }, asMember('Lin', lin.id))).status).toBe(401);
-  });
-
-  describe('reading a photo', () => {
-    const photo = { image: 'aGVsbG8gc2hlbGY=', mediaType: 'image/jpeg' };
-    const scan = async (body: Record<string, unknown>, admin = true) => {
-      const { POST } = await import('@/app/api/stringing/stocktake/scan/route');
-      return POST(admin ? makeAdminRequest('POST', `${BASE}/stringing/stocktake/scan`, body) : makeRequest('POST', `${BASE}/stringing/stocktake/scan`, body));
-    };
-
-    it('with no key: 503 ai_unavailable, and nothing is called', async () => {
-      const res = await scan(photo);
-      expect(res.status).toBe(503);
-      expect((await res.json()).error).toBe('ai_unavailable');
-      expect(parse).not.toHaveBeenCalled();
-    });
-
-    it('sends the photo and the shelf, and answers checked items', async () => {
-      process.env.ANTHROPIC_API_KEY = 'test-key';
-      parse.mockResolvedValue({ stop_reason: 'end_turn', parsed_output: { items: [
-        { label: 'BG80', kind: 'reel', count: 1, fullness: 'three_quarters', colour: 'White' },
-        { label: 'Mystery', kind: 'packet', count: 1, fullness: null, colour: 'Grey' },
-      ] } });
-      const res = await scan(photo);
-      expect(res.status).toBe(200);
-      expect((await res.json()).items).toEqual([
-        { label: 'BG80', kind: 'reel', count: 1, fullness: 'three_quarters', colour: 'White' },
-        { label: null, kind: 'packet', count: 1, fullness: null, colour: 'Grey' },
-      ]);
-      const call = parse.mock.calls[0][0];
-      expect(call.model).toBe(STOCKTAKE_MODEL);
-      expect(call.messages[0].content[0]).toEqual({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: photo.image } });
-      expect(call.messages[0].content[1].text).toContain('"Exbolt 63"');
-      // Nothing is saved by reading a photo.
-      expect(((getStore()['clubSettings'] ?? []) as Array<{ kind?: string }>).some((r) => r.kind === 'stringCount')).toBe(false);
-    });
-
-    it('a refusal is "unreadable", a model error is a 503, a bad photo a 400, a player a 401', async () => {
-      process.env.ANTHROPIC_API_KEY = 'test-key';
-      parse.mockResolvedValueOnce({ stop_reason: 'refusal', parsed_output: null });
-      expect((await scan(photo)).status).toBe(422);
-      parse.mockRejectedValueOnce(new Error('boom'));
-      expect((await scan(photo)).status).toBe(503);
-      expect((await scan({ image: 'not base64!', mediaType: 'image/jpeg' })).status).toBe(400);
-      expect((await scan({ image: 'aGVsbG8=', mediaType: 'image/gif' })).status).toBe(400);
-      expect((await scan(photo, false)).status).toBe(401);
-    });
   });
 });

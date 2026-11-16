@@ -119,7 +119,7 @@ export default function StringerShelfCard({ hasIdentity }: { hasIdentity: boolea
         <div className="bpm-inner-row">
           <span className="fs-md" style={{ color: 'var(--text-primary)', minWidth: 0 }}>{tStock('button')}</span>
           <button type="button" className="cc-btn cc-btn-secondary" disabled={!online} onClick={() => setCounting(true)}>
-            <span className="material-icons icon-sm" aria-hidden="true">photo_camera</span>
+            <span className="material-icons icon-sm" aria-hidden="true">barcode_scanner</span>
             {tStock('buttonShort')}
           </button>
         </div>

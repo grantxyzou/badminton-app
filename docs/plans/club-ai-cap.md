@@ -49,11 +49,13 @@ Then the allowance is wrong, and the number in `lib/aiBudget.ts` goes up.
   - **A person's own allowance, checked FIRST** (`takeMemberAiCall`): 5 Stats
     reads and 10 fit verdicts a day, so one member cannot spend the club's
     share, and a member over their own spends none of it.
+- **The stocktake's photo and its 10 a day are gone** (same day): the shelf is
+  scanned by barcode with no model call (`docs/plans/string-barcode-stocktake.md`).
 
 ## Shape
 
 | Piece | File |
 |---|---|
 | The allowance | `lib/aiBudget.ts` |
-| Callers | `app/api/claude/route.ts`, `app/api/stats/insight/route.ts`, `app/api/equipment/fit-verdict/route.ts`, `app/api/stringing/stocktake/scan/route.ts` |
+| Callers | `app/api/stats/insight/route.ts`, `app/api/equipment/fit-verdict/route.ts` (the writing route is the operator's, outside the allowance) |
 | Tests | `__tests__/club-ai-cap.test.ts`, `__tests__/group-ai-cap.test.ts` |
