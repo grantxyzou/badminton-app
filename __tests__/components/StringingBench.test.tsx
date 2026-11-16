@@ -844,7 +844,7 @@ describe('the bench lists first', () => {
     respondBench();
     wrap(<StringingPage onBack={() => {}} />);
     const row = await screen.findByText('J-0042');
-    const setup = screen.getByRole('button', { name: 'Strings, stock, prices & holes' });
+    const setup = screen.getByRole('button', { name: 'Inventory' });
     expect(row.compareDocumentPosition(setup) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.queryByText('Other prices')).toBeNull();
     fireEvent.click(setup);
@@ -858,10 +858,13 @@ describe('the bench lists first', () => {
     // "Nested cards are always wrong" (DESIGN.md #12).
     respondBench();
     wrap(<StringingPage onBack={() => {}} />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Strings, stock, prices & holes' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Inventory' }));
     const prices = (await screen.findByText('Other prices')).closest('.glass-card') as HTMLElement;
     expect(prices).not.toBeNull();
     expect(prices.parentElement?.closest('.glass-card')).toBeNull();
+    // Hole counts left Inventory (docs/plans/string-inventory-list.md): a job's
+    // "Add a hole count" opens them on a page of their own.
+    expect(screen.queryByText('String holes')).toBeNull();
   });
 });
 
@@ -903,7 +906,7 @@ describe('the bench inside the Stringing tab (docs/plans/stringing-tabs.md)', ()
     respondEmbedded();
     const onTakeover = vi.fn();
     wrap(<StringingPage embedded onBack={() => {}} onTakeover={onTakeover} />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Strings, stock, prices & holes' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Inventory' }));
     await screen.findByText('Other prices');
     expect(onTakeover).toHaveBeenLastCalledWith(true);
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
@@ -1173,7 +1176,7 @@ describe('the bench in the stringer\'s card style', () => {
     const fetchMock = respondOpen([job]);
     wrap(<StringingPage onBack={() => {}} />);
     const close = await screen.findByRole('button', { name: 'Close shop' });
-    const setup = screen.getByRole('button', { name: 'Strings, stock, prices & holes' });
+    const setup = screen.getByRole('button', { name: 'Inventory' });
     const archive = screen.getByRole('button', { name: /^Archived/ });
     const add = screen.getByRole('button', { name: 'Add job' });
     const follows = (a: Element, b: Element) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);

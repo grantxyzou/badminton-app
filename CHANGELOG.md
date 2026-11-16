@@ -8,9 +8,15 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
-## Packet pictures on the string shelf list (2026-11-16)
+## Inventory: the string shelf as a list (2026-11-16)
 
-- **Each string on the bench's shelf list, and on a stringer's, now shows its packet**, the same picture players see. A string not linked to the catalog keeps a blank space the same size, so the names still line up.
+- **"Strings, stock, prices & holes" is now Inventory, and the strings are one plain list** with each string's packet, what is left and its price, rather than a tile per string.
+- **What needs you comes first**: Low on stock, Out of stock and Mismatched sit on top, open, under their own labels. The strings that are fine ("On the shelf") and the ones with no stock logged start folded; tap a label to open it.
+- **A shelf of more than 8 strings gets a search and one row of filters** (each status, each brand, not in the catalog). They stay at the top while you scroll, and a search opens every group.
+- **Count is the one button in the strings header**, with the last count's date beside the title. The + beside it opens the add field.
+- **Other prices is one row above the list** that opens a sheet with the own-string price and the note.
+- **Hole counts left Inventory.** A stringing job's "Add a hole count" still opens the count for that racket, on its own page.
+- **Each string on a stringer's shelf list shows its packet too**, the same picture players see.
 
 ## Count the string shelf by scanning barcodes (2026-11-16)
 

@@ -87,7 +87,7 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
   /* The bench's own pages, a TRAIL (docs/plans/back-navigation.md): Archive →
      a job → Back returns to the Archive, and a job → Add holes → Back to the
      job. Each Back used to land on the bench. */
-  type BenchView = 'bench' | 'detail' | 'new' | 'archive' | 'setup';
+  type BenchView = 'bench' | 'detail' | 'new' | 'archive' | 'setup' | 'holes';
   const [views, setViews] = useState<BenchView[]>([]);
   const view: BenchView = topView(views, 'bench');
   // Each level keeps its own place: a job opens at its top, and Back returns
@@ -102,11 +102,13 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
   const back = useCallback(() => setViews(popView), []);
   // Each job's grommet holes, matched from its racket label (docs/plans/grommet-holes.md, Phase 4).
   const holes = useHoleLookup();
-  // A racket to open the Set-up screen's hole-count card on, from a job's "Add a hole count".
+  // A racket to open the hole-count page on, from a job's "Add a hole count".
+  // Hole counts are entered where they are used, never on Inventory
+  // (docs/plans/string-inventory-list.md; Grant: "we never have that one list anyways").
   const [holesPreset, setHolesPreset] = useState<string | null>(null);
   // Inside the admin trail (or the Stringing tab), so one level deeper.
   usePageBack(views.length > 0, () => {
-    if (view === 'setup') { setHolesPreset(null); holes.reload(); }
+    if (view === 'holes') { setHolesPreset(null); holes.reload(); }
     back();
   }, 1);
   /* Mine/All is only worth a control when somebody else strings too. Read off
@@ -399,7 +401,7 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
   function openJob(job: StringingJob, inArchive: boolean) {
     setSelectedId(job.id);
     if (!aside || inArchive) { setView('detail'); return; }
-    if (view === 'setup') { setHolesPreset(null); holes.reload(); }
+    if (view === 'holes') { setHolesPreset(null); holes.reload(); }
     setViews([]);
   }
 
@@ -529,7 +531,7 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
           onBack={back}
           onChanged={() => void load()}
           holesFor={holes.forLabel}
-          onAddHoles={(catalogId) => { setHolesPreset(catalogId); setView('setup'); }}
+          onAddHoles={(catalogId) => { setHolesPreset(catalogId); setView('holes'); }}
         />
       </div>
     );
@@ -702,21 +704,30 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
 
   const setupScreen = view !== 'setup' ? null : (
       <div className={pageClass}>
+        <AdminBackHeader onBack={back} title={t('setupRow')} crumb={crumb} />
+        {/* Inventory (docs/plans/string-inventory-list.md, canvas v3): the
+            other prices as one row ABOVE the list, so nothing waits under a
+            long shelf, then the strings. Siblings, never a card around cards
+            (DESIGN.md #12). */}
+        <div className="flex flex-col gap-4 pb-6">
+          <OtherPricesCard />
+          <StringShelfCard />
+        </div>
+      </div>
+  );
+  const holesScreen = view !== 'holes' ? null : (
+      <div className={pageClass}>
         <AdminBackHeader
           onBack={() => { setHolesPreset(null); holes.reload(); back(); }}
-          title={t('setupRow')}
+          title={t('holes.title')}
           crumb={crumb}
         />
-        {/* Its own screen (docs/plans/bench-redesign.md): folded under the
-            list, it still opened three tall cards beneath the jobs. Siblings,
-            never a card around cards (DESIGN.md #12). */}
         <div className="flex flex-col gap-4 pb-6">
-          <StringShelfCard />
-          <OtherPricesCard />
           <HoleCountsCard preset={holesPreset} />
         </div>
       </div>
   );
+  if (holesScreen && !aside) return holesScreen;
   if (setupScreen && !aside) return setupScreen;
 
   const newScreen = view !== 'new' ? null : (
@@ -993,8 +1004,8 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
       </div>
       {/* The right page on a foldable: the open job, or its place while the
           list loads, so the bench does not move when it arrives. */}
-      {aside && (archiveScreen || setupScreen || newScreen) ? (
-        <StringingAside id={view}>{archiveScreen ?? setupScreen ?? newScreen}</StringingAside>
+      {aside && (archiveScreen || setupScreen || holesScreen || newScreen) ? (
+        <StringingAside id={view}>{archiveScreen ?? setupScreen ?? holesScreen ?? newScreen}</StringingAside>
       ) : aside && view === 'detail' && selected && typeof selected.archivedAt === 'string' ? (
         <StringingAside id={`archived-${selected.id}`}>
           {/* Opened from the archive, so its Back returns there. */}
@@ -1006,7 +1017,7 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
               onBack={back}
               onChanged={() => void load()}
               holesFor={holes.forLabel}
-              onAddHoles={(catalogId) => { setHolesPreset(catalogId); setView('setup'); }}
+              onAddHoles={(catalogId) => { setHolesPreset(catalogId); setView('holes'); }}
             />
           </PaneDetail>
         </StringingAside>
@@ -1017,7 +1028,7 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
             job={asideJob}
             onChanged={() => void load()}
             holesFor={holes.forLabel}
-            onAddHoles={(catalogId) => { setHolesPreset(catalogId); setView('setup'); }}
+            onAddHoles={(catalogId) => { setHolesPreset(catalogId); setView('holes'); }}
           />
         </StringingAside>
       ) : (

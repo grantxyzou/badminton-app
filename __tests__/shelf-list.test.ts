@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { SHELF_PAGE, shelfChips, shelfGroups, shelfStatus, type ShelfEntry } from '@/lib/shelfList';
+import { FOLDED_BY_DEFAULT, shelfChips, shelfGroups, shelfStatus, type ShelfEntry } from '@/lib/shelfList';
 
 /**
  * The shelf list's rules (Grant, 2026-11-16, on the canvas): low on stock,
  * out of stock, mismatched on top, then the shelf A–Z, then no stock logged;
- * a search and filters for a large shelf; "Show N more" on the shelf group.
+ * a search and filters for a large shelf; the groups that need nobody folded
+ * until opened, searched or filtered (canvas v3).
  */
 
 const e = (label: string, status: ShelfEntry['status'], brand: string | null = 'Yonex'): ShelfEntry => ({ label, brand, status });
@@ -33,13 +34,17 @@ describe('shelfGroups', () => {
     ]);
   });
 
-  it('pages the shelf group until shown in full, a search or a filter', () => {
-    const many = Array.from({ length: SHELF_PAGE + 4 }, (_, i) => e(`String ${i + 1}`, 'shelf'));
-    const first = shelfGroups(many);
-    expect(first[0].entries).toHaveLength(SHELF_PAGE);
-    expect(first[0].hidden).toBe(4);
-    expect(shelfGroups(many, { showAll: true })[0].hidden).toBe(0);
-    expect(shelfGroups(many, { query: 'string' })[0].entries).toHaveLength(SHELF_PAGE + 4);
+  it('folds the groups that need nobody, and a search or a filter opens them', () => {
+    const many = Array.from({ length: 12 }, (_, i) => e(`String ${i + 1}`, 'shelf')).concat([e('Exbolt 63', 'low'), e('House string', 'none', null)]);
+    const first = shelfGroups(many, { folded: FOLDED_BY_DEFAULT });
+    expect(first.map((g) => [g.status, g.folded, g.count, g.entries.length])).toEqual([
+      ['low', false, 1, 1], ['shelf', true, 12, 0], ['none', true, 1, 0],
+    ]);
+    expect(shelfGroups(many).every((g) => !g.folded)).toBe(true);
+    const searched = shelfGroups(many, { folded: FOLDED_BY_DEFAULT, query: 'string 1' });
+    expect(searched.map((g) => [g.status, g.folded, g.entries.length])).toEqual([['shelf', false, 4]]);
+    const filtered = shelfGroups(many, { folded: FOLDED_BY_DEFAULT, filter: { kind: 'other' } });
+    expect(filtered.map((g) => [g.status, g.folded, g.entries.length])).toEqual([['none', false, 1]]);
   });
 
   it('searches by name and filters by status, brand or not-in-the-catalog', () => {

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import MoneyInput from '@/components/primitives/MoneyInput';
-import CardHeader from '@/components/primitives/CardHeader';
+import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '@/components/BottomSheet';
 import ErrorState from '@/components/primitives/ErrorState';
 import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
 import { useOnline } from '@/lib/useOnline';
@@ -25,6 +25,12 @@ interface Pricing {
  * prices. The old per-service list is still stored (rollback) but no player
  * sees it; while it holds lines this card says so, once, with a way to clear
  * it, so a price that quietly stopped showing is never a surprise.
+ *
+ * On the Inventory page it is ONE row above the strings (canvas v3,
+ * docs/plans/string-inventory-list.md): "Other prices · Own string $20 ›",
+ * which opens a sheet with both fields and Save pinned to its foot — a
+ * phone's settings pattern, where a list shows a value and editing happens
+ * where you tapped, rather than two fields and a Save always open in a card.
  */
 export default function OtherPricesCard() {
   const t = useTranslations('admin.stringing.otherPrices');
@@ -37,6 +43,7 @@ export default function OtherPricesCard() {
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [saveError, setSaveError] = useState(false);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -66,8 +73,8 @@ export default function OtherPricesCard() {
    * another device's edit. Only the drafts for the fields sent are reset
    * from the answer, so clearing the old list keeps an unsaved price or note.
    */
-  async function save(body: Partial<Pricing>) {
-    if (busy || !online) return;
+  async function save(body: Partial<Pricing>): Promise<boolean> {
+    if (busy || !online) return false;
     setBusy(true);
     setSaveError(false);
     try {
@@ -82,8 +89,10 @@ export default function OtherPricesCard() {
       setPricing(p);
       if ('ownStringCents' in body) setOwn(priceDraftOf(p.ownStringCents));
       if ('note' in body) setNote(p.note);
+      return true;
     } catch {
       setSaveError(true);
+      return false;
     } finally {
       setBusy(false);
     }
@@ -102,14 +111,15 @@ export default function OtherPricesCard() {
     );
   }
 
-  // While the first read is in flight: the card's shape with no values. An
-  // empty field there would read as "no own-string price, no note".
+  // While the first read is in flight: the row's shape with no value. An
+  // empty value there would read as "no own-string price".
   if (pricing === null) {
     return (
-      <div className="glass-card p-5 space-y-3" role="status" aria-label={t('title')}>
-        <CardHeader icon="request_quote" title={t('title')} subtitle={t('subtitle')} />
-        <PreviewRow width="60%" />
-        <PreviewRow width="80%" />
+      <div className="glass-card inventory-row-card" role="status" aria-label={t('rowLabel')}>
+        <div className="shelf-row" style={{ cursor: 'default' }}>
+          <span className="material-icons icon-md" aria-hidden="true" style={{ color: 'var(--accent)' }}>request_quote</span>
+          <span className="shelf-row-body"><PreviewRow width="40%" /></span>
+        </div>
       </div>
     );
   }
@@ -118,74 +128,99 @@ export default function OtherPricesCard() {
   const ownChanged = ownParsed !== undefined && ownParsed !== pricing.ownStringCents;
   const noteChanged = note.trim() !== pricing.note;
   const changed = ownParsed !== undefined && (ownChanged || noteChanged);
+  const ownShown = formatServicePrice(pricing.ownStringCents);
+  const close = () => {
+    // Closing without saving drops the drafts, so the sheet reopens on what is stored.
+    setOpen(false);
+    setSaveError(false);
+    setOwn(priceDraftOf(pricing.ownStringCents));
+    setNote(pricing.note);
+  };
 
   return (
-    <div className="glass-card p-5 space-y-3">
-      <CardHeader icon="request_quote" title={t('title')} subtitle={t('subtitle')} />
-
-      {saveError && <ErrorState message={t('saveError')} />}
-
-      <div className="flex flex-col gap-2">
-        <label htmlFor="own-string-price" className="section-label-muted">{t('own')}</label>
-        <MoneyInput
-          id="own-string-price"
-          value={own}
-          onChange={setOwn}
-          placeholder={tRoot('strings.priceAsk')}
-          maxLength={7}
-        />
-        {ownParsed === undefined
-          ? <p className="field-error" role="alert">{tRoot('shelf.sheet.priceInvalid')}</p>
-          : <p className="fs-xs" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('ownHint')}</p>}
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <label htmlFor="pricing-note" className="section-label-muted">{t('note')}</label>
-        <textarea
-          id="pricing-note"
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          placeholder={t('notePlaceholder')}
-          maxLength={MAX_PRICING_NOTE_LEN}
-          rows={2}
-                  />
-      </div>
-
-      <button
-        type="button"
-        className="cc-btn cc-btn-secondary"
-        style={{ width: '100%' }}
-        disabled={busy || !online || !changed}
-        onClick={() =>
-          void save({
-            ...(ownChanged ? { ownStringCents: ownParsed ?? null } : {}),
-            ...(noteChanged ? { note: note.trim() } : {}),
-          })
-        }
-      >
-        {t('save')}
+    <div className="glass-card inventory-row-card">
+      <button type="button" className="shelf-row" onClick={() => setOpen(true)} aria-haspopup="dialog">
+        <span className="material-icons icon-md" aria-hidden="true" style={{ color: 'var(--accent)' }}>request_quote</span>
+        <span className="shelf-row-body"><span className="shelf-row-name">{t('rowLabel')}</span></span>
+        <span className="fs-sm" style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+          {ownShown ? t('rowOwn', { price: ownShown }) : t('rowAsk')}
+        </span>
+        <span className="material-icons icon-sm" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>chevron_right</span>
       </button>
 
-      {pricing.services.length > 0 && (
-        <div className="flex flex-col gap-2" style={{ paddingTop: 'var(--space-2)' }}>
-          <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
-            {t('oldList', { count: pricing.services.length })}{' '}
-            {pricing.services
-              .map((s) => `${s.label} ${formatServicePrice(s.priceCents) ?? tRoot('strings.priceAsk')}`)
-              .join(' · ')}
-          </p>
-          <div>
-            <button
-              type="button"
-              className="cc-btn cc-btn-ghost"
-              disabled={busy || !online}
-              onClick={() => void save({ services: [] })}
-            >
-              {t('oldListClear')}
-            </button>
+      <BottomSheet open={open} onClose={close} ariaLabel={t('title')}>
+        <BottomSheetHeader onClose={close} closeLabel={tRoot('actions.close')}>
+          <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 600 }}>{t('title')}</span>
+        </BottomSheetHeader>
+        <BottomSheetBody>
+          <div className="flex flex-col gap-4">
+            <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('subtitle')}</p>
+
+            <div className="flex flex-col gap-2">
+              <label htmlFor="own-string-price" className="section-label-muted">{t('own')}</label>
+              <MoneyInput
+                id="own-string-price"
+                value={own}
+                onChange={setOwn}
+                placeholder={tRoot('strings.priceAsk')}
+                maxLength={7}
+              />
+              {ownParsed === undefined
+                ? <p className="field-error" role="alert">{tRoot('shelf.sheet.priceInvalid')}</p>
+                : <p className="fs-xs" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('ownHint')}</p>}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <label htmlFor="pricing-note" className="section-label-muted">{t('note')}</label>
+              <textarea
+                id="pricing-note"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder={t('notePlaceholder')}
+                maxLength={MAX_PRICING_NOTE_LEN}
+                rows={3}
+              />
+            </div>
+
+            {pricing.services.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>
+                  {t('oldList', { count: pricing.services.length })}{' '}
+                  {pricing.services
+                    .map((sv) => `${sv.label} ${formatServicePrice(sv.priceCents) ?? tRoot('strings.priceAsk')}`)
+                    .join(' · ')}
+                </p>
+                <div>
+                  <button
+                    type="button"
+                    className="cc-btn cc-btn-ghost"
+                    disabled={busy || !online}
+                    onClick={() => void save({ services: [] })}
+                  >
+                    {t('oldListClear')}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        </BottomSheetBody>
+        <BottomSheetFooter className="flex flex-col gap-3">
+          {saveError && <ErrorState message={t('saveError')} />}
+          <button
+            type="button"
+            className="cc-btn cc-btn-primary cc-btn-lg"
+            disabled={busy || !online || !changed}
+            onClick={() =>
+              void save({
+                ...(ownChanged ? { ownStringCents: ownParsed ?? null } : {}),
+                ...(noteChanged ? { note: note.trim() } : {}),
+              }).then((ok) => { if (ok) setOpen(false); })
+            }
+          >
+            {t('save')}
+          </button>
+        </BottomSheetFooter>
+      </BottomSheet>
     </div>
   );
 }

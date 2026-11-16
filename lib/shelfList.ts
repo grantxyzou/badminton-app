@@ -7,9 +7,12 @@
  * order: low on stock, out of stock, mismatched (more strung than was ever
  * logged), on the shelf, no stock logged. Within a group, A–Z. A shelf of
  * more than `LARGE_SHELF` strings gets a search, one row of filters (each
- * status, each brand, "not in the catalog") and group labels; the "on the
- * shelf" group shows `SHELF_PAGE` rows until "Show N more". A smaller shelf is
- * just the list, in the same order.
+ * status, each brand, "not in the catalog") and group labels, and the groups
+ * that need nobody ("on the shelf", "no stock logged") start FOLDED — what
+ * needs you is the first screen, what is fine is one tap or a search away
+ * (Grant, 2026-11-16, canvas v3: "isn't this list a little long?"). A search
+ * or a filter opens every group, so a match is never inside a folded one. A
+ * smaller shelf is just the list, in the same order.
  */
 
 export type ShelfStatus = 'low' | 'out' | 'mismatched' | 'shelf' | 'none';
@@ -21,8 +24,8 @@ export const NEEDS_YOU: ReadonlySet<ShelfStatus> = new Set(['low', 'out', 'misma
 
 /** More strings than this and the list gets its search, filters and labels. */
 export const LARGE_SHELF = 8;
-/** Rows the "on the shelf" group shows before "Show N more". */
-export const SHELF_PAGE = 8;
+/** The groups a large shelf starts with folded: nobody needs to act on them. */
+export const FOLDED_BY_DEFAULT: ReadonlySet<ShelfStatus> = new Set(['shelf', 'none']);
 
 export interface ShelfEntry {
   label: string;
@@ -88,17 +91,24 @@ export function shelfChips(entries: readonly ShelfEntry[]): ShelfChip[] {
   return chips;
 }
 
-export interface ShelfGroup<T extends ShelfEntry> { status: ShelfStatus; entries: T[]; hidden: number }
+export interface ShelfGroup<T extends ShelfEntry> {
+  status: ShelfStatus;
+  /** The rows to draw: empty while the group is folded. */
+  entries: T[];
+  /** Every string in the group, folded or not — what its label counts. */
+  count: number;
+  folded: boolean;
+}
 
 /**
  * The groups to draw, after the search (name contains it, any case) and the
- * filter. Empty groups are dropped. While nothing narrows the list, the "on
- * the shelf" group stops at `SHELF_PAGE` and says how many it `hidden` —
- * unless `showAll`. A search or a filter shows every match.
+ * filter. Empty groups are dropped. While nothing narrows the list, a group
+ * named in `folded` draws no rows (its label says how many); a search or a
+ * filter shows every match.
  */
 export function shelfGroups<T extends ShelfEntry>(
   entries: readonly T[],
-  opts: { query?: string; filter?: ShelfFilter; showAll?: boolean } = {},
+  opts: { query?: string; filter?: ShelfFilter; folded?: ReadonlySet<ShelfStatus> } = {},
 ): ShelfGroup<T>[] {
   const q = (opts.query ?? '').trim().toLowerCase();
   const filter = opts.filter ?? { kind: 'all' };
@@ -108,8 +118,8 @@ export function shelfGroups<T extends ShelfEntry>(
   for (const status of SHELF_STATUS_ORDER) {
     const all = shown.filter((e) => e.status === status).sort(byName);
     if (all.length === 0) continue;
-    const capped = status === 'shelf' && !narrowed && !opts.showAll && all.length > SHELF_PAGE;
-    groups.push({ status, entries: capped ? all.slice(0, SHELF_PAGE) : all, hidden: capped ? all.length - SHELF_PAGE : 0 });
+    const folded = !narrowed && !!opts.folded?.has(status);
+    groups.push({ status, entries: folded ? [] : all, count: all.length, folded });
   }
   return groups;
 }

@@ -7985,6 +7985,123 @@ button.setup-next-row { cursor: pointer; }
 .string-pack-hero { width: 80px; height: 112px; }
 /* On the Equipment card's Strings line, under its label. */
 .string-pack-line { width: 32px; height: 45px; }
+/* The Inventory list's rows (docs/plans/string-inventory-list.md): the packet
+   a size down from a tile's, so a long shelf reads at a glance. */
+.string-pack-list { width: 26px; height: 36px; }
+
+/* THE INVENTORY LIST (docs/plans/string-inventory-list.md, canvas v3, Grant
+   2026-11-16: "the strings should just be a list, no container"). Plain rows
+   inside the one card: no tile behind a row and no line between rows; a row
+   flashes --press-bg under a finger like any list row. Groups are a label over
+   their rows; a folded group's label is the row that opens it. */
+.shelf-list { display: flex; flex-direction: column; gap: var(--space-4); }
+.shelf-group { display: flex; flex-direction: column; gap: var(--space-05); }
+.shelf-group-label { padding: var(--space-1) var(--space-1) var(--space-05); }
+.shelf-group-label--warn,
+.shelf-fold--warn .section-label { color: var(--sev-warn); }
+.shelf-row,
+.shelf-fold {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  min-height: 52px;
+  padding: var(--space-1);
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.shelf-fold { min-height: 48px; gap: var(--space-3); }
+.shelf-row:active,
+.shelf-fold:active { background: var(--press-bg); }
+.shelf-row:disabled { opacity: 0.5; pointer-events: none; }
+.shelf-row-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-05); }
+.shelf-row-name { font-size: var(--fs-md); color: var(--text-primary); overflow-wrap: anywhere; }
+.shelf-row-line { font-size: var(--fs-sm); color: var(--text-muted); display: inline-flex; align-items: center; flex-wrap: wrap; gap: var(--space-1); }
+.shelf-row-line--warn { color: var(--sev-warn); }
+.shelf-row-price { font-family: var(--font-mono); font-size: var(--fs-md); font-weight: 600; color: var(--text-primary); white-space: nowrap; }
+.shelf-row-noprice { font-size: var(--fs-sm); color: var(--text-muted); white-space: nowrap; }
+/* The search and the filters stay in reach while the list scrolls: they stick
+   under the page's top bar, inside the card (the card is their containing
+   block, so they leave with it). --shelf-tools-top is the bar's bottom edge,
+   measured by StringShelfCard (the bar condenses as the page scrolls). */
+.shelf-tools {
+  position: sticky;
+  top: var(--shelf-tools-top, 0px);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0 calc(-1 * var(--space-5));
+  padding: var(--space-2) var(--space-5);
+  background: transparent;
+}
+/* Stuck under the bar: the bar's own frosted ground, so the band reads as
+   part of the bar rather than a stripe across the card. At rest it is part of
+   the card and draws nothing. */
+.shelf-tools[data-stuck] {
+  background: var(--topbar-bg-scrolled);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
+  backdrop-filter: blur(22px) saturate(140%);
+  border-bottom: 1px solid var(--topbar-border-scrolled);
+}
+.shelf-search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: 0 var(--space-1) 0 var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--inner-card-bg);
+}
+html:root .shelf-search input {
+  flex: 1;
+  min-width: 0;
+  height: 42px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.shelf-search-clear {
+  position: relative;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--inner-card-bg);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.shelf-search-clear::before { content: ''; position: absolute; inset: -6px; }
+/* A card that is one row (Inventory's "Other prices ›"): the field card's
+   material with a row's padding, so it reads as a slim card, not a full one. */
+html:root .glass-card.inventory-row-card { padding: var(--space-2) var(--space-3); }
+/* The Strings header's + (the add field): a quiet 44px round icon beside the
+   one filled button, so the two never compete. Open, it takes the selected
+   tint, like a pressed filter chip. */
+.shelf-add-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.shelf-add-btn:active { transform: scale(0.94); background: var(--press-bg); }
+.shelf-add-btn[aria-expanded="true"] { background: var(--segment-active-bg); color: var(--accent-dark); }
 /* The strings map's peek (the Stringing canvas, idea B, 2026-11-12): one
    quiet line pinned on the tab bar, in the content column, that points back
    at the map. Fill-only; its top corners round into the screen like a sheet's
