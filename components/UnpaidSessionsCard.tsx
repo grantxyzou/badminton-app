@@ -2,7 +2,8 @@
 import { useEffect, useState } from 'react';
 import { syncAppBadge, owedBadgeCount } from '@/lib/appBadge';
 import { noteOwedForShortcuts } from '@/lib/appShortcuts';
-import { BALANCE_EVENT } from '@/lib/balanceRefresh';
+import { BALANCE_EVENT, announceBalanceChanged } from '@/lib/balanceRefresh';
+import { hasNativePlugin, isNative } from '@/lib/native';
 import { useTranslations, useFormatter } from 'next-intl';
 import ErrorState from './primitives/ErrorState';
 import EmptyState from './primitives/EmptyState';
@@ -175,13 +176,38 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
   const hasCredit = creditOn && (creditCents ?? 0) > 0;
   // Stripe-hosted Checkout on the club's own account. Nothing is marked paid
   // here: the rows change when Stripe's signed webhook says the money arrived.
+  //
+  // In the store apps the page opens in the system browser sheet over the app
+  // (SFSafariViewController / Custom Tabs), as sign-in does. Navigating the
+  // WebView to Stripe handed it to Safari instead, and Stripe's return then
+  // opened the website there, not the app. The sheet's /pay/done page sends
+  // the person home through `bpm://pay/return`; NativeBridge closes the sheet
+  // and dispatches `bpm:resume`, as closing the sheet by hand does.
   async function payByCard() {
     setCard('busy');
+    const inSheet = isNative() && hasNativePlugin('Browser') !== false;
     try {
-      const res = await fetch(`${BASE}/api/payments/card/checkout`, { method: 'POST' });
+      const res = await fetch(`${BASE}/api/payments/card/checkout`, {
+        method: 'POST',
+        ...(inSheet ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ native: true }) } : {}),
+      });
       const body = (await res.json().catch(() => null)) as { url?: string } | null;
       if (!res.ok || !body?.url) throw new Error(String(res.status));
-      window.location.assign(body.url);
+      if (!inSheet) {
+        window.location.assign(body.url);
+        return;
+      }
+      // Back from the sheet: re-read what is owed now, and again a moment
+      // later, because the webhook that marks the lines paid can land a few
+      // seconds after Stripe's page says done.
+      const onBack = () => {
+        announceBalanceChanged();
+        window.setTimeout(announceBalanceChanged, 4000);
+      };
+      window.addEventListener('bpm:resume', onBack, { once: true });
+      const { Browser } = await import('@capacitor/browser');
+      await Browser.open({ url: body.url, presentationStyle: 'popover' });
+      setCard('idle');
     } catch {
       setCard('error');
     }

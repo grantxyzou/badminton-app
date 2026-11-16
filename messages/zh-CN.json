@@ -660,7 +660,14 @@
       "card": "刷卡支付",
       "cardBusy": "正在打开刷卡支付…",
       "cardError": "无法打开刷卡支付，请重试。",
-      "sentItError": "保存失败，请重试。"
+      "sentItError": "保存失败，请重试。",
+      "done": {
+        "title": "付款已发送",
+        "body": "Stripe 已收到你的付款。几秒钟后，App 里的余额会更新。",
+        "cancelledTitle": "已取消付款",
+        "cancelledBody": "没有扣款。",
+        "back": "返回 %APP_SHORT% App"
+      }
     },
     "credit": {
       "label": "你的余额",

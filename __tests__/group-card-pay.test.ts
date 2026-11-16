@@ -226,6 +226,24 @@ describe('a member pays by card', () => {
     expect(opts.idempotencyKey).toMatch(/^bpm-checkout:/);
     // Nothing is paid until Stripe says so.
     expect(row(row1.id).paid).not.toBe(true);
+    // The website comes back to Home.
+    const web = params as unknown as { success_url: string; cancel_url: string };
+    expect(web.success_url).toMatch(/\/\?tab=home&card=paid$/);
+    expect(web.cancel_url).toMatch(/\/\?tab=home$/);
+  });
+
+  it('the store apps come back through /pay/done (the browser sheet), under their own idempotency key', async () => {
+    connectClubAccount();
+    await checkout(makeRequest('POST', `${BASE}/payments/card/checkout`, {}, asLin()));
+    await checkout(makeRequest('POST', `${BASE}/payments/card/checkout`, { native: true }, asLin()));
+    const [[webParams, webOpts], [appParams, appOpts]] = fake.checkout.sessions.create.mock.calls.slice(-2) as unknown as Array<
+      [{ success_url: string; cancel_url: string }, { idempotencyKey: string }]
+    >;
+    expect(appParams.success_url).toMatch(/\/pay\/done$/);
+    expect(appParams.cancel_url).toMatch(/\/pay\/done\?cancelled=1$/);
+    expect(webParams.success_url).not.toContain('/pay/done');
+    // Stripe refuses a key reused with different parameters.
+    expect(appOpts.idempotencyKey).not.toBe(webOpts.idempotencyKey);
   });
 });
 

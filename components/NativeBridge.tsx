@@ -148,6 +148,16 @@ export default function NativeBridge({ activeTab, onGoHome }: Props) {
                 resume();
                 return;
               }
+              // `bpm://pay/return` — /pay/done's way home after Stripe's
+              // Checkout in the browser sheet. Close the sheet and show Home;
+              // the card re-reads what is owed on the resume.
+              if (u.host === 'pay') {
+                void Browser?.close().catch(() => undefined);
+                const home = `${BASE}/?tab=home`;
+                if (!routeInApp(home)) window.location.assign(home);
+                resume();
+                return;
+              }
               // `bpm://migrate?c=…` — from the PWA's "Move to the app" sheet.
               if (u.host === 'migrate') {
                 const c = u.searchParams.get('c');
