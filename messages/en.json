@@ -2660,6 +2660,8 @@
         "paidVia_etransfer": "by e-transfer",
         "paidVia_card": "by card",
         "paidVia_credit": "with credit",
+        "creditUntickConfirm": "This was paid with store credit. Send it to Needs a look to decide whether to return the credit?",
+        "creditUntickSent": "Sent to Needs a look — it stays paid until you decide there.",
         "paidOn": "Paid {date}",
         "markUnpaid": "Mark unpaid",
         "claim": "Take this one",

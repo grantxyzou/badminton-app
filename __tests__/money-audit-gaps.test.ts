@@ -210,8 +210,8 @@ describe('GAP 5 — a job CREATED already finished and priced gets no charge unt
   });
 });
 
-describe('GAP 6 — an admin un-ticks a row paid with store credit', () => {
-  it('the member\'s next balance read pays it again with the same credit, and the payment cannot be re-mirrored', async () => {
+describe('GAP 6 — FIXED: an organiser un-ticks a row paid with store credit through a review', () => {
+  it('the un-tick is refused; filed for review it changes nothing, and the next balance read cannot re-pay it', async () => {
     process.env.NEXT_PUBLIC_FLAG_STORE_CREDIT = 'true';
     await doSettle();
     const id = String(rowOf('Lin').id);
@@ -220,14 +220,15 @@ describe('GAP 6 — an admin un-ticks a row paid with store credit', () => {
       note: 'Birthday', createdAt: '2026-10-01T00:00:00Z', createdBy: 'admin',
     });
     expect((await payWithCredit('bpm', lin.id)).paid).toBe(1);
+
+    const refused = await patchPlayer(makeAdminRequest('PATCH', `${BASE}/players`, { id, paid: false }));
+    expect(refused.status).toBe(409);
+    expect(await refused.json()).toEqual({ error: 'paid_with_credit' });
+    const filed = await patchPlayer(makeAdminRequest('PATCH', `${BASE}/players`, { id, paid: false, review: true }));
+    expect(filed.status).toBe(202);
     expect(rowOf('Lin')).toMatchObject({ paid: true, paidVia: 'credit' });
+    expect(live(id)).toBe(0); // the payment stands until a person decides
 
-    // The admin un-ticks it ("that was a mistake").
-    expect((await patchPlayer(makeAdminRequest('PATCH', `${BASE}/players`, { id, paid: false }))).status).toBe(200);
-    expect(rowOf('Lin').paid).toBe(false);
-    expect(live(id)).toBe(3000); // the payment is voided: the ledger says Lin owes $30
-
-    // Two minutes later Lin opens Home; the balance read reconciles stale spends.
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(Date.now() + UNFINISHED_SPEND_MS + 1000);
     let r: Awaited<ReturnType<typeof refundStaleSpends>>;
@@ -236,18 +237,7 @@ describe('GAP 6 — an admin un-ticks a row paid with store credit', () => {
     } finally {
       vi.useRealTimers();
     }
-
-    // TODAY: the spend is read as a payment that never finished, so the row
-    // is marked paid by credit AGAIN (the admin's un-tick is undone without
-    // anyone seeing it), and the mirror's payment id — keyed on the spend's
-    // time — is the one already written and voided, so it 409s: the row says
-    // paid, the ledger says $30 owed.
-    // FIXED (Grant to choose): either an un-tick of a credit payment refunds
-    // the credit at the same moment (`refund:<ref>:<n>`), or the finish
-    // writes its payment under a fresh id.
-    expect(r.finished).toBe(1);
-    expect(rowOf('Lin')).toMatchObject({ paid: true, paidVia: 'credit' });
-    expect(live(id)).toBe(3000);
-    expect(await codes()).toEqual([['missing_payment', 'session', 3000, 0]]);
+    expect([r.finished, r.refunded]).toEqual([0, 0]);
+    expect(await codes()).toEqual([]);
   });
 });

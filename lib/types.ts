@@ -305,9 +305,11 @@ export interface EtransferPayment {
   id: string;
   groupId?: string;
   /** `'card'` since 2026-11-16: a Stripe outcome the webhook could not apply, for a person to look at (`lib/cardPay.ts`). */
-  source: 'etransfer' | 'card';
+  source: 'etransfer' | 'card' | 'credit';
   /** A card row's Stripe ids: the Checkout Session, and the charge for a refund. A `refund` row is money OUT and cannot be assigned. */
   card?: { checkoutId: string; chargeId?: string; kind: 'payment' | 'refund' };
+  /** A credit row (lib/creditReview.ts): the line an organiser un-ticked that was paid with store credit. Resolved by `return_credit` or dismissed; never assigned. */
+  credit?: { kind: 'session' | 'stringing'; ref: string; pk: string; memberId: string; amountCents: number };
   senderName: string | null;
   amountCents: number | null;
   memo: string | null;

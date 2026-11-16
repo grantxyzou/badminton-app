@@ -348,6 +348,21 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
         // Roll back + surface so admin doesn't think they misclicked.
         setAllPlayers((prev) => prev.map((p) => (p.id === player.id ? { ...p, paid: !next } : p)));
         const data = await res.json().catch(() => ({}));
+        if (data.error === 'paid_with_credit') {
+          // Paid with store credit: the un-tick goes through a review
+          // (docs/plans/money-audit.md, gap 6). Nothing changes until the
+          // organiser decides there whether the credit goes back.
+          if (confirm(`${player.name} paid this with store credit. Send it to Needs a look to decide whether to return the credit?`)) {
+            const filed = await fetch(`${BASE}/api/players`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id: player.id, paid: false, review: true, ...(isCurrentSession ? {} : { sessionId: viewedSessionId }) }),
+            });
+            setToggleError(filed.ok ? `Sent to Needs a look — ${player.name} stays paid until you decide there.` : `Couldn't send ${player.name}'s payment for review.`);
+          }
+          await load();
+          return;
+        }
         if (data.error === 'changed_elsewhere') {
           // The row changed under this tap (another phone, the inbox, a
           // card payment): the list is stale, so show what is there now.

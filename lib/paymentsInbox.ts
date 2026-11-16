@@ -411,6 +411,8 @@ export async function resolvePayment(
   }
 
   if (isCard && payment.card?.kind === 'refund') throw new AssignError('not_a_payment');
+  // A credit row is resolved by `return_credit` (lib/creditReview.ts) or dismissed.
+  if (payment.source === 'credit') throw new AssignError('not_a_payment');
   if (!action.memberId && !action.name) throw new AssignError('unknown_person');
   const identity = await resolveIdentity(action.memberId ? { memberId: action.memberId } : { name: action.name }, groupId);
   if (action.memberId && !identity.memberId) throw new AssignError('unknown_person');

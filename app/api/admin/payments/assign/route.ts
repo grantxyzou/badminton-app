@@ -15,15 +15,18 @@ import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isFlagOn } from '@/lib/flags';
 import { AssignError, resolvePayment } from '@/lib/paymentsInbox';
+import { CreditReviewError, returnCredit } from '@/lib/creditReview';
+import { groupScope } from '@/lib/groupScope';
 
 export const dynamic = 'force-dynamic';
 
-const STATUS: Record<AssignError['code'], number> = {
+const STATUS: Record<AssignError['code'] | CreditReviewError['code'], number> = {
   not_found: 404,
   already_resolved: 409,
   not_owed: 409,
   unknown_person: 400,
   not_a_payment: 409,
+  row_changed: 409,
 };
 
 export async function POST(req: NextRequest) {
@@ -43,12 +46,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'invalid_json' }, { status: 400 });
   }
   const paymentId = typeof body.paymentId === 'string' ? body.paymentId : '';
-  if (!paymentId || (body.action !== 'assign' && body.action !== 'ignore')) {
+  if (!paymentId || (body.action !== 'assign' && body.action !== 'ignore' && body.action !== 'return_credit')) {
     return NextResponse.json({ error: 'invalid_body' }, { status: 400 });
   }
   const refs = Array.isArray(body.refs) ? body.refs.filter((r): r is string => typeof r === 'string').slice(0, 50) : undefined;
 
   try {
+    if (body.action === 'return_credit') {
+      // The organiser's answer to a credit review row (docs/plans/money-audit.md, gap 6).
+      return NextResponse.json(await returnCredit(groupScope(resolveGroupId(req)), paymentId, admin.memberId));
+    }
     const payment = await resolvePayment(
       resolveGroupId(req),
       paymentId,
@@ -71,7 +78,7 @@ export async function POST(req: NextRequest) {
     );
     return NextResponse.json(payment);
   } catch (err) {
-    if (err instanceof AssignError) return NextResponse.json({ error: err.code }, { status: STATUS[err.code] });
+    if (err instanceof AssignError || err instanceof CreditReviewError) return NextResponse.json({ error: err.code }, { status: STATUS[err.code] });
     console.error('POST /api/admin/payments/assign failed', err);
     return NextResponse.json({ error: 'assign_failed' }, { status: 500 });
   }

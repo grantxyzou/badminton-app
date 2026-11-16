@@ -30,6 +30,7 @@ import { recordStringUse, usesASet } from '@/lib/stringStock';
 import { forgetShelfExtras } from '@/lib/stringShelfRead';
 import type { StringingJob, PendingEdit, WalkUpEmailStamp } from '@/lib/types';
 import { toStringerJob } from '../route';
+import { fileCreditReview } from '@/lib/creditReview';
 
 export const dynamic = 'force-dynamic';
 
@@ -362,6 +363,16 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     }
 
     if (body.paid !== undefined) {
+      // A credit payment is un-ticked through a review (docs/plans/money-audit.md,
+      // gap 6): the job stays paid; `review: true` files it under Needs a look.
+      if (body.paid === false && job.paidAt && job.paidVia === 'credit') {
+        if (body.review !== true) return NextResponse.json({ error: 'paid_with_credit' }, { status: 409 });
+        const filed = await fileCreditReview(scope, {
+          kind: 'stringing', ref: job.id, pk: job.memberId, memberId: job.memberId,
+          amountCents: Math.round(job.priceCents ?? 0), paidAt: job.paidAt, memberName: job.memberName,
+        });
+        return NextResponse.json({ review: filed.id, job }, { status: 202 });
+      }
       // Boolean in, timestamp out: "when" is worth keeping and "whether" is
       // recoverable from it, never the other way round.
       next.paidAt = body.paid === true ? (job.paidAt ?? now) : null;

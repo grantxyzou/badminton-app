@@ -2648,6 +2648,8 @@
       "paidVia_etransfer": "电子转账",
       "paidVia_card": "银行卡",
       "paidVia_credit": "余额支付",
+      "creditUntickConfirm": "这笔是用余额支付的。发送到“待处理”，再决定是否退回余额？",
+      "creditUntickSent": "已发送到“待处理”— 在你决定前仍算已付。",
       "paidOn": "{date} 已付",
       "markUnpaid": "标记未付",
       "claim": "我来接手",

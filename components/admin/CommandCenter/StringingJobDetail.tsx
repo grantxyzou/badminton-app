@@ -3,6 +3,7 @@
 import { useState, useEffect, type ReactNode } from 'react';
 import type { JobHoles } from '@/components/stringing/useHoleLookup';
 import { useTranslations } from 'next-intl';
+import { showTopToast } from '@/lib/topToast';
 import AdminBackHeader from '../AdminBackHeader';
 import DatePicker from '@/components/DatePicker';
 import CardHeader from '@/components/primitives/CardHeader';
@@ -69,9 +70,20 @@ export default function StringingJobDetail({ job, onBack, onChanged, crumb, hole
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ memberId: local.memberId, ...body }),
       });
-      if (!res.ok) throw new Error(`patch ${res.status}`);
+      if (!res.ok) {
+        const refusal = (await res.json().catch(() => ({}))) as { error?: string };
+        // Paid with store credit: the un-tick goes through a review
+        // (docs/plans/money-audit.md, gap 6). Ask, then file it.
+        if (refusal.error === 'paid_with_credit' && body.review !== true && confirm(t('creditUntickConfirm'))) {
+          setBusy(false);
+          await patch({ ...body, review: true });
+          return;
+        }
+        throw new Error(`patch ${res.status}`);
+      }
       const data = await res.json();
       setLocal(data.job);
+      if (res.status === 202) showTopToast({ tone: 'success', icon: 'check_circle', title: t('creditUntickSent') });
       onChanged();
     } catch {
       setError(true);
