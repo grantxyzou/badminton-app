@@ -71,8 +71,8 @@ afterEach(() => {
 const doSettle = () => settle(makeAdminRequest('POST', `${BASE}/session/settle`));
 const pay = (id: string) => patchPlayer(makeAdminRequest('PATCH', `${BASE}/players`, { id, paid: true }));
 
-describe('GAP 1 — hard-deleting a PAID settled row keeps its payment and voids its charge', () => {
-  it('purgeOne: the ledger is left holding −$30 for a row that no longer exists, and the Ledger check flags it', async () => {
+describe('GAP 1 — FIXED: hard-deleting a PAID settled row leaves its charge and payment both standing', () => {
+  it('purgeOne: the ledger still nets to zero for the row, and the Ledger check is clean', async () => {
     await doSettle();
     const id = String(rowOf('Lin').id);
     expect((await pay(id)).status).toBe(200);
@@ -80,25 +80,19 @@ describe('GAP 1 — hard-deleting a PAID settled row keeps its payment and voids
 
     const res = await deletePlayer(makeAdminRequest('DELETE', `${BASE}/players`, { purgeOne: id }));
     expect(res.status).toBe(200);
-
-    // TODAY: the charge is voided, the payment stays → −$30 with nothing under it.
-    // FIXED: mirrorRowDeleted leaves a PAID row's books alone (as #951 did for
-    // stringing), so this reads 0 and the reconcile is clean.
-    expect(live(id)).toBe(-3000);
-    expect(await codes()).toEqual([['amount_mismatch', 'session', -3000, 0]]);
+    expect(live(id)).toBe(0);
+    expect(ledger().filter((e) => e.kind === 'void')).toEqual([]);
+    expect(await codes()).toEqual([]);
   });
 
-  it('purgeAll does the same to every paid row of the session', async () => {
+  it('purgeAll: the same for every paid row; an unpaid row\'s charge is still voided', async () => {
     await doSettle();
     await pay(String(rowOf('Lin').id));
-    await pay(String(rowOf('Viktor').id));
+    const viktor = String(rowOf('Viktor').id);
     const res = await deletePlayer(makeAdminRequest('DELETE', `${BASE}/players`, { purgeAll: true }));
     expect(res.status).toBe(200);
-    // TODAY: two −$30 lines. FIXED: none.
-    expect((await codes()).sort()).toEqual([
-      ['amount_mismatch', 'session', -3000, 0],
-      ['amount_mismatch', 'session', -3000, 0],
-    ]);
+    expect(ledger().filter((e) => e.kind === 'void').map((e) => e.id)).toEqual(ledger().filter((e) => e.kind === 'charge' && e.ref?.id === viktor).map((e) => `void:${e.id}`));
+    expect(await codes()).toEqual([]);
   });
 });
 

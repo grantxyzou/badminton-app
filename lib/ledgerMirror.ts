@@ -389,9 +389,18 @@ export async function mirrorUncover(scope: GroupScope, prev: Player): Promise<vo
   }
 }
 
-/** A settled row hard-deleted (purgeAll / purgeOne): its charge is void; a received payment is real money and stays. */
-export async function mirrorRowDeleted(scope: GroupScope, row: Pick<Player, 'id' | 'memberId' | 'guestOf'>): Promise<void> {
+/**
+ * A settled row hard-deleted (purgeAll / purgeOne). An UNPAID row's charge
+ * and cover are voided: the bill goes with the row. A PAID row's books stay
+ * as they are, charge and payment both — the money was collected, so the
+ * bill it paid exists; voiding the charge alone left the payment standing
+ * as money nobody was asked for, and the Ledger check flagged it daily
+ * (docs/plans/money-audit.md, gap 5, 2026-11-16 — the same rule
+ * `mirrorStringingDeleted` took in #951).
+ */
+export async function mirrorRowDeleted(scope: GroupScope, row: Pick<Player, 'id' | 'memberId' | 'guestOf' | 'paid'>): Promise<void> {
   if (!on()) return;
+  if (row.paid === true) return;
   try {
     await voidLive(scope, memberOf(row), row.id, 'charge', 'row_deleted');
     await voidLive(scope, memberOf(row), row.id, 'cover', 'row_deleted');

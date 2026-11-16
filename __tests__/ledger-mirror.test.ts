@@ -194,16 +194,25 @@ describe('restore keeps paid (the bug the map found)', () => {
 });
 
 describe('hard delete', () => {
-  it('purgeOne voids the charge and keeps the payment', async () => {
+  it('purgeOne of a PAID row leaves its charge and payment both standing (the money was collected)', async () => {
     await doSettle();
     const id = String(linRow().id);
     await patchPlayer(makeAdminRequest('PATCH', `${BASE}/players`, { id, paid: true }));
+    await deletePlayer(makeAdminRequest('DELETE', `${BASE}/players`, { purgeOne: id }));
+    expect(ledger().filter((e) => e.kind === 'void')).toEqual([]);
+    const mine = ledger().filter((e) => e.ref?.id === id);
+    expect(mine.map((e) => e.kind).sort()).toEqual(['charge', 'payment']);
+    expect(mine.reduce((sum, e) => sum + e.amountCents, 0)).toBe(0);
+  });
+
+  it('purgeOne of an UNPAID row voids its charge (the bill goes with the row)', async () => {
+    await doSettle();
+    const id = String(linRow().id);
     await deletePlayer(makeAdminRequest('DELETE', `${BASE}/players`, { purgeOne: id }));
     const voids = ledger().filter((e) => e.kind === 'void');
     expect(voids).toHaveLength(1);
     expect(voids[0].id).toMatch(/^void:charge:/);
     expect(voids[0].meta?.reason).toBe('row_deleted');
-    expect(ledger().some((e) => e.kind === 'payment')).toBe(true);
   });
 });
 
