@@ -8,6 +8,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Un-ticking a credit payment goes through "Needs a look" (2026-11-16)
+
+- **Un-ticking a line that was paid with store credit now asks, then files it under "Needs a look"** instead of changing it on the spot. There you choose: **return the credit** (the line goes back to owed and the credit returns to the member's balance, together) or **keep it paid**. Before, the un-tick went through and the member's next visit quietly paid the line again with the same credit.
+
 ## An account can't be deleted while it still owes (2026-11-16)
 
 - **Deleting your account is refused while you still owe for a session or a restring**, and the message says how much and in which club. Pay it, or ask your organiser to cover it, then try again. Before, deleting took the unpaid racket's job with it and left the club's books with a line nobody could be asked for.

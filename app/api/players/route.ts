@@ -26,6 +26,7 @@ import { membersFirstDue, membersFirstOpen } from '@/lib/membersFirst';
 import { cleanGuestName, guestDisplayName, guestsPerMemberOf, isGuestRow } from '@/lib/plusOne';
 import type { ActiveMember } from '@/lib/auth';
 import type { RecoveryEvent, Session } from '@/lib/types';
+import { fileCreditReview } from '@/lib/creditReview';
 
 /**
  * Close the signup capacity race (#79). The pre-insert count check and the
@@ -1164,6 +1165,23 @@ export async function PATCH(req: NextRequest) {
       if (countExcludingSelf >= maxPlayers) {
         return NextResponse.json({ error: 'Session is full' }, { status: 409 });
       }
+    }
+
+    /* A CREDIT PAYMENT IS UN-TICKED THROUGH A REVIEW (docs/plans/money-audit.md,
+       gap 6; Grant, 2026-11-16: "un-tick should go through a review"). The row
+       stays paid; `review: true` files it under Needs a look, where the
+       organiser returns the credit or keeps it paid (lib/creditReview.ts). */
+    if (updates.paid === false && existing.paid === true && existing.paidVia === 'credit') {
+      if (body.review !== true) return NextResponse.json({ error: 'paid_with_credit' }, { status: 409 });
+      const payer = typeof existing.memberId === 'string' ? existing.memberId : typeof existing.guestOf === 'string' ? existing.guestOf : null;
+      if (!payer) return NextResponse.json({ error: 'paid_with_credit' }, { status: 409 });
+      const filed = await fileCreditReview(scope, {
+        kind: 'session', ref: id, pk: sessionId, memberId: payer,
+        amountCents: Math.round(Number(existing.owedAmount ?? 0) * 100),
+        paidAt: typeof existing.paidAt === 'string' ? existing.paidAt : null,
+        memberName: String(existing.name ?? ''),
+      });
+      return NextResponse.json({ review: filed.id, player: publicPlayer(existing) }, { status: 202 });
     }
 
     /* UNDER THE ETAG (docs/plans/money-audit.md, gap 3, 2026-11-16). This was

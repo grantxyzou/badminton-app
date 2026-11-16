@@ -50,10 +50,13 @@ const REASON: Record<string, string> = {
   card_account_mismatch: 'Card payment came from a Stripe account that isn’t this club’s',
   card_unapplied_not_refunded: 'Card money with nothing left to pay, and no refund could be made — refund it in Stripe',
   card_refund_no_line: 'A refund in Stripe matches no single payment — un-tick the right lines by hand',
+  // A credit payment an organiser un-ticked (lib/creditReview.ts).
+  credit_untick: 'Paid with store credit, then un-ticked — return the credit?',
 };
 
 /** The list title: a card row names its payer under "Card ·", so Stripe money never reads as an email. */
-const rowTitle = (p: EtransferPayment) => (p.source === 'card' ? `Card · ${p.senderName ?? 'Unknown payer'}` : p.senderName ?? 'Unreadable email');
+const rowTitle = (p: EtransferPayment) =>
+  p.source === 'card' ? `Card · ${p.senderName ?? 'Unknown payer'}` : p.source === 'credit' ? `Credit · ${p.senderName ?? 'Unknown member'}` : p.senderName ?? 'Unreadable email';
 
 const money = (cents: number | null) => (cents === null ? '$—' : `$${(cents / 100).toFixed(2)}`);
 
@@ -500,6 +503,8 @@ function AssignSheet({ payment, onClose, onDone }: { payment: EtransferPayment; 
   // to remember, and a REFUND row is money out — it can only be dismissed.
   const isCard = payment.source === 'card';
   const isRefund = isCard && payment.card?.kind === 'refund';
+  // A credit row (lib/creditReview.ts): return the credit, or keep it paid. Nothing else.
+  const isCredit = payment.source === 'credit';
   const suggestions = payment.suggestions ?? [];
   const [roster, setRoster] = useState<string[]>([]);
   const [name, setName] = useState<string>(suggestions[0]?.name ?? '');
@@ -551,7 +556,7 @@ function AssignSheet({ payment, onClose, onDone }: { payment: EtransferPayment; 
       });
       if (!res.ok) {
         const code = ((await res.json().catch(() => ({}))) as { error?: string }).error;
-        throw new Error(code === 'not_owed' ? "Those lines aren't owed any more — refresh." : 'Couldn’t save — try again.');
+        throw new Error(code === 'not_owed' ? "Those lines aren't owed any more — refresh." : code === 'row_changed' ? 'That payment changed meanwhile — refresh.' : 'Couldn’t save — try again.');
       }
       onDone();
       onClose();
@@ -573,6 +578,11 @@ function AssignSheet({ payment, onClose, onDone }: { payment: EtransferPayment; 
             {REASON[payment.reason ?? ''] ?? 'Waiting for you'}
             {payment.memo ? ` · “${payment.memo}”` : ''}
           </p>
+          {isCredit && (
+            <p className="fs-sm" style={{ margin: 0, color: 'var(--text-secondary)' }}>
+              {payment.senderName ?? 'This member'} paid this line with store credit and an organiser un-ticked it. Return the credit to their balance and un-tick the line, or keep it paid as it is. Nothing changes until you choose.
+            </p>
+          )}
           {isCard && (
             <p className="fs-sm" style={{ margin: 0, color: 'var(--text-secondary)' }}>
               {isRefund
@@ -585,7 +595,7 @@ function AssignSheet({ payment, onClose, onDone }: { payment: EtransferPayment; 
               Check your bank shows this money before matching it — anyone can send an email that looks like Interac.
             </p>
           )}
-          {!isRefund && (
+          {!isRefund && !isCredit && (
           <label className="flex flex-col gap-1">
             <span className="section-label-muted">Who paid</span>
             <select className="fs-md" value={name} onChange={(e) => setName(e.target.value)}>
@@ -599,11 +609,11 @@ function AssignSheet({ payment, onClose, onDone }: { payment: EtransferPayment; 
             </select>
           </label>
           )}
-          {owedError && <p className="field-error" role="alert">Couldn&apos;t load what they owe.</p>}
-          {name && owed && lines.length === 0 && (
+          {!isCredit && owedError && <p className="field-error" role="alert">Couldn&apos;t load what they owe.</p>}
+          {!isCredit && name && owed && lines.length === 0 && (
             <p className="fs-sm" style={{ margin: 0, color: 'var(--text-secondary)' }}>{name} doesn&apos;t owe anything right now.</p>
           )}
-          {lines.length > 0 && (
+          {!isCredit && lines.length > 0 && (
             <ul style={{ listStyle: 'none', margin: 0, padding: 0 }} className="flex flex-col gap-2">
               {lines.map((l) => (
                 <li key={l.ref}>
@@ -642,7 +652,12 @@ function AssignSheet({ payment, onClose, onDone }: { payment: EtransferPayment; 
       </BottomSheetBody>
       <BottomSheetFooter className="flex flex-col gap-3">
         {error && <p className="field-error" role="alert">{error}</p>}
-        {!isRefund && (
+        {isCredit && (
+          <button type="button" className="cc-btn cc-btn-primary" disabled={!online || busy} onClick={() => void send({ action: 'return_credit' })}>
+            {`Return ${money(payment.amountCents)} credit and un-tick`}
+          </button>
+        )}
+        {!isRefund && !isCredit && (
           <button
             type="button"
             className="cc-btn cc-btn-primary"
@@ -653,7 +668,9 @@ function AssignSheet({ payment, onClose, onDone }: { payment: EtransferPayment; 
           </button>
         )}
         <button type="button" className="cc-btn cc-btn-ghost" disabled={!online || busy} onClick={() => void send({ action: 'ignore', ...(!isCard && name && remember ? { name, remember: true } : {}) })}>
-          {isCard
+          {isCredit
+            ? 'Keep it paid — dismiss'
+            : isCard
             ? 'Looked at it in Stripe — dismiss'
             : name && remember && payment.senderName && payment.senderName.toLowerCase() !== name.toLowerCase()
               ? `Dismiss, and remember as ${name}`
