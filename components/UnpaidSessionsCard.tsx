@@ -32,6 +32,9 @@ interface UnpaidSession {
   guestName?: string;
   date: string;
   owedAmount: number;
+  /** A frozen bill part-paid: received so far, and the whole bill (`owedAmount` is what is left). */
+  paidAmount?: number;
+  billedAmount?: number;
   /** The bill is frozen — only these count toward the icon's badge. */
   settled?: boolean;
   /** The member said they paid — not counted on the badge. */
@@ -411,6 +414,7 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
                   <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
                     {format.dateTime(new Date(s.date), DAY_SHORT)}
                     {s.guestName ? ` · ${tBal('guestLine', { name: s.guestName })}` : ''}
+                    {s.paidAmount && s.billedAmount ? ` · ${tBal('paidOf', { paid: fmtMoney(s.paidAmount), billed: fmtMoney(s.billedAmount) })}` : ''}
                   </span>
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-md, 14px)', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
                     {fmtMoney(s.owedAmount)}

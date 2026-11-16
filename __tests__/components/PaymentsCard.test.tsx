@@ -253,6 +253,18 @@ describe('<PaymentsCard />', () => {
       expect(byWholeText('$30 owed')).toBeTruthy();
     });
 
+    it('a part-paid row shows what is LEFT beside Mark paid and "Paid $30 of $45" under the name (docs/plans/paid-amount.md)', async () => {
+      fetchSettledPlayers([
+        { id: 'p1', name: 'Daisy', paid: false, owedAmount: 45, paidAmount: 30 },
+        { id: 'p2', name: 'Mei', paid: false, owedAmount: 15 },
+      ]);
+      render(<PaymentsCard />);
+      await waitFor(() => expect(screen.getByText('Daisy')).toBeTruthy());
+      expect(screen.getAllByTitle(/What they owe/).map((e) => e.textContent)).toEqual(['$15', '$15']);
+      expect(screen.getByText('Paid $30 of $45')).toBeTruthy();
+      expect(byWholeText('$30 owed')).toBeTruthy();
+    });
+
     it('hides per-row $ once the session is unsettled, even if owedAmount lingers on player docs', async () => {
       // ACTIVE_SESSION is unsettled, but the players still carry a frozen
       // owedAmount from a settle that was later undone ("Edit bill"). The

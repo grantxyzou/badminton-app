@@ -8,6 +8,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## A payment that falls short is recorded as what it was (2026-11-16)
+
+- **Assigning an e-transfer by hand to more than it covers now records what actually came.** A $30 transfer put against a $45 night leaves the night owing $15: Home shows "$15 · paid $30 of $45", the Payments card shows the $15 and "Paid $30 of $45" under the name, and the next payment — a matched e-transfer for $15, or a tap — settles it. Before, the night was marked paid in full and the $15 was never asked for.
+- The ledger records the $30 that arrived, not the $45 bill, so the money page's Collected is what the club received. Profile's "what you paid" counts the same way.
+- Marking someone paid still means paid in full; nothing about the tap changed.
+
 ## The money page says when its ledger figures are in doubt (2026-11-16)
 
 - **Collected and Net carry an amber "Unchecked" or "N lines off" mark while the Ledger check is red, three days old or has never run**, with a line under them saying that Still owed is live and right. Before, the red check sat at the top and the figures below it read as settled truth.

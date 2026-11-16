@@ -47,6 +47,25 @@ describe('<UnpaidSessionsCard />', () => {
     expect(screen.getByText('$22.50')).toBeTruthy();
   });
 
+  it('a part-paid line shows what is left and "paid $30 of $45" (docs/plans/paid-amount.md)', async () => {
+    vi.spyOn(global, 'fetch').mockImplementation(async () =>
+      new Response(
+        JSON.stringify({
+          totalOwed: 15,
+          sessionCount: 1,
+          mostRecent: { sessionId: 's2', date: '2026-06-08T19:00:00-04:00', owedAmount: 15 },
+          sessions: [{ sessionId: 's2', playerId: 'r1', date: '2026-06-08T19:00:00-04:00', owedAmount: 15, paidAmount: 30, billedAmount: 45, settled: true }],
+          stringing: [],
+        }),
+        { status: 200 },
+      ),
+    );
+    wrap(<UnpaidSessionsCard name="Lin" />);
+    // fmtMoney drops the cents on a whole figure: "$30", "$45".
+    await waitFor(() => expect(screen.getByText(/paid \$30 of \$45/)).toBeTruthy());
+    expect(screen.getAllByText('$15').length).toBeGreaterThan(0);
+  });
+
   it('renders nothing when nothing is owed', async () => {
     vi.spyOn(global, 'fetch').mockResolvedValue(
       new Response(

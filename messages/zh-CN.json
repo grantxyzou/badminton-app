@@ -699,6 +699,7 @@
     },
     "balance": {
       "guestLine": "{name}（你的朋友）",
+      "paidOf": "已付 {paid}，共 {billed}",
       "details": "查看详情",
       "redeem": "有充值码？",
       "groupSessions": "羽毛球",

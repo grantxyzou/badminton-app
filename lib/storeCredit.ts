@@ -343,9 +343,10 @@ async function markRowPaid(
     // only a removal with no frozen bill on the row is "gone" (audit, 2026-11-05).
     if (!row || row.writtenOff === true || (row.removed === true && typeof row.settledAt !== 'string')) return 'gone';
     if (row.paid === true) return row.paidVia === 'credit' ? 'credit' : 'already';
-    const written = await scope.replace('players', { ...row, paid: true, paidAt: opts.spendAt, paidVia: 'credit' }, line.pk);
+    // Credit pays what is still owed in full: the whole bill is received now.
+    const written = await scope.replace('players', { ...row, paid: true, paidAt: opts.spendAt, paidVia: 'credit', paidAmount: row.owedAmount }, line.pk);
     if (!written) return 'gone';
-    await mirrorPaid(scope, written as unknown as Player); // the owed side; the credit side is the spend entry
+    await mirrorPaid(scope, written as unknown as Player, line.amountCents); // the owed side; the credit side is the spend entry
     return 'paid';
   }
   const job = await scope.read<StringingJob>('stringingJobs', line.ref, line.pk);

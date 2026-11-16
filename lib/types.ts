@@ -170,6 +170,16 @@ export interface Player {
   coverMode?: 'absorb' | 'resplit';
   /** ISO — when `paid` last went true. Absent on rows marked before 2026-10. */
   paidAt?: string;
+  /**
+   * Dollars RECEIVED against this row so far (docs/plans/paid-amount.md,
+   * 2026-11-16). `paid: true` still means paid in full; a payment short of
+   * the bill leaves `paid: false` with this set, and the row owes
+   * `owedAmount - paidAmount`. Absent on a paid row = paid in full (every
+   * row from before). Only an admin assigning a transfer by hand can make a
+   * partial; the automatic match, card and credit pay a line in full or not
+   * at all.
+   */
+  paidAmount?: number;
   /** How it was marked: an admin's tap, an e-transfer the inbox matched, credit, or a card (Stripe Checkout, docs/plans/card-pay-prototype.md). */
   paidVia?: 'manual' | 'etransfer' | 'credit' | 'card';
   /** The `payments` doc that paid it (`paidVia: 'etransfer'`), or the Stripe Checkout Session id (`paidVia: 'card'`). */
@@ -291,7 +301,10 @@ export interface PaymentAllocation {
   ref: string;
   /** Partition key VALUE of that row: its sessionId, or the job's memberId. */
   pk: string;
+  /** What this payment put against the line — the whole line, or less of it when an admin assigned a short transfer by hand. */
   amountCents: number;
+  /** What the line owed when it was matched (`amountCents` on a full payment). Absent on allocations from before 2026-11-16. */
+  lineCents?: number;
 }
 
 /**

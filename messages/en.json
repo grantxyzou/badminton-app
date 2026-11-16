@@ -699,6 +699,7 @@
     },
     "balance": {
         "guestLine": "{name}, your guest",
+        "paidOf": "paid {paid} of {billed}",
         "details": "See details",
         "redeem": "Have a code?",
         "groupSessions": "Badminton",
