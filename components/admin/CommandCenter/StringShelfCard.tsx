@@ -92,9 +92,25 @@ function useStickUnderBar(ref: React.RefObject<HTMLDivElement | null>, on: boole
     const measure = () => {
       frame = 0;
       const bar = Array.from(document.querySelectorAll<HTMLElement>('.bpm-topbar')).find((b) => b.closest('[hidden]') === null);
-      const top = bar ? Math.max(0, Math.round(bar.getBoundingClientRect().bottom)) : 0;
+      const barBottom = bar ? Math.max(0, Math.round(bar.getBoundingClientRect().bottom)) : 0;
+      /* The fixed bell, language and theme buttons hang below a condensed bar
+         (Grant, on the canvas: "when the search bar hits very top of the
+         screen the card behaves weird"): stick under them, not under the bar,
+         and let the band's ground reach up to the bar so the two read as one. */
+      const toggles = Array.from(document.querySelectorAll<HTMLElement>('.notif-toggle, .lang-toggle, .theme-toggle'))
+        .map((t) => t.getBoundingClientRect())
+        .filter((r) => r.height > 0);
+      const togglesBottom = toggles.length ? Math.round(Math.max(...toggles.map((r) => r.bottom))) : 0;
+      const top = Math.max(barBottom, togglesBottom);
       el.style.setProperty('--shelf-tools-top', `${top}px`);
-      el.toggleAttribute('data-stuck', window.scrollY > 0 && el.getBoundingClientRect().top <= top + 1);
+      el.style.setProperty('--shelf-tools-reach', `${top - barBottom}px`);
+      /* Stuck, the ground spans the page's column, edge to edge like the bar,
+         not just the card (a stripe with the card's sides showing). */
+      const col = (el.closest('main') ?? document.documentElement).getBoundingClientRect();
+      const box = el.getBoundingClientRect();
+      el.style.setProperty('--shelf-tools-bleed-l', `${Math.max(0, Math.round(box.left - col.left))}px`);
+      el.style.setProperty('--shelf-tools-bleed-r', `${Math.max(0, Math.round(col.right - box.right))}px`);
+      el.toggleAttribute('data-stuck', window.scrollY > 0 && box.top <= top + 1);
     };
     const schedule = () => { if (!frame) frame = requestAnimationFrame(measure); };
     measure();
