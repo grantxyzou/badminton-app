@@ -8,6 +8,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## An account can't be deleted while it still owes (2026-11-16)
+
+- **Deleting your account is refused while you still owe for a session or a restring**, and the message says how much and in which club. Pay it, or ask your organiser to cover it, then try again. Before, deleting took the unpaid racket's job with it and left the club's books with a line nobody could be asked for.
+
 ## Stringing: Strings we offer comes first (2026-11-16)
 
 - **The Stringing tab's switch now reads Strings we offer · Submit request**, then Stringing jobs for whoever strings. The tab still opens on Submit request.

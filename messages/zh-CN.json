@@ -1274,6 +1274,7 @@
       "body": "这会删除你的 PIN、装备、数据和通知设置，无法恢复。",
       "keepsNote": "过往场次会保留一条匿名记录，这样其他人的分摊金额依然对得上。",
       "debtWarning": "未付的费用不会因此免除。",
+      "balanceOutstanding": "你在{club}还有{amount}未付。请先付清，或请组织者代付，然后再试。",
       "confirm": "注销我的账号",
       "cancel": "再想想",
       "working": "注销中…",

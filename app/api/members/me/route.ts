@@ -21,6 +21,7 @@ import {
 import { purgeMember, anonymizePlayerRows, anonymizeGameResults, anonymizeFeedback, purgeNamesFor } from '@/lib/memberPurge';
 import { normalizeAvatar, parseAvatar } from '@/lib/memberAvatar';
 import { normalizeContactEmail, parseContactEmail } from '@/lib/contactEmail';
+import { outstandingBalanceFor } from '@/lib/outstandingBalance';
 import {
   normalizeStatsPrivacy,
   parseStatsPrivacyPatch,
@@ -631,6 +632,16 @@ export async function DELETE(req: NextRequest) {
     // The names they went by, club by club, read BEFORE the purge deletes the
     // memberships: a name is matched only in the club where it was theirs.
     const names = await purgeNamesFor(caller.memberId, name);
+
+    // NO DELETION WHILE A BALANCE IS OUTSTANDING (docs/plans/money-audit.md,
+    // gap 4; Grant, 2026-11-16). The purge would delete their stringing jobs
+    // and anonymize their rows, leaving a debt nobody can be asked for. The
+    // figure is what Home shows them, club by club, so the sheet can say
+    // where: pay it, or ask the organiser to cover it, then try again.
+    const owed = await outstandingBalanceFor(caller.memberId);
+    if (owed.cents > 0) {
+      return NextResponse.json({ error: 'balance_outstanding', cents: owed.cents, clubs: owed.clubs }, { status: 409 });
+    }
     // And every one of those clubs' active session: the seat they hold is
     // freed in each, not only in the club this request came from.
     const active = new Map<string, string | null>();

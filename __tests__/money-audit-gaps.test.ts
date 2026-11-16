@@ -3,7 +3,7 @@ import { POST as settle, DELETE as unsettle } from '@/app/api/session/settle/rou
 import { PATCH as patchPlayer, DELETE as deletePlayer } from '@/app/api/players/route';
 import { POST as createJob } from '@/app/api/stringing/jobs/route';
 import { runReconcile } from '@/lib/ledgerReconcile';
-import { purgeMember } from '@/lib/memberPurge';
+import { DELETE as deleteMe } from '@/app/api/members/me/route';
 import { _resetMirrorFailures } from '@/lib/ledgerMirror';
 import { payWithCredit, refundStaleSpends, UNFINISHED_SPEND_MS } from '@/lib/storeCredit';
 import { groupScope } from '@/lib/groupScope';
@@ -17,6 +17,8 @@ import {
   seedMember,
   seedDoc,
   makeAdminRequest,
+  makeRequest,
+  memberCookieValue,
   setupAdminPin,
   seedTestAdminMember,
 } from './helpers';
@@ -166,26 +168,21 @@ describe('GAP 3 — FIXED: the admin "paid" tap writes under the etag, so two at
   });
 });
 
-describe('GAP 4 — deleting an account with an UNPAID finished stringing job', () => {
-  it('the job is deleted, its charge moves to ~anon, and the Ledger check reports it as stale every day with no repair', async () => {
+describe('GAP 4 — FIXED: an account owing for a finished stringing job cannot be deleted', () => {
+  it('DELETE /api/members/me answers 409 balance_outstanding naming the club and the cents; the job and its charge stay', async () => {
     seedDoc('stringingJobs', {
       id: 'job-9', groupId: 'bpm', memberId: lin.id, memberName: 'Lin', jobNo: 'J-0009', racketLabel: 'Astrox', stringLabel: 'BG65',
       status: 'ready', priceCents: 2800, paidAt: null, createdAt: '2026-10-02T00:00:00Z', updatedAt: '2026-10-02T00:00:00Z', history: [],
     });
-    // The charge the mirror wrote when the job reached Ready.
     seedDoc('ledger', {
       id: 'charge:job-9:0', groupId: 'bpm', memberId: lin.id, account: 'member_owed', kind: 'charge', amountCents: 2800,
       note: 'Stringing · Astrox', ref: { kind: 'stringing', id: 'job-9', pk: lin.id }, createdAt: '2026-10-02T00:00:00Z', createdBy: 'system',
     });
+    const res = await deleteMe(makeRequest('DELETE', `${BASE}/members/me`, { confirm: true }, { Cookie: `member_session=${memberCookieValue('Lin', lin.id)}` }));
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ error: 'balance_outstanding', cents: 2800, clubs: [{ groupId: 'bpm', cents: 2800 }] });
+    expect((getStore()['stringingJobs'] as StringingJob[]).find((j) => j.id === 'job-9')).toBeDefined();
     expect(await codes()).toEqual([]);
-
-    await purgeMember(lin.id, 'Lin');
-    expect((getStore()['stringingJobs'] as StringingJob[]).find((j) => j.id === 'job-9')).toBeUndefined();
-    // TODAY: `rowState` reads the deleted job as gone → stale_charge, forever.
-    // FIXED: the reconcile treats a `~anon` ref whose row is gone as unlisted
-    // (the club's history, nobody to show it to) — or the purge voids an
-    // unpaid stringing charge, since the bill leaves with the account.
-    expect(await codes()).toEqual([['stale_charge', 'stringing', 2800, 0]]);
   });
 });
 
