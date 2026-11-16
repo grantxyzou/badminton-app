@@ -130,6 +130,7 @@
         "reading": "Reading the photo…",
         "readFailed": "Couldn't read the photo. Try again, or count by hand.",
         "unreadable": "The photo couldn't be read. Try a clearer one with the labels showing, or count by hand.",
+        "clubLimit": "Your club has used today's photo counts. Count by hand, or try again tomorrow.",
         "takePhoto": "Take a photo",
         "byHand": "Count by hand",
         "reviewPhoto": "The photo's guess is filled in. Fix anything that's off; a string the photo didn't show is left out unless you count it.",

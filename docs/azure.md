@@ -313,6 +313,12 @@ Four routes call the SDK:
   stringer of the club, 20 an hour per caller and 30 a day per person. The
   photo is never stored; with no API key the sheet offers counting by hand.
 
+**All four share the one key, so each also spends from a daily allowance per
+CLUB** (`lib/aiBudget.ts`, `docs/plans/club-ai-cap.md`): 60 writing, 300 Stats
+reads, 300 fit verdicts and 30 shelf photos a club a day, taken only before a
+real model call. Over it, a feature falls back as it does with no key, and the
+route logs `[club-ai-cap]`.
+
 The browser never calls Anthropic directly. The shared voice in
 `lib/aiPersona.ts` is opt-in per caller (see
 `docs/plans/ai-governance-and-docs-accuracy.md`).

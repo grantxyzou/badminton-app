@@ -192,3 +192,12 @@ submitted by Grant on device.
   `lib/calendarEvent.ts` builds the event for both. iOS 17+ needs no calendar
   access; 15–16 asks once (`NSCalendarsUsageDescription`, canary-pinned). A
   store build without the plugin shows no button rather than a dead one.
+- **A photo field needs the usage keys in the BINARY** (2026-11-16): iOS
+  ENDS the app when the camera or photo library opens with no
+  `NSCameraUsageDescription` / `NSPhotoLibraryUsageDescription` — the
+  stocktake photo "crashed and quit" store build 7. The keys are in
+  `Info.plist` from build 8 (canary-pinned), and because the web bundle is
+  newer than the binary, a photo field is offered on iOS only through
+  `cameraUsable()` (`lib/nativeCamera.ts`, build ≥ `IOS_CAMERA_BUILD`; an
+  unreadable build is a no). A new `<input type="file">` reaching members
+  goes through it too.

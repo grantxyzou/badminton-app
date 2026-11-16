@@ -184,6 +184,11 @@ describe('ios/', () => {
     expect(plist).toContain('<key>NSCalendarsUsageDescription</key>');
   });
 
+  it('declares camera and photo library use, or iOS ends the app at the stocktake photo', () => {
+    expect(plist).toContain('<key>NSCameraUsageDescription</key>');
+    expect(plist).toContain('<key>NSPhotoLibraryUsageDescription</key>');
+  });
+
   it('registers the fold plugin, in the target, reading the division region on iOS 27', () => {
     expect(read('ios', 'App', 'App', 'MainViewController.swift')).toContain('registerPluginInstance(BpmFoldPlugin())');
     const pbx = read('ios', 'App', 'App.xcodeproj', 'project.pbxproj');

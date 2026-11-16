@@ -4,6 +4,7 @@ import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { getContainer, getActiveSessionId, ensureContainer, sessionIdFromDate } from '@/lib/cosmos';
 import { groupScope, groupDocId, type GroupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
+import { takeClubAiCall } from '@/lib/aiBudget';
 import { topPartners } from '@/lib/recommend';
 import { nameOwnership, verifyMemberAuth } from '@/lib/auth';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
@@ -339,6 +340,14 @@ export async function GET(req: NextRequest) {
 
   if (!process.env.ANTHROPIC_API_KEY) {
     // No key — serve any stale insight rather than nothing.
+    const stale = staleOrNull(existing);
+    if (stale) return stale;
+    return aiUnavailable();
+  }
+  // The club's daily allowance on the shared key (lib/aiBudget.ts): over it,
+  // the same as no key — the last read, else unavailable.
+  if (!takeClubAiCall(scope.groupId, 'insight')) {
+    console.warn('[club-ai-cap]', { feature: 'insight', groupId: scope.groupId });
     const stale = staleOrNull(existing);
     if (stale) return stale;
     return aiUnavailable();
