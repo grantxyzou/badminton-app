@@ -1,0 +1,63 @@
+# The score on a foldable's outer screen
+
+**Track:** ROADMAP critical path, "capture game/win-loss data", by way of `docs/plans/foldable-layout.md` step 4 ("the two-screen scoreboard, outer screen faces the players").
+**Status:** intent
+**Review on:** 2026-12-14 — has the probe build reported what Grant's Fold answers for dual-screen mode (UNSUPPORTED / UNAVAILABLE / AVAILABLE)? If UNSUPPORTED, this plan stops at step 1.
+
+## Problem
+
+Grant, 2026-11-13, on a Galaxy Z Fold opened flat, after voice scoring went live (`docs/plans/voice-score.md`): "Can you make it do the scroe shows on the main screen the outter one?"
+
+The courtside board (`components/stats/CourtsideScoreboard.tsx`) puts the score and the +1 buttons on the same inner screen, so the players on court cannot read it unless the phone is half-folded on the bench (the hinge split from foldable-layout step 3). With the phone held open in the hand, the outer screen faces the court and shows nothing.
+
+`foldable-layout.md` step 4 parked this "only if step 3's board gets used at a session". Grant's ask is the first sign of use, but it came from trying the board, not from a court night; say so when deciding.
+
+## What the platform allows (read 2026-11-16)
+
+- **A web page cannot do it.** Chrome and the home-screen app draw on the one display the page is open on. Folding the phone moves the page to the outer screen and turns the inner one off.
+- **Android's Jetpack WindowManager has two modes** (`androidx.window.area`, from 1.2.0-beta03; the app has `androidx.window` 1.3.0 already, for `BpmFoldPlugin`):
+  - **Dual-screen mode** (`OPERATION_PRESENT_ON_AREA`, `presentContentOnWindowArea`): the app stays on the inner screen and a second view is drawn on the outer one. This is the mode we need. Google documents it as "available on Pixel Fold running Android 14 (API level 34) or higher" and names no other device.
+  - **Rear display mode** (`OPERATION_TRANSFER_ACTIVITY_TO_AREA`): the whole app moves to the outer screen and the inner one turns off. Samsung documents this mode for Galaxy Fold from One UI 6.0, and says nothing about dual-screen mode. It does not help here: the scorer would lose the buttons.
+- **The phone answers the question, not the docs.** `WindowAreaInfo.getCapability(OPERATION_PRESENT_ON_AREA).status` reads UNSUPPORTED, UNAVAILABLE, AVAILABLE or ACTIVE. Only a build running on Grant's Fold can say which.
+- **The system shows a permission dialog** before switching screens, which the app cannot customise.
+- **Voice does not exist in the store app.** Android WebView leaves out the Web Speech API, so the store app hides the mic (`lib/useVoiceScore.ts`, `recognitionCtor` returns null under `isNative()`). Voice on an outer-screen board means a native `SpeechRecognizer` plugin and `RECORD_AUDIO`, which the Android manifest does not declare today.
+
+Sources: developer.android.com/develop/adaptive-apps/guides/foldables/support-foldable-display-modes; developer.samsung.com/sdp/blog/en/2024/09/26/unfold-the-potential-of-galaxy-fold-devices-with-windowmanagers-rear-display-mode.
+
+## Kill criterion
+
+- **Step 1 decides it:** if Grant's Fold reports dual-screen mode UNSUPPORTED, stop. Rear display mode is not a substitute, and a Pixel-Fold-only feature is not worth a store release for a club with no Pixel Folds.
+- **After it ships:** if no game is kept with the outer screen on in the first four court nights it is available, take the button out of the board.
+
+## Non-goals
+
+- **iPhone.** The plan in `foldable-layout.md` names Apple's scene accessories for the iPhone Duo; nobody in the club has asked, and Grant's phone is Android. Revisit on a request.
+- **Rear display mode** (the whole board on the outer screen with the inner one off).
+- **Touch on the outer screen.** It shows the score; the scorer taps or speaks on the inner one.
+- **A second web page on the outer screen.** A native view fed by the board is smaller, works without a network and cannot drift from a page load.
+- **Changing the web board for anyone without the store app.** Browsers keep the hinge split they have today.
+
+## Steps (proposed, nothing built)
+
+1. **Probe.** `BpmFold` (or a new `BpmOuterScreen` plugin) reports the dual-screen capability status to the page; the board shows it on its Preview line in the store app. Ships with the next store build (`versionCode` 8). Needs Grant's machine: the Play upload is signed there.
+2. **Outer score, tap only.** If step 1 reads AVAILABLE or UNAVAILABLE (available when unfolded), the store app's board gets a "Show on outer screen" button. The plugin opens a dual-screen session and draws a native view on the outer screen: the two scores, the server's dot, the status line ("Game point · A side"), dark, as large as the screen allows. The board pushes each change to the plugin. Closing the board, leaving the app or the system dismissing it ends the session.
+3. **Voice in the store app** (only if 2 is used): a native speech plugin (`SpeechRecognizer`, restarted after each result, as `lib/useVoiceScore.ts` restarts the browser's), `RECORD_AUDIO` declared and asked for, feeding the same `parseCall` / `matchCall` in `lib/voiceScore.ts`. A second store build.
+
+## Questions for Grant before step 2
+
+- Which Fold model and One UI version is the phone? (Settings → About phone.)
+- Held open in the hand, or on the bench? The hinge split already serves the bench.
+- Does the outer screen need voice (step 3), or is tapping on the inner screen enough?
+
+## Decisions
+
+<Appended as they are made.>
+
+## Shape
+
+| Piece | File (proposed) |
+| --- | --- |
+| Capability probe and dual-screen session | `android/app/src/main/java/com/motioncraft/bpm/BpmFoldPlugin.java`, or a new `BpmOuterScreenPlugin.java` registered in `MainActivity.java` |
+| The page's side | `lib/fold.ts` (or a new `lib/outerScreen.ts`), behind `isNative()` with a dynamic import, as `__tests__/native-imports.test.ts` requires |
+| The button and the pushes | `components/stats/CourtsideScoreboard.tsx` |
+| Native view on the outer screen | inside the plugin; the score widget's layouts (`BpmScoreWidgetProvider.java`) are the closest existing drawing of a big native score |
