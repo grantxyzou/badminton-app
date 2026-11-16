@@ -8,6 +8,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## How long each string lasts (2026-11-16)
+
+- **The shelf says how long each string lasts.** Each string on the bench's shelf now shows its recent rate and runway, like "18 sets left · lasts about 9 weeks". When it's running low it says "reorder soon" or "reorder now", on the same lines the shuttles use (under 4 weeks, under 2). A string nobody has used lately says so.
+- **A string's page names the day it runs out**: "Strung about 2 a week lately · runs out around Jan 17". The rate counts the last 8 weeks of jobs, or since your first job if that's sooner; a player's own string doesn't count.
+- **The club report includes the string shelf**, as counts only: sets left, rate, weeks left and jobs by stage.
+
 ## String stock you can trust (2026-11-15)
 
 - **A player's own string no longer comes off the club's shelf.** "I have my own" on a request, or "Their own string" when you add a job on the bench, marks the job, and the stock skips it. On any job's page, "String from" says whose string went in, and one tap corrects an older job.

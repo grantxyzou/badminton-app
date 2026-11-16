@@ -18,7 +18,7 @@ import { groupScope } from '@/lib/groupScope';
 import { isFlagOn } from '@/lib/flags';
 import { readOfferedStringsWithLinks } from '@/lib/stringingStrings';
 import {
-  StringStockError, deleteStringPurchase, logStringPurchase, readStringCatalog, readStringPurchases, readStringUses, summarizeStringStock, validatePurchase, withDeletedUses,
+  STOCK_JOB_SELECT, StringStockError, countedJob, deleteStringPurchase, logStringPurchase, readStringCatalog, readStringPurchases, readStringUses, summarizeStringStock, validatePurchase, withDeletedUses,
 } from '@/lib/stringStock';
 import { mirrorStringPurchase, mirrorStringPurchaseDeleted } from '@/lib/ledgerMirror';
 import { forgetShelfExtras } from '@/lib/stringShelfRead';
@@ -47,12 +47,12 @@ export async function GET(req: NextRequest) {
       at('purchases', readStringPurchases(scope)),
       at('catalog', readStringCatalog()),
       // Every job, archived included: a racket strung last winter still used a set.
-      at('jobs', scope.query<StringingJob>('stringingJobs', { select: 'c.id, c.stringLabel, c.status, c.archivedAt, c.stringColor, c.ownString' })),
+      at('jobs', scope.query<StringingJob>('stringingJobs', { select: STOCK_JOB_SELECT })),
       // A deleted job's set stays used (`recordStringUse`).
       at('uses', readStringUses(scope)),
     ]);
     if (!offered) { step = 'offered'; throw new Error('offered strings unreadable'); }
-    const summary = summarizeStringStock({ offered: offered.strings, links: offered.links, aliases: offered.aliases, purchases, jobs: withDeletedUses(jobs, uses), catalog, customColours: offered.customColours });
+    const summary = summarizeStringStock({ offered: offered.strings, links: offered.links, aliases: offered.aliases, purchases, jobs: withDeletedUses(jobs.map(countedJob), uses), catalog, customColours: offered.customColours, now: new Date() });
     // `aliases` rides here, on the admin read, so the bench can show and undo
     // them (docs/plans/bench-redesign.md); the public strings read omits them.
     return NextResponse.json({ ...summary, purchases, aliases: offered.aliases, customColours: offered.customColours });

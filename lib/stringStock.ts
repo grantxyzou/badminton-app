@@ -7,7 +7,7 @@ import type { CatalogItem, StringPurchase, StringingJob } from './types';
 import { isReelColourId, type ReelColourId } from './stringPalette';
 
 export * from './stringStockMath';
-import { MAX_UNITS, MAX_METRES_PER_UNIT, MAX_COST_CENTS, STRUNG_STATUSES } from './stringStockMath';
+import { MAX_UNITS, MAX_METRES_PER_UNIT, MAX_COST_CENTS, STRUNG_STATUSES, strungAtOf } from './stringStockMath';
 
 /**
  * STRING INVENTORY — what the club bought, what went onto rackets, what it
@@ -152,6 +152,10 @@ export interface StringUse {
   jobId: string;
   stringLabel: string;
   stringColor?: string;
+  /** When the job's string went in, for the usage rate
+   *  (docs/plans/string-usage-rate.md). Additive: an older row has none and
+   *  counts in the stock, not in the rate. */
+  strungAt?: string;
   /** When the job left the bench. */
   deletedAt: string;
 }
@@ -162,14 +166,16 @@ export function usesASet(job: Pick<StringingJob, 'status' | 'ownString'>): boole
   return STRUNG_STATUSES.has(job.status) && job.ownString !== true;
 }
 
-export async function recordStringUse(scope: GroupScope, job: Pick<StringingJob, 'id' | 'stringLabel' | 'stringColor'>): Promise<void> {
+export async function recordStringUse(scope: GroupScope, job: Pick<StringingJob, 'id' | 'stringLabel' | 'stringColor' | 'history'>): Promise<void> {
   await ensureClubSettings();
+  const strungAt = strungAtOf(job);
   const doc: StringUse = {
     id: `su-${job.id}`,
     kind: STRING_USE_KIND,
     jobId: job.id,
     stringLabel: job.stringLabel,
     ...(job.stringColor ? { stringColor: job.stringColor } : {}),
+    ...(strungAt ? { strungAt } : {}),
     deletedAt: new Date().toISOString(),
   };
   await scope.upsert('clubSettings', doc);
@@ -182,7 +188,22 @@ export async function readStringUses(scope: GroupScope): Promise<StringUse[]> {
   return rows.filter((r) => r.kind === STRING_USE_KIND);
 }
 
-type CountedJob = Pick<StringingJob, 'id' | 'stringLabel' | 'status' | 'archivedAt' | 'stringColor' | 'ownString'>;
+type CountedJob = Pick<StringingJob, 'id' | 'stringLabel' | 'status' | 'archivedAt' | 'stringColor' | 'ownString'> & { strungAt?: string };
+
+/**
+ * The ONE projection the stock reads take from `stringingJobs`: what the count
+ * needs (label, status, colour, own string) and `history` for the day each
+ * string went in (the usage rate). A reader that drops a field here silently
+ * changes the count, so every stock reader goes through it.
+ */
+export const STOCK_JOB_SELECT = 'c.id, c.stringLabel, c.status, c.archivedAt, c.stringColor, c.ownString, c.history';
+
+/** A projected job as the stock counts it: its history folded to `strungAt`. */
+export function countedJob(row: Pick<StringingJob, 'id' | 'stringLabel' | 'status' | 'archivedAt' | 'stringColor' | 'ownString'> & { history?: unknown }): CountedJob {
+  const { history: _h, ...rest } = row;
+  const strungAt = strungAtOf(row);
+  return { ...rest, ...(strungAt ? { strungAt } : {}) };
+}
 
 /** The jobs the stock counts: every job still stored, plus each deleted one's set. */
 export function withDeletedUses(jobs: readonly CountedJob[], uses: readonly StringUse[]): CountedJob[] {
@@ -191,6 +212,10 @@ export function withDeletedUses(jobs: readonly CountedJob[], uses: readonly Stri
     ...jobs,
     ...uses
       .filter((u) => !live.has(u.jobId))
-      .map((u) => ({ id: u.jobId, stringLabel: u.stringLabel, status: 'picked_up' as const, archivedAt: u.deletedAt, ...(u.stringColor ? { stringColor: u.stringColor } : {}) })),
+      .map((u) => ({
+        id: u.jobId, stringLabel: u.stringLabel, status: 'picked_up' as const, archivedAt: u.deletedAt,
+        ...(u.stringColor ? { stringColor: u.stringColor } : {}),
+        ...(u.strungAt ? { strungAt: u.strungAt } : {}),
+      })),
   ];
 }
