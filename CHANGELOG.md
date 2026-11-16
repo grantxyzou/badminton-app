@@ -8,6 +8,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Two "paid" taps at once count once (2026-11-16)
+
+- **Marking someone paid from two phones at the same moment, or a slow double tap, records one payment**, not two. The second tap sees the first one landed and changes nothing. Before, both wrote, and the Ledger check flagged a double payment the next morning.
+- **A tap that lands on a row someone else just changed differently is refused and the card reloads**, instead of writing over their change.
+
 ## "Edit the bill" waits until nobody on it is marked paid (2026-11-16)
 
 - **Editing a finalized bill is refused while anyone is marked paid**, and the message names them. Before, the edit kept their payment but dropped the bill it paid, and finalizing again at a different cost could leave someone marked "paid $45" who paid $30 — with nobody told. Un-tick them in Payments, edit the bill, finalize, then tick them again at the new amount.
