@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { readFileSync } from 'fs';
-import { CLUB_AI_DAILY, takeClubAiCall } from '@/lib/aiBudget';
+import { CLUB_AI_DAILY, PERSON_AI_DAILY, takeClubAiCall, takeMemberAiCall, takePersonAiCall } from '@/lib/aiBudget';
 import { PATCH as stringsPATCH } from '@/app/api/stringing/strings/route';
 import { __resetCatalogSeedForTests } from '@/lib/catalogSeed';
 import { resetMockStore, makeAdminRequest, setupAdminPin, seedTestAdminMember } from './helpers';
@@ -30,22 +30,58 @@ describe('the allowance', () => {
     expect(takeClubAiCall('club-c', 'stocktake')).toBe(true);
     expect(takeClubAiCall('club-b', 'insight')).toBe(true);
   });
+
+  it('carries the numbers Grant set (2026-11-16)', () => {
+    expect(CLUB_AI_DAILY).toEqual({ insight: 100, fitVerdict: 100, stocktake: 10 });
+    expect(PERSON_AI_DAILY).toEqual({ insight: 5, fitVerdict: 10 });
+    // The writing helper is the operator's alone: no club allowance exists for it.
+    expect(Object.keys(CLUB_AI_DAILY)).not.toContain('writing');
+  });
+
+  it('gives a person their own allowance, separate from their neighbour', () => {
+    for (let i = 0; i < PERSON_AI_DAILY.insight; i++) expect(takePersonAiCall('m-1', 'insight')).toBe(true);
+    expect(takePersonAiCall('m-1', 'insight')).toBe(false);
+    expect(takePersonAiCall('m-2', 'insight')).toBe(true);
+    expect(takePersonAiCall('m-1', 'fitVerdict')).toBe(true);
+  });
+
+  it("checks the person first, so a person over their own never spends the club's", () => {
+    for (let i = 0; i < PERSON_AI_DAILY.fitVerdict; i++) expect(takeMemberAiCall('club-d', 'm-3', 'fitVerdict')).toBeNull();
+    expect(takeMemberAiCall('club-d', 'm-3', 'fitVerdict')).toBe('person');
+    expect(takeMemberAiCall('club-d', 'm-3', 'fitVerdict')).toBe('person');
+    // The club spent exactly ten, not twelve.
+    let left = 0;
+    while (takeClubAiCall('club-d', 'fitVerdict')) left++;
+    expect(left).toBe(CLUB_AI_DAILY.fitVerdict - PERSON_AI_DAILY.fitVerdict);
+  });
+
+  it('answers club when the club is out and the person is not', () => {
+    for (let i = 0; i < CLUB_AI_DAILY.insight; i++) takeClubAiCall('club-e', 'insight');
+    expect(takeMemberAiCall('club-e', 'm-4', 'insight')).toBe('club');
+  });
 });
 
 describe('every AI caller spends from it before calling the model', () => {
-  const CALLERS: Array<[string, string]> = [
-    ['app/api/claude/route.ts', 'writing'],
-    ['app/api/stats/insight/route.ts', 'insight'],
-    ['app/api/equipment/fit-verdict/route.ts', 'fitVerdict'],
-    ['app/api/stringing/stocktake/scan/route.ts', 'stocktake'],
+  const CALLERS: Array<[string, string, string]> = [
+    ['app/api/stats/insight/route.ts', 'takeMemberAiCall(', 'insight'],
+    ['app/api/equipment/fit-verdict/route.ts', 'takeMemberAiCall(', 'fitVerdict'],
+    ['app/api/stringing/stocktake/scan/route.ts', 'takeClubAiCall(', 'stocktake'],
   ];
-  it.each(CALLERS)('%s takes its %s allowance ahead of the model call', (file, feature) => {
+  it.each(CALLERS)('%s takes its allowance ahead of the model call', (file, fn, feature) => {
     const src = readFileSync(file, 'utf8');
-    const take = src.indexOf(`takeClubAiCall(`);
-    expect(take, `${file} never calls takeClubAiCall`).toBeGreaterThan(-1);
+    const take = src.indexOf(fn);
+    expect(take, `${file} never calls ${fn}`).toBeGreaterThan(-1);
     expect(src).toContain(`'${feature}')`);
     const call = Math.max(src.indexOf('.messages.create('), src.indexOf('.messages.parse('));
     expect(call).toBeGreaterThan(take);
+  });
+
+  it('the writing helper is the operator\'s, checked before the model call', () => {
+    const src = readFileSync('app/api/claude/route.ts', 'utf8');
+    const gate = src.indexOf('await isOperator(req)');
+    expect(gate).toBeGreaterThan(-1);
+    expect(src.indexOf('.messages.create(')).toBeGreaterThan(gate);
+    expect(src).not.toContain('isAdminAuthedWithMember(req)');
   });
 });
 

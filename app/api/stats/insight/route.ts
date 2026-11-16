@@ -4,7 +4,7 @@ import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { getContainer, getActiveSessionId, ensureContainer, sessionIdFromDate } from '@/lib/cosmos';
 import { groupScope, groupDocId, type GroupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
-import { takeClubAiCall } from '@/lib/aiBudget';
+import { takeMemberAiCall } from '@/lib/aiBudget';
 import { topPartners } from '@/lib/recommend';
 import { nameOwnership, verifyMemberAuth } from '@/lib/auth';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
@@ -344,10 +344,12 @@ export async function GET(req: NextRequest) {
     if (stale) return stale;
     return aiUnavailable();
   }
-  // The club's daily allowance on the shared key (lib/aiBudget.ts): over it,
-  // the same as no key — the last read, else unavailable.
-  if (!takeClubAiCall(scope.groupId, 'insight')) {
-    console.warn('[club-ai-cap]', { feature: 'insight', groupId: scope.groupId });
+  // The person's and the club's daily allowance on the shared key
+  // (lib/aiBudget.ts): over either, the same as no key — the last read, else
+  // unavailable.
+  const overInsight = takeMemberAiCall(scope.groupId, member.id, 'insight');
+  if (overInsight) {
+    console.warn('[club-ai-cap]', { feature: 'insight', groupId: scope.groupId, over: overInsight });
     const stale = staleOrNull(existing);
     if (stale) return stale;
     return aiUnavailable();

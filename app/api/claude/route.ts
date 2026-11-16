@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { resolveGroupId } from '@/lib/groupContext';
-import { takeClubAiCall } from '@/lib/aiBudget';
-import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
+import { unauthorized } from '@/lib/auth';
+import { isOperator } from '@/lib/operator';
 import { describeAiFailure } from '@/lib/aiError';
 import { PROSE_MODEL } from '@/lib/aiModels';
 import { VOICE_PERSONA } from '@/lib/aiPersona';
@@ -17,29 +16,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Too many requests. Please wait a moment.' }, { status: 429 });
   }
 
-  // Spends real API budget, so use the fresh role re-check rather than the cheap
-  // signature-only variant — the admin cookie outlives a demotion by up to 30 days.
-  // Same trade as `app/api/push/test`, and the same known cost: that helper folds a
-  // Cosmos failure into `{ authed: false }` (lib/auth.ts), so a database blip tells
-  // an admin they are unauthorized. Accepted rather than fixed here, because
-  // `lib/auth.ts` sits on 31 routes and is the wrong place to add a failure mode for
-  // one caller's benefit.
-  const auth = await isAdminAuthedWithMember(req);
-  if (!auth.authed) return unauthorized();
-  // A PERSON's daily allowance, on top of the per-IP minute above. With groups
-  // on, anyone can create a club and come away an admin of it, so "admin" is
-  // not a budget boundary; a rotated address resets the IP limit, a member id
-  // does not. 30 a day is far past what polishing announcements needs
-  // (audit, 2026-11-05).
-  if (!checkRateLimit(`claude-member:${auth.memberId}`, 30, 24 * 60 * 60 * 1000)) {
-    return NextResponse.json({ error: 'Daily AI limit reached. Try again tomorrow.' }, { status: 429 });
+  // The OPERATOR's alone (Grant, 2026-11-16: "they dont need to write
+  // anything. This is only for me"). Polishing announcements and drafting
+  // release notes spend the deployment's key, and with groups on anyone can
+  // create a club and come away an admin of it, so "admin" was never a budget
+  // boundary. `isOperator` re-reads the member (`isAdminAuthedWithMember`):
+  // the admin cookie outlives a demotion by up to 30 days. Its known cost
+  // stands: a Cosmos failure folds into `unauthorized`.
+  const op = await isOperator(req);
+  if (!op.ok) {
+    if (op.reason === 'unauthorized') return unauthorized();
+    return NextResponse.json({ error: 'operator_only' }, { status: 403 });
   }
-  // And the CLUB's, on the shared key (lib/aiBudget.ts): a club of many
-  // admins is one budget, not one each.
-  const groupId = resolveGroupId(req);
-  if (!takeClubAiCall(groupId, 'writing')) {
-    console.warn('[club-ai-cap]', { feature: 'writing', groupId });
-    return NextResponse.json({ error: "Your club has used today's AI writing. Try again tomorrow." }, { status: 429 });
+  // A daily allowance even for the operator, on top of the per-IP minute
+  // above: a stuck retry loop should not run up the bill. 30 a day is far
+  // past what polishing announcements needs (audit, 2026-11-05).
+  if (!checkRateLimit(`claude-member:${op.memberId}`, 30, 24 * 60 * 60 * 1000)) {
+    return NextResponse.json({ error: 'Daily AI limit reached. Try again tomorrow.' }, { status: 429 });
   }
 
   // Parsed OUTSIDE the AI try/catch on purpose: a malformed body is a 400 from

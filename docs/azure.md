@@ -296,15 +296,16 @@ change if Azure reports it taken.
 | SDK | `@anthropic-ai/sdk` |
 | Models | `PROSE_MODEL = claude-sonnet-5`, `INSIGHT_MODEL = claude-sonnet-4-6` (`lib/aiModels.ts`) |
 | Max output tokens | per caller: `POST /api/claude` 8192 (`MAX_OUTPUT_TOKENS`, `lib/claudeLimits.ts`), the Stats read 600 (`MAX_OUTPUT_TOKENS_CARDS` in its route), the fit verdict 400 (its route's `MAX_OUTPUT_TOKENS`) |
-| Rate limit | `POST /api/claude`: 10 requests/min per IP, before auth, then 30 a day per admin (since 2026-11-05) |
+| Rate limit | `POST /api/claude`: 10 requests/min per IP, before auth, then the operator only, 30 a day (since 2026-11-16) |
 
 ### Callers
 
 Four routes call the SDK:
 
-- `POST /api/claude` — admin-only prose (announcements, release notes). Uses
-  the async `isAdminAuthedWithMember` check, accepting the cost, because it
-  spends API budget.
+- `POST /api/claude` — the OPERATOR's prose (announcements, release notes;
+  Grant, 2026-11-16: "This is only for me"). `isOperator` in
+  `lib/operator.ts`, which re-reads the member, because it spends API budget;
+  any other admin gets 403 `operator_only` and never sees the AI polish button.
 - `GET /api/stats/insight` — the member-facing weekly read on Stats.
 - `GET /api/equipment/fit-verdict` — the racket-fit verdict (its flag retired
   2026-10-19; with no API key it answers without AI words).
@@ -313,11 +314,13 @@ Four routes call the SDK:
   stringer of the club, 20 an hour per caller and 30 a day per person. The
   photo is never stored; with no API key the sheet offers counting by hand.
 
-**All four share the one key, so each also spends from a daily allowance per
-CLUB** (`lib/aiBudget.ts`, `docs/plans/club-ai-cap.md`): 60 writing, 300 Stats
-reads, 300 fit verdicts and 30 shelf photos a club a day, taken only before a
-real model call. Over it, a feature falls back as it does with no key, and the
-route logs `[club-ai-cap]`.
+**All four share the one key, so the three a club can reach also spend from a
+daily allowance per CLUB** (`lib/aiBudget.ts`, `docs/plans/club-ai-cap.md`):
+100 Stats reads, 100 fit verdicts and 10 shelf photos a club a day, and a
+member's own Stats reads and fit verdicts also from a daily allowance per
+PERSON (5 and 10), checked first. Taken only before a real model call. Over
+either, a feature falls back as it does with no key, and the route logs
+`[club-ai-cap]`.
 
 The browser never calls Anthropic directly. The shared voice in
 `lib/aiPersona.ts` is opt-in per caller (see
