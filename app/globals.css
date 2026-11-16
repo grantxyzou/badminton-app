@@ -8040,14 +8040,27 @@ button.setup-next-row { cursor: pointer; }
   padding: var(--space-2) var(--space-5);
   background: transparent;
 }
-/* Stuck under the bar: the bar's own frosted ground, so the band reads as
-   part of the bar rather than a stripe across the card. At rest it is part of
-   the card and draws nothing. */
-.shelf-tools[data-stuck] {
+/* Stuck: the bar's own ground, drawn by ::before so the band itself never
+   changes size (a border here moved the list by a pixel as it stuck). The
+   ground spans the page's column edge to edge and reaches up to the bar over
+   the fixed buttons, so it reads as part of the bar, not a stripe across the
+   card. The insets are measured by StringShelfCard. At rest it draws nothing. */
+.shelf-tools::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: calc(-1 * var(--shelf-tools-reach, 0px));
+  bottom: 0;
+  left: calc(-1 * var(--shelf-tools-bleed-l, 0px));
+  right: calc(-1 * var(--shelf-tools-bleed-r, 0px));
+  background: transparent;
+  pointer-events: none;
+}
+.shelf-tools[data-stuck]::before {
   background: var(--topbar-bg-scrolled);
   -webkit-backdrop-filter: blur(22px) saturate(140%);
   backdrop-filter: blur(22px) saturate(140%);
-  border-bottom: 1px solid var(--topbar-border-scrolled);
+  box-shadow: 0 1px 0 var(--topbar-border-scrolled);
 }
 .shelf-search {
   display: flex;
