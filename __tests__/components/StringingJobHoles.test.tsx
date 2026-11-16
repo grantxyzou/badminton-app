@@ -78,9 +78,10 @@ describe('the bench shows a job’s holes', () => {
       counts: { 'racket-li-ning-axforce-80': 72 },
     });
     wrap(<StringingPage onBack={() => {}} />);
-    expect(await screen.findByText(/76 holes/)).toBeDefined();
-    expect(await screen.findByText(/72 holes/)).toBeDefined();
-    expect(screen.getAllByText(/\d+ holes/)).toHaveLength(2);
+    // A pill on the row only when counted (docs/plans/stringing-jobs-list.md).
+    expect(await screen.findByText('76 grommet holes')).toBeDefined();
+    expect(await screen.findByText('72 grommet holes')).toBeDefined();
+    expect(screen.getAllByText(/\d+ grommet holes/)).toHaveLength(2);
   });
 });
 

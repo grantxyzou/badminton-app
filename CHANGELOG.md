@@ -8,6 +8,15 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Stringing jobs: one list, the racket first (2026-11-16)
+
+- **The bench's live jobs are one card of rows, grouped by where the racket is**: Received, Strung, Ready for pickup and Requested, each with its count. Picked up is folded at the bottom; tap it to open.
+- **Each row leads with the racket's picture and name**, then the player, the due date with a calendar icon, an "Unpaid" tag when it owes, and the job number with its status.
+- **Mains and crosses are two stacked pills**: a letter in the string's colour (each side its own colour for a two-colour set), the tension, and the string.
+- **A player's own request stands out**: "Custom request" when the crosses are not the usual mains + 2 or the strings differ, and the tensions turn amber.
+- **Grommet holes show as a pill when the racket's count is known.**
+- **The next-step button left the row.** Open the job to move its status. Swipe and the ⋮ menu still pin and archive.
+
 ## Inventory: the string shelf as a list (2026-11-16)
 
 - **"Strings, stock, prices & holes" is now Inventory, and the strings are one plain list** with each string's packet, what is left and its price, rather than a tile per string.

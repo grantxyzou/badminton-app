@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { usePageBack } from '@/lib/pageStack';
 import { popView, pushView, topView } from '@/lib/viewTrail';
 import { useTrailScroll } from '@/lib/trailScroll';
@@ -13,8 +13,10 @@ import { useOnline } from '@/lib/useOnline';
 import { dueFor, todayIso } from '@/lib/stringingDue';
 import { isWaitingTooLong, waitingDays } from '@/lib/stringingWaiting';
 import { fmtMoney } from '@/lib/fmt';
-import { STRINGING_FLOW, isWalkUpJob, type StringingStatus } from '@/lib/stringing';
-import JobCard, { JobsHeading, nextStepOf } from '@/components/stringing/JobCard';
+import { isWalkUpJob } from '@/lib/stringing';
+import JobCard, { JobsHeading } from '@/components/stringing/JobCard';
+import BenchJobRow from '@/components/stringing/BenchJobRow';
+import BenchList from '@/components/stringing/BenchList';
 import { toPlayerPendingEdit } from '@/lib/stringingPendingEdit';
 import CardHeader from '@/components/primitives/CardHeader';
 import StatusBadge from '@/components/primitives/StatusBadge';
@@ -354,27 +356,6 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
    * `pointer-events: none` above it and the menu button opting back in. That is
    * the same shape `PaymentsCard` arrived at.
    */
-  /** The next step from the card itself — the one tap a bench is for. A
-   *  status move notifies the player (the route does), like the job screen's. */
-  async function advance(job: StringingJob, status: StringingStatus) {
-    if (moving || !online) return;
-    setMoving(job.id);
-    setMoveError(false);
-    try {
-      const res = await fetch(`${BASE}/api/stringing/jobs/${job.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ memberId: job.memberId, status }),
-      });
-      if (!res.ok) throw new Error(`advance ${res.status}`);
-      await Promise.all([load(), loadArchive()]);
-    } catch {
-      setMoveError(true);
-    } finally {
-      setMoving(null);
-    }
-  }
-
   async function markPaid(job: StringingJob) {
     if (moving || !online) return;
     setMoving(job.id);
@@ -405,22 +386,37 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
     setViews([]);
   }
 
-  function renderJob(job: StringingJob, inArchive: boolean) {
-    const pinned = typeof job.prioritizedAt === 'string';
-    // Exactly `isBillable`: finished, priced and unpaid. Shown only in the
-    // archive, where the whole risk is money quietly going out of sight.
-    // Plus, for an invoice-billed job, finished work whose invoice has not
-    // gone (docs/plans/stringing-invoice.md): not owed yet, and exactly the
-    // money that would otherwise go quietly out of sight. On the live bench
-    // too, so "Not invoiced" is a nudge before the racket is archived.
-    const notInvoiced = awaitingInvoice(job);
-    const owed = (inArchive && isBillable(job)) || notInvoiced ? (job.priceCents ?? 0) / 100 : null;
-    /* Waiting on the player (a proposed change they have not answered): only
-       "Mark received" stays, as on the stringer's card — "Mark strung" here
-       would string the racket the player has not agreed to (`nextStepOf`). */
-    const waiting = !!job.pendingEdit;
-    const next = inArchive ? null : nextStepOf(job.status, STRINGING_FLOW, waiting);
+  /** The ⋮ on a job: the desktop's way to the actions SwipeRow gives a finger. */
+  function moreButton(job: StringingJob) {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          setActionTarget(job);
+          setActionError(false);
+          setConfirmingDelete(false);
+          setDeleteError(false);
+        }}
+        aria-label={t('actions.more', { name: job.memberName })}
+        /* A 44px hit area, pulled in by negative margins so the glyph
+           does not move (audit 2026-10-11, A3). */
+        style={{
+          color: 'var(--ink-faint)',
+          minWidth: 44,
+          minHeight: 44,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          margin: 'calc(-1 * var(--space-3)) calc(-1 * var(--space-4)) calc(-1 * var(--space-3)) 0',
+        }}
+      >
+        <span className="material-icons icon-md">more_vert</span>
+      </button>
+    );
+  }
 
+  function swipeable(job: StringingJob, inArchive: boolean, children: ReactNode) {
+    const pinned = typeof job.prioritizedAt === 'string';
     return (
       <SwipeRow
         key={job.id}
@@ -442,74 +438,78 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
           onAction: () => void patchJob(job, { archived: !inArchive }),
         }}
       >
-        <JobCard
-          job={job}
-          today={today}
-          holes={holes.forLabel(job.racketLabel).holes}
-          pinned={pinned}
-          owed={inArchive || notInvoiced ? owed : null}
-          notInvoiced={notInvoiced}
-          waitingDays={!inArchive && isWaitingTooLong(job) ? waitingDays(job) : null}
-          /* The player's own diff (racket, string, tension); the card's line
-             never reads its price. */
-          pendingChange={waiting ? toPlayerPendingEdit(job) : null}
-          /* Its own card on the bench, in the stringer's card style (the
-             canvas, 2026-11-12); still the inner tint inside the archive's
-             list card. */
-          surface={inArchive ? 'inner' : 'card'}
-          onOpen={() => openJob(job, inArchive)}
-          open={!inArchive && rightShowsJob && asideJob?.id === job.id}
-          openLabel={t('actions.open')}
-          more={
+        {children}
+      </SwipeRow>
+    );
+  }
+
+  /** A job on the live bench: one row of the jobs list (docs/plans/stringing-jobs-list.md,
+   *  Grant's canvas Option A). No next-step button: the status moves on the
+   *  job page the row opens. */
+  function renderBenchRow(job: StringingJob) {
+    const notInvoiced = awaitingInvoice(job);
+    const look = holes.forLabel(job.racketLabel);
+    return swipeable(
+      job,
+      false,
+      <BenchJobRow
+        job={job}
+        today={today}
+        catalogId={look.catalogId}
+        holes={look.holes}
+        pinned={typeof job.prioritizedAt === 'string'}
+        unpaid={isBillable(job)}
+        owed={notInvoiced ? (job.priceCents ?? 0) / 100 : null}
+        notInvoiced={notInvoiced}
+        waitingDays={isWaitingTooLong(job) ? waitingDays(job) : null}
+        pendingChange={job.pendingEdit ? toPlayerPendingEdit(job) : null}
+        onOpen={() => openJob(job, false)}
+        open={rightShowsJob && asideJob?.id === job.id}
+        openLabel={t('actions.open')}
+        more={moreButton(job)}
+      />,
+    );
+  }
+
+  /** A job in the archive: the card, with "Mark paid" while it owes. */
+  function renderArchivedJob(job: StringingJob) {
+    // Exactly `isBillable`: finished, priced and unpaid — the whole risk in
+    // the archive is money quietly going out of sight. Plus, for an
+    // invoice-billed job, finished work whose invoice has not gone
+    // (docs/plans/stringing-invoice.md).
+    const notInvoiced = awaitingInvoice(job);
+    const owed = isBillable(job) || notInvoiced ? (job.priceCents ?? 0) / 100 : null;
+    return swipeable(
+      job,
+      true,
+      <JobCard
+        job={job}
+        today={today}
+        holes={holes.forLabel(job.racketLabel).holes}
+        pinned={typeof job.prioritizedAt === 'string'}
+        owed={owed}
+        notInvoiced={notInvoiced}
+        waitingDays={null}
+        pendingChange={job.pendingEdit ? toPlayerPendingEdit(job) : null}
+        surface="inner"
+        onOpen={() => openJob(job, true)}
+        open={false}
+        openLabel={t('actions.open')}
+        more={moreButton(job)}
+        action={
+          owed !== null ? (
             <button
               type="button"
-              onClick={() => {
-                setActionTarget(job);
-                setActionError(false);
-                setConfirmingDelete(false);
-                setDeleteError(false);
-              }}
-              aria-label={t('actions.more', { name: job.memberName })}
-              /* A 44px hit area, pulled in by negative margins so the glyph
-                 does not move (audit 2026-10-11, A3). */
-              style={{
-                color: 'var(--ink-faint)',
-                minWidth: 44,
-                minHeight: 44,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: 'calc(-1 * var(--space-3)) calc(-1 * var(--space-4)) calc(-1 * var(--space-3)) 0',
-              }}
+              className="cc-btn cc-btn-secondary"
+              style={{ flex: 1 }}
+              disabled={moving !== null || !online}
+              onClick={() => void markPaid(job)}
             >
-              <span className="material-icons icon-md">more_vert</span>
+              {t('markPaid')}
             </button>
-          }
-          action={
-            next ? (
-              <button
-                type="button"
-                className="cc-btn cc-btn-secondary"
-                style={{ flex: 1 }}
-                disabled={moving !== null || !online}
-                onClick={() => void advance(job, next)}
-              >
-                {tPlayer('stringerAdvance', { status: tPlayer(`next.${next}`) })}
-              </button>
-            ) : inArchive && owed !== null ? (
-              <button
-                type="button"
-                className="cc-btn cc-btn-secondary"
-                style={{ flex: 1 }}
-                disabled={moving !== null || !online}
-                onClick={() => void markPaid(job)}
-              >
-                {t('markPaid')}
-              </button>
-            ) : undefined
-          }
-        />
-      </SwipeRow>
+          ) : undefined
+        }
+      />,
     );
   }
 
@@ -693,7 +693,7 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
                 title={t('archive.pickedUp')}
                 subtitle={t('archive.summary', { count: archivedJobs.length, owing: archivedJobs.filter((j) => isBillable(j) || awaitingInvoice(j)).length })}
               />
-              {archivedJobs.map((job) => renderJob(job, true))}
+              {archivedJobs.map((job) => renderArchivedJob(job))}
             </section>
           )}
         </div>
@@ -952,9 +952,7 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
               </div>
             )}
             {jobs !== null && jobs.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-                {jobs.map((job) => renderJob(job, false))}
-              </div>
+              <BenchList jobs={jobs} renderRow={renderBenchRow} />
             )}
           </section>
         )}

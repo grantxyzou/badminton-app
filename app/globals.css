@@ -8085,6 +8085,113 @@ html:root .shelf-search input {
 /* A card that is one row (Inventory's "Other prices ›"): the field card's
    material with a row's padding, so it reads as a slim card, not a full one. */
 html:root .glass-card.inventory-row-card { padding: var(--space-2) var(--space-3); }
+
+/* THE BENCH AS A LIST (docs/plans/stringing-jobs-list.md, canvas Option A,
+   2026-11-16; Grant: "HMW reduce stringer error by presenting racket
+   information easily"). One card of rows grouped by status; a row is the
+   racket's picture with its name under it, then who and when, the job and its
+   status, and each side's spec as its own pill. Fill only, no lines between
+   rows; a row flashes --press-bg under a finger. */
+.bench-list { display: flex; flex-direction: column; gap: var(--space-3); }
+.bench-group { display: flex; flex-direction: column; gap: var(--space-1); }
+.bench-group-label { padding: var(--space-1) var(--space-1) 0; }
+.bench-fold {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 44px;
+  padding: 0 var(--space-1);
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.bench-fold:active { background: var(--press-bg); }
+.bench-row {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-1);
+  border-radius: var(--radius-lg);
+}
+.bench-row:has(> .bench-row-open:active) { background: var(--press-bg); }
+.bench-row--open { background: var(--segment-active-bg); }
+.bench-row--waiting .bench-row-who { color: var(--sev-warn); }
+/* Under a swipe the row needs a ground, or the tray shows through its text. */
+.swipe-row[data-swiping] .bench-row { background: var(--page-bg); }
+.bench-row-open { position: absolute; inset: 0; border: 0; background: transparent; border-radius: inherit; cursor: pointer; }
+.bench-row-racket, .bench-row-body { position: relative; pointer-events: none; }
+.bench-row-racket {
+  flex: 0 0 auto;
+  width: 86px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+.bench-row-img { width: 86px; height: 105px; object-fit: contain; }
+.bench-row-racket-name {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-align: center;
+  line-height: var(--lh-snug);
+  overflow-wrap: anywhere;
+}
+.bench-row-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.bench-row-line { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
+.bench-row-who { font-size: var(--fs-lg); font-weight: 600; color: var(--text-primary); }
+.bench-row-due { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--fs-sm); }
+.bench-row-due-icon { font-variation-settings: 'FILL' 1; }
+.bench-row-no { font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--text-muted); }
+.bench-row-custom { font-size: var(--fs-sm); font-weight: 600; color: var(--text-primary); }
+.bench-tag {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  padding: var(--space-05) var(--space-2);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--sev-warn) 18%, transparent);
+  color: var(--sev-warn);
+}
+/* M and C always stacked (Grant: "keep MC always vertical stack with the icon
+   + tension + string"), 16px under the lines above them. */
+.bench-row-specs { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); margin-top: var(--space-3); }
+.bench-spec {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 100%;
+  min-height: 24px;
+  padding: var(--space-05) var(--space-3) var(--space-05) var(--space-05);
+  border-radius: var(--radius-pill);
+  /* Dark, so every string colour (white, yellow, red) stands out on it. */
+  background: #1a2332;
+  color: #ffffff;
+  font-size: var(--fs-sm);
+}
+.bench-spec--plain { padding: var(--space-05) var(--space-3); background: var(--inner-card-bg); color: var(--text-primary); }
+.bench-spec-letter {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #6b7280;
+  color: #ffffff;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+}
+.bench-spec-lb { font-family: var(--font-mono); font-weight: 600; }
+/* A pair the player chose: the NUMBERS in amber, never a ring (fill only). */
+.bench-spec--custom .bench-spec-lb { color: #fbbf24; }
+.bench-row-more { position: relative; flex: 0 0 auto; }
 /* The Strings header's + (the add field): a quiet 44px round icon beside the
    one filled button, so the two never compete. Open, it takes the selected
    tint, like a pressed filter chip. */
