@@ -342,3 +342,28 @@ describe('a paid stringing job always has its charge', () => {
     expect(ledger().filter((e) => e.ref?.id === 'job-10').reduce((n, e) => n + e.amountCents, 0)).toBe(0);
   });
 });
+
+describe('the Ledger check describes each line (GET / POST detail)', () => {
+  it('a session line: the night, where the row stands, and its ledger entries', async () => {
+    await backfill();
+    row('Viktor', 'session-2026-09-17').paid = true;
+    const body = await (await reconcilePost(makeAdminRequest('POST', `${BASE}/admin/ledger/reconcile`, {}))).json();
+    const [m] = body.mismatches;
+    expect(m.detail.subject).toEqual(expect.objectContaining({ kind: 'session', exists: true, date: '2026-09-17', paid: true, settled: true }));
+    expect(m.detail.entries.map((e: { kind: string; amountCents: number; voided: boolean }) => [e.kind, e.amountCents, e.voided])).toEqual([['charge', 1200, false]]);
+  });
+
+  it('a stringing line: the job number and racket, and a voided charge marked as voided', async () => {
+    await backfill();
+    // job-2 (Lin, $28, ready, unpaid) loses its charge to a void: the app still shows it owed.
+    const charge = ledger().find((e) => e.kind === 'charge' && e.ref?.id === 'job-2')!;
+    seedDoc('ledger', { id: `void:${charge.id}`, groupId: 'bpm', memberId: lin.id, account: 'member_owed', kind: 'void', amountCents: -2800, note: 'Reversed: charge', ref: charge.ref, meta: { reason: 'job_deleted' }, createdAt: '2026-11-16T00:00:00Z' });
+    const body = await (await reconcilePost(makeAdminRequest('POST', `${BASE}/admin/ledger/reconcile`, {}))).json();
+    const m = body.mismatches.find((x: { ref: { id: string } }) => x.ref.id === 'job-2');
+    expect(m.detail.subject).toEqual(expect.objectContaining({ kind: 'stringing', exists: true, jobNo: 'J-0002', racket: 'Nanoflare', status: 'ready', paidAt: null }));
+    expect(m.detail.entries.map((e: { kind: string; voided: boolean; reason: string | null }) => [e.kind, e.voided, e.reason])).toEqual([
+      ['charge', true, null],
+      ['void', false, 'job_deleted'],
+    ]);
+  });
+});

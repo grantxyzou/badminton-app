@@ -526,7 +526,7 @@ export default function LedgerPage({ onBack, onOpenSession, onOpenPastSessions }
       </Section>
 
       <PlayerProfileSheet open={profile !== null} onClose={() => setProfile(null)} memberId={profile?.memberId ?? null} initialName={profile?.name} />
-      <ReconcileSheet open={reconcileOpen} onClose={() => setReconcileOpen(false)} onChanged={() => void load()} />
+      <ReconcileSheet open={reconcileOpen} onClose={() => setReconcileOpen(false)} onChanged={() => void load()} onOpenSession={onOpenSession} />
       <AddExpenseSheet key={expenseKey} open={expenseOpen} onClose={() => setExpenseOpen(false)} onSaved={refresh} />
     </div>
   );

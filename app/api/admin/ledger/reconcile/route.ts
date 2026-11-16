@@ -2,7 +2,9 @@
  * The ledger reconcile (`lib/ledgerReconcile.ts`), for the admin:
  *
  *   GET  — the last stored check, with each mismatch's row named by the
- *          roster (the settings doc holds ids only). `lastAt: null` = never.
+ *          roster (the settings doc holds ids only) and described: the job
+ *          or session behind it and its ledger entries
+ *          (`lib/ledgerReconcileDetail.ts`). `lastAt: null` = never.
  *   POST — "Check now": runs it, stores it, returns the same shape.
  *
  * The ASYNC admin check even on the read: it names who owes what.
@@ -16,10 +18,13 @@ import { isFlagOn } from '@/lib/flags';
 import { getMirrorFailures } from '@/lib/ledgerMirror';
 import { lastReconcile, reconcileAndRecord, type Mismatch, type ReconcileResult } from '@/lib/ledgerReconcile';
 import { rosterMembers } from '@/lib/roster';
+import { groupScope } from '@/lib/groupScope';
+import { describeMismatch } from '@/lib/ledgerReconcileDetail';
 
 export const dynamic = 'force-dynamic';
 
 async function withNames(groupId: string, r: Omit<ReconcileResult, 'mirrorFailures'>) {
+  const scope = groupScope(groupId);
   const names = new Map<string, string>();
   for (const { member } of await rosterMembers(groupId, { includeInactive: true })) names.set(member.id, member.name);
   return {
@@ -28,7 +33,12 @@ async function withNames(groupId: string, r: Omit<ReconcileResult, 'mirrorFailur
     unlisted: r.unlisted,
     truncated: r.truncated,
     mirrorFailures: getMirrorFailures(),
-    mismatches: r.mismatches.map((m: Mismatch) => ({ ...m, name: names.get(m.memberId) ?? null })),
+    // Each line with the job or session behind it and the ledger's own entries
+    // for it, so the sheet can say what is wrong in words (at most
+    // STORED_MISMATCH_CAP of them, read only when an admin asks).
+    mismatches: await Promise.all(
+      r.mismatches.map(async (m: Mismatch) => ({ ...m, name: names.get(m.memberId) ?? null, detail: await describeMismatch(scope, m) })),
+    ),
   };
 }
 
