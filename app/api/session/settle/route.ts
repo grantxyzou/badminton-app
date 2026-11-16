@@ -216,12 +216,22 @@ async function clearSettlement(scope: ReturnType<typeof groupScope>, session: Se
 }
 
 /**
- * DELETE /api/session/settle — clear the frozen receipt.
+ * DELETE /api/session/settle — clear the frozen receipt ("Edit the bill").
  *
  * Removes `session.settled` and clears each player's `owedAmount` /
  * `settledAt` for that session. Preserves `player.paid` because a paid
  * checkbox represents an independently-meaningful event ("I received
  * payment from this person") that survives a typo'd settle.
+ *
+ * REFUSED WHILE ANYONE IS MARKED PAID (docs/plans/money-audit.md, gap 2,
+ * 2026-11-16). A paid row's payment is real money and stays in the ledger,
+ * but the charge it paid is voided here — so the ledger held a payment with
+ * nothing under it until the next settle, and that settle, a plain POST,
+ * never ran the `paid_would_change` check: a row that paid $30 was re-stamped
+ * "paid $45" and the $15 was never collected or shown. The organiser
+ * un-ticks those people first (which voids their payment properly), edits,
+ * settles, and ticks them again at the right amount. 409 `bill_has_payments`
+ * with the names, before anything is touched.
  */
 export async function DELETE(req: NextRequest) {
   if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
@@ -239,7 +249,13 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Session is not settled.' }, { status: 404 });
     }
 
-    await clearSettlement(scope, session, await settledRows(scope, sessionId));
+    const rows = await settledRows(scope, sessionId);
+    const paid = rows.filter((p) => p.paid === true);
+    if (paid.length > 0) {
+      return NextResponse.json({ error: 'bill_has_payments', names: paid.map((p) => p.name) }, { status: 409 });
+    }
+
+    await clearSettlement(scope, session, rows);
 
     return NextResponse.json({ sessionId, unsettled: true });
   } catch (error) {

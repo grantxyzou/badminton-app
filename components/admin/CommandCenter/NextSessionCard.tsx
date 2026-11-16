@@ -263,7 +263,18 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
     try {
       const res = await fetch(`${BASE}/api/session/settle`, { method: 'DELETE' });
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
+        const data = (await res.json().catch(() => ({}))) as { error?: string; names?: string[] };
+        // A paid row's money is real and its bill is about to go: the server
+        // refuses until those people are un-ticked (docs/plans/money-audit.md, gap 2).
+        if (data?.error === 'bill_has_payments') {
+          const names = (data.names ?? []).join(', ');
+          setSettleError(
+            names
+              ? `${names} ${data.names!.length === 1 ? 'is' : 'are'} marked paid. Un-tick them in Payments first, edit the bill, then tick them again at the new amount.`
+              : 'Someone is marked paid. Un-tick them in Payments first, then edit the bill.',
+          );
+          return;
+        }
         setSettleError(data?.error ?? `Couldn't edit the bill (HTTP ${res.status}).`);
         return;
       }
