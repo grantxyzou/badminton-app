@@ -172,7 +172,7 @@
         "scanNeedsUpdate": "Scanning comes with the next app update. Count by hand for now.",
         "cameraLabel": "Camera",
         "cameraStarting": "Starting the camera…",
-        "pointAt": "Point at a barcode",
+        "pointAt": "Hold the barcode close, inside the box",
         "cameraDenied": "The camera is blocked. Allow it in your phone's settings, or count by hand.",
         "cameraMissing": "No camera found. Count by hand instead.",
         "cameraFailed": "The camera didn't start. Close this and try again, or count by hand.",

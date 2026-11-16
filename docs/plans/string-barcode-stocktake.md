@@ -51,6 +51,19 @@ barcode step is ceremony.
   in Chrome on Android and not in Safari, so one library is the one path for
   every phone. `Permissions-Policy` moves from `camera=()` to `camera=(self)`:
   the page itself may ask for the camera, nothing it embeds may.
+- **Checked on real stock** (Grant's photos, 2026-11-16: an Aerobite White/Blue
+  packet and a BG80 Yellow 200 m reel). Yonex prints an EAN-13 on a colour
+  sticker — `4549317924709` (BGAB, WHITE/BLUE 207), `4930379423758`
+  (BG80-2, YELLOW 004) — so each COLOUR and each FORM (packet, reel) is its
+  own code, and teaching a code once teaches its colour and form too; the
+  Aerobite set is the combo colour `white / blue`. Read out of the whole
+  photo, neither decoded at any size; cropped to the sticker both did, and
+  the reel's only when turned upright. So the scanner reads frames itself
+  (`lib/barcodeScanner.ts`): only the middle of the picture (a little more
+  than the aiming box), at 1280×720, upright and turned a quarter on
+  alternate frames, and the hint says "Hold the barcode close, inside the
+  box". Through the live scanner in Chromium, with each photo as the camera,
+  the packet read in 0.3 s and the sideways reel in 0.8 s.
 - **The store apps scan from their next builds**: iPhone build 8 carries the
   camera usage key, Android versionCode 7 declares `CAMERA` (without it the
   WebView's camera ask is refused at once). `lib/nativeCamera.ts` reads the

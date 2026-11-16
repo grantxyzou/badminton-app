@@ -172,7 +172,7 @@
         "scanNeedsUpdate": "扫描功能将随下次应用更新推出。现在请手动清点。",
         "cameraLabel": "相机",
         "cameraStarting": "正在打开相机…",
-        "pointAt": "对准条码",
+        "pointAt": "把条码靠近，放进框里",
         "cameraDenied": "相机被禁用。请在手机设置中允许，或手动清点。",
         "cameraMissing": "找不到相机。请改为手动清点。",
         "cameraFailed": "相机没有打开。请关闭后重试，或手动清点。",
