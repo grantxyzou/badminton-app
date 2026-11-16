@@ -1,0 +1,103 @@
+# Money audit: every place the app writes money
+
+**Track:** admin cost-automation (North Star pillar 3) — `docs/plans/payments.md` Phase 2 (the ledger). The reconcile is only worth running if a mismatch means something; this audit is what makes it mean something.
+**Status:** in-flight
+**Review on:** 2026-11-23 — Has Grant approved (or declined) each fix in "Gaps, worst first", and has the Ledger check read clean for seven days since the approved ones shipped?
+
+## Problem
+
+On 2026-11-16 the Ledger check (`lib/ledgerReconcile.ts`, `components/admin/ledger/ReconcileSheet.tsx`) flagged one stringing job: $40 paid in the ledger, no charge. It took three PRs the same day (#951, #952, #953). Grant afterwards:
+
+> "I got no trust in this system now."
+
+The ask is evidence, not reassurance: every path that writes money, traced from the route to the row write and the ledger mirror, with each claim checked against the code and, where it was in doubt, a test.
+
+## Kill criterion
+
+This audit failed if, after its approved fixes ship, the Ledger check flags a line in production whose cause is not named below. Each such line is a path this audit missed and is added here before it is fixed.
+
+## Non-goals
+
+- **No app code changes.** This file and one evidence test are the whole PR. Every fix waits for Grant's yes.
+- No production data access. This is a code audit on the mock store, so it says what CAN happen, not what HAS.
+- Not a redesign of the ledger. Each fix proposed is the smallest that closes its gap.
+
+## How it was checked
+
+Each path was read from the route through to the row write and the hook in `lib/ledgerMirror.ts`, asking four things: (1) do the row and the ledger agree in every direction, including the reverse (unpay, uncover, unsettle, delete, refund, withdraw)? (2) can two requests at once, or a redelivered webhook, double-write or lose a write? (3) is it scoped to the right club? (4) which test fails if it breaks?
+
+Every gap below is PROVEN by `__tests__/money-audit-gaps.test.ts`: each test drives the real routes on the mock store and pins today's WRONG answer, in cents. When a gap is fixed its test fails, and the fix flips it to the right answer, which each test names in a comment. Two mock-store traps were kept in mind: it filters by parameter name and ignores partition keys, so nothing here relies on a query the mock would answer differently from Cosmos. Concurrency (gap 3) was made deterministic by giving each request its own clock tick; without that, two taps in the same millisecond compute the same payment id and the race hides behind the 409.
+
+## The table
+
+`replace` = the etag-conditional write (`lib/groupScope.ts`): a second writer that read the same version gets `undefined` and must re-read. `upsert` = unconditional: the last writer wins, whatever it read.
+
+| Path | What it writes | Reverse handled? | Race-safe? | Club-scoped? | Test that covers it | Verdict | Proposed fix |
+|---|---|---|---|---|---|---|---|
+| **Settle** `POST /api/session/settle` | `session.settled`; `owedAmount`/`settledAt` per row; mirror: charge per row, cover per absorb row, payment for rows already ticked paid, court cost | Re-settle (`resettle: true`) thaws and re-freezes in one request and refuses `paid_would_change` | Rows written with `upsert` from the list read at the start: a payment landing in that window is overwritten back to unpaid (ms window, not tested) | Yes | `ledger-mirror.test.ts` (settle/unsettle), `settle-resettle-keeps-billed.test.ts`, `session-settle.test.ts` | **safe** for the common flow; race is theoretical | Write rows with `replace`; on `undefined`, re-read and re-stamp |
+| **Unsettle / "Edit the bill"** `DELETE /api/session/settle` (NextSessionCard's "Edit the bill") | Clears `owedAmount`/`settledAt`, keeps `paid`; mirror voids charges, covers, court cost | **No.** A paid row's payment is not voided, so it stands alone. And a plain `POST` settle afterwards skips the `paid_would_change` check, so a paid row is stamped a new amount under `paid: true` | `upsert` (as above) | Yes | none until now: `money-audit-gaps` GAP 2 | **gap** | Refuse the unsettle while any billed row is paid (409 naming them). See gap 2 |
+| **Cover / uncover** `PATCH /api/players { writtenOff }` | `writtenOff`, `coverMode`, forces `paid: false`; mirror: cover entry (absorb), void of cover on uncover, void of payment if it was paid | Yes. Resplit on a paid bill refused (`paid_would_change`); resplit itself is followed by a client re-settle | `upsert` (see gap 3) | Yes | `ledger-mirror.test.ts`, `settle-resettle-keeps-billed.test.ts` | **safe** (one minor record issue, gap 7) | — |
+| **Remove / restore** `PATCH { removed }` | Soft flag only; no money moves. A billed row removed after settle still owes (re-settle keeps it) | Restore capacity-checked; a never-stamped row cannot rejoin a settled session (`session_settled`) | `upsert` | Yes | `settle-resettle-keeps-billed.test.ts`, `settled-session-writes.test.ts` | **safe** | — |
+| **Hard delete** `DELETE /api/players { purgeOne / purgeAll }` | Removes the row; mirror `mirrorRowDeleted` voids charge and cover, keeps payment | **No** for a PAID row: −$X left with no charge. Same shape as the stringing bug #951 fixed. `ledger-mirror.test.ts:196` pins the current behaviour as intended | n/a | Yes | `ledger-mirror.test.ts` "purgeOne voids the charge and keeps the payment" (asserts the bug); `money-audit-gaps` GAP 1 | **gap** (no screen sends it today) | Leave a paid row's books alone, as #951 did. See gap 1 |
+| **Plus-one guests** (`lib/plusOne.ts`) | A guest row is a normal `players` row with `guestOf`; the mirror charges it to the host (`memberOf`) | Same as any row | Same as any row | Yes | `plus-one.test.ts`, `ledger-reconcile.test.ts` (guest lines), `group-member-payments.test.ts` | **safe** | — |
+| **Admin "paid" tap** `PATCH /api/players { paid }` | `paid`, `paidAt`, `paidVia: 'manual'`; mirror payment (or void of it) | Yes, un-tick voids the payment by id | **No.** `upsert` over the read: two taps (two phones, two admins) both see `paid !== true`, both write, both mirror under their own `paidAt`. Also overwrites an e-transfer or card payment landing in the same moment | Yes | `ledger-mirror.test.ts` (sequential only); `money-audit-gaps` GAP 3 | **gap** | `replace` with the read's etag, like the other three payment paths. See gap 3 |
+| **Self-report "I paid"** `PATCH { selfReportedPaid }` | A flag only; no money | n/a | `upsert`: can overwrite a payment landing in the same moment (ms window) | Yes | `players-self-pay.test.ts` | **safe** (flag only), race theoretical | `replace`, with the gap 3 change |
+| **E-transfer auto-match / assign** `lib/paymentsInbox.ts` `applyAllocations` | Row `paid` + `paidVia: 'etransfer'` + `paymentId`; job `paidAt`; mirror payment keyed on the payment doc | Un-pay goes through the admin tap (above). No un-assign route | `replace` (etag) per row; dedupe on Interac's reference number | Yes, by the club's payments key | `payments-inbox.test.ts` ("same email twice is one payment", half-applied resolve) | **safe**, one hardening | Re-check the row still owes exactly the allocated amount before marking it paid, as card pay does. See gap 8 |
+| **Card pay** `lib/cardPay.ts` webhook + Stripe-dashboard refunds | Row/job paid by Checkout id; refunds un-pay only when the amount says which rows; mirror payment keyed on the Checkout id, void on refund | Yes, refunds void the payment; a re-priced line is refunded, not paid at the old amount | `replace` + per-line amount check; a redelivery reads `paymentId === checkoutId` and does nothing | Yes, by `event.account` matched to the club's Stripe account | `group-card-pay.test.ts` (redelivery, partial and full refunds, re-priced line, foreign account) | **safe** | — |
+| **Store credit: pay with credit** `payWithCredit`, `refundStaleSpends` | `spend:<ref>:<n>` (credit), then row/job paid; refund on any failure | Paid another way → credit refunded. **But** an admin un-tick of a credit-paid row is undone by the next balance read, and the ledger cannot record it | Spend ids collide on a double tap; balance re-read after insert; row via `replace` | Yes | `store-credit.test.ts` (double tap, two taps at once, stale spends); `money-audit-gaps` GAP 6 | **gap** | An un-tick of a credit payment returns the credit in the same request. See gap 6 |
+| **Credit codes (gift cards)** `lib/storeCredit.ts`, `lib/creditAttribution.ts` | Claim doc in `clubSettings` (unique by `/id`), then `gift:<hash>` credit entry | n/a (redeem once) | Claim doc is the lock; double tap credits once | Yes; minting is organiser-only | `store-credit.test.ts`, `credit-attribution.test.ts`, `group-giftcards.test.ts` | **safe** | — |
+| **Stringing: status, price, paid, proposals** `PATCH /api/stringing/jobs/[id]`, `.../accept` | Job fields; mirror `mirrorStringingChanged` (charge while `ledgerHoldsCharge`, void on price change or leaving it, payment on paid, void on unpaid; heals a missing charge on any touch) | Yes since #951; a paid job cannot be re-priced (`job_paid`) | `replace` | Yes | `ledger-mirror.test.ts` (stringing), `stringing-billing.test.ts`, `ledger-reconcile.test.ts` | **safe** | — |
+| **Stringing: invoice** `POST .../invoice` | `invoice.sentAt`; mirror charges an invoice-billed job | n/a (an invoice is not unsent) | `replace`; a second tap inside a minute is 409 `sending` | Yes | `group-stringing-invoice.test.ts` | **safe** | — |
+| **Stringing: create** `POST /api/stringing/jobs` (incl. walk-ups) | New job, `paidAt: null`. **No mirror call** | n/a | `create` | Yes (roster check; walk-up under `~walkup:`) | `money-audit-gaps` GAP 5 | **gap, latent** (closed while the invoice flag is on) | Call the mirror after create. See gap 5 |
+| **Stringing: archive / delete** `DELETE /api/stringing/jobs/[id]` | Archived jobs only; unpaid → charge voided; paid → books kept | Yes since #951/#953 (repair restores a charge an old delete voided) | Point read then `remove` | Yes | `group-ledger-repair.test.ts`, `ledger-reconcile.test.ts` | **safe** | — |
+| **Court cost** (at settle) | `court:<session>:<ms>` under `~club` | Voided by unsettle / re-settle | With settle | Yes | `ledger-mirror.test.ts` | **safe**, but not reconciled (see "What the reconcile cannot see") | — |
+| **Shuttle purchases** `app/api/birds/route.ts` | `shuttles:<id>`, adjustments `shuttles:<id>:adj:<n>`, voids on delete | Yes | `upsert` on the purchase; two edits at once compute the same `adj:<n>`, one delta 409s and is lost | Yes | `ledger-mirror.test.ts`, `ledger-backfill.test.ts`, `birds.test.ts` | **safe** in practice; race theoretical | `replace` on the purchase if outlay is ever reconciled |
+| **String purchases** `app/api/stringing/stock/route.ts` | `strings:<id>` expense; void on delete | Yes | create / delete | Yes | `group-string-stock.test.ts`, `ledger-view.test.ts` | **safe** | — |
+| **Expenses** `/api/admin/expenses` | `expense:<random>` under `~club`; delete is a void | Yes; a double void 409s | Random id: a double tap on Add writes two expenses | Yes | `admin-expenses.test.ts` | **safe** (double tap is the admin's to undo) | — |
+| **Account deletion** `lib/memberPurge.ts` | Credit deleted; `member_owed` entries copied to `~anon:<id>`; `players` rows anonymized (kept); **`stringingJobs` deleted** | A paid or settled session line stays consistent. An UNPAID finished stringing job loses its row and keeps its charge | n/a | Per club (names) | `ledger-mirror.test.ts`, `member-purge-coverage.test.ts`; `money-audit-gaps` GAP 4 | **gap** | Reconcile counts a gone `~anon` row as `unlisted`. See gap 4 |
+| **The reconcile** `lib/ledgerReconcile.ts` | Reads only; stores ids and cents | n/a | Runs once a day and on tap | Yes | `ledger-reconcile.test.ts` | **safe** for what it reads; blind spots below | — |
+
+## Gaps, worst first
+
+Ordered by how likely a club hits it today, times how much it confuses the books.
+
+1. **Gap 2: "Edit the bill" after someone has paid.** Settle a session at $30 each, Lin pays, the organiser notices the court cost was wrong and taps **Edit the bill**. The unsettle voids Lin's charge but keeps her −$30 payment, so the Ledger check flags −$30 the next morning. The organiser fixes the cost to $45 and taps Settle: a plain settle never runs the `paid_would_change` check, so Lin's row now says **paid $45** when she paid $30. The ledger holds +$45 charge and −$30 payment, and the check flags +$15 every day. Nobody is told Lin owes $15 more. *Likely*: it is an ordinary button, and fixing a wrong cost after someone paid is exactly when it gets pressed. **Smallest fix:** `DELETE /api/session/settle` answers 409 `bill_has_payments` with the names while any billed row is paid. The organiser un-ticks those people (which voids their payments properly), edits, re-settles, and re-ticks them (a new `paidAt`, so a new payment id at the right amount). Applying the `paid_would_change` check to a plain settle does not work on its own: the unsettle has already wiped `owedAmount`, so every normal "paid during the week" row would be refused.
+
+2. **Gap 3: two "paid" taps at once.** Two admins, or one admin on two phones, tick Lin paid at the same moment. Both requests read the row as unpaid, both write it (`upsert`), and both mirror a payment, under different `paidAt` ids: the ledger holds −$60 against a $30 charge and the check flags it daily. The same unconditional write can also wipe an e-transfer or card payment that lands in the same instant. *Unlikely but not rare*: a double tap on a slow connection does it. **Smallest fix:** `PATCH /api/players` writes with `replace` (the read's etag), as the inbox, card and credit paths already do. When it gets `undefined` it re-reads, and if the row is already paid it answers with that row and mirrors nothing. The self-report path takes the same change.
+
+3. **Gap 6: un-ticking a row paid with store credit.** Lin pays $30 with credit. The organiser un-ticks her ("mis-tap" or "that was wrong"). The payment is voided, so the ledger correctly says she owes $30. Two minutes later Lin opens Home, `refundStaleSpends` sees a credit spend with no live payment, and reads it as a payment that crashed half-way. It marks the row paid again with the same credit, quietly undoing the organiser. The ledger cannot follow: the payment it would write is keyed on the spend's time, which is the id already written and voided, so it 409s. The row says paid, the ledger says $30 owed, and the check flags it daily. The same shape applies to a credit-paid stringing job un-ticked on the bench (same code path, not separately tested). *Unlikely*. **Smallest fix (Grant's call on the meaning):** an un-tick of a row whose `paidVia` is `'credit'` (or a job whose `paidAt` equals its spend's time) writes `refund:<ref>:<n>` in the same request, so the credit goes back to Lin and nothing is left half-done.
+
+4. **Gap 4: deleting an account that owes for a finished stringing job.** Lin's racket is ready, priced $28, unpaid; Lin deletes her account. The purge deletes her `stringingJobs` but copies the $28 charge to `~anon` as the club's history. The reconcile then looks for the job, finds nothing, and reports `stale_charge $28` every day. There is no button that clears it: the repair from #953 restores charges, it does not retire them. Session lines are fine here because their rows are anonymized, not deleted. *Unlikely* (it needs an unpaid finished job at the moment of deletion). **Smallest fix:** in `runReconcile`, an open ref whose entries sit under `~anon` and whose row is gone counts as `unlisted`, like any line nobody on the roster is shown. The alternative is to void an unpaid stringing charge at purge, treating it as forgiven; that is a decision about money and Grant's to make.
+
+5. **Gap 1: hard-deleting a paid sign-up (the known suspect).** Confirmed: `mirrorRowDeleted` voids a session row's charge and cover but never its payment, exactly the shape #951 fixed for stringing. An admin purges a paid $30 row, and the ledger keeps a −$30 payment with no charge, which the check flags daily. `purgeAll` does it to every paid row of the session. `__tests__/ledger-mirror.test.ts:196` asserts the current behaviour as if it were intended. *Rare*: **no screen sends `purgeOne` or `purgeAll` today**; only a direct API call reaches it. **Smallest fix:** `mirrorRowDeleted` takes `paid` and returns early for a paid row, leaving its charge and payment both standing. That is the same rule `mirrorStringingDeleted` follows, for the same reason: the money was collected, so the bill it paid exists. An unpaid row's charge is still voided. Update that test to the new rule.
+
+6. **Gap 5: a stringing job created already finished and priced.** `POST /api/stringing/jobs` accepts `status: 'ready'` with a price and calls no mirror. A job made that way bills at Ready, with no charge in the ledger until someone next touches it; the check reports `missing_charge` meanwhile, and for a walk-up nothing reports it at all. *Not reachable today*: with `NEXT_PUBLIC_FLAG_STRINGING_INVOICE` on (production), a new job owes nothing until its invoice, and the invoice route mirrors. It reopens the day that flag goes off. **Smallest fix:** call `mirrorStringingChanged` after the create, with an empty "before" job.
+
+7. **Gap 7 (minor, a record rather than the ledger): `paid: true` uncovers a resplit row past the guard.** On a settled bill someone has paid, `PATCH { writtenOff: false }` on a resplit-covered row is refused (`paid_would_change`), but `PATCH { paid: true }` on the same row is accepted and clears the cover through the paid mutex. The row then reads "paid $0" instead of "covered". Nobody's amount moves and the ledger agrees with itself (checked on the mock store, not kept as a test). **Smallest fix:** apply the same resplit check when `paid: true` would clear a resplit cover.
+
+8. **Gap 8 (hardening): e-transfer allocation does not re-check the amount at write time.** Card pay refuses a line whose `owedAmount` moved since checkout; `applyAllocations` re-reads the row but checks only paid/covered. A line re-stamped between match and write (a re-settle in the same second) would be marked paid at the new amount for a transfer of the old one. Theoretical. **Smallest fix:** the card path's `owedAmount === amountCents` check, in `applyAllocations`.
+
+## What the reconcile cannot see
+
+The Ledger check compares the `member_owed` account against the rows Home shows, and nothing else. It cannot see:
+
+- **Club outlay.** Court costs, shuttle purchases and adjustments, string purchases and expenses are written to the ledger but never compared with the `birds` docs, string purchases or session snapshots. A lost shuttle adjustment would show in the money view and nowhere else.
+- **Store credit.** `member_credit` balances are not compared with anything. Stale spends self-heal on the member's next tap or balance read (`refundStaleSpends`), not in the check.
+- **What actually arrived.** A ledger payment is the row's `owedAmount`, not the e-transfer's or the Stripe charge's amount. An admin assigning a $30 transfer to a $45 line records $45 collected.
+- **An unpaid walk-up line with no charge.** A walk-up is on no roster, so its live line is never listed, and with no ledger entry there is nothing open to find.
+- **Mirror failures across restarts.** `mirrorFailures` is a per-process counter, and three scheduled deploys a day reset it.
+- **Payments before settle.** A row ticked paid on an unsettled session has nothing in the ledger until settle (by design: there is no amount yet).
+
+None of these is a gap in what the app charges people. They are the honest edges of what "the Ledger check is clean" proves.
+
+## Decisions
+
+- **Evidence as pinned-wrong tests, not failing tests** (2026-11-16). A test that asserted the right answer would turn `main` red until each fix landed; a test that pins today's wrong answer keeps the gate green, proves the gap with numbers, and fails, naming the fix, the moment the gap closes. The alternative, `it.fails`, would also stay green but hides what the app actually does.
+- **No fix in this PR**, by the brief: Grant approves each one first.
+
+## Shape
+
+| Piece | File |
+|---|---|
+| This audit | `docs/plans/money-audit.md` |
+| Evidence (gaps 1–6) | `__tests__/money-audit-gaps.test.ts` |
