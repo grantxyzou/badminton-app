@@ -90,6 +90,47 @@ The Ledger check compares the `member_owed` account against the rows Home shows,
 
 None of these is a gap in what the app charges people. They are the honest edges of what "the Ledger check is clean" proves.
 
+## Review (second pass, 2026-11-16)
+
+A second reader went over the audit with one question added: not only "is the money right?" but "could an organiser understand and reconcile it from what the app shows?" (Grant: "We need the money in the app to be accurate and transparent to understand"). Each point below was checked against the code.
+
+### Where the first pass holds
+
+- All six gaps reproduce, and the ranking is right. Gap 2 ("Edit the bill") is the one an organiser meets in ordinary use; the rest need a race, a deletion or an un-tick of a credit payment.
+- The four payment paths that already use the etag (`replace`) — e-transfer, card, credit, stringing — are the model the admin tap should follow. Nothing further was found in them.
+- The pinned-wrong tests are the right shape of evidence: the gate stays green and each test fails the moment its gap closes. The one hazard is a future fix that flips a test to match without reading its comment; the comments name the right answer for that reason.
+
+### Three money writes the table left out
+
+| Path | What it writes | Finding |
+|---|---|---|
+| **Backfill** `POST /api/admin/ledger-backfill` (`lib/ledgerBackfill.ts`) | Charges, payments, covers, court costs, shuttle purchases for history the mirror never saw | Idempotent by the derived ids, bounded, key-gated behind `migrate-groups`. **Safe.** One transparency flaw, below: it labels every stringing payment `manual`. |
+| **Repair** `POST /api/admin/ledger/repair` (`lib/ledgerRepair.ts`) | `charge:<job>:<n>` for a deleted paid job | Refuses a job that still exists and a job with nothing to restore; the id follows the mirror's own numbering so a second tap 409s. Club-scoped; `group-ledger-repair.test.ts`. **Safe.** |
+| **Admin credit grant** `POST /api/admin/credit` (`grantCredit`) | `grant:<random>` credit entry | A random id, so a double tap grants twice. Rate-limited (30/min per caller) and visible in the member's credit history, so the admin can see and undo it. **Safe enough**; a derived id would need an idempotency key from the client. |
+
+### Where the books are accurate but not transparent
+
+These are not bugs in what anyone is charged. They are places where the app's own records cannot answer a question an organiser reconciling the books would ask.
+
+1. **A stringing job does not remember HOW it was paid.** `Player` carries `paidVia` and `paymentId`; `StringingJob` carries only `paidAt` (and `cardPaymentId` for card). The live mirror writes the method into the ledger entry's `meta.via`, but the backfill cannot know it and writes `manual` for every job (`lib/ledgerBackfill.ts:93`), and the bench cannot show it either. So the money view's "collected by method" (`lib/ledgerView.ts`) is wrong for every backfilled stringing payment and for any job the mirror missed: an e-transfer for a restring reads as "Marked paid". **Fix:** additive `StringingJob.paidVia` / `paymentId`, written by the four payment paths (`applyAllocations`, `markJobCardPaid`, `markRowPaid`, the bench PATCH), read by the backfill and the bench. The payment id can stay keyed on `paidAt`, so no existing entry moves.
+
+2. **The ledger records the bill, never the money that arrived.** A `payment` entry is `−owedAmount` (`paymentEntry`), whatever the transfer or Stripe charge said. An organiser assigning a $30 e-transfer to a $45 line records $45 collected, and gap 2's row — paid $30, re-stamped $45 — has no field anywhere that says "$30 was received". The Interac amount exists only on the `payments` doc, which the row does not point back to for amount. **Fix:** additive `Player.paidAmount` (and the same on a job), stamped by every payment path with what was actually received; the ledger payment is that figure; a row whose `paidAmount < owedAmount` shows "paid $30 of $45" on the Payments card and in the member's balance. This is the one change that would let the app *show* gap 2 instead of only flagging it — and it is the better long-term fix for gap 2 than refusing "Edit the bill": the unsettle would then void the payment with the charge, the re-settle would re-mirror it at the amount paid, and the $15 difference would appear as still owed. Grant's call: the 409 is a one-line fix today; `paidAmount` is a small feature.
+
+3. **The money view shows two sources and does not say when they disagree.** `outstanding` is LIVE from the rows, `collected`/`income` are from the ledger, by design (`.claude/rules/money.md`). While the Ledger check is clean the two agree; while it is not, nothing on the page itself says which number to trust. `LedgerPage.tsx` already reads the last reconcile, so the hook is there. **Fix:** when the last check has mismatches or is stale, the ledger-sourced figures carry a visible "unchecked" mark naming the count, so a reader never takes `collected` as settled truth over a red check.
+
+4. **Mirror failures are forgotten on every restart.** `mirrorFailures` is a process counter; production restarts three times a day on the scheduled deploys. The daily check finds the gap eventually, but the only direct evidence that a write failed is a log line nobody reads. **Fix (low priority):** persist each failure as a `kind: 'mirrorFailure'` row on the club's payments settings doc (id, kind, when), surfaced on the Ledger check sheet as "N writes failed since the last clean check".
+
+5. **What a member sees is consistent.** Home's balance, "Pay with credit", the e-transfer candidates and Profile's "what you paid" all read the ROWS through `computeOwed` / `loadOwedInputs`, never the ledger, so a member can never see a number the organiser's row does not. That is the right design, and it is why every gap above is the ORGANISER's problem to notice, not the member's.
+
+### Recommended order, revised
+
+1. **Gap 2**: ship the 409 on "Edit the bill" now (one line, no schema), and schedule `paidAmount` (transparency item 2) as the real fix.
+2. **Gap 3**: `replace` in the admin tap.
+3. **Transparency item 1** (`StringingJob.paidVia`): small, additive, and it makes the money view's method breakdown true.
+4. **Gap 5** (`mirrorRowDeleted`), with the test in `ledger-mirror.test.ts:196` updated.
+5. **Transparency item 3**: the "unchecked" mark on the money view.
+6. Gaps 4 and 6 (need Grant's decision on the meaning), then items 4 and the minor gaps 7–8.
+
 ## Decisions
 
 - **Evidence as pinned-wrong tests, not failing tests** (2026-11-16). A test that asserted the right answer would turn `main` red until each fix landed; a test that pins today's wrong answer keeps the gate green, proves the gap with numbers, and fails, naming the fix, the moment the gap closes. The alternative, `it.fails`, would also stay green but hides what the app actually does.
