@@ -42,7 +42,7 @@ Merge to `main`. The next scheduled run of `deploy-next.yml` (three a day) ships
 suite and the build before deploying, so a failing test cannot reach production.
 
 There is no promotion step and no tag to cut. `bpm-stable-v*` tags exist in history and
-are a **historical record only**; the last one (`bpm-stable-v1.8`, `b7c77e0`) points at a
+are a **historical record only**; the last one (`bpm-stable-v1.8`, commit `1f46df8`) points at a
 build that is many commits behind and at an app service that no longer exists. Do not
 dispatch anything against them.
 
@@ -53,7 +53,11 @@ takes a branch or tag NAME, never a commit SHA (this page said otherwise until
 2026-11-05). Two ways that do:
 
 1. **Re-run the good commit's own deploy** (fastest; GitHub allows a re-run for 30 days).
-   A re-run builds and deploys exactly the commit that run was for:
+   A re-run builds and deploys exactly the commit that run was for — **but only a run
+   started from "Run workflow"**. A re-run of a SCHEDULED run is still a `schedule` event,
+   so its `decide` job compares the live build with the older commit, lists no changed
+   files (the older commit is behind the live one) and skips the deploy. For a commit
+   that only ever shipped on the schedule, use way 2:
 
    ```
    gh run list --workflow=deploy-next.yml --branch main --limit 20

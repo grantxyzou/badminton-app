@@ -3,9 +3,10 @@
 Your personal operating manual. Not agent instructions (that's `CLAUDE.md`),
 not strategy (that's `ROADMAP.md`). This is *your* reference — maintain it.
 
-Last verified against the repo: 2026-10-24. Every claim below was checked that
+Last verified against the repo: 2026-11-15. Every claim below was checked that
 day; the ones that could only be checked in the Azure portal are marked so.
-The three routines were not re-read on 2026-10-24; their own dates stand.
+The three routines were not re-read on 2026-11-15 (the audit session had no
+way to list them); their own dates stand.
 
 ---
 
@@ -96,8 +97,8 @@ initiative, so the next lock edit is a strategy decision for you, not a tidy-up.
 
 ## Equipment catalog
 
-`scripts/data/equipment-catalog.json` holds **203 items** (rackets and strings)
-as of 2026-10-07, up from the ~15 hand-curated rackets this section used to
+`scripts/data/equipment-catalog.json` holds **199 items** (153 rackets, 46
+strings) as of 2026-11-15, up from the ~15 hand-curated rackets this section used to
 describe. `lib/catalogSeed.ts` refreshes seeded rows in Cosmos on first read
 (it used to only fill gaps; see "Catalog seeding REFRESHES" in `CLAUDE.md`).
 Ways to grow it, lowest legal risk first:
@@ -119,8 +120,10 @@ Things not derivable from the codebase — provide when relevant:
 - bpm-marketing: branding, what the intro should say, design-system scope.
 - **Anything that lives only in the Azure portal.** The repo cannot see the
   Cosmos firewall, the backup mode, the key-rotation history, the certificate
-  expiry or the real partition keys of the five hand-made containers. The
-  ten-minute audit in `docs/plans/infra-baseline.md` is how those become facts.
+  expiry or the real partition keys of the five hand-made containers. All but
+  the key-rotation history have been read since (2026-10-14 and 2026-11-10,
+  `docs/azure.md` §9); a fresh read goes there too. The ten-minute audit in
+  `docs/plans/infra-baseline.md` is how those become facts.
 
 ## Learning — the infrastructure under the app
 
@@ -175,7 +178,7 @@ change; Phase 3's onboarding screens, which this line used to name, shipped
 | Need | Command |
 |---|---|
 | See repo topology | `git log --graph --oneline --decorate --all -20` |
-| Roll back production | `gh run rerun <run-id>` of the good commit's deploy (within 30 days), else dispatch on a throwaway branch at that commit — runbook: the `deploy-promotion` skill |
+| Roll back production | `gh run rerun <run-id>` of the good commit's deploy if it was a "Run workflow" run (within 30 days; a re-run of a scheduled run skips), else dispatch on a throwaway branch at that commit — runbook: the `deploy-promotion` skill |
 | Confirm what is live | `node scripts/smoke-prod.mjs --sha <sha>` (runs automatically after every deploy) |
 | Local dev | `npm run dev` → http://localhost:3000/bpm (mock store when `COSMOS_CONNECTION_STRING` is unset) |
 | Tests / lint / types | `npm test` · `npm run lint` · `npm run typecheck` |
