@@ -32,7 +32,7 @@ const LABEL_H = Math.ceil(LABEL_PX * 1.2);
 const NOMINAL_W = 300;
 /** The selected label's pill padding, each side, in px (--space-2). */
 const PILL_PAD = 6;
-/** The corner hint's distance from the plot's edges, in px (--space-3 = 8). */
+/** Room kept clear around the zoom's way back and caption, in px (--space-3 = 8). */
 const HINT_INSET = 8;
 /** How far the selected ring reaches past its dot, in px (the box-shadow below). */
 const SELECTED_RING_PX = 5;
@@ -99,7 +99,6 @@ export default function StringMap({
 }) {
   const t = useTranslations('home.stringing.offer');
   const plotRef = useRef<HTMLDivElement>(null);
-  const hintRef = useRef<HTMLSpanElement>(null);
   const backRef = useRef<HTMLButtonElement>(null);
   const captionRef = useRef<HTMLParagraphElement>(null);
   /** Each layer's dot buttons, for focus and the arrow keys. */
@@ -107,7 +106,6 @@ export default function StringMap({
   const [measured, setMeasured] = useState(0);
   const width = measured || NOMINAL_W;
   const [font, setFont] = useState<string | null>(null);
-  const [hint, setHint] = useState<Rect | null>(null);
   const [zoomChrome, setZoomChrome] = useState<Rect[]>([]);
   /** The cluster the plot is zoomed into, by its point key. */
   const [zoom, setZoom] = useState<string | null>(null);
@@ -129,13 +127,6 @@ export default function StringMap({
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-
-  // The corner hint is space no label may cover.
-  useLayoutEffect(() => {
-    const el = hintRef.current;
-    if (!el) { setHint(null); return; }
-    setHint({ x: width - el.offsetWidth - HINT_INSET, y: 0, w: el.offsetWidth + HINT_INSET, h: el.offsetHeight + HINT_INSET });
-  }, [width, font]);
 
   // Inside a zoom, so are the way back (top left) and the caption (bottom).
   useLayoutEffect(() => {
@@ -223,9 +214,9 @@ export default function StringMap({
   }
 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- placeFor reads font, width and selected, all listed
-  const allLabels = useMemo(() => placeFor(allMarks, hint ? [hint] : []), [allMarks, font, width, hint, selected]);
+  const allLabels = useMemo(() => placeFor(allMarks, []), [allMarks, font, width, selected]);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- as above
-  const zoomLabels = useMemo(() => placeFor(zoomMarks, [...(hint ? [hint] : []), ...zoomChrome]), [zoomMarks, font, width, hint, zoomChrome, selected]);
+  const zoomLabels = useMemo(() => placeFor(zoomMarks, zoomChrome), [zoomMarks, font, width, zoomChrome, selected]);
 
   function reducedMotion() {
     return typeof window === 'undefined' || typeof window.matchMedia !== 'function' || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -399,11 +390,6 @@ export default function StringMap({
         // 2026-10-28), so the dashed cross is the only frame it has.
         style={{ gridRow: 1, gridColumn: 2, position: 'relative' }}
       >
-        {/* Where to start, in the corner nothing is drawn over. */}
-        <span ref={hintRef} aria-hidden="true" className="fs-2xs" style={{ position: 'absolute', top: 'var(--space-2)', right: 'var(--space-3)', color: 'var(--text-muted)', pointerEvents: 'none' }}>
-          {t('mapHint')}
-        </span>
-
         {/* The whole map. It stays mounted under a zoom and steps back, so
             the strings visibly come out of the dot that held them. */}
         <div

@@ -66,7 +66,9 @@ describe('the map', () => {
     expect(peek.textContent).toContain('Tap a dot on the map to see it here');
     expect(within(peek).getByRole('button', { name: 'Show every string as a list' })).toBeDefined();
     // The card holds only the map: no list switch, the lesson behind a button.
-    expect(screen.getByText('Map view')).toBeDefined();
+    // The map's one hint is the header's subtitle (the canvas, Idea B frame 1).
+    expect(screen.getByText('Tap a dot to see the string')).toBeDefined();
+    expect(screen.queryByText('Tap a string to see more')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Show as a list' })).toBeNull();
     expect(screen.getByRole('button', { name: 'How to choose a string' })).toBeDefined();
   });
@@ -426,7 +428,7 @@ describe('failures and unknowns (design-system audit, 2026-10-12)', () => {
     wrap();
     await screen.findByText('BG80');
     expect(screen.getByText(O.subtitle)).toBeDefined();
-    expect(screen.queryByText('Map view')).toBeNull();
+    expect(screen.queryByText('Tap a dot to see the string')).toBeNull();
   });
 });
 

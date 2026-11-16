@@ -424,7 +424,7 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
         compact
         icon="storefront"
         title={t('title')}
-        subtitle={mapOn ? t('viewNameMap') : t('subtitle')}
+        subtitle={mapOn ? t('mapSubtitle') : t('subtitle')}
         action={(
           <button
             type="button"
