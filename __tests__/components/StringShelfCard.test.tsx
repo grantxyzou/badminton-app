@@ -199,6 +199,7 @@ describe('review fixes (docs/plans/bench-redesign.md)', () => {
     const full = Array.from({ length: MAX_OFFERED }, (_, i) => `String ${i + 1}`);
     const patches = respond({ strings: { strings: full, prices: {} } });
     wrap();
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a string' }));
     const box = (await screen.findByRole('textbox', { name: 'Add a string' })) as HTMLInputElement;
     fireEvent.change(box, { target: { value: 'One more' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
@@ -609,5 +610,89 @@ describe('purchases and Remove still act at once', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Open BG80 Power-White' }));
     fireEvent.click(screen.getByRole('button', { name: /Log a purchase/ }));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Log purchase' })).toBeDefined());
+  });
+});
+
+describe('the inventory list (docs/plans/string-inventory-list.md, canvas v3)', () => {
+  // Twelve strings: a LARGE shelf, so it gets labels, a search, filters and folds.
+  const twelve = ['Exbolt 63', 'BG80', 'BG65', 'Aerobite', 'Nanogy 95', 'Nanogy 98', 'Skyarc', 'Exbolt 65', 'Exbolt 68', 'BG66 Force', 'Li-Ning N61', 'House string'];
+  const stocked = (label: string, sets: number, over: Record<string, unknown> = {}) =>
+    line(label, { purchases: 1, purchasedMetres: sets * 10, remainingMetres: sets * 10, remainingSets: sets, ...over });
+  const big = () => respond({
+    strings: { strings: twelve, prices: {} },
+    stock: {
+      lines: [
+        stocked('Exbolt 63', 2),
+        stocked('Aerobite', 0, { overdrawnSets: 3 }),
+        stocked('BG65', 0),
+        ...twelve.filter((x) => !['Exbolt 63', 'Aerobite', 'BG65', 'House string'].includes(x)).map((x) => stocked(x, 12)),
+        line('House string'),
+      ],
+      unmatched: [],
+    },
+  });
+
+  it('puts what needs someone on top, open, and folds the strings that are fine', async () => {
+    big();
+    wrap();
+    expect(await screen.findByText('Low on stock · 1')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Open Exbolt 63' })).toBeDefined();
+    expect(screen.getByText('Out of stock · 1')).toBeDefined();
+    expect(screen.getByText('Mismatched · 1')).toBeDefined();
+    const shelfFold = screen.getByRole('button', { name: /On the shelf · 8/ });
+    expect(shelfFold.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByRole('button', { name: 'Open BG80' })).toBeNull();
+    fireEvent.click(shelfFold);
+    expect(screen.getByRole('button', { name: 'Open BG80' })).toBeDefined();
+    expect(screen.getByRole('button', { name: /No stock logged · 1/ }).getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('a search opens every group and finds a folded string', async () => {
+    big();
+    wrap();
+    fireEvent.change(await screen.findByRole('searchbox', { name: 'Find a string' }), { target: { value: 'skya' } });
+    expect(screen.getByRole('button', { name: 'Open Skyarc' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Open Exbolt 63' })).toBeNull();
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Find a string' }), { target: { value: 'zzz' } });
+    expect(screen.getByText('No string matches “zzz”.')).toBeDefined();
+  });
+
+  it('filters by status from one row of chips, and a second tap clears it', async () => {
+    big();
+    wrap();
+    const low = await screen.findByRole('button', { name: 'Low on stock 1' });
+    fireEvent.click(low);
+    expect(low.getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: 'Open Exbolt 63' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Open Aerobite' })).toBeNull();
+    fireEvent.click(low);
+    expect(screen.getByRole('button', { name: 'Open Aerobite' })).toBeDefined();
+  });
+
+  it('a small shelf is just the list: no labels, no search, nothing folded', async () => {
+    respond();
+    wrap();
+    expect(await screen.findByRole('button', { name: 'Open BG80 Power-White' })).toBeDefined();
+    expect(screen.queryByRole('searchbox')).toBeNull();
+    expect(screen.queryByText(/On the shelf/)).toBeNull();
+  });
+
+  it('the stocktake is the header’s one filled button; the + beside it opens the add field', async () => {
+    respond();
+    wrap();
+    expect(await screen.findByRole('button', { name: /Count/ })).toBeDefined();
+    expect(screen.queryByRole('textbox', { name: 'Add a string' })).toBeNull();
+    const plus = screen.getByRole('button', { name: 'Add a string' });
+    fireEvent.click(plus);
+    expect(plus.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByRole('textbox', { name: 'Add a string' })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    expect(screen.queryByRole('textbox', { name: 'Add a string' })).toBeNull();
+  });
+
+  it('an empty shelf shows the add field without the +', async () => {
+    respond({ strings: { strings: [], prices: {} }, stock: { lines: [], unmatched: [] } });
+    wrap();
+    expect(await screen.findByRole('textbox', { name: 'Add a string' })).toBeDefined();
   });
 });

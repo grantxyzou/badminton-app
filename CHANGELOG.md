@@ -8,6 +8,16 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Inventory: the string shelf as a list (2026-11-16)
+
+- **"Strings, stock, prices & holes" is now Inventory, and the strings are one plain list** with each string's packet, what is left and its price, rather than a tile per string.
+- **What needs you comes first**: Low on stock, Out of stock and Mismatched sit on top, open, under their own labels. The strings that are fine ("On the shelf") and the ones with no stock logged start folded; tap a label to open it.
+- **A shelf of more than 8 strings gets a search and one row of filters** (each status, each brand, not in the catalog). They stay at the top while you scroll, and a search opens every group.
+- **Count is the one button in the strings header**, with the last count's date beside the title. The + beside it opens the add field.
+- **Other prices is one row above the list** that opens a sheet with the own-string price and the note.
+- **Hole counts left Inventory.** A stringing job's "Add a hole count" still opens the count for that racket, on its own page.
+- **Each string on a stringer's shelf list shows its packet too**, the same picture players see.
+
 ## Count the string shelf by scanning barcodes (2026-11-16)
 
 - **The stocktake scans barcodes now, instead of reading a photo.** Point the camera at each packet and reel: a packet counts itself, and a reel asks how full it is. The first time a barcode is new, you tell the app which string, which colour, and packet or reel; after that it knows.

@@ -134,7 +134,7 @@ describe('the Bench, for the people who string', () => {
     stubFetch();
     wrap(<StringingTab isAdmin />);
     fireEvent.click(await screen.findByRole('button', { name: R.bench }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Strings, stock, prices & holes' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Inventory' }));
     await screen.findByText('Other prices');
     await waitFor(() => expect(screen.queryByRole('button', { name: R.racket })).toBeNull());
     expect(screen.queryByRole('heading', { name: enMessages.nav.stringing, level: 1 })).toBeNull();

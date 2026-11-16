@@ -19,7 +19,7 @@ import { stringPackSrc } from '@/lib/stringPackSrc';
  */
 export default function StringPackImage({ catalogId, size, coil }: {
   catalogId: string | null | undefined;
-  size: 'row' | 'hero' | 'line';
+  size: 'row' | 'hero' | 'line' | 'list';
   coil?: string | null;
 }) {
   const src = stringPackSrc(catalogId);
@@ -54,8 +54,25 @@ export default function StringPackImage({ catalogId, size, coil }: {
         // even started (Grant: "a split second to load out the string asset").
         // A list row asks at low priority so it never competes with a screen.
         // eslint-disable-next-line @next/next/no-img-element -- a same-origin pre-rendered WebP; next/image adds nothing here.
-        <img src={src} alt="" width={240} height={336} decoding="async" fetchPriority={size === 'row' ? 'low' : 'auto'} className={cls} />
+        <img src={src} alt="" width={240} height={336} decoding="async" fetchPriority={size === 'row' || size === 'list' ? 'low' : 'auto'} className={cls} />
       )}
     </>
   );
+}
+
+/**
+ * A shelf list's leading packet (Grant, 2026-11-16: "add the packet render to
+ * strings inventory list"): the string's packet when its catalog link has a
+ * picture; otherwise, when another row in the same list shows one
+ * (`reserve`), an empty box the same size so every name still lines up; and
+ * nothing at all on a shelf with no pictures.
+ */
+export function ShelfPack({ catalogId, reserve, size = 'row' }: { catalogId: string | null | undefined; reserve: boolean; size?: 'row' | 'list' }) {
+  if (stringPackSrc(catalogId)) return <StringPackImage catalogId={catalogId} size={size} />;
+  return reserve ? <span className={`string-pack-img string-pack-${size}`} aria-hidden="true" /> : null;
+}
+
+/** Whether any of these shelf strings has a packet picture: the lists reserve the space only then. */
+export function shelfHasPacks(labels: readonly string[], links: Record<string, string | undefined>): boolean {
+  return labels.some((label) => !!stringPackSrc(links[label]));
 }

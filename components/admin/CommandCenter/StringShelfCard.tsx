@@ -1,8 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import ListRow from '@/components/primitives/ListRow';
@@ -21,6 +20,11 @@ import StringShelfSheet, { type ShelfEdits, type ShelfSheetMode } from './String
 import StringPurchaseSheet from './StringPurchaseSheet';
 import { ColourDots } from '@/components/stringing/StringColours';
 import StocktakeSheet from '@/components/stringing/StocktakeSheet';
+import { ShelfPack, shelfHasPacks } from '@/components/stringing/StringPackImage';
+import {
+  FOLDED_BY_DEFAULT, LARGE_SHELF, NEEDS_YOU, filterId, shelfChips, shelfGroups, shelfStatus,
+  type ShelfChip, type ShelfEntry, type ShelfFilter, type ShelfStatus,
+} from '@/lib/shelfList';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -72,7 +76,53 @@ function shelfOf(d: Record<string, unknown>): Shelf {
   };
 }
 
-const money = (cents: number) => `$${(cents / 100).toFixed(2).replace(/\.00$/, '')}`;
+/**
+ * Keeps the search and filters stuck just under the page's top bar while the
+ * list scrolls: the bar condenses on scroll, so its bottom edge is MEASURED
+ * (on scroll, once a frame) rather than guessed, and `data-stuck` gives the
+ * band the bar's frosted ground only while it is stuck — at rest it is part of
+ * the card. The bar is the one on screen (a kept tab's bar sits under
+ * `hidden`).
+ */
+function useStickUnderBar(ref: React.RefObject<HTMLDivElement | null>, on: boolean) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!on || !el) return;
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      const bar = Array.from(document.querySelectorAll<HTMLElement>('.bpm-topbar')).find((b) => b.closest('[hidden]') === null);
+      const top = bar ? Math.max(0, Math.round(bar.getBoundingClientRect().bottom)) : 0;
+      el.style.setProperty('--shelf-tools-top', `${top}px`);
+      el.toggleAttribute('data-stuck', window.scrollY > 0 && el.getBoundingClientRect().top <= top + 1);
+    };
+    const schedule = () => { if (!frame) frame = requestAnimationFrame(measure); };
+    measure();
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+    };
+  }, [ref, on]);
+}
+
+/** Each group's label and its filter chip's label. */
+const GROUP_LABEL: Record<ShelfStatus, string> = {
+  low: 'shelf.groupLow', out: 'shelf.groupOut', mismatched: 'shelf.groupMismatched', shelf: 'shelf.groupShelf', none: 'shelf.groupNone',
+};
+const GROUP_CHIP: Record<ShelfStatus, string> = {
+  low: 'shelf.chipLow', out: 'shelf.chipOut', mismatched: 'shelf.chipMismatched', shelf: 'shelf.groupShelf', none: 'shelf.groupNone',
+};
+
+type Line = StringStockSummary['lines'][number];
+interface Row extends ShelfEntry {
+  line: Line | null;
+  hasStock: boolean;
+  over: number;
+  runway: string | null;
+}
 
 /**
  * The strings the club offers, with what each costs a player and what is left
@@ -84,6 +134,14 @@ const money = (cents: number) => `$${(cents / 100).toFixed(2).replace(/\.00$/, '
  * Two reads, one answer: the list and prices from `/api/stringing/strings`,
  * the counted stock from `/api/stringing/stock`. Either failing tints the card
  * and hides its controls, so nothing is written against half a picture.
+ *
+ * Drawn as ONE card holding a plain list (docs/plans/string-inventory-list.md,
+ * canvas v3): what needs someone on top under its own label, the strings that
+ * are fine folded, a search and filters for a large shelf (`lib/shelfList.ts`),
+ * and the stocktake as the header's one filled button. The + beside it is a
+ * quiet icon that opens the add field (the top bar's right corner belongs to
+ * the app's bell, language and theme buttons); an empty shelf shows the field
+ * without it.
  */
 export default function StringShelfCard() {
   const t = useTranslations('admin.stringing');
@@ -103,6 +161,14 @@ export default function StringShelfCard() {
   // "The shelf is full" — said, rather than the typed name silently vanishing.
   const [full, setFull] = useState(false);
   const [renameError, setRenameError] = useState<'name_taken' | 'invalid_name' | null>(null);
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<ShelfFilter>({ kind: 'all' });
+  // Folded groups the admin opened by hand.
+  const [opened, setOpened] = useState<ReadonlySet<ShelfStatus>>(() => new Set());
+  const [addOpen, setAddOpen] = useState(false);
+  const toolsRef = useRef<HTMLDivElement>(null);
+  const large = (shelf?.strings.length ?? 0) > LARGE_SHELF;
+  useStickUnderBar(toolsRef, large && shelf !== null && stock !== null);
 
   const loadStock = useCallback(async () => {
     const res = await fetch(`${BASE}/api/stringing/stock`, { cache: 'no-store' });
@@ -314,11 +380,6 @@ export default function StringShelfCard() {
   const offShelf = (stock?.lines ?? []).filter((l) => !offeredKeys.has(labelKey(l.label)) && l.purchases > 0);
   const jobLabels = stock?.unmatched ?? [];
   const lastCountedAt = (stock?.lines ?? []).reduce<string | null>((latest, l) => (l.lastCount && (!latest || l.lastCount.at > latest) ? l.lastCount.at : latest), null);
-  const totals = stock?.totals;
-  const subtitle =
-    totals && (totals.usedSets > 0 || totals.purchasedCostCents > 0)
-      ? t('shelf.subtitle', { value: money(totals.remainingValueCents), used: totals.usedSets })
-      : t('shelf.subtitleEmpty');
   const suggestions = ready ? matches(catalog.items, draft.trim()) : [];
 
   const openSheet = (mode: ShelfSheetMode, label: string) => {
@@ -329,138 +390,255 @@ export default function StringShelfCard() {
   const sheetLabel = sheet?.label ?? '';
   const sheetLine = sheet ? (sheet.mode === 'jobLabel' ? null : lineFor(sheetLabel)) : null;
 
+  const narrowed = query.trim() !== '' || filter.kind !== 'all';
+  const showAdd = addOpen || (ready && shelf.strings.length === 0);
+  const withPacks = shelf ? shelfHasPacks(shelf.strings, shelf.links) : false;
+  const folded = new Set([...FOLDED_BY_DEFAULT].filter((st) => !opened.has(st)));
+  const entries: Row[] = (shelf?.strings ?? []).map((label) => {
+    const line = lineFor(label);
+    // Known stock: bought, or counted in a stocktake (docs/plans/string-photo-stocktake.md).
+    const hasStock = !!line && (line.purchases > 0 || !!line.lastCount);
+    // More strung than was ever logged: said rather than hidden behind "None
+    // left" (string-stock-audit-fixes).
+    const over = hasStock ? line.overdrawnSets ?? 0 : 0;
+    // How long it lasts at the recent rate (docs/plans/string-usage-rate.md).
+    const reorder = hasStock ? line.reorder ?? null : null;
+    const weeks = line?.weeksLeft != null ? Math.max(1, Math.round(line.weeksLeft)) : null;
+    const runway = !hasStock ? null
+      : reorder === 'now' ? t('shelf.runway.now')
+      : reorder === 'soon' && weeks !== null ? t('shelf.runway.soon', { weeks })
+      : reorder === 'ok' && weeks !== null ? t('shelf.runway.ok', { weeks })
+      : line.setsPerWeek === 0 ? t('shelf.runway.idle')
+      : null;
+    const linked = shelf!.links[label];
+    // The filter's brand: the linked catalog row's maker; a string with no link
+    // is "not in the catalog". A link whose row has not loaded yet has no brand.
+    const brand = linked ? catalog.items.find((i) => i.id === linked)?.brand ?? null : null;
+    const status = shelfStatus({
+      hasStock,
+      remainingSets: line?.remainingSets ?? 0,
+      overdrawnSets: over,
+      low: hasStock && line.remainingSets <= LOW_STOCK_SETS,
+      reorder,
+    });
+    return { label, brand, status, line, hasStock, over, runway };
+  });
+  // A filter whose chip is gone (its last string moved) falls back to All.
+  const chips = large ? shelfChips(entries) : [];
+  const activeFilter = chips.some((c) => c.id === filterId(filter)) ? filter : { kind: 'all' as const };
+  const groups = shelfGroups(entries, large ? { query, filter: activeFilter, folded } : {});
+
+  const chipLabel = (c: ShelfChip) =>
+    c.filter.kind === 'all' ? t('shelf.chipAll', { count: c.count })
+      : c.filter.kind === 'brand' ? t('shelf.chipBrand', { brand: c.filter.brand, count: c.count })
+      : c.filter.kind === 'other' ? t('shelf.chipOther', { count: c.count })
+      : t(GROUP_CHIP[c.filter.status], { count: c.count });
+
+  const renderRow = (e: Row) => {
+    const { label, line, hasStock, over, runway } = e;
+    const warn = NEEDS_YOU.has(e.status);
+    const price = shelf!.prices[label];
+    return (
+      <li key={label}>
+        <button type="button" className="shelf-row" onClick={() => openSheet('offered', label)} aria-label={t('shelf.openRow', { name: label })}>
+          <ShelfPack catalogId={shelf!.links[label]} reserve={withPacks} size="list" />
+          <span className="shelf-row-body">
+            <span className="shelf-row-name">{label}</span>
+            <span className={warn ? 'shelf-row-line shelf-row-line--warn' : 'shelf-row-line'}>
+              <span>
+                {hasStock && line ? t('shelf.setsLeft', { count: line.remainingSets }) : t('shelf.noStock')}
+                {over > 0 && ` · ${t('shelf.overdrawn', { count: over })}`}
+                {runway && ` · ${runway}`}
+              </span>
+              {(shelf!.colours[label]?.length ?? 0) > 0 && <ColourDots ids={shelf!.colours[label]} customs={shelf!.customColours} />}
+            </span>
+          </span>
+          {/* A figure in the data face; the absence of one in plain muted text,
+              so "No price" never reads as a number. */}
+          {Object.prototype.hasOwnProperty.call(shelf!.prices, label)
+            ? <span className="shelf-row-price">{formatServicePrice(price ?? null) ?? t('strings.priceAsk')}</span>
+            : <span className="shelf-row-noprice">{t('shelf.noPrice')}</span>}
+          <span className="material-icons icon-sm" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>chevron_right</span>
+        </button>
+      </li>
+    );
+  };
+
   return (
     // A flex gap, not `space-y`: the list below carries its own reset, and an
     // inline margin on a child silently beats `space-y`'s margin-top.
     <div className="glass-card p-5 flex flex-col gap-3">
-      <CardHeader icon="inventory_2" title={t('shelf.title')} subtitle={subtitle} />
-
-      {saveError && <ErrorState message={t('strings.saveError')} />}
-
-      {ready && shelf.strings.length === 0 && <EmptyState icon="format_list_bulleted">{t('shelf.empty')}</EmptyState>}
-
-      {ready && shelf.strings.length > 0 && (
-        <ul style={{ listStyle: 'none', padding: 0 }} className="flex flex-col gap-2">
-          {shelf.strings.map((label) => {
-            const line = lineFor(label);
-            // Known stock: bought, or counted in a stocktake (docs/plans/string-photo-stocktake.md).
-            const hasStock = !!line && (line.purchases > 0 || !!line.lastCount);
-            const low = hasStock && line.remainingSets <= LOW_STOCK_SETS;
-            // More strung than was ever logged: a reel nobody logged, said
-            // rather than hidden behind "None left" (string-stock-audit-fixes).
-            const over = hasStock ? line.overdrawnSets ?? 0 : 0;
-            // How long it lasts at the recent rate (docs/plans/string-usage-rate.md):
-            // the shuttles' two lines, said beside the count.
-            const reorder = hasStock ? line.reorder ?? null : null;
-            const weeks = line?.weeksLeft != null ? Math.max(1, Math.round(line.weeksLeft)) : null;
-            const runway = !hasStock ? null
-              : reorder === 'now' ? t('shelf.runway.now')
-              : reorder === 'soon' && weeks !== null ? t('shelf.runway.soon', { weeks })
-              : reorder === 'ok' && weeks !== null ? t('shelf.runway.ok', { weeks })
-              : line.setsPerWeek === 0 ? t('shelf.runway.idle')
-              : null;
-            const warn = low || over > 0 || reorder === 'now' || reorder === 'soon';
-            const price = shelf.prices[label];
-            return (
-              <li key={label}>
-                <ListRow
-                  onClick={() => openSheet('offered', label)}
-                  ariaLabel={t('shelf.openRow', { name: label })}
-                  title={<span className="fs-md" style={{ color: 'var(--text-primary)', overflowWrap: 'anywhere' }}>{label}</span>}
-                  subtitle={
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)', color: warn ? 'var(--sev-warn)' : undefined }}>
-                      {warn && <span className="material-icons icon-xs" aria-hidden="true">warning</span>}
-                      {hasStock ? t('shelf.setsLeft', { count: line.remainingSets }) : t('shelf.noStock')}
-                      {over > 0 && ` · ${t('shelf.overdrawn', { count: over })}`}
-                      {runway && ` · ${runway}`}
-                      {(shelf.colours[label]?.length ?? 0) > 0 && (
-                        <span style={{ marginLeft: 'var(--space-2)', display: 'inline-flex' }}>
-                          <ColourDots ids={shelf.colours[label]} customs={shelf.customColours} />
-                        </span>
-                      )}
-                    </span>
-                  }
-                  trailing={
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)', flex: '0 0 auto' }}>
-                      {/* A figure in the data face; the absence of one in plain
-                          muted text, so "No price" never reads as a number. */}
-                      {Object.prototype.hasOwnProperty.call(shelf.prices, label) ? (
-                        <span className="fs-md" style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text-primary)' }}>
-                          {formatServicePrice(price ?? null) ?? t('strings.priceAsk')}
-                        </span>
-                      ) : (
-                        <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{t('shelf.noPrice')}</span>
-                      )}
-                      <span className="material-icons icon-sm" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>chevron_right</span>
-                    </span>
-                  }
-                />
-              </li>
-            );
-          })}
-        </ul>
-      )}
-
-      {/* STOCKTAKE — count what is really on the shelf; the count wins
-          (docs/plans/string-photo-stocktake.md). */}
-      {ready && shelf.strings.length > 0 && (
-        <div className="bpm-inner-row">
-          <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-            <span className="fs-md" style={{ color: 'var(--text-primary)' }}>{t('shelf.stocktake')}</span>
-            <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>
-              {lastCountedAt ? t('shelf.lastCounted', { date: new Date(lastCountedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'America/Vancouver' }) }) : t('shelf.neverCounted')}
+      {/* The header: name and when the shelf was last counted, then the +
+          and the stocktake. Drawn here rather than through CardHeader, which
+          top-aligns a trailing action: these two are a button's height and
+          sit centred on the title. */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', minHeight: 44 }}>
+        <span className="material-icons" aria-hidden="true" style={{ fontSize: 'var(--fs-stat-lg)', color: 'var(--accent)', flex: '0 0 auto' }}>inventory_2</span>
+        <h3 className="bpm-h3 m-0" style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)', whiteSpace: 'nowrap', overflow: 'hidden' }}>
+          <span>{t('shelf.title')}</span>
+          {lastCountedAt && (
+            <span className="fs-sm" style={{ fontFamily: 'var(--font-sans)', fontWeight: 400, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <span className="sr-only">{t('shelf.lastCountedSr')} </span>
+              {new Date(lastCountedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: 'America/Vancouver' })}
             </span>
-          </span>
-          <button type="button" className="cc-btn cc-btn-secondary" onClick={() => setCounting(true)}>
-            <span className="material-icons icon-sm" aria-hidden="true">barcode_scanner</span>
-            {t('shelf.countNow')}
-          </button>
-        </div>
-      )}
+          )}
+        </h3>
+        {ready && shelf.strings.length > 0 && (
+          <>
+            <button
+              type="button"
+              className="shelf-add-btn"
+              aria-label={t('shelf.addLabel')}
+              aria-expanded={addOpen}
+              onClick={() => setAddOpen((v) => !v)}
+            >
+              <span className="material-icons icon-md" aria-hidden="true">add</span>
+            </button>
+            <button type="button" className="cc-btn cc-btn-primary" onClick={() => setCounting(true)} style={{ flex: '0 0 auto', whiteSpace: 'nowrap' }}>
+              <span className="material-icons icon-sm" aria-hidden="true">barcode_scanner</span>
+              {t('shelf.countNow')}
+            </button>
+          </>
+        )}
+      </div>
       {counting && (
         <StocktakeSheet onClose={() => setCounting(false)} onSaved={() => void loadStock().catch(() => setLoadError(true))} />
       )}
 
-      {/* ADD — catalog matches for what is typed; Enter adds it as typed. */}
-      {suggestions.length > 0 && (
-        <div role="group" aria-label={t('strings.matches')} className="flex flex-col gap-2">
-          {suggestions.map((i) => (
-            <ListRow
-              key={i.id}
-              disabled={busy || !online}
-              onClick={() => add(catalogLabel(i), i)}
-              title={<span className="fs-md" style={{ color: 'var(--text-primary)' }}>{catalogLabel(i)}</span>}
-              subtitle={typeof i.attributes?.gaugeMm === 'number' ? `${i.attributes.gaugeMm.toFixed(2)}mm` : undefined}
+      {saveError && <ErrorState message={t('strings.saveError')} />}
+
+      {/* ADD — opened from the page's +; catalog matches for what is typed,
+          Enter adds it as typed. */}
+      {showAdd && (
+        <div className="flex flex-col gap-2">
+          <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+            <input
+              type="text"
+              value={draft}
+              onChange={(e) => {
+                setDraft(e.target.value);
+                setFull(false);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  add();
+                }
+              }}
+              placeholder={t('strings.placeholder')}
+              aria-label={t('shelf.addLabel')}
+              maxLength={60}
+              style={{ flex: 1, minWidth: 0 }}
+              disabled={!ready}
+              autoFocus={addOpen}
             />
-          ))}
+            <button type="button" onClick={() => add()} disabled={busy || !online || !draft.trim() || !ready} className="cc-btn cc-btn-secondary">
+              {t('strings.add')}
+            </button>
+          </div>
+          {suggestions.length > 0 && (
+            <div role="group" aria-label={t('strings.matches')} className="flex flex-col gap-2">
+              {suggestions.map((i) => (
+                <ListRow
+                  key={i.id}
+                  disabled={busy || !online}
+                  onClick={() => add(catalogLabel(i), i)}
+                  title={<span className="fs-md" style={{ color: 'var(--text-primary)' }}>{catalogLabel(i)}</span>}
+                  subtitle={typeof i.attributes?.gaugeMm === 'number' ? `${i.attributes.gaugeMm.toFixed(2)}mm` : undefined}
+                />
+              ))}
+            </div>
+          )}
+          {full && <p className="field-error" role="alert">{t('shelf.full', { max: MAX_OFFERED })}</p>}
+          {addOpen && (
+            <button type="button" className="link-quiet link-quiet--flush" style={{ alignSelf: 'flex-end' }} onClick={() => { setDraft(''); setFull(false); setAddOpen(false); }}>
+              {t('shelf.addDone')}
+            </button>
+          )}
         </div>
       )}
-      <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
-        <input
-          type="text"
-          value={draft}
-          onChange={(e) => {
-            setDraft(e.target.value);
-            setFull(false);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              add();
-            }
-          }}
-          placeholder={t('strings.placeholder')}
-          aria-label={t('shelf.addLabel')}
-          maxLength={60}
-          style={{ flex: 1, minWidth: 0 }}
-          disabled={!ready}
-        />
-        <button type="button" onClick={() => add()} disabled={busy || !online || !draft.trim() || !ready} className="cc-btn cc-btn-secondary">
-          {t('strings.add')}
-        </button>
-      </div>
+      {!showAdd && full && <p className="field-error" role="alert">{t('shelf.full', { max: MAX_OFFERED })}</p>}
 
-      {full && <p className="field-error" role="alert">{t('shelf.full', { max: MAX_OFFERED })}</p>}
+      {ready && shelf.strings.length === 0 && <EmptyState icon="format_list_bulleted">{t('shelf.empty')}</EmptyState>}
+
+      {/* SEARCH + FILTERS — a large shelf only; they stick under the top bar. */}
+      {ready && large && (
+        <div className="shelf-tools" ref={toolsRef}>
+          <label className="shelf-search">
+            <span className="material-icons icon-sm" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>search</span>
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t('shelf.search')}
+              aria-label={t('shelf.search')}
+              enterKeyHint="search"
+            />
+            {query !== '' && (
+              <button type="button" className="shelf-search-clear" aria-label={t('shelf.searchClear')} onClick={() => setQuery('')}>
+                <span className="material-icons icon-xs" aria-hidden="true">close</span>
+              </button>
+            )}
+          </label>
+          <div className="filter-chips" role="group" aria-label={t('shelf.filters')}>
+            {chips.map((c) => {
+              const on = c.id === filterId(activeFilter);
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  aria-pressed={on}
+                  className={on ? 'filter-chip filter-chip--applied' : 'filter-chip'}
+                  onClick={() => setFilter(on && c.filter.kind !== 'all' ? { kind: 'all' } : c.filter)}
+                >
+                  {chipLabel(c)}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {ready && shelf.strings.length > 0 && (
+        <div className="shelf-list">
+          {groups.map((g) => {
+            const foldable = large && !narrowed && FOLDED_BY_DEFAULT.has(g.status);
+            const title = t(GROUP_LABEL[g.status], { count: g.count });
+            const warn = NEEDS_YOU.has(g.status);
+            return (
+              <section key={g.status} className="shelf-group" aria-label={large ? title : undefined}>
+                {foldable ? (
+                  <button
+                    type="button"
+                    className={warn ? 'shelf-fold shelf-fold--warn' : 'shelf-fold'}
+                    aria-expanded={!g.folded}
+                    onClick={() => setOpened((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(g.status)) next.delete(g.status);
+                      else next.add(g.status);
+                      return next;
+                    })}
+                  >
+                    <span className="section-label" style={{ flex: 1 }}>{title}</span>
+                    {g.folded && <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{g.status === 'shelf' ? t('shelf.foldedFine') : t('shelf.folded')}</span>}
+                    <span className="material-icons icon-sm motion-chevron" data-open={g.folded ? 'false' : 'true'} aria-hidden="true" style={{ color: 'var(--text-muted)' }}>expand_more</span>
+                  </button>
+                ) : large ? (
+                  <span className={warn ? 'section-label shelf-group-label shelf-group-label--warn' : 'section-label shelf-group-label'}>{title}</span>
+                ) : null}
+                {g.entries.length > 0 && (
+                  <ul style={{ listStyle: 'none', padding: 0, margin: 0 }} className="shelf-group">
+                    {g.entries.map(renderRow)}
+                  </ul>
+                )}
+              </section>
+            );
+          })}
+          {groups.length === 0 && narrowed && (
+            <p className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('shelf.noMatch', { query: query.trim() })}</p>
+          )}
+        </div>
+      )}
 
       {/* NOT ON YOUR SHELF — stock bought under another name, then names the
           jobs used. Each can be counted as a shelf string without renaming. */}

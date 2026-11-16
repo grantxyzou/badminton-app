@@ -10,6 +10,8 @@ import enMessages from '../../messages/en.json';
  * What is left of the rate card (docs/plans/bench-redesign.md, PR 2): the
  * own-string price and a note. The old list is no longer shown to players,
  * and while it still holds lines the card says so, with a way to clear it.
+ * On Inventory it is one row ("Other prices · Own string $20 ›") that opens a
+ * sheet holding both fields (docs/plans/string-inventory-list.md).
  */
 function respond(stored: Record<string, unknown>, ok = true) {
   const patches: Array<Record<string, unknown>> = [];
@@ -25,6 +27,11 @@ function respond(stored: Record<string, unknown>, ok = true) {
     }),
   );
   return patches;
+}
+
+/** The row, once loaded, opened into its sheet. */
+async function openSheet() {
+  fireEvent.click(await screen.findByRole('button', { name: /Other prices/ }));
 }
 
 function wrap() {
@@ -48,17 +55,23 @@ describe('other prices', () => {
   it('saves the own-string price and the note together', async () => {
     const patches = respond({ services: [], ownStringCents: null, note: '' });
     wrap();
+    expect(await screen.findByText('Own string: Ask')).toBeDefined();
+    await openSheet();
     const own = await screen.findByLabelText('Bring your own string');
     await waitFor(() => expect((own as HTMLInputElement).disabled).toBe(false));
     fireEvent.change(own, { target: { value: '15' } });
     fireEvent.change(screen.getByLabelText('Note for players'), { target: { value: ' New prices ' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(patches).toEqual([{ ownStringCents: 1500, note: 'New prices' }]));
+    // Saved: the sheet closes and the row says the new price.
+    expect(await screen.findByText('Own string $15')).toBeDefined();
+    await waitFor(() => expect(screen.queryByLabelText('Bring your own string')).toBeNull());
   });
 
   it('says the old list is no longer shown, and clears it on request', async () => {
     const patches = respond({ services: [{ label: 'Labour + Strings', priceCents: 3000 }], ownStringCents: null, note: '' });
     wrap();
+    await openSheet();
     expect(await screen.findByText(/Your old price list \(1 line\) is no longer shown to players/)).toBeDefined();
     fireEvent.click(screen.getByRole('button', { name: 'Clear the old list' }));
     await waitFor(() => expect(patches).toEqual([{ services: [] }]));
@@ -76,17 +89,30 @@ describe('other prices', () => {
     wrap();
     expect(screen.queryByLabelText('Bring your own string')).toBeNull();
     expect(screen.queryByLabelText('Note for players')).toBeNull();
-    expect(screen.getByText('Other prices')).toBeDefined();
+    expect(screen.getByRole('status', { name: 'Other prices' })).toBeDefined();
+  });
+
+  it('closing without saving drops what was typed', async () => {
+    const patches = respond({ services: [], ownStringCents: 2000, note: '' });
+    wrap();
+    await openSheet();
+    fireEvent.change(await screen.findByLabelText('Bring your own string'), { target: { value: '99' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    await openSheet();
+    expect((await screen.findByLabelText('Bring your own string') as HTMLInputElement).value).toBe('20');
+    expect(patches).toHaveLength(0);
   });
 
   it('sends only the field that changed, and clearing the old list keeps an unsaved draft', async () => {
     const patches = respond({ services: [{ label: 'Labour', priceCents: 1500 }], ownStringCents: 1500, note: 'Old note' });
     wrap();
+    await openSheet();
     const note = await screen.findByLabelText('Note for players');
     await waitFor(() => expect((note as HTMLTextAreaElement).disabled).toBe(false));
     fireEvent.change(note, { target: { value: 'New note' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(patches).toEqual([{ note: 'New note' }]));
+    await openSheet();
     fireEvent.change(screen.getByLabelText('Bring your own string'), { target: { value: '18' } });
     fireEvent.click(screen.getByRole('button', { name: 'Clear the old list' }));
     await waitFor(() => expect(patches).toHaveLength(2));
