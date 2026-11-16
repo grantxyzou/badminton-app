@@ -163,6 +163,8 @@ export function splitForFold(info: FoldInfo, viewportWidth: number, viewportHeig
 
 interface BpmFoldPlugin {
   getFold(): Promise<unknown>;
+  /** Android only, from the store build after versionCode 7 (docs/plans/outer-screen-scoreboard.md, step 1). */
+  getDualScreen(): Promise<unknown>;
   addListener(event: 'foldChanged', cb: (data: unknown) => void): Promise<{ remove: () => Promise<void> }>;
 }
 
@@ -247,5 +249,91 @@ export function subscribeFold(cb: (info: FoldInfo) => void): () => void {
 export function useFold(): FoldInfo {
   const [info, setInfo] = useState<FoldInfo>(UNKNOWN_FOLD);
   useEffect(() => subscribeFold(setInfo), []);
+  return info;
+}
+
+// ── The outer screen (docs/plans/outer-screen-scoreboard.md, step 1) ──────────
+//
+// Can this phone show a second view on its OUTER screen while the app stays on
+// the inner one? Android's dual-screen mode answers per phone, and the docs
+// only promise it on a Pixel Fold, so the store app asks (`BpmFoldPlugin.java`,
+// `getDualScreen`) and the courtside board shows the answer. A probe: nothing
+// is drawn on the outer screen yet.
+
+/** WindowManager's four capability statuses, plus `unknown` (asked before the first answer). */
+export type AreaStatus = 'available' | 'unavailable' | 'active' | 'unsupported' | 'unknown';
+
+export interface DualScreenInfo {
+  /** The phone has a rear-facing screen at all. False on a one-screen phone. */
+  outerScreen: boolean;
+  /** Dual-screen mode: the app stays inside, a second view on the outer screen. */
+  dualScreen: AreaStatus;
+  /** Rear display mode: the whole app moves out and the inner screen goes dark. */
+  rearDisplay: AreaStatus;
+}
+
+const AREA_STATUSES: readonly AreaStatus[] = ['available', 'unavailable', 'active', 'unsupported', 'unknown'];
+
+function areaStatus(raw: unknown): AreaStatus {
+  return AREA_STATUSES.includes(raw as AreaStatus) ? (raw as AreaStatus) : 'unknown';
+}
+
+/** The plugin's answer, checked. Null for anything that is not one. */
+export function dualScreenFromNative(raw: unknown): DualScreenInfo | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  if (typeof r.outerScreen !== 'boolean') return null;
+  return { outerScreen: r.outerScreen, dualScreen: areaStatus(r.dualScreen), rearDisplay: areaStatus(r.rearDisplay) };
+}
+
+/**
+ * The answer, or null where there is none to give: not the store app, the
+ * plugin absent, or a build without `getDualScreen` (every iPhone build and
+ * Android builds up to versionCode 7) — the call rejects and that is null,
+ * never a guess.
+ */
+export async function getDualScreen(): Promise<DualScreenInfo | null> {
+  if (typeof window === 'undefined' || !isNative() || hasNativePlugin('BpmFold') === false) return null;
+  try {
+    const { fold } = await bpmFold();
+    return dualScreenFromNative(await fold.getDualScreen());
+  } catch {
+    return null;
+  }
+}
+
+/** How long to wait before asking again while the answer is still `unknown`. */
+export const DUAL_SCREEN_RETRY_MS = 1500;
+const DUAL_SCREEN_TRIES = 3;
+
+/**
+ * The outer-screen answer while `active` (the board is open). Null until
+ * there is one, and stays null where `getDualScreen` gives none. The plugin
+ * hears from WindowManager a moment after the app starts, so an `unknown`
+ * is asked again a few times.
+ */
+export function useDualScreen(active: boolean): DualScreenInfo | null {
+  const [info, setInfo] = useState<DualScreenInfo | null>(null);
+  useEffect(() => {
+    if (!active) return;
+    let stopped = false;
+    let timer: number | undefined;
+    let tries = 0;
+    const ask = () => {
+      tries += 1;
+      void getDualScreen().then((next) => {
+        if (stopped) return;
+        setInfo(next);
+        if (next?.dualScreen === 'unknown' && tries < DUAL_SCREEN_TRIES) {
+          timer = window.setTimeout(ask, DUAL_SCREEN_RETRY_MS);
+        }
+      });
+    };
+    ask();
+    return () => {
+      stopped = true;
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
+  }, [active]);
   return info;
 }
