@@ -318,14 +318,36 @@ export function reelColourFill(id: ReelColourId | string): string {
  * near-black on a light colour, white on a dark one, by relative luminance.
  */
 export function swatchInk(id: StringColourId | string): string {
+  const lum = swatchLuminance(id);
+  if (lum === null) return 'var(--text-primary)';
+  return lum > 0.35 ? '#111827' : '#ffffff';
+}
+
+/** Relative luminance of a single colour's fill, or null when it has no plain hex. */
+function swatchLuminance(id: StringColourId | string): number | null {
   const fill = isStringColourId(id) ? PALETTE_FILL[id] : isCustomColourId(id) ? hexOfCustom(id) : '';
   const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(fill);
-  if (!m) return 'var(--text-primary)';
+  if (!m) return null;
   const [r, g, b] = [m[1], m[2], m[3]].map((x) => {
     const c = parseInt(x, 16) / 255;
     return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
   });
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.35 ? '#111827' : '#ffffff';
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/**
+ * True when a single colour's swatch would vanish on the bench's dark spec
+ * pill (`.bench-spec`, #1a2332): under 1.6:1 contrast against it. Black, navy
+ * and the darker greens and purples; such a swatch gets a faint light edge
+ * so the circle still reads (Grant, 2026-11-16: "fix the black string circle
+ * contrast").
+ */
+const DARK_PILL_LUMINANCE = 0.0159; // #1a2332
+export function blendsWithDarkPill(id: StringColourId | string): boolean {
+  const lum = swatchLuminance(id);
+  if (lum === null) return false;
+  const [hi, lo] = lum > DARK_PILL_LUMINANCE ? [lum, DARK_PILL_LUMINANCE] : [DARK_PILL_LUMINANCE, lum];
+  return (hi + 0.05) / (lo + 0.05) < 1.6;
 }
 
 /** The "Custom colour" step's quick picks: one tap to a colour no palette has. */

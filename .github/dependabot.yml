@@ -53,3 +53,12 @@ updates:
       # stabilized on ESLint 9; TS 5.x is fine until a deliberate TS 6 pass.
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
+      # @zxing/library 0.22+ requires Node 24 (`engines: >= 24.0.0`) and
+      # @zxing/browser 0.2+ requires that library, while CI, Azure and `.npmrc`
+      # run Node 22, so `npm ci` refuses the bump outright (#947, 2026-11-16).
+      # Lift this when the runtime moves to Node 24. They drive the barcode
+      # stocktake (lib/barcodeScanner.ts).
+      - dependency-name: "@zxing/library"
+        versions: [">=0.22.0"]
+      - dependency-name: "@zxing/browser"
+        versions: [">=0.2.0"]

@@ -8,15 +8,22 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Stringing jobs: one list, the racket first (2026-11-16)
+
+- **The bench's live jobs are one card of rows, grouped by where the racket is**: Received, Strung, Ready for pickup and Requested, each with its count. Picked up is folded at the bottom; tap it to open.
+- **Each row leads with the racket's picture and name**, then the player, the due date with a calendar icon, an "Unpaid" tag when it owes, and the job number with its status.
+- **Mains and crosses are two stacked pills**: a letter in the string's colour (each side its own colour for a two-colour set), the tension, and the string.
+- **A black or navy string's letter keeps a faint light edge**, so it still shows on the dark pill.
+- **A player's own request stands out**: "Custom request" when the crosses are not the usual mains + 2 or the strings differ, and the tensions turn amber.
+- **Grommet holes show as a pill when the racket's count is known.**
+- **The next-step button left the row.** Open the job to move its status. Swipe and the ⋮ menu still pin and archive.
 ## Deleting a paid sign-up for good keeps its books straight (2026-11-16)
 
 - **Permanently deleting a sign-up that was already paid leaves both the bill and the payment in the ledger**, so the Ledger check no longer flags a payment with nothing under it. Deleting an unpaid sign-up still cancels its bill. (Nothing in the app sends this delete today; it closes the same gap the stringing delete had.)
-
 ## A restring remembers how it was paid (2026-11-16)
 
 - **A stringing job now records how it was paid** — by hand, e-transfer, card or credit — beside when. The job page and the Ledger check say it, and the money page's "collected by method" counts restrings correctly; before, every restring read as "marked paid" whatever actually happened.
 - Jobs paid before today have no method on record and keep counting as marked by hand.
-
 ## Two "paid" taps at once count once (2026-11-16)
 
 - **Marking someone paid from two phones at the same moment, or a slow double tap, records one payment**, not two. The second tap sees the first one landed and changes nothing. Before, both wrote, and the Ledger check flagged a double payment the next morning.
@@ -25,6 +32,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 ## "Edit the bill" waits until nobody on it is marked paid (2026-11-16)
 
 - **Editing a finalized bill is refused while anyone is marked paid**, and the message names them. Before, the edit kept their payment but dropped the bill it paid, and finalizing again at a different cost could leave someone marked "paid $45" who paid $30 — with nobody told. Un-tick them in Payments, edit the bill, finalize, then tick them again at the new amount.
+
+## Card payments that need a look show up in the inbox (2026-11-16)
+
+- **A card payment the app couldn't apply now waits for you under "Needs a look"**, beside the e-transfers, instead of disappearing into a server log: a charge that doesn't match the lines it was for, one from a Stripe account that isn't the club's, card money with nothing left to pay that couldn't be refunded, and a refund made in Stripe that matches no single payment. Each row says which it is and names the Checkout.
+- **Marking such a row paid records it as paid by card**, under the same Stripe id the automatic path would have used, so a repeat from Stripe changes nothing. A refund row can only be dismissed — the money already went back.
+- **The inbox shows card rows even if e-transfers aren't set up.**
 
 ## Inventory: the string shelf as a list (2026-11-16)
 

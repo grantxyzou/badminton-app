@@ -2640,6 +2640,20 @@
         "now": "now",
         "stepHint": "Tap a step to move the job there.",
         "markPaid": "Mark paid",
+        "bench": {
+          "unpaid": "Unpaid",
+          "customRequest": "Custom request",
+          "mains": "M",
+          "crosses": "C",
+          "grommets": "{count} grommet holes",
+          "group": {
+            "received": "Received",
+            "strung": "Strung",
+            "ready": "Ready for pickup",
+            "requested": "Requested",
+            "picked_up": "Picked up"
+          }
+        },
         "paidBadge": "Paid",
         "paidVia_manual": "marked by hand",
         "paidVia_etransfer": "by e-transfer",

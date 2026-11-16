@@ -45,7 +45,15 @@ const REASON: Record<string, string> = {
   amount_mismatch: "The amount doesn't match what they owe",
   unrecognized_email: "We couldn't read this email",
   changed_while_matching: 'Something changed while matching',
+  // Stripe outcomes the webhook could not act on (lib/cardPay.ts `fileCardReview`).
+  card_amount_mismatch: 'Card charge doesn’t match the lines it was for — check it in Stripe',
+  card_account_mismatch: 'Card payment came from a Stripe account that isn’t this club’s',
+  card_unapplied_not_refunded: 'Card money with nothing left to pay, and no refund could be made — refund it in Stripe',
+  card_refund_no_line: 'A refund in Stripe matches no single payment — un-tick the right lines by hand',
 };
+
+/** The list title: a card row names its payer under "Card ·", so Stripe money never reads as an email. */
+const rowTitle = (p: EtransferPayment) => (p.source === 'card' ? `Card · ${p.senderName ?? 'Unknown payer'}` : p.senderName ?? 'Unreadable email');
 
 const money = (cents: number | null) => (cents === null ? '$—' : `$${(cents / 100).toFixed(2)}`);
 
@@ -118,7 +126,10 @@ export default function PaymentsInboxCard({
     onChanged?.();
   };
 
-  if (!data.configured) {
+  // Not set up for e-transfers, and nothing from Stripe waiting either: the
+  // invitation. A club taking cards without the Gmail script still gets its
+  // card rows below — a review row must never hide behind a setup card.
+  if (!data.configured && data.review.length === 0) {
     return (
       <section className="glass-card p-5 flex flex-col gap-3" aria-label={title}>
         <CardHeader icon="receipt_long" title="Auto-detect e-transfers" subtitle="Stop ticking people off one by one." />
@@ -134,9 +145,9 @@ export default function PaymentsInboxCard({
     );
   }
 
-  const stale = !data.lastReceivedAt
+  const stale = data.configured && (!data.lastReceivedAt
     ? Date.now() - Date.parse(data.keyCreatedAt ?? '') > STALE_MS
-    : Date.now() - Date.parse(data.lastReceivedAt) > STALE_MS;
+    : Date.now() - Date.parse(data.lastReceivedAt) > STALE_MS);
   const w = data.last28Days;
 
   return (
@@ -144,7 +155,11 @@ export default function PaymentsInboxCard({
       <CardHeader
         icon="receipt_long"
         title={title}
-        subtitle={`Last email ${ago(data.lastReceivedAt)}${w.received > 0 ? ` · ${w.autoMatched} of ${w.received} matched on their own (28 days)` : ''}`}
+        subtitle={
+          data.configured
+            ? `Last email ${ago(data.lastReceivedAt)}${w.received > 0 ? ` · ${w.autoMatched} of ${w.received} matched on their own (28 days)` : ''}`
+            : 'Card payments that need a look. E-transfers aren’t set up yet.'
+        }
         action={
           <button type="button" className="cc-btn cc-btn-ghost" onClick={() => setSetupOpen(true)}>
             Setup
@@ -173,7 +188,7 @@ export default function PaymentsInboxCard({
                   onClick={() => setAssigning(p)}
                   title={
                     <span className="fs-md" style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
-                      {p.senderName ?? 'Unreadable email'}
+                      {rowTitle(p)}
                     </span>
                   }
                   subtitle={
@@ -481,6 +496,10 @@ interface OwedResponse {
 
 function AssignSheet({ payment, onClose, onDone }: { payment: EtransferPayment; onClose: () => void; onDone: () => void }) {
   const online = useOnline();
+  // A card row is Stripe money (lib/cardPay.ts `fileCardReview`): no bank name
+  // to remember, and a REFUND row is money out — it can only be dismissed.
+  const isCard = payment.source === 'card';
+  const isRefund = isCard && payment.card?.kind === 'refund';
   const suggestions = payment.suggestions ?? [];
   const [roster, setRoster] = useState<string[]>([]);
   const [name, setName] = useState<string>(suggestions[0]?.name ?? '');
@@ -544,9 +563,9 @@ function AssignSheet({ payment, onClose, onDone }: { payment: EtransferPayment; 
   }
 
   return (
-    <BottomSheet open onClose={onClose} ariaLabel="Match this e-transfer">
+    <BottomSheet open onClose={onClose} ariaLabel={isCard ? 'Look at this card payment' : 'Match this e-transfer'}>
       <BottomSheetHeader onClose={onClose} closeLabel="Close">
-        <h2 className="bpm-h3" style={{ margin: 0 }}>{`${payment.senderName ?? 'Unknown'} · ${money(payment.amountCents)}`}</h2>
+        <h2 className="bpm-h3" style={{ margin: 0 }}>{`${rowTitle(payment)} · ${money(payment.amountCents)}`}</h2>
       </BottomSheetHeader>
       <BottomSheetBody>
         <div className="flex flex-col gap-4">
@@ -554,11 +573,19 @@ function AssignSheet({ payment, onClose, onDone }: { payment: EtransferPayment; 
             {REASON[payment.reason ?? ''] ?? 'Waiting for you'}
             {payment.memo ? ` · “${payment.memo}”` : ''}
           </p>
+          {isCard && (
+            <p className="fs-sm" style={{ margin: 0, color: 'var(--text-secondary)' }}>
+              {isRefund
+                ? 'The money already went back to the card in Stripe. If it should un-pay someone, un-tick their payment on the Payments card, then dismiss this.'
+                : `Stripe has this money (Checkout ${payment.card?.checkoutId ?? ''}). Check it there before marking anything paid; marking a line here records it as paid by card.`}
+            </p>
+          )}
           {!payment.authenticated && (
             <p className="fs-sm" role="status" style={{ margin: 0, color: 'var(--sev-warn)' }}>
               Check your bank shows this money before matching it — anyone can send an email that looks like Interac.
             </p>
           )}
+          {!isRefund && (
           <label className="flex flex-col gap-1">
             <span className="section-label-muted">Who paid</span>
             <select className="fs-md" value={name} onChange={(e) => setName(e.target.value)}>
@@ -571,6 +598,7 @@ function AssignSheet({ payment, onClose, onDone }: { payment: EtransferPayment; 
               ))}
             </select>
           </label>
+          )}
           {owedError && <p className="field-error" role="alert">Couldn&apos;t load what they owe.</p>}
           {name && owed && lines.length === 0 && (
             <p className="fs-sm" style={{ margin: 0, color: 'var(--text-secondary)' }}>{name} doesn&apos;t owe anything right now.</p>
@@ -604,7 +632,7 @@ function AssignSheet({ payment, onClose, onDone }: { payment: EtransferPayment; 
               Selected {money(pickedCents)} of the {money(payment.amountCents)} received.
             </p>
           )}
-          {payment.senderName && name && payment.senderName.toLowerCase() !== name.toLowerCase() && (
+          {!isCard && payment.senderName && name && payment.senderName.toLowerCase() !== name.toLowerCase() && (
             <label className="flex items-center gap-2 fs-sm" style={{ color: 'var(--text-secondary)' }}>
               <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
               Remember “{payment.senderName}” as {name}
@@ -614,18 +642,22 @@ function AssignSheet({ payment, onClose, onDone }: { payment: EtransferPayment; 
       </BottomSheetBody>
       <BottomSheetFooter className="flex flex-col gap-3">
         {error && <p className="field-error" role="alert">{error}</p>}
-        <button
-          type="button"
-          className="cc-btn cc-btn-primary"
-          disabled={!online || busy || !name || picked.size === 0}
-          onClick={() => void send({ action: 'assign', name, refs: [...picked], remember })}
-        >
-          Mark paid
-        </button>
-        <button type="button" className="cc-btn cc-btn-ghost" disabled={!online || busy} onClick={() => void send({ action: 'ignore', ...(name && remember ? { name, remember: true } : {}) })}>
-          {name && remember && payment.senderName && payment.senderName.toLowerCase() !== name.toLowerCase()
-            ? `Dismiss, and remember as ${name}`
-            : 'Not a session payment — dismiss'}
+        {!isRefund && (
+          <button
+            type="button"
+            className="cc-btn cc-btn-primary"
+            disabled={!online || busy || !name || picked.size === 0}
+            onClick={() => void send({ action: 'assign', name, refs: [...picked], remember: !isCard && remember })}
+          >
+            {isCard ? 'Mark paid by card' : 'Mark paid'}
+          </button>
+        )}
+        <button type="button" className="cc-btn cc-btn-ghost" disabled={!online || busy} onClick={() => void send({ action: 'ignore', ...(!isCard && name && remember ? { name, remember: true } : {}) })}>
+          {isCard
+            ? 'Looked at it in Stripe — dismiss'
+            : name && remember && payment.senderName && payment.senderName.toLowerCase() !== name.toLowerCase()
+              ? `Dismiss, and remember as ${name}`
+              : 'Not a session payment — dismiss'}
         </button>
       </BottomSheetFooter>
     </BottomSheet>

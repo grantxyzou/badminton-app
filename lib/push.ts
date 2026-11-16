@@ -120,10 +120,35 @@ export function ensurePushContainer(): Promise<void> {
   return ensureContainer('pushSubscriptions', '/memberId');
 }
 
+/** The two calls this file makes on `web-push`. */
+export interface WebPushApi {
+  setVapidDetails(subject: string, publicKey: string, privateKey: string): void;
+  sendNotification(subscription: unknown, payload?: string, options?: unknown): Promise<unknown>;
+}
+
+/**
+ * `web-push` 3.x is CommonJS, so a dynamic import hands its API back on
+ * `default`; 4.0 is ES modules with named exports only, and `default` is
+ * undefined. Reading `.default` alone stopped every Web Push on 4.0, and
+ * nothing said so (`sendPushTo` never throws), while every test passed on a
+ * fake that still had a `default`. So take whichever object carries the API,
+ * and throw if neither does: `__tests__/push-web-push-shape.test.ts` runs this
+ * on the REAL installed package, which is the check the fakes cannot make.
+ */
+export function resolveWebPush(mod: unknown): WebPushApi {
+  const m = mod as { default?: unknown } | null | undefined;
+  for (const candidate of [m?.default, m]) {
+    const api = candidate as Partial<WebPushApi> | null | undefined;
+    if (api && typeof api.setVapidDetails === 'function' && typeof api.sendNotification === 'function') {
+      return api as WebPushApi;
+    }
+  }
+  throw new Error('web-push: no setVapidDetails/sendNotification on the module or its default export');
+}
+
 let vapidReady = false;
-/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-async function loadWebPush(): Promise<any> {
-  const webpush = (await import('web-push')).default;
+async function loadWebPush(): Promise<WebPushApi> {
+  const webpush = resolveWebPush(await import('web-push'));
   if (!vapidReady) {
     webpush.setVapidDetails(
       process.env.VAPID_SUBJECT as string,

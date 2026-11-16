@@ -214,7 +214,7 @@ describe('the shop sign', () => {
     // still need finishing.
     respondShop(false);
     wrap(<StringingPage onBack={() => {}} />);
-    expect(await screen.findByText(/for Wei/)).toBeDefined();
+    expect(await screen.findByRole('button', { name: /^Open this job · .* · for Wei$/ })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Add job' })).toBeDefined();
   });
 
@@ -241,7 +241,7 @@ describe('the shop sign', () => {
   it('closed with jobs still on the bench: the plain title, and the jobs are unaffected', async () => {
     respondJobs([job]);
     wrap(<StringingPage onBack={() => {}} />);
-    expect(await screen.findByText(/for Wei/)).toBeDefined();
+    expect(await screen.findByRole('button', { name: /^Open this job · .* · for Wei$/ })).toBeDefined();
     const shop = enMessages.admin.stringing.shop;
     expect(screen.getByText(shop.closedTitle)).toBeDefined();
     expect(screen.getByText(shop.closedBodyJobs)).toBeDefined();
@@ -334,6 +334,8 @@ describe('values carry their units', () => {
     // "found multiple elements", not by reading the code.
     respondJobs([{ ...job, readyBy: '2020-01-01', status: 'picked_up' }]);
     wrap(<StringingPage onBack={() => {}} />);
+    // Picked up is folded at the foot of the list (docs/plans/stringing-jobs-list.md).
+    fireEvent.click(await screen.findByRole('button', { name: /^Picked up · 1/ }));
     expect(await screen.findByText('Picked up')).toBeDefined();
     expect(screen.queryByText(/late/i)).toBeNull();
   });
@@ -1107,24 +1109,23 @@ describe('the bench in the stringer\'s card style', () => {
     expect([...container.querySelectorAll('.material-icons')].some((el) => el.textContent === 'check_circle' && !el.closest('[data-testid="job-card"]'))).toBe(false);
   });
 
-  it('each job is its own card, with the 4-step bar filled to its stage', async () => {
+  it('the jobs are one card of rows, grouped by status, with Picked up folded (canvas Option A, 2026-11-16)', async () => {
     const statuses = ['requested', 'received', 'strung', 'ready', 'picked_up'] as const;
     respondOpen(statuses.map((status, i) => ({ ...job, id: `job-${i}`, jobNo: `J-010${i}`, status })));
     const { container } = wrap(<StringingPage onBack={() => {}} />);
-    await screen.findByText('J-0104');
-    const cards = [...container.querySelectorAll('[data-testid="job-card"]')] as HTMLElement[];
-    expect(cards).toHaveLength(5);
-    cards.forEach((card, i) => {
-      expect(card.className).toContain('glass-card');
-      // Siblings on the ground, never a card inside a card.
-      expect(card.parentElement?.closest('.glass-card')).toBeNull();
-      const bar = card.querySelector('[data-testid="job-progress"]') as HTMLElement;
-      expect(bar.children).toHaveLength(4);
-      const on = [...bar.children].map((s) => (s as HTMLElement).dataset.on);
-      expect(on.filter((v) => v === 'true')).toHaveLength(i);
-      expect(bar.dataset.filled).toBe(String(i));
-      expect(bar.dataset.stage).toBe(statuses[i]);
-    });
+    await screen.findByText('J-0101');
+    const list = container.querySelector('[data-testid="bench-list"]') as HTMLElement;
+    expect(list.className).toContain('glass-card');
+    expect(container.querySelectorAll('[data-testid="job-card"]')).toHaveLength(0);
+    const labels = [...list.querySelectorAll('.bench-group-label')].map((el) => el.textContent);
+    expect(labels).toEqual(['Received · 1', 'Strung · 1', 'Ready for pickup · 1', 'Requested · 1']);
+    // Rows sit inside the one card, never a card inside a card.
+    const rows = [...list.querySelectorAll('[data-testid="bench-row"]')] as HTMLElement[];
+    expect(rows.map((r) => r.dataset.stage)).toEqual(['received', 'strung', 'ready', 'requested']);
+    rows.forEach((r) => expect(r.closest('.glass-card')).toBe(list));
+    expect(screen.queryByText('J-0104')).toBeNull();
+    fireEvent.click(within(list).getByRole('button', { name: /^Picked up · 1/ }));
+    expect(await screen.findByText('J-0104')).toBeDefined();
   });
 
   it('a job waiting on the player says what was suggested, never the price, and offers no next step', async () => {
@@ -1137,28 +1138,22 @@ describe('the bench in the stringer\'s card style', () => {
     respondOpen([waiting]);
     const { container } = wrap(<StringingPage onBack={() => {}} />);
     expect(await screen.findByText('Waiting on Wei')).toBeDefined();
-    const card = container.querySelector('[data-testid="job-card"]') as HTMLElement;
-    expect(card.dataset.stage).toBe('waiting');
-    expect(within(card).getByText('Suggested BG66 instead of BG80 · white. Wei has to accept before you string it.')).toBeDefined();
-    expect(card.textContent).not.toMatch(/\$/);
-    expect(within(card).queryByRole('button', { name: /^Mark / })).toBeNull();
-    // The bar still says where the racket is, in the waiting colour.
-    const bar = card.querySelector('[data-testid="job-progress"]') as HTMLElement;
-    expect(bar.dataset.filled).toBe('1');
-    expect(bar.dataset.stage).toBe('waiting');
+    const row = container.querySelector('[data-testid="bench-row"]') as HTMLElement;
+    expect(row.dataset.stage).toBe('waiting');
+    expect(within(row).getByText('Suggested BG66 instead of BG80 · white. Wei has to accept before you string it.')).toBeDefined();
+    expect(row.textContent).not.toMatch(/\$/);
+    expect(within(row).queryByRole('button', { name: /^Mark / })).toBeNull();
   });
 
-  it('a job waiting on the player before drop-off still offers "Mark received" (review, 2026-11-12)', async () => {
+  it('no row offers a next step, whatever its stage: the status moves on the job page (Grant hid it on the canvas)', async () => {
     respondOpen([{
       ...job,
       status: 'requested',
       pendingEdit: { stringLabel: 'BG66', proposedAt: '2026-11-01T00:00:00.000Z', proposedBy: 'member-grant' },
-    }]);
-    const { container } = wrap(<StringingPage onBack={() => {}} />);
+    }, { ...job, id: 'job-2', jobNo: 'J-0043', status: 'received' }]);
+    wrap(<StringingPage onBack={() => {}} />);
     expect(await screen.findByText('Waiting on Wei')).toBeDefined();
-    const card = container.querySelector('[data-testid="job-card"]') as HTMLElement;
-    expect(within(card).getByRole('button', { name: /^Mark received/ })).toBeDefined();
-    expect(within(card).queryByRole('button', { name: /^Mark strung/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Mark / })).toBeNull();
   });
 
   it('a change of tension says the tensions; a price-only change only says the player has to confirm', async () => {
