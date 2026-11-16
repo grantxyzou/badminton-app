@@ -26,6 +26,7 @@ import {
 } from '@/lib/stringStocktakeScan';
 import { reelColourEnglish } from '@/lib/stringPalette';
 import { STOCKTAKE_MODEL } from '@/lib/aiModels';
+import { takeClubAiCall } from '@/lib/aiBudget';
 
 export const dynamic = 'force-dynamic';
 
@@ -71,6 +72,12 @@ export async function POST(req: NextRequest) {
       return { label, ...(item ? { catalogName: `${item.brand} ${item.model}` } : {}), colours };
     });
 
+    // The club's daily allowance on the shared key (lib/aiBudget.ts), taken
+    // only now, just before a real call; over it, the sheet counts by hand.
+    if (!takeClubAiCall(groupId, 'stocktake')) {
+      console.warn('[club-ai-cap]', { feature: 'stocktake', groupId });
+      return NextResponse.json({ error: 'club_ai_limit' }, { status: 429 });
+    }
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const message = await anthropic.beta.messages.parse({
       model: STOCKTAKE_MODEL,

@@ -4,6 +4,7 @@ import { getContainer, ensureContainer } from '@/lib/cosmos';
 import { verifyMemberAuth, requireMember, isAdminAuthedWithMember } from '@/lib/auth';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { resolveGroupId } from '@/lib/groupContext';
+import { takeClubAiCall } from '@/lib/aiBudget';
 import { groupScope, groupDocId } from '@/lib/groupScope';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { readGearOrNull } from '@/lib/racketFitInput';
@@ -171,6 +172,13 @@ export async function GET(req: NextRequest) {
       }
     } catch (err) {
       console.warn('fit-verdict cache read failed (non-fatal):', err);
+    }
+
+    // The club's daily allowance on the shared key (lib/aiBudget.ts): over it,
+    // the templated words, exactly as with no key.
+    if (!takeClubAiCall(groupId, 'fitVerdict')) {
+      console.warn('[club-ai-cap]', { feature: 'fitVerdict', groupId });
+      return NextResponse.json({ facts, checkInLevel, copy: null });
     }
 
     let copy: FitVerdictCopy | null = null;

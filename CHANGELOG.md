@@ -8,6 +8,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## A daily AI allowance for each club (2026-11-16)
+
+- **Every club now has its own daily allowance for each AI feature**, so a busy second club can't run up the app's AI bill: 60 writing helps, 300 Stats reads, 300 racket-fit verdicts and 30 shelf photos a day. A saved answer that's simply shown again doesn't count.
+- **Going over never breaks anything.** Stats shows your last read, the racket fit uses its standard wording, the stocktake asks you to count by hand, and the writing helper says to try tomorrow.
+
 ## Count the string shelf with a photo (2026-11-16)
 
 - **Take one photo of the string shelf and the app counts it.** Lay the reels and packets out so the labels show; the app proposes what it sees (which string, reel or packet, how full each reel looks), and you check every line before saving. Anything it can't read is listed as "not sure" for you to name or leave out.

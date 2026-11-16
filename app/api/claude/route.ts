@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
+import { resolveGroupId } from '@/lib/groupContext';
+import { takeClubAiCall } from '@/lib/aiBudget';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { describeAiFailure } from '@/lib/aiError';
 import { PROSE_MODEL } from '@/lib/aiModels';
@@ -31,6 +33,13 @@ export async function POST(req: NextRequest) {
   // (audit, 2026-11-05).
   if (!checkRateLimit(`claude-member:${auth.memberId}`, 30, 24 * 60 * 60 * 1000)) {
     return NextResponse.json({ error: 'Daily AI limit reached. Try again tomorrow.' }, { status: 429 });
+  }
+  // And the CLUB's, on the shared key (lib/aiBudget.ts): a club of many
+  // admins is one budget, not one each.
+  const groupId = resolveGroupId(req);
+  if (!takeClubAiCall(groupId, 'writing')) {
+    console.warn('[club-ai-cap]', { feature: 'writing', groupId });
+    return NextResponse.json({ error: "Your club has used today's AI writing. Try again tomorrow." }, { status: 429 });
   }
 
   // Parsed OUTSIDE the AI try/catch on purpose: a malformed body is a 400 from

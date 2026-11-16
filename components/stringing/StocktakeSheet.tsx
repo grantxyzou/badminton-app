@@ -111,7 +111,7 @@ export default function StocktakeSheet({ onClose, onSaved }: { onClose: () => vo
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
-        setScanError(d.error === 'photo_unreadable' ? t('unreadable') : t('readFailed'));
+        setScanError(d.error === 'photo_unreadable' ? t('unreadable') : d.error === 'club_ai_limit' ? t('clubLimit') : t('readFailed'));
         setStep('start');
         return;
       }
