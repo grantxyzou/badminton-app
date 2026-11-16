@@ -8,6 +8,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Stringing: Strings we offer comes first (2026-11-16)
+
+- **The Stringing tab's switch now reads Strings we offer · Submit request**, then Stringing jobs for whoever strings. The tab still opens on Submit request.
+
 ## Stringing jobs: one list, the racket first (2026-11-16)
 
 - **The bench's live jobs are one card of rows, grouped by where the racket is**: Received, Strung, Ready for pickup and Requested, each with its count. Picked up is folded at the bottom; tap it to open.

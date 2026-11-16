@@ -119,7 +119,7 @@ export default function StringingTab({ isAdmin = false, adminSession = true, onA
   }, [flagOn, isAdmin, hasIdentity]);
 
   const benchOn = adminBench || stringer === true;
-  const views: StringingView[] = benchOn ? ['racket', 'strings', 'bench'] : ['racket', 'strings'];
+  const views: StringingView[] = benchOn ? ['strings', 'racket', 'bench'] : ['strings', 'racket'];
   // A Bench remembered for someone who no longer has one opens on Racket.
   // While a stringer's answer is still out it waits, rather than flashing
   // Racket and then jumping.
