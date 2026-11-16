@@ -162,11 +162,15 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
     };
   }, [paymentsAutoOn, composedRefresh]);
   const lockedTrailing = lockedOut && lockedOut > 0 ? `${lockedOut} locked out` : undefined;
+  // Something waiting for a person wins over "Set up": a card payment Stripe
+  // sent that could not be applied (lib/cardPay.ts) waits in the same queue
+  // whether or not the Gmail script was ever set up, and "Set up" over it
+  // read as "nothing here" (seen on the mock store, 2026-11-16).
   const inboxTrailing = inbox
-    ? !inbox.configured
-      ? 'Set up'
-      : inbox.waiting > 0
-        ? `${inbox.waiting} waiting`
+    ? inbox.waiting > 0
+      ? `${inbox.waiting} waiting`
+      : !inbox.configured
+        ? 'Set up'
         : undefined
     : undefined;
 
@@ -251,7 +255,7 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
         { icon: 'receipt_long', label: 'Ledger', onClick: () => setView('ledger'), selected: openView === 'ledger' },
         // The inbox, reminders, the unpaid hold and the ledger check.
         ...(paymentsAutoOn
-          ? [{ icon: 'receipt_long', label: 'E-transfers', meta: inboxTrailing, accent: !!inboxTrailing && inbox?.configured === true, onClick: () => setView('etransfers'), selected: openView === 'etransfers' }]
+          ? [{ icon: 'receipt_long', label: 'E-transfers', meta: inboxTrailing, accent: (inbox?.waiting ?? 0) > 0, onClick: () => setView('etransfers'), selected: openView === 'etransfers' }]
           : []),
         ...(giftCardsOn ? [{ icon: 'payments', label: 'Credit codes', onClick: () => setView('gift-cards'), selected: openView === 'gift-cards' }] : []),
         { icon: 'payments', label: 'E-transfer recipient', onClick: () => setView('etransfer'), selected: openView === 'etransfer' },

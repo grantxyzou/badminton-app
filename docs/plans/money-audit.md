@@ -161,7 +161,8 @@ Also a stale comment: `lib/cardPay.ts`'s header still says the flag "stays off i
 ## Decisions
 
 - **Evidence as pinned-wrong tests, not failing tests** (2026-11-16). A test that asserted the right answer would turn `main` red until each fix landed; a test that pins today's wrong answer keeps the gate green, proves the gap with numbers, and fails, naming the fix, the moment the gap closes. The alternative, `it.fails`, would also stay green but hides what the app actually does.
-- **No fix in this PR**, by the brief: Grant approves each one first.
+- **No fix in the audit PR** (#954), by the brief: Grant approves each one first.
+- **Stripe item 1 shipped first** (2026-11-16; Grant: "yes start with item 1"): `fileCardReview` in `lib/cardPay.ts` writes a `source: 'card'` review row for each outcome the webhook cannot act on, into the e-transfer queue rather than a queue of its own. Decision recorded in `docs/plans/card-pay-prototype.md`; the rule in `.claude/rules/money.md`.
 
 ## Shape
 
@@ -169,3 +170,4 @@ Also a stale comment: `lib/cardPay.ts`'s header still says the flag "stays off i
 |---|---|
 | This audit | `docs/plans/money-audit.md` |
 | Evidence (gaps 1–6) | `__tests__/money-audit-gaps.test.ts` |
+| Stripe item 1: card review rows | `lib/cardPay.ts` (`fileCardReview`), `lib/paymentsInbox.ts` (`applyAllocations` via, `resolvePayment`), `components/admin/CommandCenter/PaymentsInboxCard.tsx`, `__tests__/group-card-review.test.ts` |

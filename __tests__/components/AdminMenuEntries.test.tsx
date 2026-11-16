@@ -91,6 +91,14 @@ describe('Sign-in readiness and E-transfers are menu rows', () => {
     await waitFor(() => expect(row.textContent).toMatch(/Set up/));
   });
 
+  it('something waiting wins over "Set up": a card payment Stripe sent waits whether or not the Gmail script exists', async () => {
+    stubFetch((url) => (url.includes('/api/admin/payments?count=1') ? { configured: false, waiting: 1 } : {}));
+    renderConsole();
+    const row = await screen.findByRole('button', { name: /E-transfers/ });
+    await waitFor(() => expect(row.textContent).toMatch(/1 waiting/));
+    expect(row.textContent).not.toMatch(/Set up/);
+  });
+
   it('with the payments flag off there is no E-transfers row', async () => {
     delete process.env.NEXT_PUBLIC_FLAG_PAYMENTS_AUTO;
     stubFetch(() => ({}));

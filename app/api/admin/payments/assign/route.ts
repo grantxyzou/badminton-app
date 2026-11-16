@@ -23,6 +23,7 @@ const STATUS: Record<AssignError['code'], number> = {
   already_resolved: 409,
   not_owed: 409,
   unknown_person: 400,
+  not_a_payment: 409,
 };
 
 export async function POST(req: NextRequest) {
