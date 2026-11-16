@@ -8,6 +8,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Deleting a paid sign-up for good keeps its books straight (2026-11-16)
+
+- **Permanently deleting a sign-up that was already paid leaves both the bill and the payment in the ledger**, so the Ledger check no longer flags a payment with nothing under it. Deleting an unpaid sign-up still cancels its bill. (Nothing in the app sends this delete today; it closes the same gap the stringing delete had.)
+
 ## A restring remembers how it was paid (2026-11-16)
 
 - **A stringing job now records how it was paid** — by hand, e-transfer, card or credit — beside when. The job page and the Ledger check say it, and the money page's "collected by method" counts restrings correctly; before, every restring read as "marked paid" whatever actually happened.

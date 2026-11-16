@@ -1238,14 +1238,14 @@ export async function DELETE(req: NextRequest) {
 
     // Admin hard purge — permanently delete every record for this session
     if (isAdmin && body.purgeAll === true) {
-      const all = await scope.query<{ id: string; memberId?: string }>('players', {
+      const all = await scope.query<{ id: string; memberId?: string; guestOf?: string; paid?: boolean }>('players', {
         where: 'c.sessionId = @sessionId',
         params: [{ name: '@sessionId', value: sessionId }],
         partitionKey: sessionId,
       });
       await Promise.all(all.map((p) => scope.remove('players', p.id, sessionId)));
-      // A hard-deleted settled row's charge is void in the ledger; a received
-      // payment is real money and stays.
+      // A hard-deleted UNPAID row's charge is void in the ledger; a PAID row's
+      // charge and payment both stay (lib/ledgerMirror.ts `mirrorRowDeleted`).
       for (const p of all) await mirrorRowDeleted(scope, p);
       return NextResponse.json({ success: true, count: all.length });
     }
@@ -1254,7 +1254,7 @@ export async function DELETE(req: NextRequest) {
     if (isAdmin && typeof body.purgeOne === 'string') {
       // A miss must say so: the raw delete used to throw a Cosmos 404 here,
       // and a green 200 for a row that was never deleted is worse than that.
-      const victim = await scope.read<{ id: string; memberId?: string; removed?: boolean; waitlisted?: boolean }>('players', body.purgeOne, sessionId);
+      const victim = await scope.read<{ id: string; memberId?: string; guestOf?: string; paid?: boolean; removed?: boolean; waitlisted?: boolean }>('players', body.purgeOne, sessionId);
       const removed = await scope.remove('players', body.purgeOne, sessionId);
       if (!removed) return NextResponse.json({ error: 'Player not found' }, { status: 404 });
       if (victim) await mirrorRowDeleted(scope, victim);
