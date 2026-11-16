@@ -1,7 +1,7 @@
 # Send an invoice for a restring
 
 **Track:** North Star pillar 4 (equipment service), with pillar 3 (admin cost-automation): the money half of a restring, beside `docs/plans/card-pay-prototype.md`.
-**Status:** in-flight (behind `NEXT_PUBLIC_FLAG_STRINGING_INVOICE`, off in production)
+**Status:** in-flight (`NEXT_PUBLIC_FLAG_STRINGING_INVOICE` ON in production from 2026-11-16; Grant: "turn on invoices")
 **Review on:** 2027-01-15 — for invoiced restrings over the first four weeks with the flag on: how many days from "Send invoice" to paid (median), how many needed the day-3 or day-7 reminder, and did any invoiced job reach the reconcile as a mismatch?
 
 ## Problem
@@ -22,6 +22,8 @@ If, over the first four weeks with the flag on, the median invoiced restring tak
 - **Changing what an invoice charges.** The Balance line is the job's price, as before; the invoice records the figure it was sent at so a later change is visible ("Price changed since invoiced · Resend").
 
 ## Decisions
+
+- **Turned on 2026-11-16** (Grant: "turn on invoices"), the day after card payments went live, so an invoiced restring can be paid by card from the start. Jobs already on the bench that day keep billing at Ready; only jobs made from then on wait for an invoice.
 
 - **Billing starts at the tap, not at Ready** (Grant: "Stringer taps it"), but only for jobs made while the flag is on. `StringingJob.billOn: 'invoice'` is stamped at creation; a job without it (every job before the flag, and every job while it is off) bills at Ready exactly as before, so nobody's balance changes on deploy and turning the flag off strands nobody. One rule, `invoiceGateOpen` in `lib/stringingBilling.ts`, is read by every place that decides "is this owed" — `isBillable`, the ledger mirror's `billableShaped` and the backfill's `jobEntries` — so the Balance card, the reconcile and the ledger cannot disagree.
 - **A finished, priced, unpaid job that is not yet invoiced still keeps the club's stringing switched on** (`isOpenStringingJob`): it is money the club has not asked for yet, not money nobody owes.

@@ -132,7 +132,10 @@ jobs:
           # (Grant: "keys are in"), the webhook listening on connected accounts.
           # Fast off switch without a rebuild: delete STRIPE_SECRET_KEY.
           NEXT_PUBLIC_FLAG_CARD_PAY: 'true'
-          NEXT_PUBLIC_FLAG_STRINGING_INVOICE: 'false'
+          # Restring invoices (docs/plans/stringing-invoice.md). ON since
+          # 2026-11-16 (Grant: "turn on invoices"): a job made from now on is
+          # owed only once its invoice is sent; older jobs bill at Ready as before.
+          NEXT_PUBLIC_FLAG_STRINGING_INVOICE: 'true'
           # ON as of 2026-08-27: the admin bench (job list, job detail, intake)
           # and /api/stringing/*. Players see the shop only once its own
           # admin-controlled `open` flag is set (PATCH /api/stringing/shop).
