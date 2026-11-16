@@ -19,6 +19,45 @@ export const STRUNG_STATUSES: ReadonlySet<StringingJob['status']> = new Set(['st
 
 export const labelKey = (label: string) => label.trim().toLowerCase();
 
+// ── Usage rate (docs/plans/string-usage-rate.md) ──────────────────────────
+/** Sets strung per week are counted over this many weeks, or since the club's
+ *  first strung job if that is sooner. */
+export const RATE_WINDOW_WEEKS = 8;
+/** The same two lines the shuttles use (`lib/birdRunway.ts`). */
+export const STRING_REORDER_NOW_WEEKS = 2;
+export const STRING_REORDER_SOON_WEEKS = 4;
+export type StringReorder = 'now' | 'soon' | 'ok';
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** When a job's string went in: the FIRST move to `strung` in its history.
+ *  A job made straight at `strung` (the bench can) has it as its first entry. */
+export function strungAtOf(job: Pick<StringingJob, 'history'> | { history?: unknown }): string | undefined {
+  const history = (job as { history?: unknown }).history;
+  if (!Array.isArray(history)) return undefined;
+  for (const h of history) {
+    if (h && typeof h === 'object' && (h as { status?: unknown }).status === 'strung' && typeof (h as { at?: unknown }).at === 'string') {
+      return (h as { at: string }).at;
+    }
+  }
+  return undefined;
+}
+
+/** Weeks of stock at the rate; `null` when the rate is unknown or nil. */
+export function stringWeeksLeft(remainingSets: number, setsPerWeek: number | null): number | null {
+  if (setsPerWeek === null || setsPerWeek <= 0) return null;
+  return Math.max(0, remainingSets) / setsPerWeek;
+}
+
+/** `null` when there is no telling: no purchase logged, or nothing strung lately. */
+export function stringReorder(line: Pick<StringStockLine, 'purchases' | 'remainingSets' | 'setsPerWeek'>): StringReorder | null {
+  if (line.purchases === 0) return null;
+  const weeks = stringWeeksLeft(line.remainingSets, line.setsPerWeek);
+  if (weeks === null) return null;
+  if (weeks < STRING_REORDER_NOW_WEEKS) return 'now';
+  if (weeks < STRING_REORDER_SOON_WEEKS) return 'soon';
+  return 'ok';
+}
+
 /**
  * A label with its spaces and punctuation gone: "BG-80", "bg 80" and "BG80"
  * are one key. Only a FALLBACK for a job's label (`summarizeStringStock`),
@@ -63,6 +102,17 @@ export interface StringStockLine {
    * ADDITIVE on the admin stock read.
    */
   overdrawnSets: number;
+  /**
+   * Sets strung per week lately (docs/plans/string-usage-rate.md): over the
+   * last `RATE_WINDOW_WEEKS`, or since the club's first strung job if that is
+   * sooner. `null` when no date is known (no `now`, or no job carries one);
+   * 0 when nothing of this string was strung in the window. ADDITIVE.
+   */
+  setsPerWeek: number | null;
+  /** `remainingSets / setsPerWeek`; `null` with no rate. ADDITIVE. */
+  weeksLeft: number | null;
+  /** `stringReorder`: now / soon / ok, or `null` when there is no telling. ADDITIVE. */
+  reorder: StringReorder | null;
 }
 
 export interface StringColourStock {
@@ -91,8 +141,11 @@ export function summarizeStringStock(input: {
   aliases?: Readonly<Record<string, string>>;
   purchases: readonly StringPurchase[];
   /** `stringColor` is optional: a job read without it counts in the mixed pool.
-   *  `ownString`: the player brought the string, so the job uses no set. */
-  jobs: readonly Pick<StringingJob, 'stringLabel' | 'status' | 'archivedAt' | 'stringColor' | 'ownString'>[];
+   *  `ownString`: the player brought the string, so the job uses no set.
+   *  `strungAt`: when its string went in (`strungAtOf`), for the usage rate. */
+  jobs: readonly (Pick<StringingJob, 'stringLabel' | 'status' | 'archivedAt' | 'stringColor' | 'ownString'> & { strungAt?: string })[];
+  /** The moment the usage rate is measured to; without it there is no rate. */
+  now?: Date;
   catalog: ReadonlyMap<string, CatalogItem>;
   /** The club's own colours, so a job's "Teal" finds `custom:…`'s pool. */
   customColours?: readonly CustomColour[];
@@ -118,6 +171,7 @@ export function summarizeStringStock(input: {
       usedSets: 0, usedMetres: 0, remainingMetres: 0, remainingSets: 0,
       costPerSetCents: null, usedCostCents: null,
       byColour: [], mixedRemainingSets: 0, overdrawnSets: 0,
+      setsPerWeek: null, weeksLeft: null, reorder: null,
     });
   }
 
@@ -166,6 +220,7 @@ export function summarizeStringStock(input: {
         usedSets: 0, usedMetres: 0, remainingMetres: 0, remainingSets: 0,
         costPerSetCents: null, usedCostCents: null,
         byColour: [], mixedRemainingSets: 0, overdrawnSets: 0,
+      setsPerWeek: null, weeksLeft: null, reorder: null,
       };
       byKey.set(key, line);
     }
@@ -213,17 +268,24 @@ export function summarizeStringStock(input: {
     otherNames.get(`l:${labelKey(label)}`) ?? otherNames.get(`c:${compactKey(label)}`) ?? undefined;
 
   const unmatched = new Map<string, { label: string; usedSets: number }>();
+  // The usage rate's inputs: every counted job's strung moment per line, and
+  // the club's first one (the window never reaches back before it).
+  const strungMsByKey = new Map<string, number[]>();
+  let firstStrungMs = Infinity;
   for (const j of input.jobs) {
     if (!STRUNG_STATUSES.has(j.status)) continue;
     // The player's own string went in, not the club's (the request sheet's
     // "I have my own", or the bench marking it): no set came off the shelf.
     if (j.ownString === true) continue;
+    const strungMs = j.strungAt ? Date.parse(j.strungAt) : NaN;
+    if (Number.isFinite(strungMs) && strungMs < firstStrungMs) firstStrungMs = strungMs;
     const own = keyOf(j.stringLabel ?? '');
     if (!own) continue;
     const key = byKey.has(own) ? own : renamed.get(own) ?? byOtherName(j.stringLabel) ?? own;
     const line = byKey.get(key);
     if (line) {
       line.usedSets += 1;
+      if (Number.isFinite(strungMs)) strungMsByKey.set(key, [...(strungMsByKey.get(key) ?? []), strungMs]);
       const pool = poolsOf(key);
       const colour = colourIdOf(j.stringColor, input.customColours);
       if (colour && pool.colourMetres.has(colour)) pool.colourUsed.set(colour, (pool.colourUsed.get(colour) ?? 0) + 1);
@@ -234,6 +296,15 @@ export function summarizeStringStock(input: {
       unmatched.set(key, u);
     }
   }
+
+  // The window: the last RATE_WINDOW_WEEKS, or since the club first strung
+  // anything if that is sooner — never less than a week, so one job strung
+  // this morning does not read as seven a week.
+  const nowMs = input.now?.getTime();
+  const windowStartMs = nowMs === undefined || firstStrungMs === Infinity
+    ? null
+    : Math.max(nowMs - RATE_WINDOW_WEEKS * WEEK_MS, Math.min(firstStrungMs, nowMs - WEEK_MS));
+  const windowWeeks = windowStartMs === null || nowMs === undefined ? null : (nowMs - windowStartMs) / WEEK_MS;
 
   const lines = [...byKey.entries()].map(([lineKey, line]) => {
     const pool = poolsOf(lineKey);
@@ -273,17 +344,24 @@ export function summarizeStringStock(input: {
     const key = labelKey(line.label);
     const perMetre = reelPerMetre.get(key) ?? paidPerMetre.get(key) ?? anyPerMetre.get(key);
     const costPerSetCents = perMetre === undefined ? null : Math.round(perMetre * s);
+    const setsPerWeek = windowStartMs === null || windowWeeks === null
+      ? null
+      : (strungMsByKey.get(lineKey) ?? []).filter((t) => t >= windowStartMs && t <= (nowMs as number)).length / windowWeeks;
+    const remainingSets = Math.floor(remainingMetres / s);
     return {
       ...line,
       usedMetres: line.usedSets * s,
       remainingMetres,
-      remainingSets: Math.floor(remainingMetres / s),
+      remainingSets,
       costPerSetCents,
       usedCostCents: costPerSetCents === null ? null : line.usedSets * costPerSetCents,
       byColour,
       mixedRemainingSets,
       // Whole sets: a few metres short is a reel's slack, not a missing reel.
       overdrawnSets: line.purchases > 0 ? Math.floor(unloggedMetres / s) : 0,
+      setsPerWeek,
+      weeksLeft: line.purchases > 0 ? stringWeeksLeft(remainingSets, setsPerWeek) : null,
+      reorder: stringReorder({ purchases: line.purchases, remainingSets, setsPerWeek }),
     };
   });
 

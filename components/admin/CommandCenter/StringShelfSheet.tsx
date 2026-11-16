@@ -20,6 +20,13 @@ import type { StringStockLine } from '@/lib/stringStockMath';
 import type { CatalogItem, StringPurchase } from '@/lib/types';
 
 const money = (cents: number) => fmtMoney(cents / 100);
+/** Sets a week: one decimal under ten ("1.5"), whole above. */
+const perWeekText = (n: number, locale: string) =>
+  new Intl.NumberFormat(locale, { maximumFractionDigits: n < 10 ? 1 : 0 }).format(n);
+/** The day the shelf runs dry at the rate, in the app's zone (as every date a member reads). */
+const runsOutOn = (weeks: number, locale: string) =>
+  new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', timeZone: 'America/Vancouver' })
+    .format(new Date(Date.now() + weeks * 7 * 24 * 60 * 60 * 1000));
 
 /**
  * Everything about ONE string, in one place (docs/plans/bench-redesign.md).
@@ -467,6 +474,21 @@ export default function StringShelfSheet(props: Props) {
                     where "Log a purchase" is, instead of reading as "None left". */}
                 {(line.overdrawnSets ?? 0) > 0 && (
                   <p className="field-warn" style={{ margin: 0 }}>{t('shelf.sheet.overdrawn', { count: line.overdrawnSets })}</p>
+                )}
+                {/* How long it lasts (docs/plans/string-usage-rate.md): sets strung
+                    a week lately, and the day that runs the shelf dry. */}
+                {line.setsPerWeek != null && (
+                  <p className="fs-sm" style={{ margin: 0, color: 'var(--text-secondary)' }}>
+                    {line.setsPerWeek > 0
+                      ? [
+                          t('shelf.sheet.rate', { perWeek: perWeekText(line.setsPerWeek, locale) }),
+                          line.weeksLeft != null ? t('shelf.sheet.runsOut', { date: runsOutOn(line.weeksLeft, locale) }) : null,
+                        ].filter(Boolean).join(' · ')
+                      : t('shelf.sheet.idle')}
+                  </p>
+                )}
+                {(line.reorder === 'now' || line.reorder === 'soon') && (
+                  <p className="field-warn" style={{ margin: 0 }}>{t(line.reorder === 'now' ? 'shelf.sheet.reorderNow' : 'shelf.sheet.reorderSoon')}</p>
                 )}
                 {/* Per colour, once a purchase says one (docs/plans/string-stock-by-colour.md):
                     what the request sheet offers a member is read from these. */}

@@ -345,6 +345,17 @@ export default function StringShelfCard() {
             // More strung than was ever logged: a reel nobody logged, said
             // rather than hidden behind "None left" (string-stock-audit-fixes).
             const over = hasStock ? line.overdrawnSets ?? 0 : 0;
+            // How long it lasts at the recent rate (docs/plans/string-usage-rate.md):
+            // the shuttles' two lines, said beside the count.
+            const reorder = hasStock ? line.reorder ?? null : null;
+            const weeks = line?.weeksLeft != null ? Math.max(1, Math.round(line.weeksLeft)) : null;
+            const runway = !hasStock ? null
+              : reorder === 'now' ? t('shelf.runway.now')
+              : reorder === 'soon' && weeks !== null ? t('shelf.runway.soon', { weeks })
+              : reorder === 'ok' && weeks !== null ? t('shelf.runway.ok', { weeks })
+              : line.setsPerWeek === 0 ? t('shelf.runway.idle')
+              : null;
+            const warn = low || over > 0 || reorder === 'now' || reorder === 'soon';
             const price = shelf.prices[label];
             return (
               <li key={label}>
@@ -353,10 +364,11 @@ export default function StringShelfCard() {
                   ariaLabel={t('shelf.openRow', { name: label })}
                   title={<span className="fs-md" style={{ color: 'var(--text-primary)', overflowWrap: 'anywhere' }}>{label}</span>}
                   subtitle={
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)', color: low || over > 0 ? 'var(--sev-warn)' : undefined }}>
-                      {(low || over > 0) && <span className="material-icons icon-xs" aria-hidden="true">warning</span>}
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)', color: warn ? 'var(--sev-warn)' : undefined }}>
+                      {warn && <span className="material-icons icon-xs" aria-hidden="true">warning</span>}
                       {hasStock ? t('shelf.setsLeft', { count: line.remainingSets }) : t('shelf.noStock')}
                       {over > 0 && ` · ${t('shelf.overdrawn', { count: over })}`}
+                      {runway && ` · ${runway}`}
                       {(shelf.colours[label]?.length ?? 0) > 0 && (
                         <span style={{ marginLeft: 'var(--space-2)', display: 'inline-flex' }}>
                           <ColourDots ids={shelf.colours[label]} customs={shelf.customColours} />
