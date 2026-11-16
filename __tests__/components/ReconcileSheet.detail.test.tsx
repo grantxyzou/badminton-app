@@ -48,11 +48,31 @@ describe('ReconcileSheet — what each line says', () => {
     expect(screen.queryByRole('button', { name: /session’s payments/ })).toBeNull();
   });
 
-  it('a deleted job says it cannot repair itself', async () => {
-    serve([{ ...LONE_PAYMENT, detail: { subject: { kind: 'stringing', exists: false }, entries: LONE_PAYMENT.detail.entries } }]);
-    render(<ReconcileSheet open onClose={() => {}} onChanged={() => {}} />);
+  it('a deleted, paid job offers "Restore the charge", and the check runs again after it', async () => {
+    const deleted = { ...LONE_PAYMENT, detail: { subject: { kind: 'stringing', exists: false }, entries: LONE_PAYMENT.detail.entries } };
+    const calls: Array<[string, string | undefined, string | undefined]> = [];
+    global.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      calls.push([String(input), init?.method, init?.body ? String(init.body) : undefined]);
+      if (String(input).endsWith('/api/admin/ledger/repair')) return new Response(JSON.stringify({ outcome: 'restored', amountCents: 4000 }), { status: 200 });
+      if (init?.method === 'POST') return new Response(JSON.stringify({ lastAt: new Date().toISOString(), checked: 13, mismatches: [] }), { status: 200 });
+      return new Response(JSON.stringify({ lastAt: new Date().toISOString(), checked: 13, mismatches: [deleted] }), { status: 200 });
+    }) as typeof fetch;
+    const onChanged = vi.fn();
+    render(<ReconcileSheet open onClose={() => {}} onChanged={onChanged} />);
     expect(await screen.findByText('Grant · stringing job (deleted)')).toBeTruthy();
-    expect(screen.getByText(/cannot repair itself/)).toBeTruthy();
+    expect(screen.getByText(/deleted after it was paid/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Restore the $40.00 charge' }));
+    expect(await screen.findByText('The ledger matches what everyone sees.')).toBeTruthy();
+    const posted = calls.find(([u]) => u.endsWith('/api/admin/ledger/repair'))!;
+    expect(JSON.parse(posted[2]!)).toEqual({ kind: 'stringing', id: 'job-6', memberId: 'm-grant' });
+    expect(onChanged).toHaveBeenCalled();
+  });
+
+  it('a job that still exists gets no restore button', async () => {
+    serve([LONE_PAYMENT]);
+    render(<ReconcileSheet open onClose={() => {}} onChanged={() => {}} />);
+    await screen.findByText('Grant · J-0006 · Astrox 88D Pro');
+    expect(screen.queryByTestId('reconcile-restore')).toBeNull();
   });
 
   it('a session line names the night and opens its payments', async () => {

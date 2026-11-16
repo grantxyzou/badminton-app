@@ -137,7 +137,11 @@ function fix(m: Mismatch): string {
   const s = m.detail?.subject;
   if (m.ref.kind === 'stringing') {
     const job = s?.jobNo ?? 'the job';
-    if (s && !s.exists) return 'The job was deleted, so it cannot repair itself. It needs a one-off ledger entry; ask the operator.';
+    if (s && !s.exists) {
+      return canRestore(m)
+        ? `The job was deleted after it was paid, and the delete took its charge with it. Tap Restore the charge: it writes the missing ${plain(m.ledgerCents)} charge back, so the payment has its bill again. Nobody is charged anything.`
+        : 'The job was deleted, so it cannot repair itself. It needs a one-off ledger entry; ask the operator.';
+    }
     if (m.code === 'missing_payment') return `Open ${job} on the bench${s?.archived ? ' (in the archive)' : ''}, mark it unpaid, then paid again.`;
     return `Open ${job} on the bench${s?.archived ? ' (in the archive)' : ''} and make any change, such as archiving or unarchiving it. Any change to a job rewrites its ledger lines.`;
   }
@@ -152,6 +156,12 @@ function fix(m: Mismatch): string {
     case 'amount_mismatch':
       return 'Open this session’s payments and settle it again. If it stays, run the ledger backfill.';
   }
+}
+
+/** A deleted job whose only live money is a payment: the one line "Restore the charge" can mend. */
+function canRestore(m: Mismatch): boolean {
+  const s = m.detail?.subject;
+  return m.ref.kind === 'stringing' && !!s && !s.exists && m.code === 'amount_mismatch' && m.ledgerCents < 0 && m.liveCents === 0;
 }
 
 /** One ledger entry as a line: "Nov 15 · Payment (card)  −$40.00". */
@@ -194,6 +204,8 @@ export default function ReconcileSheet({
   const [loadError, setLoadError] = useState(false);
   const [checking, setChecking] = useState(false);
   const [checkError, setCheckError] = useState('');
+  const [restoring, setRestoring] = useState<string | null>(null);
+  const [restoreError, setRestoreError] = useState<{ id: string; message: string } | null>(null);
 
   const load = useCallback(async () => {
     setLoadError(false);
@@ -226,6 +238,40 @@ export default function ReconcileSheet({
       setCheckError(reconcileFailureMessage(null, null));
     } finally {
       setChecking(false);
+    }
+  }
+
+  // "Restore the charge": one entry for one deleted job, then the check runs
+  // again so the line goes away in front of the person who tapped it.
+  async function restore(m: Mismatch) {
+    setRestoring(m.ref.id);
+    setRestoreError(null);
+    try {
+      const res = await fetch(`${BASE}/api/admin/ledger/repair`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind: 'stringing', id: m.ref.id, memberId: m.memberId }),
+      });
+      if (!res.ok) {
+        const code = ((await res.json().catch(() => null)) as { error?: string } | null)?.error;
+        setRestoreError({
+          id: m.ref.id,
+          message:
+            code === 'nothing_to_restore'
+              ? 'Already restored. Tap Check now to refresh the list.'
+              : code === 'job_exists'
+                ? 'The job still exists: open it and make any change instead.'
+                : res.status === 401
+                  ? 'Your admin sign-in has expired. Sign in again and retry.'
+                  : `Couldn't restore it (${res.status}). Try again.`,
+        });
+        return;
+      }
+      await checkNow();
+    } catch {
+      setRestoreError({ id: m.ref.id, message: "Couldn't reach the server. Try again." });
+    } finally {
+      setRestoring(null);
     }
   }
 
@@ -312,6 +358,23 @@ export default function ReconcileSheet({
                           <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>To fix: </span>
                           {fix(m)}
                         </p>
+                        {canRestore(m) && (
+                          <>
+                            <button
+                              type="button"
+                              className="cc-btn cc-btn-secondary"
+                              style={{ alignSelf: 'flex-start' }}
+                              disabled={!online || restoring !== null || checking}
+                              onClick={() => void restore(m)}
+                              data-testid="reconcile-restore"
+                            >
+                              {restoring === m.ref.id ? 'Restoring…' : `Restore the ${plain(m.ledgerCents)} charge`}
+                            </button>
+                            {restoreError?.id === m.ref.id && (
+                              <p className="field-error" role="alert" style={{ margin: 0 }}>{restoreError.message}</p>
+                            )}
+                          </>
+                        )}
                         {m.ref.kind === 'session' && onOpenSession && (
                           <button
                             type="button"
