@@ -3362,7 +3362,7 @@
     },
     "terms": {
       "title": "Terms of use",
-      "updated": "13 November 2026",
+      "updated": "16 November 2026",
       "sections": [
         {
           "h": "What this is",
@@ -3387,6 +3387,7 @@
           "p": [
             "The app records each person's share of a session and whether it has been paid. Paying is arranged between you and your group's organisers: usually by e-transfer, or by card where your group has turned card payments on.",
             "A card payment goes to your group's own Stripe account, never to %APP% or its operator. Your group is the seller: a refund or a dispute is between you and your group's organisers. A group may add an organiser fee to every player's share, whatever way they pay; when it does, the receipt shows it.",
+            "Refunds: you pay for a session once its bill is settled, after you've played, and for a restring once it's done, so there is usually nothing to refund. If a card payment can't be applied, for example because that share was already paid another way, the app refunds it to the same card on its own. Any other refund, such as a charge you think is wrong, is your group's organisers' decision: ask them, and they refund it from their Stripe account. A refund goes back to the card you paid with and usually shows within 5 to 10 business days.",
             "Nothing in the app is a bill from anyone but your group's organisers, and none of it is financial advice or a financial service."
           ]
         },

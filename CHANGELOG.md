@@ -8,6 +8,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Refunds in the terms (2026-11-16)
+
+- **The terms say when you get a refund and how it reaches you.** You pay for a session after it's played and its bill is settled, and for a restring once it's done, so there is usually nothing to refund. A card payment the app can't apply goes back to the card on its own; any other refund is your club organisers' call, made from their Stripe account, and usually shows within 5 to 10 business days. In English and Chinese.
+
 ## Count the string shelf with a photo (2026-11-16)
 
 - **Take one photo of the string shelf and the app counts it.** Lay the reels and packets out so the labels show; the app proposes what it sees (which string, reel or packet, how full each reel looks), and you check every line before saving. Anything it can't read is listed as "not sure" for you to name or leave out.
