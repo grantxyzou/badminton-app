@@ -2628,6 +2628,20 @@
       "now": "当前",
       "stepHint": "点一个步骤，把穿线单移到那一步。",
       "markPaid": "标记已付",
+      "bench": {
+        "unpaid": "未付",
+        "customRequest": "自定义要求",
+        "mains": "竖",
+        "crosses": "横",
+        "grommets": "{count} 个穿线孔",
+        "group": {
+          "received": "已收到",
+          "strung": "已穿好",
+          "ready": "待取",
+          "requested": "已申请",
+          "picked_up": "已取走"
+        }
+      },
       "paidBadge": "已付",
       "paidOn": "{date} 已付",
       "markUnpaid": "标记未付",
