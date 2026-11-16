@@ -1,6 +1,6 @@
 # Azure Architecture — Badminton App
 
-Last verified against the repo: 2026-10-24. Rows marked **†** cannot be derived
+Last verified against the repo: 2026-11-15. Rows marked **†** cannot be derived
 from anything in this repository; they are what the Azure portal said when
 someone last looked, and the "Observed in the portal" section at the end is
 where a fresh look gets recorded.
@@ -89,8 +89,11 @@ and on manual dispatch (always deploys):
 All GitHub Actions SHAs are pinned (not floating tags).
 
 **Rollback** is redeploying an older commit: re-run that commit's own
-`deploy-next.yml` run (`gh run rerun <run-id>`, within 30 days), or push the
-commit to a throwaway branch and dispatch the workflow on it. A manual run
+`deploy-next.yml` run (`gh run rerun <run-id>`, within 30 days) if that run was
+started from "Run workflow", or push the commit to a throwaway branch and
+dispatch the workflow on it. A re-run of a SCHEDULED run is still a schedule
+event, so its `decide` job compares the live (newer) build with the older
+commit, finds no changed files, and skips. A manual run
 takes a branch or tag NAME, so `--ref <sha>` — what this line said until
 2026-11-05 — fails. Runbook: the `deploy-promotion` skill. A rollback runs older code against the same live
 database, which is why `lib/types.ts` changes are additive-and-optional only.
@@ -161,7 +164,8 @@ which a build-time header cannot carry. It keeps `frame-ancestors 'none'`,
 `unsafe-eval` for HMR).
 
 `proxy.ts` adds two request guards on every `/api/*` call before any handler:
-a 413 for bodies over 256 KB and a 403 for cross-site non-safe methods.
+a 413 for bodies over 256 KB (411 for a chunked body with no length, which
+cannot be measured) and a 403 for cross-site non-safe methods.
 
 ### Networking: outbound to Cosmos
 
@@ -231,10 +235,11 @@ container) and `__tests__/containers-registry.test.ts` pins it to the source.
 | `/recipientMemberId` | `kudos` |
 | `/category` | `equipmentCatalog` |
 
-**Five of these keys are inferred, not declared** — `sessions`, `players`,
+**Five of these keys are declared nowhere in the repo** — `sessions`, `players`,
 `announcements`, `members`, `birds` were created by hand in the
 portal before `ensureContainer()` existed. The registry records what every call
-site assumes. The portal is ground truth; see "Observed in the portal". †
+site assumes, and on 2026-11-10 the real keys were read from Cosmos
+(`az cosmosdb sql container show`) and match it; see "Observed in the portal".
 
 The other 19 are created on first touch by `ensureContainer(name, pk)` in
 `lib/cosmos.ts`, memoized per process. `ensureContainer` passes no throughput,
@@ -250,8 +255,8 @@ container tracks the current session. `getActiveSessionId(groupId)` reads it,
 memoizes it for 5 seconds per process against real Cosmos, and for BPM alone
 falls back to `'current-session'` for legacy data.
 
-`POST /api/session/advance` creates a new date-keyed session, copies
-`approvedNames`, sets `signupOpen: false`, and updates the pointer. Old sessions
+`POST /api/session/advance` creates a new date-keyed session, sets
+`signupOpen: false`, and updates the pointer. Old sessions
 are archived (not deleted).
 
 ### Local development fallback
@@ -404,7 +409,6 @@ Browser
       account and the body's name is ignored
     → signupOpen check (403 if closed, admin bypasses)
     → deadline check (403 if past, admin bypasses)
-    → approvedNames check (403 if name not in list, admin bypasses)
     → duplicate name check (restores soft-deleted record if exists)
     → capacity check (if full and no waitlist flag → 409)
     → create { id, name, sessionId, timestamp, deleteToken, waitlisted? }
