@@ -20,7 +20,7 @@ export * from './stringStocktakeMath';
 
 /**
  * THE STOCKTAKE — storage, the one stock loader, and who may count
- * (docs/plans/string-photo-stocktake.md). A count is a `kind: 'stringCount'`
+ * (docs/plans/string-photo-stocktake.md, scanning: docs/plans/string-barcode-stocktake.md). A count is a `kind: 'stringCount'`
  * row in `clubSettings` beside the purchases and the deleted jobs' uses — no
  * new container (the account sits at Cosmos's cap). Never edited: a later
  * count of a string replaces the earlier one in the arithmetic, and every
@@ -125,8 +125,9 @@ const num = (v: unknown, max: number): number | null => (typeof v === 'number' &
 export function validateCount(
   body: Record<string, unknown>,
   sizes: ReturnType<typeof shelfSizes>,
-): { source: 'photo' | 'hand'; lines: StringCountLine[] } {
-  const source = body.source === 'photo' ? 'photo' : body.source === 'hand' ? 'hand' : null;
+): { source: 'scan' | 'hand'; lines: StringCountLine[] } {
+  // 'photo' is no longer offered (docs/plans/string-barcode-stocktake.md); old rows keep it.
+  const source = body.source === 'scan' ? 'scan' : body.source === 'hand' ? 'hand' : null;
   if (!source || !Array.isArray(body.lines) || body.lines.length === 0 || body.lines.length > 60) throw new StocktakeError('invalid_request');
   const lines: StringCountLine[] = [];
   const seen = new Set<string>();
@@ -173,7 +174,7 @@ export function validateCount(
   return { source, lines };
 }
 
-export async function saveStringCount(groupId: string, input: { source: 'photo' | 'hand'; lines: StringCountLine[] }, memberId: string): Promise<StringCount> {
+export async function saveStringCount(groupId: string, input: { source: 'scan' | 'hand'; lines: StringCountLine[] }, memberId: string): Promise<StringCount> {
   await ensureClubSettings();
   const doc: StringCount = {
     id: `sc-${randomBytes(8).toString('hex')}`,

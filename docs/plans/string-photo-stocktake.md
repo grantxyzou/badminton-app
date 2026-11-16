@@ -1,8 +1,7 @@
 # String photo stocktake
 
 **Track:** ROADMAP North Star — admin cost-automation (the string inventory). Follows `docs/plans/string-usage-rate.md`.
-**Status:** in-flight
-**Review on:** 2026-12-31 — how many stocktakes were saved, and how far did the photo's first guess sit from the count the person confirmed? If the guess was corrected on most lines, the photo is ceremony: keep the hand count and drop the AI step.
+**Status:** shipped 2026-11-16; the photo step was replaced by scanning the same day (`docs/plans/string-barcode-stocktake.md`)
 
 ## Problem
 

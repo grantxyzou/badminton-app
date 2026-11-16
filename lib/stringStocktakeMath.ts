@@ -78,8 +78,8 @@ export interface StringCount {
   /** ISO. Jobs strung after this, and purchases logged after it, move the shelf from the count. */
   countedAt: string;
   countedBy: string;
-  /** Whether a photo proposed the figures (a person still confirmed each line). */
-  source: 'photo' | 'hand';
+  /** How it was counted: scanned barcodes, by hand, or (before 2026-11-16) a photo's proposal. */
+  source: 'scan' | 'hand' | 'photo';
   lines: StringCountLine[];
 }
 

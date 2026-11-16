@@ -192,12 +192,17 @@ submitted by Grant on device.
   `lib/calendarEvent.ts` builds the event for both. iOS 17+ needs no calendar
   access; 15–16 asks once (`NSCalendarsUsageDescription`, canary-pinned). A
   store build without the plugin shows no button rather than a dead one.
-- **A photo field needs the usage keys in the BINARY** (2026-11-16): iOS
+- **The camera needs the usage keys in the BINARY** (2026-11-16): iOS
   ENDS the app when the camera or photo library opens with no
   `NSCameraUsageDescription` / `NSPhotoLibraryUsageDescription` — the
-  stocktake photo "crashed and quit" store build 7. The keys are in
+  stocktake's photo "crashed and quit" store build 7. The keys are in
   `Info.plist` from build 8 (canary-pinned), and because the web bundle is
-  newer than the binary, a photo field is offered on iOS only through
+  newer than the binary, the camera is offered on iOS only through
   `cameraUsable()` (`lib/nativeCamera.ts`, build ≥ `IOS_CAMERA_BUILD`; an
-  unreadable build is a no). A new `<input type="file">` reaching members
-  goes through it too.
+  unreadable build is a no). **Android's WebView reads the live camera only
+  when the app declares `android.permission.CAMERA`** (Capacitor asks at
+  runtime; undeclared, the ask is refused at once): declared from versionCode
+  7 with the camera hardware optional, and gated the same way
+  (`ANDROID_CAMERA_BUILD`). The stocktake's barcode scanner goes through it
+  (`canScan` in `lib/barcodeScanner.ts`), and so does any new camera or
+  `<input type="file">` reaching members.

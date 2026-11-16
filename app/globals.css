@@ -5437,6 +5437,53 @@ button.sheet-row { cursor: pointer; }
   background: var(--inner-card-bg);
 }
 
+/* The stocktake's viewfinder (docs/plans/string-barcode-stocktake.md): the
+   live camera at 4:3, the inner-card radius, a dashed box to aim the barcode
+   at, and one line of status over its foot. The box is a guide drawn on the
+   video, not a container, so it keeps its dash. */
+.stocktake-camera {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  aspect-ratio: 4 / 3;
+}
+/* While a scan's prompt is open (a new barcode, a reel's fullness) the
+   person is answering, not aiming: the viewfinder folds to a strip so the
+   prompt and its button fit under it without scrolling. */
+.stocktake-camera--answering {
+  aspect-ratio: 4 / 1;
+}
+.stocktake-camera--answering::after,
+.stocktake-camera--answering .stocktake-camera-hint {
+  display: none;
+}
+.stocktake-camera video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.stocktake-camera::after {
+  content: '';
+  position: absolute;
+  inset: 30% 12%;
+  border: 2px dashed var(--accent);
+  border-radius: var(--radius-md);
+  pointer-events: none;
+}
+.stocktake-camera-hint {
+  position: absolute;
+  left: var(--space-4);
+  right: var(--space-4);
+  bottom: var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  text-align: center;
+}
+
 /* A filled field with its label INSIDE it (the bench's "A string on the
    shelf", 2026-11-12): the inner-row material, a small label (and counter)
    over the value, no stroke. The field inside is flattened to the fill; focus

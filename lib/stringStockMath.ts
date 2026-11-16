@@ -120,7 +120,7 @@ export interface StringStockLine {
    * purchases logged after it and jobs strung after it move it. `null` = never
    * counted. ADDITIVE.
    */
-  lastCount: { at: string; sets: number; source: 'photo' | 'hand' } | null;
+  lastCount: { at: string; sets: number; source: 'scan' | 'hand' | 'photo' } | null;
 }
 
 export interface StringColourStock {
@@ -220,7 +220,7 @@ export function summarizeStringStock(input: {
   // AFTER it moves them — a purchase logged later, a job strung later. Before
   // the count is history: still bought, still used, still costed, but no
   // longer what decides what is on the shelf.
-  const countByKey = new Map<string, { atMs: number; at: string; source: 'photo' | 'hand'; sets: number }>();
+  const countByKey = new Map<string, { atMs: number; at: string; source: 'scan' | 'hand' | 'photo'; sets: number }>();
   for (const c of (input.counts ?? []).slice().sort((a, b) => (a.countedAt < b.countedAt ? -1 : 1))) {
     const atMs = Date.parse(c.countedAt);
     if (!Number.isFinite(atMs)) continue;

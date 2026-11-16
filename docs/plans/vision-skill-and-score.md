@@ -41,9 +41,10 @@ remove the feature.
 
 ## Proposed order
 
-1. **Score-sheet photo → Add a game.** Reuses the stocktake's pieces: the
-   photo shrinker (`lib/photoDownscale.ts`), the fixed reply shape and the
-   check step. Names on the sheet are matched to the club's roster the way the
+1. **Score-sheet photo → Add a game.** Would reuse the photo stocktake's
+   pieces: the photo shrinker, the fixed reply shape and the check step. Those
+   were removed when the stocktake moved to barcodes (2026-11-16,
+   `docs/plans/string-barcode-stocktake.md`); git history keeps them. Names on the sheet are matched to the club's roster the way the
    stocktake matches labels to the shelf: exactly one match or "not sure",
    never a guess.
 2. **Form tips from your own clip** (only if 1 is used). Frames are taken on

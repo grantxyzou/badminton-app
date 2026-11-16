@@ -412,7 +412,7 @@ export default function StringShelfCard() {
             </span>
           </span>
           <button type="button" className="cc-btn cc-btn-secondary" onClick={() => setCounting(true)}>
-            <span className="material-icons icon-sm" aria-hidden="true">photo_camera</span>
+            <span className="material-icons icon-sm" aria-hidden="true">barcode_scanner</span>
             {t('shelf.countNow')}
           </button>
         </div>

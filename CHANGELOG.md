@@ -8,6 +8,13 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Count the string shelf by scanning barcodes (2026-11-16)
+
+- **The stocktake scans barcodes now, instead of reading a photo.** Point the camera at each packet and reel: a packet counts itself, and a reel asks how full it is. The first time a barcode is new, you tell the app which string, which colour, and packet or reel; after that it knows.
+- **The review compares by string and colour**: what the app says beside what you scanned, with the difference. A string you didn't scan stays out of the count; "None left" counts it as zero.
+- **No AI is used any more**, so the stocktake costs nothing to run and needs no daily limit. The photo option is gone.
+- **On the iPhone app, scanning needs the next app update (build 8).** Until then the stocktake counts by hand.
+
 ## AI limits sized to real use (2026-11-16)
 
 - **The AI writing help is the operator's alone.** Other clubs' admins no longer see "AI polish" on announcements, and the server refuses them.

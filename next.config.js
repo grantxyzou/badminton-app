@@ -90,8 +90,11 @@ const nextConfig = {
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           // microphone=(self): the courtside board's voice scoring
           // (docs/plans/voice-score.md) asks for the mic on our own pages;
-          // the browser still prompts. Camera and location stay shut.
-          { key: 'Permissions-Policy', value: 'camera=(), microphone=(self), geolocation=()' },
+          // camera=(self): the stocktake's barcode scanner reads the live
+          // camera (docs/plans/string-barcode-stocktake.md). The browser still
+          // prompts for both, and nothing the page embeds may ask. Location
+          // stays shut.
+          { key: 'Permissions-Policy', value: 'camera=(self), microphone=(self), geolocation=()' },
           {
             key: 'Strict-Transport-Security',
             value: 'max-age=31536000; includeSubDomains',

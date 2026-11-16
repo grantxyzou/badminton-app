@@ -184,6 +184,12 @@ describe('ios/', () => {
     expect(plist).toContain('<key>NSCalendarsUsageDescription</key>');
   });
 
+  it('declares the camera on Android (optional hardware), or the scanner is refused at once', () => {
+    const manifest = read('android', 'app', 'src', 'main', 'AndroidManifest.xml');
+    expect(manifest).toContain('<uses-permission android:name="android.permission.CAMERA" />');
+    expect(manifest).toContain('<uses-feature android:name="android.hardware.camera" android:required="false" />');
+  });
+
   it('declares camera and photo library use, or iOS ends the app at the stocktake photo', () => {
     expect(plist).toContain('<key>NSCameraUsageDescription</key>');
     expect(plist).toContain('<key>NSPhotoLibraryUsageDescription</key>');
