@@ -24,6 +24,8 @@ vi.mock('@/lib/native', () => ({
   nativePlatform: () => (shell.native ? 'ios' : null),
 }));
 vi.mock('@/lib/appBadge', () => ({ syncAppBadge: () => undefined, owedBadgeCount: () => 0 }));
+// The card fee's in-app form, as a marker: this file tests only that the button opens it.
+vi.mock('@/components/payments/CardPaySheet', () => ({ default: ({ open }: { open: boolean }) => (open ? <div data-testid="card-pay-sheet" /> : null) }));
 
 const OWED = {
   totalOwed: 12.5,
@@ -87,6 +89,18 @@ describe('Pay by card', () => {
     );
     const post = fetchSpy.mock.calls.find(([, i]) => (i as RequestInit | undefined)?.method === 'POST');
     expect((post![1] as RequestInit).body).toBeUndefined();
+    expect(open).not.toHaveBeenCalled();
+  });
+
+  it('with a card fee: says so under the button, and the button opens the in-app form, not Stripe’s page', async () => {
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(async () =>
+      new Response(JSON.stringify({ ...OWED, cardFee: { bps: 240 } }), { status: 200 }),
+    );
+    wrap(<UnpaidSessionsCard name="Lin" />);
+    expect((await screen.findByTestId('card-fee-note')).textContent).toBe('Credit cards add 2.4%. Debit cards pay no fee.');
+    fireEvent.click(screen.getByRole('button', { name: /Pay by card/ }));
+    expect(await screen.findByTestId('card-pay-sheet')).toBeTruthy();
+    expect(fetchSpy.mock.calls.some(([, i]) => (i as RequestInit | undefined)?.method === 'POST')).toBe(false);
     expect(open).not.toHaveBeenCalled();
   });
 });

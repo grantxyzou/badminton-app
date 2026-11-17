@@ -46,6 +46,7 @@ import { ensurePayments, releaseHoldIfSettled } from './paymentsInbox';
 import { requireOutboundOrigin } from './appOrigin';
 import type { EtransferPayment, Player, StringingJob } from './types';
 import { APP_NAME } from './brand';
+import { feeShareOf, linesPartOfRefund, maxAllowedSurcharge } from './surchargeMath';
 
 export const CARD_PAY_SETTINGS_ID = 'card-pay';
 export function cardPaySettingsId(groupId: string): string {
@@ -64,12 +65,29 @@ export interface CardPaySettingsDoc {
   connectedBy: string;
   createdAt: string;
   updatedAt: string;
+  /**
+   * The card fee on credit cards (docs/plans/card-surcharge.md). Absent or
+   * `on: false` = no fee, and members pay through Stripe's hosted Checkout as
+   * before. On, they pay through the in-app card form, which can tell credit
+   * from debit before the charge.
+   */
+  surcharge?: CardSurchargeSetting;
   _etag?: string;
+}
+
+export interface CardSurchargeSetting {
+  on: boolean;
+  /** Basis points, 1–240 (2.4% is the most allowed). */
+  bps: number;
+  /** The organiser confirmed they told Mastercard and Stripe, when they turned it on. */
+  acknowledgedAt?: string;
+  acknowledgedBy?: string;
+  updatedAt: string;
 }
 
 /** The most lines one Checkout carries; older ones are paid first, the rest next time. */
 export const MAX_CARD_LINES = 12;
-const CURRENCY = 'cad';
+export const CURRENCY = 'cad';
 
 export class CardPayError extends Error {
   constructor(public code: 'club_not_connected' | 'club_not_ready' | 'nothing_to_pay' | 'unavailable') {
@@ -100,7 +118,7 @@ export function cardPayOn(): boolean {
   return isFlagOn('NEXT_PUBLIC_FLAG_CARD_PAY') && stripeClient() !== null;
 }
 
-function must(): Stripe {
+export function must(): Stripe {
   const s = stripeClient();
   if (!s) throw new CardPayError('unavailable');
   return s;
@@ -245,6 +263,29 @@ export function linesFromMetadata(metadata: Record<string, string> | null | unde
 }
 
 /**
+ * What a member can pay by card right now, oldest first: settled session
+ * shares and finished, priced stringing jobs (frozen money, as e-transfer and
+ * credit pay), at most MAX_CARD_LINES, with the metadata that carries them
+ * through Stripe. Shared by Checkout and the in-app card form.
+ */
+export async function payableLines(
+  groupId: string,
+  memberId: string,
+): Promise<{ lines: OwedLine[]; metadata: Record<string, string>; amountCents: number }> {
+  const scope = groupScope(groupId);
+  const identity = await resolveIdentity({ memberId }, groupId);
+  const lines = settledLines(await computeOwed(scope, identity), identity.memberId)
+    .filter((l) => l.amountCents > 0)
+    .slice(0, MAX_CARD_LINES);
+  if (lines.length === 0) throw new CardPayError('nothing_to_pay');
+  const metadata: Record<string, string> = { bpm_group: groupId, bpm_member: memberId };
+  lines.forEach((l, i) => {
+    metadata[`bpm_line_${i}`] = encodeLine(l);
+  });
+  return { lines, metadata, amountCents: lines.reduce((sum, l) => sum + l.amountCents, 0) };
+}
+
+/**
  * A Stripe-hosted Checkout page for this member's settled session lines, as a
  * direct charge on the club's account. Returns the page's URL.
  */
@@ -258,21 +299,7 @@ export async function startCardCheckout(
   const settings = await readCardPay(groupId);
   if (!settings) throw new CardPayError('club_not_connected');
   if (!settings.chargesEnabled) throw new CardPayError('club_not_ready');
-
-  const scope = groupScope(groupId);
-  const identity = await resolveIdentity({ memberId }, groupId);
-  // Settled session shares and finished, priced stringing jobs (a job is
-  // frozen money by construction), oldest first, as e-transfer and credit pay.
-  const lines = settledLines(await computeOwed(scope, identity), identity.memberId)
-    .filter((l) => l.amountCents > 0)
-    .slice(0, MAX_CARD_LINES);
-  if (lines.length === 0) throw new CardPayError('nothing_to_pay');
-
-  const metadata: Record<string, string> = { bpm_group: groupId, bpm_member: memberId };
-  lines.forEach((l, i) => {
-    metadata[`bpm_line_${i}`] = encodeLine(l);
-  });
-  const amountCents = lines.reduce((sum, l) => sum + l.amountCents, 0);
+  const { lines, metadata, amountCents } = await payableLines(groupId, memberId);
 
   // A double tap within ten minutes gets the SAME page, not a second charge.
   const key = createHash('sha256')
@@ -420,40 +447,105 @@ export type ApplyResult =
   | { applied: number; alreadyOurs: number; refundedCents: number };
 
 /**
+ * Money that landed for a member's lines, from either way of paying by card:
+ * a hosted Checkout Session (no fee), or a PaymentIntent from the in-app card
+ * form (`bpm_flow: 'surcharge'`, maybe a fee). `id` is what the rows record as
+ * `paymentId` and what keys the ledger payment, the refund and the review row.
+ */
+export interface PaidSource {
+  id: string;
+  metadata: Record<string, string> | null | undefined;
+  /** Everything the card was charged, fee included, cents. */
+  chargedCents: number;
+  currency: string | null | undefined;
+  /** Unix seconds. */
+  created: number | null | undefined;
+  paymentIntentId: string | null;
+  /** The card fee in `chargedCents` (0 for Checkout). */
+  feeCents: number;
+}
+
+/** The fee a surcharge PaymentIntent says it carries (its own metadata; the event's API version may not show `amount_details.surcharge`). */
+export function feeOfIntent(pi: Pick<Stripe.PaymentIntent, 'metadata'>): number {
+  const n = Number(pi.metadata?.bpm_surcharge ?? 0);
+  return Number.isInteger(n) && n > 0 ? n : 0;
+}
+
+/**
  * Apply a completed Checkout Session. `eventAccount` is the Stripe-Account the
  * EVENT came from (`event.account`), which must be the club's own: the
  * metadata names a club, but only the signed envelope says whose money it is.
  */
 export async function applyPaidCheckout(session: Stripe.Checkout.Session, eventAccount: string | undefined): Promise<ApplyResult> {
   if (session.payment_status !== 'paid') return { ignored: 'not_paid' };
-  const groupId = session.metadata?.bpm_group;
-  const memberId = session.metadata?.bpm_member;
+  return applyPaidSource(
+    {
+      id: session.id,
+      metadata: session.metadata,
+      chargedCents: session.amount_total ?? 0,
+      currency: session.currency,
+      created: session.created,
+      paymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : (session.payment_intent?.id ?? null),
+      feeCents: 0,
+    },
+    eventAccount,
+  );
+}
+
+/**
+ * Apply a succeeded PaymentIntent from the in-app card form (the card fee's
+ * path, docs/plans/card-surcharge.md). A Checkout's own PaymentIntent also
+ * succeeds and carries the same lines; it is left to `checkout.session.*`,
+ * so only `bpm_flow: 'surcharge'` is read here.
+ */
+export async function applyPaidIntent(pi: Stripe.PaymentIntent, eventAccount: string | undefined): Promise<ApplyResult> {
+  if (pi.metadata?.bpm_flow !== 'surcharge') return { ignored: 'not_ours' };
+  if (pi.status !== 'succeeded') return { ignored: 'not_paid' };
+  return applyPaidSource(
+    {
+      id: pi.id,
+      metadata: pi.metadata,
+      chargedCents: pi.amount_received || pi.amount,
+      currency: pi.currency,
+      created: pi.created,
+      paymentIntentId: pi.id,
+      feeCents: feeOfIntent(pi),
+    },
+    eventAccount,
+  );
+}
+
+async function applyPaidSource(source: PaidSource, eventAccount: string | undefined): Promise<ApplyResult> {
+  const groupId = source.metadata?.bpm_group;
+  const memberId = source.metadata?.bpm_member;
   if (!groupId || !memberId) return { ignored: 'not_ours' };
 
   const settings = await readCardPay(groupId);
   if (!settings) return { ignored: 'unknown_club' };
-  const charged = session.amount_total ?? 0;
+  const charged = source.chargedCents;
   if (!eventAccount || settings.stripeAccountId !== eventAccount) {
-    console.error('[card-pay] checkout from an account that is not the club\'s', { groupId, session: session.id });
-    await fileCardReview(groupId, { checkoutId: session.id, kind: 'payment', memberId, amountCents: charged, reason: 'card_account_mismatch', at: session.created });
+    console.error('[card-pay] payment from an account that is not the club\'s', { groupId, source: source.id });
+    await fileCardReview(groupId, { checkoutId: source.id, kind: 'payment', memberId, amountCents: charged, reason: 'card_account_mismatch', at: source.created ?? undefined });
     return { ignored: 'account_mismatch' };
   }
-  const lines = linesFromMetadata(session.metadata);
+  const lines = linesFromMetadata(source.metadata);
   const total = lines.reduce((sum, l) => sum + l.amountCents, 0);
-  if (lines.length === 0 || total !== session.amount_total || session.currency !== CURRENCY) {
-    // We built this session; a mismatch is a bug or tampering, and a person decides.
-    console.error('[card-pay] checkout amount does not match its lines', { groupId, session: session.id, total, charged: session.amount_total });
-    await fileCardReview(groupId, { checkoutId: session.id, kind: 'payment', memberId, amountCents: charged, reason: 'card_amount_mismatch', at: session.created });
+  // The fee must be within the rules on top of exactly the lines, or a person decides.
+  const feeOk = source.feeCents >= 0 && source.feeCents <= maxAllowedSurcharge(total);
+  if (lines.length === 0 || !feeOk || total + source.feeCents !== charged || source.currency !== CURRENCY) {
+    // We built this charge; a mismatch is a bug or tampering, and a person decides.
+    console.error('[card-pay] charge does not match its lines', { groupId, source: source.id, total, fee: source.feeCents, charged });
+    await fileCardReview(groupId, { checkoutId: source.id, kind: 'payment', memberId, amountCents: charged, reason: 'card_amount_mismatch', at: source.created ?? undefined });
     return { ignored: 'amount_mismatch' };
   }
 
   const scope = groupScope(groupId);
-  const paidAt = new Date((session.created ?? Math.floor(Date.now() / 1000)) * 1000).toISOString();
+  const paidAt = new Date((source.created ?? Math.floor(Date.now() / 1000)) * 1000).toISOString();
   let applied = 0;
   let alreadyOurs = 0;
   let unappliedCents = 0;
   for (const line of lines) {
-    const outcome = await markCardPaid(scope, line, memberId, session.id, paidAt);
+    const outcome = await markCardPaid(scope, line, memberId, source.id, paidAt);
     if (outcome === 'paid') applied += 1;
     else if (outcome === 'ours') alreadyOurs += 1;
     else unappliedCents += line.amountCents;
@@ -461,17 +553,19 @@ export async function applyPaidCheckout(session: Stripe.Checkout.Session, eventA
 
   let refundedCents = 0;
   if (unappliedCents > 0) {
-    const pi = typeof session.payment_intent === 'string' ? session.payment_intent : session.payment_intent?.id;
-    if (pi) {
-      // Keyed on the session: a redelivered event cannot refund twice.
+    // A line that cannot be paid goes back to the card WITH its share of the
+    // fee (card network rule: a refund returns the prorated surcharge).
+    const refund = unappliedCents + feeShareOf(unappliedCents, total, source.feeCents);
+    if (source.paymentIntentId) {
+      // Keyed on the source: a redelivered event cannot refund twice.
       await must().refunds.create(
-        { payment_intent: pi, amount: unappliedCents, metadata: { bpm_group: groupId, bpm_reason: 'line_no_longer_owed' } },
-        { stripeAccount: eventAccount, idempotencyKey: `bpm-unapplied:${session.id}` },
+        { payment_intent: source.paymentIntentId, amount: refund, metadata: { bpm_group: groupId, bpm_reason: 'line_no_longer_owed' } },
+        { stripeAccount: eventAccount, idempotencyKey: `bpm-unapplied:${source.id}` },
       );
-      refundedCents = unappliedCents;
+      refundedCents = refund;
     } else {
-      console.error('[card-pay] cannot refund an unapplied line: no payment intent', { session: session.id, unappliedCents });
-      await fileCardReview(groupId, { checkoutId: session.id, kind: 'payment', memberId, amountCents: unappliedCents, reason: 'card_unapplied_not_refunded', at: session.created });
+      console.error('[card-pay] cannot refund an unapplied line: no payment intent', { source: source.id, unappliedCents });
+      await fileCardReview(groupId, { checkoutId: source.id, kind: 'payment', memberId, amountCents: refund, reason: 'card_unapplied_not_refunded', at: source.created ?? undefined });
     }
   }
   if (applied > 0 && isFlagOn('NEXT_PUBLIC_FLAG_PAYMENTS_AUTO')) {
@@ -500,12 +594,30 @@ export type RefundResult =
  *     every one of those rows; equal to exactly one row's amount, and only one
  *     → that row; anything else → logged for a person, nothing changes.
  */
+/**
+ * Which payment a charge belongs to: a hosted Checkout, or the in-app card
+ * form's own PaymentIntent (the card fee's path, docs/plans/card-surcharge.md),
+ * which carries the lines itself and the fee it charged. Its id stands in for
+ * the Checkout's: it is what the webhook stamped as `paymentId`.
+ */
+async function cardSourceOf(
+  stripe: Stripe,
+  paymentIntentId: string,
+  account: string,
+): Promise<{ session: { id: string; metadata: Record<string, string> | null | undefined } | undefined; feeCents: number }> {
+  const checkout = (await stripe.checkout.sessions.list({ payment_intent: paymentIntentId, limit: 1 }, { stripeAccount: account })).data[0];
+  if (checkout) return { session: checkout, feeCents: 0 };
+  const intent = await stripe.paymentIntents.retrieve(paymentIntentId, {}, { stripeAccount: account });
+  if (intent?.metadata?.bpm_flow !== 'surcharge') return { session: undefined, feeCents: 0 };
+  return { session: { id: intent.id, metadata: intent.metadata }, feeCents: feeOfIntent(intent) };
+}
+
 export async function applyRefund(charge: Stripe.Charge, eventAccount: string | undefined): Promise<RefundResult> {
   if (!eventAccount) return { ignored: 'not_ours' };
   const pi = typeof charge.payment_intent === 'string' ? charge.payment_intent : charge.payment_intent?.id;
   if (!pi) return { ignored: 'not_ours' };
   const stripe = must();
-  const session = (await stripe.checkout.sessions.list({ payment_intent: pi, limit: 1 }, { stripeAccount: eventAccount })).data[0];
+  const { session, feeCents } = await cardSourceOf(stripe, pi, eventAccount);
   const groupId = session?.metadata?.bpm_group;
   const memberId = session?.metadata?.bpm_member;
   if (!session || !groupId || !memberId) return { ignored: 'not_ours' };
@@ -517,10 +629,10 @@ export async function applyRefund(charge: Stripe.Charge, eventAccount: string | 
   }
 
   const refunds = (await stripe.refunds.list({ charge: charge.id, limit: 100 }, { stripeAccount: eventAccount })).data;
-  const byPeople = refunds
+  const refundedByPeople = refunds
     .filter((r) => !r.metadata?.bpm_reason && r.status !== 'failed' && r.status !== 'canceled')
     .reduce((sum, r) => sum + r.amount, 0);
-  if (byPeople <= 0) return { ignored: 'app_refund' };
+  if (refundedByPeople <= 0) return { ignored: 'app_refund' };
 
   const scope = groupScope(groupId);
   // Each line's doc: a session row, or a stringing job.
@@ -541,14 +653,20 @@ export async function applyRefund(charge: Stripe.Charge, eventAccount: string | 
     h.kind === 'session'
       ? h.doc.paid === true && h.doc.paidVia === 'card' && h.doc.paymentId === session.id
       : h.doc.paidAt !== null && h.doc.cardPaymentId === session.id;
+  // With a card fee, a refund carries its prorated share of the fee: only
+  // the LINES' part of what was refunded says which rows it was for.
+  const linesTotal = held.reduce((sum, h) => sum + h.line.amountCents, 0);
+  const byPeople = linesPartOfRefund(refundedByPeople, linesTotal, feeCents);
   const undone = held.filter((h) => h.doc.refundedPaymentId === session.id).reduce((sum, h) => sum + h.line.amountCents, 0);
   const stillPaid = held.filter(paidByThis);
   const fresh = byPeople - undone;
   if (fresh <= 0) return { unpaid: 0, already: true };
 
+  // A prorated fee rounds; with one, a cent either way still names the line.
+  const near = (a: number, b: number) => (feeCents > 0 ? Math.abs(a - b) <= 1 : a === b);
   const stillPaidCents = stillPaid.reduce((sum, h) => sum + h.line.amountCents, 0);
-  const oneLine = stillPaid.filter((h) => h.line.amountCents === fresh);
-  const target = fresh === stillPaidCents ? stillPaid : oneLine.length === 1 ? oneLine : null;
+  const oneLine = stillPaid.filter((h) => near(h.line.amountCents, fresh));
+  const target = near(fresh, stillPaidCents) ? stillPaid : oneLine.length === 1 ? oneLine : null;
   if (!target) {
     console.error('[card-pay] a refund made in Stripe matches no paid line — left for a person', { groupId, charge: charge.id, fresh, stillPaidCents });
     await fileCardReview(groupId, { checkoutId: session.id, chargeId: charge.id, kind: 'refund', memberId, amountCents: fresh, reason: 'card_refund_no_line', at: charge.created });
@@ -609,7 +727,7 @@ export async function applyDispute(dispute: Stripe.Dispute, eventAccount: string
   const pi = typeof dispute.payment_intent === 'string' ? dispute.payment_intent : dispute.payment_intent?.id;
   if (!pi) return { ignored: 'not_ours' };
   const stripe = must();
-  const session = (await stripe.checkout.sessions.list({ payment_intent: pi, limit: 1 }, { stripeAccount: eventAccount })).data[0];
+  const { session, feeCents } = await cardSourceOf(stripe, pi, eventAccount);
   const groupId = session?.metadata?.bpm_group;
   const memberId = session?.metadata?.bpm_member;
   if (!session || !groupId || !memberId) return { ignored: 'not_ours' };
@@ -677,10 +795,14 @@ export async function applyDispute(dispute: Stripe.Dispute, eventAccount: string
       : h.doc.paidAt !== null && h.doc.cardPaymentId === session.id;
   const undone = held.filter((h) => h.doc.disputedPaymentId === session.id).reduce((sum, h) => sum + h.line.amountCents, 0);
   const stillPaid = held.filter(paidByThis);
-  const fresh = dispute.amount - undone;
+  // With a card fee, a dispute covers the fee too: only the LINES' part says
+  // which rows it was for, as for a refund (a cent either way, for rounding).
+  const linesTotal = held.reduce((sum, h) => sum + h.line.amountCents, 0);
+  const fresh = linesPartOfRefund(dispute.amount, linesTotal, feeCents) - undone;
+  const near = (a: number, b: number) => (feeCents > 0 ? Math.abs(a - b) <= 1 : a === b);
   const stillPaidCents = stillPaid.reduce((sum, h) => sum + h.line.amountCents, 0);
-  const oneLine = stillPaid.filter((h) => h.line.amountCents === fresh);
-  const target = fresh <= 0 ? [] : fresh === stillPaidCents ? stillPaid : oneLine.length === 1 ? oneLine : null;
+  const oneLine = stillPaid.filter((h) => near(h.line.amountCents, fresh));
+  const target = fresh <= 0 ? [] : near(fresh, stillPaidCents) ? stillPaid : oneLine.length === 1 ? oneLine : null;
   const reason: 'card_dispute' | 'card_dispute_no_line' = target ? 'card_dispute' : 'card_dispute_no_line';
   if (!target) console.error('[card-pay] a dispute matches no paid line — left for a person', { groupId, dispute: dispute.id, fresh, stillPaidCents });
 

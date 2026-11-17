@@ -8,6 +8,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## A card fee on credit cards, if the organiser turns it on (2026-11-17)
+
+- **Organisers can pass part of Stripe's fee on to members who pay by credit card** (`docs/plans/card-surcharge.md`). A switch on the card payments card, organiser only, at up to 2.4% (Canada's cap). Turning it on asks the organiser to confirm they told Mastercard and Stripe first.
+- **With it on, "Pay by card" opens a card form inside the app.** It checks the card first, then shows what you owe, the fee and the total before you pay. Debit and prepaid cards pay no fee. E-transfer stays free, and the form says so.
+- **With it off, nothing changes**: Pay by card goes to Stripe's page as before.
+
 ## Voice scoring keeps listening after the first call (2026-11-17)
 
 - **On Android, the mic stopped hearing calls after the first one** (Grant, on a Galaxy Z Fold). Chrome on Android does not reliably keep its always-on listening going, so the board now listens for one call at a time and starts listening again straight after each, and replaces a listening session that goes quiet for 15 seconds without ending. Android may play a short tone each time it starts again.

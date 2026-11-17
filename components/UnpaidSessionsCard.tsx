@@ -4,6 +4,7 @@ import { syncAppBadge, owedBadgeCount } from '@/lib/appBadge';
 import { noteOwedForShortcuts } from '@/lib/appShortcuts';
 import { BALANCE_EVENT, announceBalanceChanged } from '@/lib/balanceRefresh';
 import { hasNativePlugin, isNative } from '@/lib/native';
+import CardPaySheet from './payments/CardPaySheet';
 import { useTranslations, useFormatter } from 'next-intl';
 import ErrorState from './primitives/ErrorState';
 import EmptyState from './primitives/EmptyState';
@@ -63,6 +64,8 @@ interface UnpaidData {
   payTo?: { name: string; email: string } | null;
   /** The club takes cards and something here is settled (docs/plans/card-pay-prototype.md). */
   cardPay?: boolean;
+  /** The club's card fee on credit cards, when it charges one (docs/plans/card-surcharge.md). */
+  cardFee?: { bps: number } | null;
 }
 
 function fmtMoney(n: number): string {
@@ -144,6 +147,7 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
   const [creditCents, setCreditCents] = useState<number | null>(null);
   const [spend, setSpend] = useState<'idle' | 'busy' | 'notEnough' | 'error'>('idle');
   const [card, setCard] = useState<'idle' | 'busy' | 'error'>('idle');
+  const [cardForm, setCardForm] = useState(false);
   useEffect(() => {
     if (!creditOn || !name) return;
     let cancelled = false;
@@ -187,6 +191,12 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
   // the person home through `bpm://pay/return`; NativeBridge closes the sheet
   // and dispatches `bpm:resume`, as closing the sheet by hand does.
   async function payByCard() {
+    // With a card fee, the in-app form: only it can tell credit from debit
+    // before the charge and show the fee first (docs/plans/card-surcharge.md).
+    if (data?.cardFee) {
+      setCardForm(true);
+      return;
+    }
     setCard('busy');
     const inSheet = isNative() && hasNativePlugin('Browser') !== false;
     try {
@@ -509,7 +519,13 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
                   ))}
                 </span>
               </button>
+              {data.cardFee && (
+                <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)' }} data-testid="card-fee-note">
+                  {tPay('cardFeeNote', { pct: `${(data.cardFee.bps / 100).toFixed(data.cardFee.bps % 10 === 0 ? 1 : 2)}%` })}
+                </p>
+              )}
               {card === 'error' && <p className="field-error" role="alert">{tPay('cardError')}</p>}
+              {data.cardFee && <CardPaySheet open={cardForm} onClose={() => setCardForm(false)} />}
             </div>
           )}
           {canSayPaid && data.totalOwed > 0 && (
