@@ -367,6 +367,33 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
     />
   );
 
+  /* What you owe, first (the canvas, Balance option A, 2026-11-17; Grant:
+     "This card should display: outstanding balance priority"). The total in
+     the data face, amber while anything is owed; credit is a chip beside it,
+     a fact about the account rather than an empty state. Home only. */
+  const owedNow = data?.totalOwed ?? 0;
+  const amountBlock = (
+    <div className="balance-amount" data-testid="balance-amount">
+      <span style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-05)' }}>
+        <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{tBal('youOwe')}</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+          <span className="balance-amount-figure" style={{ color: owedNow > 0 ? 'var(--sev-warn)' : 'var(--text-primary)' }}>
+            {fmtMoney(owedNow)}
+          </span>
+          {owedNow <= 0 && (
+            <span className="material-icons icon-md" role="img" aria-label={tBal('paidUp')} style={{ color: 'var(--accent)' }}>check_circle</span>
+          )}
+        </span>
+      </span>
+      {hasCredit && (
+        <span className="credit-chip" data-testid="credit-chip">
+          <span className="material-icons icon-sm" aria-hidden="true">savings</span>
+          {tBal('creditChip', { amount: fmtMoney((creditCents ?? 0) / 100) })}
+        </span>
+      )}
+    </div>
+  );
+
   // Closed means absent (Collapse unmounts it), so nothing inside is
   // mounted while the card is shut.
   const body = (
@@ -397,17 +424,11 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
         }
       />
     ) : showPaidUp ? (
-      <>
-        <EmptyState icon="check_circle">{tBal('paidUp')}</EmptyState>
-        {hasCredit && (
-          <p className="fs-sm" style={{ margin: '0', color: 'var(--text-secondary)', textAlign: 'center' }}>
-            {tCredit('balance', { amount: fmtMoney((creditCents ?? 0) / 100) })}
-          </p>
-        )}
-      </>
+      amountBlock
     ) : (
       data && (
         <>
+          {isHome && amountBlock}
           {/* Sessions — one line per unpaid week, no dividers between rows. */}
           {lineItems.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
@@ -461,7 +482,9 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
             </div>
           )}
 
-          {/* Total — single hairline rule above, invoice-style. */}
+          {/* Total — single hairline rule above, invoice-style. Not on Home,
+              where the amount above the lines is the total. */}
+          {!isHome && (
           <div
             style={{
               borderTop: '1px solid var(--inner-card-border)',
@@ -479,6 +502,7 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
               {fmtMoney(data.totalOwed)}
             </span>
           </div>
+          )}
 
           {(() => {
             // The server's answer first; the build-time env only for a
@@ -492,13 +516,16 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
           })()}
           {hasCredit && data.totalOwed > 0 && (
             <div className="flex flex-col gap-2">
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
-                <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>{tCredit('label')}</span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-md, 14px)', color: 'var(--text-primary)' }}>
-                  {fmtMoney((creditCents ?? 0) / 100)}
-                </span>
-              </div>
-              <button type="button" className="btn-ghost" disabled={!online || spend === 'busy'} onClick={() => void payWithCredit()}>
+              {/* On Home the chip above already says how much credit there is. */}
+              {!isHome && (
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--space-3)' }}>
+                  <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>{tCredit('label')}</span>
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--fs-md, 14px)', color: 'var(--text-primary)' }}>
+                    {fmtMoney((creditCents ?? 0) / 100)}
+                  </span>
+                </div>
+              )}
+              <button type="button" className={isHome ? 'balance-action balance-action--accent' : 'btn-ghost'} disabled={!online || spend === 'busy'} onClick={() => void payWithCredit()}>
                 {tCredit('pay')}
               </button>
               {spend === 'notEnough' && (
@@ -550,18 +577,21 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
         </>
       )
     )}
-    {/* The card's two ways on: the detailed view, and redeeming a card
-        beside the credit it adds to. Quiet links, so neither outweighs the
-        balance itself. Absent while the card cannot say what is owed. */}
+    {/* The card's two ways on: the detailed view, and adding a credit code
+        beside the credit it adds to. Filled secondary buttons with a glyph
+        (Grant, 2026-11-17: "a more well thought link button design"), quieter
+        than any way to pay. Absent while the card cannot say what is owed. */}
     {!forbidden && !loadError && (onDetails || (onRedeem && creditOn)) && (
-      <div style={{ display: 'flex', flexWrap: 'wrap', columnGap: 'var(--space-5)' }}>
+      <div className="balance-actions">
         {onDetails && (
-          <button type="button" className="link-quiet link-quiet--flush" onClick={onDetails}>
+          <button type="button" className="balance-action" onClick={onDetails}>
+            <span className="material-icons icon-md" aria-hidden="true">receipt_long</span>
             {tBal('details')}
           </button>
         )}
         {onRedeem && creditOn && (
-          <button type="button" className="link-quiet link-quiet--flush" onClick={onRedeem}>
+          <button type="button" className="balance-action" onClick={onRedeem}>
+            <span className="material-icons icon-md" aria-hidden="true">redeem</span>
             {tBal('redeem')}
           </button>
         )}

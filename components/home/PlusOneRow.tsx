@@ -93,14 +93,18 @@ export default function PlusOneRow({
       {canAdd && (
         <div>
           {!open && (
+            /* A filled secondary button, the Balance card's (the canvas, guest
+               option A, 2026-11-17; Grant: "This button is not visually
+               coherent", then "Do this"). It was an underlined link with an
+               icon inside the underline, set in from the card's edge. */
             <button
               type="button"
-              className="link-quiet"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)' }}
+              className="balance-action"
+              style={{ width: '100%' }}
               onClick={() => { setError(''); setOpen(true); }}
               disabled={!online}
             >
-              <span className="material-icons icon-sm" aria-hidden="true">person_add</span>
+              <span className="material-icons icon-md" aria-hidden="true">person_add</span>
               {guests.length === 0 ? t('bring') : t('bringAnother')}
             </button>
           )}

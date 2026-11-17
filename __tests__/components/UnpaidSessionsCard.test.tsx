@@ -133,10 +133,36 @@ describe('<UnpaidSessionsCard />', () => {
     const toggle = await screen.findByRole('button', { name: /balance/i });
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
     // Collapsed by default when there is nothing owed...
-    expect(screen.queryByText(/all paid up/i)).toBeNull();
-    // ...and the copy is there on expand.
+    expect(screen.queryByLabelText(/all paid up/i)).toBeNull();
+    // ...and on expand it says so: "You owe $0" with a tick named "You're all
+    // paid up" (the canvas, Balance option A).
     fireEvent.click(toggle);
-    await waitFor(() => expect(screen.getByText(/all paid up/i)).toBeTruthy());
+    await waitFor(() => expect(screen.getByLabelText(/all paid up/i)).toBeTruthy());
+    expect(screen.getByTestId('balance-amount').textContent).toContain('You owe$0');
+  });
+
+  /* Option A (Grant, 2026-11-17: "outstanding balance priority"): what is owed
+     leads, and credit is a chip beside it, never the paid-up card's content. */
+  it('home variant leads with what is owed, credit as a chip beside it', async () => {
+    vi.stubEnv('NEXT_PUBLIC_FLAG_STORE_CREDIT', 'true');
+    vi.spyOn(global, 'fetch').mockImplementation(async (input: RequestInfo | URL) =>
+      String(input).includes('/api/credit')
+        ? new Response(JSON.stringify({ balanceCents: 1000 }), { status: 200 })
+        : new Response(JSON.stringify({
+          totalOwed: 40,
+          sessionCount: 1,
+          mostRecent: { sessionId: 's1', date: '2026-06-08T19:00:00-04:00', owedAmount: 40 },
+          sessions: [{ sessionId: 's1', date: '2026-06-08T19:00:00-04:00', owedAmount: 40 }],
+        }), { status: 200 }),
+    );
+    wrap(<UnpaidSessionsCard name="Lin" variant="home" />);
+    const amount = await screen.findByTestId('balance-amount');
+    expect(amount.textContent).toContain('You owe$40');
+    expect((await screen.findByTestId('credit-chip')).textContent).toContain('$10 credit');
+    // The amount above the lines is the total on Home: no second Total row.
+    expect(screen.queryByText('Total')).toBeNull();
+    expect(screen.queryByText(/in credit\./)).toBeNull();
+    vi.unstubAllEnvs();
   });
 });
 
@@ -248,12 +274,12 @@ describe('<UnpaidSessionsCard variant="home" onRedeem />', () => {
     vi.unstubAllEnvs();
   });
 
-  it('offers "Have a code?" with store credit on, and hands the tap to Home', async () => {
+  it('offers "Add a code" with store credit on, and hands the tap to Home', async () => {
     vi.stubEnv('NEXT_PUBLIC_FLAG_STORE_CREDIT', 'true');
     owing();
     const onRedeem = vi.fn();
     wrap(<UnpaidSessionsCard name="Kento" variant="home" onDetails={vi.fn()} onRedeem={onRedeem} />);
-    const link = await screen.findByRole('button', { name: 'Have a code?' });
+    const link = await screen.findByRole('button', { name: 'Add a code' });
     expect(screen.getByRole('button', { name: 'See details' })).toBeTruthy();
     fireEvent.click(link);
     expect(onRedeem).toHaveBeenCalledOnce();
@@ -269,9 +295,9 @@ describe('<UnpaidSessionsCard variant="home" onRedeem />', () => {
     wrap(<UnpaidSessionsCard name="Kento" variant="home" onRedeem={vi.fn()} />);
     // Paid up, Home's card starts as one closed row ($0); its body opens on a tap.
     const row = await screen.findByRole('button', { expanded: false });
-    expect(screen.queryByRole('button', { name: 'Have a code?' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Add a code' })).toBeNull();
     fireEvent.click(row);
-    expect(await screen.findByRole('button', { name: 'Have a code?' })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'Add a code' })).toBeTruthy();
   });
 
   it('is absent while store credit is off', async () => {
@@ -279,6 +305,6 @@ describe('<UnpaidSessionsCard variant="home" onRedeem />', () => {
     owing();
     wrap(<UnpaidSessionsCard name="Kento" variant="home" onDetails={vi.fn()} onRedeem={vi.fn()} />);
     await screen.findByRole('button', { name: 'See details' });
-    expect(screen.queryByRole('button', { name: 'Have a code?' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Add a code' })).toBeNull();
   });
 });
