@@ -87,6 +87,16 @@ describe('<PaymentsInboxCard /> — card review rows', () => {
     expect(screen.getByText(/already went back to the card/)).toBeTruthy();
   });
 
+  it('a dispute row says the bank pulled the money back and offers dismiss only', async () => {
+    serve([base({ id: 'card:cs_1:dispute:dp_1', card: { checkoutId: 'cs_1', chargeId: 'ch_1', disputeId: 'dp_1', kind: 'dispute' }, reason: 'card_dispute', amountCents: 2700 })], true);
+    render(<PaymentsInboxCard />);
+    expect(await screen.findByText(/disputed by the bank/)).toBeTruthy();
+    fireEvent.click(screen.getByText('Card · Lin'));
+    await screen.findByRole('button', { name: 'Looked at it in Stripe — dismiss' });
+    expect(screen.queryByRole('button', { name: /Mark paid/ })).toBeNull();
+    expect(screen.getByText(/bank pulled this money back/)).toBeTruthy();
+  });
+
   it('shows the card rows even when e-transfers are not set up, and the setup card when nothing waits', async () => {
     serve([base({})], false);
     const first = render(<PaymentsInboxCard />);

@@ -50,6 +50,8 @@ const REASON: Record<string, string> = {
   card_account_mismatch: 'Card payment came from a Stripe account that isn’t this club’s',
   card_unapplied_not_refunded: 'Card money with nothing left to pay, and no refund could be made — refund it in Stripe',
   card_refund_no_line: 'A refund in Stripe matches no single payment — un-tick the right lines by hand',
+  card_dispute: 'Card payment disputed by the bank — the lines are owed again; respond in Stripe before its deadline',
+  card_dispute_no_line: 'Card payment disputed for an amount matching no single line — un-tick the right lines by hand; respond in Stripe',
   // A credit payment an organiser un-ticked (lib/creditReview.ts).
   credit_untick: 'Paid with store credit, then un-ticked — return the credit?',
 };
@@ -502,7 +504,9 @@ function AssignSheet({ payment, onClose, onDone }: { payment: EtransferPayment; 
   // A card row is Stripe money (lib/cardPay.ts `fileCardReview`): no bank name
   // to remember, and a REFUND row is money out — it can only be dismissed.
   const isCard = payment.source === 'card';
-  const isRefund = isCard && payment.card?.kind === 'refund';
+  // A dispute (chargeback) is money out too: dismiss only.
+  const isRefund = isCard && payment.card?.kind !== 'payment';
+  const isDispute = isCard && payment.card?.kind === 'dispute';
   // A credit row (lib/creditReview.ts): return the credit, or keep it paid. Nothing else.
   const isCredit = payment.source === 'credit';
   const suggestions = payment.suggestions ?? [];
@@ -585,7 +589,9 @@ function AssignSheet({ payment, onClose, onDone }: { payment: EtransferPayment; 
           )}
           {isCard && (
             <p className="fs-sm" style={{ margin: 0, color: 'var(--text-secondary)' }}>
-              {isRefund
+              {isDispute
+                ? 'The member’s bank pulled this money back. Its lines are owed again (or un-tick them by hand if none matched). Respond to the dispute in Stripe before its deadline; if you win, the lines are marked paid again on their own. Dismiss this once you’ve looked.'
+                : isRefund
                 ? 'The money already went back to the card in Stripe. If it should un-pay someone, un-tick their payment on the Payments card, then dismiss this.'
                 : `Stripe has this money (Checkout ${payment.card?.checkoutId ?? ''}). Check it there before marking anything paid; marking a line here records it as paid by card.`}
             </p>

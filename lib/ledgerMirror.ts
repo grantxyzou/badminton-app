@@ -357,7 +357,25 @@ export async function mirrorUnsettle(scope: GroupScope, session: Pick<Session, '
 export async function mirrorPaid(scope: GroupScope, row: Player, receivedCents?: number): Promise<void> {
   if (!on()) return;
   const e = paymentEntry(row, receivedCents);
-  if (e) await appendEntry(scope, e);
+  if (!e) return;
+  if ((await appendEntry(scope, e)) !== 'existing') return;
+  // The id is taken. A redelivered webhook, a second tap: the entry is live
+  // and this is the collision the derived ids exist for — done. But a row
+  // paid AGAIN by the same payment after its entry was voided (a card
+  // dispute the club won, docs/plans/card-pay-prototype.md) must not fall
+  // silent: its money is back and the ledger would show it owed forever. The
+  // family `<id>`, `<id>:1`, `<id>:2` … holds each re-pay; a live member
+  // means nothing to write, else the next number.
+  try {
+    const all = await entriesFor(scope, e.memberId, row.id);
+    const family = all.filter((x) => x.kind === 'payment' && (x.id === e.id || x.id.startsWith(`${e.id}:`)));
+    const liveIds = new Set(live(all, 'payment').map((x) => x.id)); // the voids sit beside the family, not in it
+    if (family.some((x) => liveIds.has(x.id))) return;
+    await appendEntry(scope, { ...e, id: `${e.id}:${family.length}` });
+  } catch (err) {
+    mirrorFailures += 1;
+    console.error('[ledger-mirror] mirrorPaid re-pay failed', { rowId: row.id, err });
+  }
 }
 
 /** After a row went paid true→false. `prev` is the row BEFORE the write (it still names its paidAt/paymentId). */

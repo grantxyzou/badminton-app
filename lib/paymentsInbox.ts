@@ -454,7 +454,7 @@ export async function resolvePayment(
     return (await scope.replace('payments', next)) ?? next;
   }
 
-  if (isCard && payment.card?.kind === 'refund') throw new AssignError('not_a_payment');
+  if (isCard && payment.card?.kind !== 'payment') throw new AssignError('not_a_payment'); // a refund or a dispute is money OUT
   // A credit row is resolved by `return_credit` (lib/creditReview.ts) or dismissed.
   if (payment.source === 'credit') throw new AssignError('not_a_payment');
   if (!action.memberId && !action.name) throw new AssignError('unknown_person');

@@ -312,7 +312,7 @@ export async function startCardCheckout(
 
 // ── What a person has to look at ────────────────────────────────────────────
 
-export type CardReviewReason = 'card_amount_mismatch' | 'card_account_mismatch' | 'card_unapplied_not_refunded' | 'card_refund_no_line';
+export type CardReviewReason = 'card_amount_mismatch' | 'card_account_mismatch' | 'card_unapplied_not_refunded' | 'card_refund_no_line' | 'card_dispute' | 'card_dispute_no_line';
 
 /**
  * File a Stripe outcome the webhook could not act on where the organiser will
@@ -323,22 +323,25 @@ export type CardReviewReason = 'card_amount_mismatch' | 'card_account_mismatch' 
  */
 async function fileCardReview(
   groupId: string,
-  input: { checkoutId: string; chargeId?: string; kind: 'payment' | 'refund'; memberId: string | null; amountCents: number; reason: CardReviewReason; at?: number },
+  input: { checkoutId: string; chargeId?: string; disputeId?: string; kind: 'payment' | 'refund' | 'dispute'; memberId: string | null; amountCents: number; reason: CardReviewReason; at?: number },
 ): Promise<void> {
   await ensurePayments();
   const scope = groupScope(groupId);
-  const bareId = input.kind === 'refund' ? `card:${input.checkoutId}:refund:${input.chargeId ?? 'charge'}` : `card:${input.checkoutId}`;
+  const bareId =
+    input.kind === 'refund' ? `card:${input.checkoutId}:refund:${input.chargeId ?? 'charge'}`
+    : input.kind === 'dispute' ? `card:${input.checkoutId}:dispute:${input.disputeId ?? 'dispute'}`
+    : `card:${input.checkoutId}`;
   const identity = input.memberId ? await resolveIdentity({ memberId: input.memberId }, groupId).catch(() => null) : null;
   const payerName = identity?.member?.name ?? null;
   const now = new Date().toISOString();
   const doc: EtransferPayment = {
     id: groupDocId(groupId, bareId),
     source: 'card',
-    card: { checkoutId: input.checkoutId, ...(input.chargeId ? { chargeId: input.chargeId } : {}), kind: input.kind },
+    card: { checkoutId: input.checkoutId, ...(input.chargeId ? { chargeId: input.chargeId } : {}), ...(input.disputeId ? { disputeId: input.disputeId } : {}), kind: input.kind },
     senderName: payerName,
     amountCents: input.amountCents,
     memo: null,
-    subject: input.kind === 'refund' ? `Stripe refund ${input.chargeId ?? ''}`.trim() : `Stripe Checkout ${input.checkoutId}`,
+    subject: input.kind === 'refund' ? `Stripe refund ${input.chargeId ?? ''}`.trim() : input.kind === 'dispute' ? `Stripe dispute ${input.disputeId ?? ''}`.trim() : `Stripe Checkout ${input.checkoutId}`,
     receivedAt: input.at ? new Date(input.at * 1000).toISOString() : now,
     // Stripe signed the event: the money (or the refund) is real.
     authenticated: true,
@@ -574,4 +577,135 @@ export async function applyRefund(charge: Stripe.Charge, eventAccount: string | 
     unpaid += 1;
   }
   return { unpaid, already: false };
+}
+
+// ── Disputes (chargebacks) ──────────────────────────────────────────────────
+
+export type DisputeResult =
+  | { ignored: 'not_ours' | 'unknown_club' | 'account_mismatch' | 'not_won' }
+  | { unpaid: number; already: boolean; review: 'card_dispute' | 'card_dispute_no_line' }
+  | { repaid: number; already: boolean };
+
+/**
+ * A member's bank pulled a card payment back (`charge.dispute.created`,
+ * docs/plans/money-audit.md "How BPM stays true with Stripe", item 2; Grant:
+ * "Do dispute"). Stripe takes the disputed amount from the club's account the
+ * moment the dispute opens, so the lines it paid are owed again — the same
+ * rule as a Dashboard refund (`applyRefund`): the disputed money equal to
+ * everything still paid by this Checkout → every one of those lines; equal
+ * to exactly one line's amount, and only one → that line; anything else →
+ * nothing moves. And whichever it is, a `review` row is filed under "Needs a
+ * look" (keyed on the dispute, so a redelivery files nothing twice): a
+ * dispute has a deadline in Stripe that only a person can meet.
+ *
+ * `charge.dispute.closed` with `status: 'won'` returns the money: the lines
+ * this dispute un-paid, still unpaid, are marked paid by card again under the
+ * same Checkout, each with a fresh ledger entry (`mirrorPaid` numbers the
+ * re-pay), and the review row is closed. Lost, or any other close, changes
+ * nothing: the lines stayed owed when the dispute opened.
+ */
+export async function applyDispute(dispute: Stripe.Dispute, eventAccount: string | undefined, eventType: string): Promise<DisputeResult> {
+  if (!eventAccount) return { ignored: 'not_ours' };
+  const pi = typeof dispute.payment_intent === 'string' ? dispute.payment_intent : dispute.payment_intent?.id;
+  if (!pi) return { ignored: 'not_ours' };
+  const stripe = must();
+  const session = (await stripe.checkout.sessions.list({ payment_intent: pi, limit: 1 }, { stripeAccount: eventAccount })).data[0];
+  const groupId = session?.metadata?.bpm_group;
+  const memberId = session?.metadata?.bpm_member;
+  if (!session || !groupId || !memberId) return { ignored: 'not_ours' };
+  const settings = await readCardPay(groupId);
+  if (!settings) return { ignored: 'unknown_club' };
+  if (settings.stripeAccountId !== eventAccount) {
+    console.error('[card-pay] dispute from an account that is not the club\'s', { groupId, dispute: dispute.id });
+    return { ignored: 'account_mismatch' };
+  }
+  const chargeId = typeof dispute.charge === 'string' ? dispute.charge : dispute.charge?.id;
+  const scope = groupScope(groupId);
+  const now = new Date().toISOString();
+
+  type Held =
+    | { line: CardLine; kind: 'session'; doc: Player & Record<string, unknown> }
+    | { line: CardLine; kind: 'stringing'; doc: StringingJob };
+  const held: Held[] = [];
+  for (const line of linesFromMetadata(session.metadata)) {
+    if (line.kind === 'stringing') {
+      const doc = await scope.read<StringingJob>('stringingJobs', line.ref, line.pk);
+      if (doc) held.push({ line, kind: 'stringing', doc });
+    } else {
+      const doc = await scope.read<Player & Record<string, unknown>>('players', line.ref, line.pk);
+      if (doc) held.push({ line, kind: 'session', doc });
+    }
+  }
+
+  if (eventType === 'charge.dispute.closed') {
+    if (dispute.status !== 'won') return { ignored: 'not_won' };
+    // The money is back: what this dispute un-paid, and nobody paid since, is paid by card again.
+    const toRepay = held.filter((h) => h.doc.disputedPaymentId === session.id && (h.kind === 'session' ? h.doc.paid !== true && h.doc.writtenOff !== true : h.doc.paidAt === null));
+    let repaid = 0;
+    for (const h of toRepay) {
+      if (h.kind === 'session') {
+        const written = await scope.replace(
+          'players',
+          { ...h.doc, paid: true, paidAt: now, paidVia: 'card', paymentId: session.id, paidAmount: h.doc.owedAmount, disputedPaymentId: undefined },
+          h.line.pk,
+        );
+        if (!written) continue;
+        await mirrorPaid(scope, written as unknown as Player, h.line.amountCents);
+      } else {
+        const written = await scope.replace<StringingJob>(
+          'stringingJobs',
+          { ...h.doc, paidAt: now, paidVia: 'card', paymentId: session.id, cardPaymentId: session.id, disputedPaymentId: undefined, updatedAt: now },
+          h.line.pk,
+        );
+        if (!written) continue;
+        await mirrorStringingChanged(scope, h.doc, written, 'card', session.id);
+      }
+      repaid += 1;
+    }
+    // The review row has nothing left to ask: the money is back.
+    await ensurePayments();
+    const reviewId = groupDocId(groupId, `card:${session.id}:dispute:${dispute.id}`);
+    const review = await scope.read<EtransferPayment>('payments', reviewId);
+    if (review?.status === 'review') await scope.replace('payments', { ...review, status: 'ignored', matchedBy: 'stripe', resolvedAt: now });
+    return { repaid, already: toRepay.length === 0 };
+  }
+
+  // Opened: the bank has the money. The lines it names are owed again.
+  const paidByThis = (h: Held) =>
+    h.kind === 'session'
+      ? h.doc.paid === true && h.doc.paidVia === 'card' && h.doc.paymentId === session.id
+      : h.doc.paidAt !== null && h.doc.cardPaymentId === session.id;
+  const undone = held.filter((h) => h.doc.disputedPaymentId === session.id).reduce((sum, h) => sum + h.line.amountCents, 0);
+  const stillPaid = held.filter(paidByThis);
+  const fresh = dispute.amount - undone;
+  const stillPaidCents = stillPaid.reduce((sum, h) => sum + h.line.amountCents, 0);
+  const oneLine = stillPaid.filter((h) => h.line.amountCents === fresh);
+  const target = fresh <= 0 ? [] : fresh === stillPaidCents ? stillPaid : oneLine.length === 1 ? oneLine : null;
+  const reason: 'card_dispute' | 'card_dispute_no_line' = target ? 'card_dispute' : 'card_dispute_no_line';
+  if (!target) console.error('[card-pay] a dispute matches no paid line — left for a person', { groupId, dispute: dispute.id, fresh, stillPaidCents });
+
+  let unpaid = 0;
+  for (const h of target ?? []) {
+    if (h.kind === 'session') {
+      const written = await scope.replace(
+        'players',
+        { ...h.doc, paid: false, paidAt: undefined, paidVia: undefined, paymentId: undefined, paidAmount: undefined, disputedPaymentId: session.id },
+        h.line.pk,
+      );
+      if (!written) continue; // changed under us; the next delivery re-reads
+      await mirrorUnpaid(scope, h.doc as unknown as Player);
+    } else {
+      const written = await scope.replace<StringingJob>(
+        'stringingJobs',
+        { ...h.doc, paidAt: null, paidVia: undefined, paymentId: undefined, cardPaymentId: undefined, disputedPaymentId: session.id, updatedAt: now },
+        h.line.pk,
+      );
+      if (!written) continue;
+      await mirrorStringingChanged(scope, h.doc, written, 'card', session.id);
+    }
+    unpaid += 1;
+  }
+  // Filed whatever happened to the lines: the deadline is in Stripe, and only a person can meet it.
+  await fileCardReview(groupId, { checkoutId: session.id, chargeId, disputeId: dispute.id, kind: 'dispute', memberId, amountCents: dispute.amount, reason, at: dispute.created });
+  return { unpaid, already: fresh <= 0, review: reason };
 }
