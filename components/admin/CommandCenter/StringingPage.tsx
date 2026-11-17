@@ -14,7 +14,7 @@ import { dueFor, todayIso } from '@/lib/stringingDue';
 import { isWaitingTooLong, waitingDays } from '@/lib/stringingWaiting';
 import { fmtMoney } from '@/lib/fmt';
 import { isWalkUpJob } from '@/lib/stringing';
-import JobCard, { JobsHeading } from '@/components/stringing/JobCard';
+import { JobsHeading } from '@/components/stringing/JobCard';
 import BenchJobRow from '@/components/stringing/BenchJobRow';
 import BenchList from '@/components/stringing/BenchList';
 import { toPlayerPendingEdit } from '@/lib/stringingPendingEdit';
@@ -471,7 +471,9 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
     );
   }
 
-  /** A job in the archive: the card, with "Mark paid" while it owes. */
+  /** A job in the archive: the same row as the bench (Grant, 2026-11-17: "the
+   *  archived list should use the same component style as the stringing
+   *  jobs"), with "Mark paid" under it while it owes. */
   function renderArchivedJob(job: StringingJob) {
     // Exactly `isBillable`: finished, priced and unpaid — the whole risk in
     // the archive is money quietly going out of sight. Plus, for an
@@ -479,21 +481,20 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
     // (docs/plans/stringing-invoice.md).
     const notInvoiced = awaitingInvoice(job);
     const owed = isBillable(job) || notInvoiced ? (job.priceCents ?? 0) / 100 : null;
+    const look = holes.forLabel(job.racketLabel);
     return swipeable(
       job,
       true,
-      <JobCard
+      <BenchJobRow
         job={job}
         today={today}
-        holes={holes.forLabel(job.racketLabel).holes}
+        catalogId={look.catalogId}
+        holes={look.holes}
         pinned={typeof job.prioritizedAt === 'string'}
         owed={owed}
         notInvoiced={notInvoiced}
-        waitingDays={null}
         pendingChange={job.pendingEdit ? toPlayerPendingEdit(job) : null}
-        surface="inner"
         onOpen={() => openJob(job, true)}
-        open={false}
         openLabel={t('actions.open')}
         more={moreButton(job)}
         action={
@@ -501,7 +502,6 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
             <button
               type="button"
               className="cc-btn cc-btn-secondary"
-              style={{ flex: 1 }}
               disabled={moving !== null || !online}
               onClick={() => void markPaid(job)}
             >
@@ -686,14 +686,23 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
           )}
           {moveError && <p className="field-error" role="alert">{t('actions.error')}</p>}
           {archivedJobs !== null && archivedJobs.length > 0 && (
-            <section className="glass-card p-5 flex flex-col gap-3" aria-label={t('archive.pickedUp')}>
-              <CardHeader
-                compact
-                icon="inventory_2"
-                title={t('archive.pickedUp')}
-                subtitle={t('archive.summary', { count: archivedJobs.length, owing: archivedJobs.filter((j) => isBillable(j) || awaitingInvoice(j)).length })}
-              />
-              {archivedJobs.map((job) => renderArchivedJob(job))}
+            /* One card of rows, as on the bench: a label with the count, then
+               the same row (docs/plans/stringing-jobs-list.md). */
+            <section className="glass-card bench-list" aria-label={t('archive.pickedUp')} data-testid="archive-list">
+              <div className="bench-group">
+                <h3 className="section-label bench-group-label">
+                  {t('archive.pickedUp')} · {archivedJobs.length}
+                </h3>
+                {(() => {
+                  const owing = archivedJobs.filter((j) => isBillable(j) || awaitingInvoice(j)).length;
+                  return owing > 0 ? (
+                    <p className="fs-sm bench-group-label" style={{ margin: 0, color: 'var(--sev-warn)', fontWeight: 600 }}>
+                      {t('archive.owing', { owing })}
+                    </p>
+                  ) : null;
+                })()}
+                {archivedJobs.map((job) => renderArchivedJob(job))}
+              </div>
             </section>
           )}
         </div>

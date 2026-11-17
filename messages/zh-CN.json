@@ -2614,7 +2614,6 @@
         "unarchive": "恢复"
       },
       "archive": {
-        "summary": "{count} 单{owing, plural, =0 {} other { · # 单未付}}",
         "pickedUp": "已取走",
         "open": "已归档（{count}）",
         "openUnknown": "已归档",
@@ -2622,7 +2621,8 @@
         "empty": "还没有归档的穿线单。",
         "loadError": "归档加载失败。",
         "notInvoiced": "未开账单 · {amount}",
-        "stillOwed": "未付 {amount}"
+        "stillOwed": "未付 {amount}",
+        "owing": "{owing} 单未付"
       },
       "mine": "我的",
       "all": "全部",

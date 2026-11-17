@@ -44,6 +44,7 @@ export default function BenchJobRow({
   openLabel,
   open = false,
   more,
+  action,
 }: {
   job: JobCardJob;
   today: string;
@@ -53,7 +54,7 @@ export default function BenchJobRow({
   pinned?: boolean;
   /** Finished, priced and unpaid (`isBillable`). */
   unpaid?: boolean;
-  /** Finished work whose invoice has not gone: shown as "Not invoiced · $X". */
+  /** Dollars owed: "Not invoiced · $X" when `notInvoiced`, else "Still owes $X" (the archive). */
   owed?: number | null;
   notInvoiced?: boolean;
   waitingDays?: number | null;
@@ -62,6 +63,8 @@ export default function BenchJobRow({
   openLabel: string;
   open?: boolean;
   more?: ReactNode;
+  /** One button under the pills (the archive's "Mark paid"); the bench passes none. */
+  action?: ReactNode;
 }) {
   const t = useTranslations('admin.stringing');
   const tPlayer = useTranslations('home.stringing');
@@ -133,8 +136,10 @@ export default function BenchJobRow({
         ) : null}
         {job.cancelledAt ? (
           <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{t('cancelledByPlayer')}</span>
-        ) : owed !== null && notInvoiced ? (
-          <span className="fs-sm" style={{ fontWeight: 600, color: 'var(--sev-warn)' }}>{t('archive.notInvoiced', { amount: fmtMoney(owed) })}</span>
+        ) : owed !== null ? (
+          <span className="fs-sm" style={{ fontWeight: 600, color: 'var(--sev-warn)' }}>
+            {notInvoiced ? t('archive.notInvoiced', { amount: fmtMoney(owed) }) : t('archive.stillOwed', { amount: fmtMoney(owed) })}
+          </span>
         ) : null}
         {stage === 'waiting' && !job.cancelledAt && <PendingChangeLine name={job.memberName} edit={pendingChange} />}
         <span className="bench-row-specs">
@@ -142,6 +147,7 @@ export default function BenchJobRow({
           {side(t('bench.crosses'), sides.crosses)}
           {holes !== null && <span className="bench-spec bench-spec--plain">{t('bench.grommets', { count: holes })}</span>}
         </span>
+        {action && <span className="bench-row-action">{action}</span>}
       </span>
       {more && <span className="bench-row-more">{more}</span>}
     </div>

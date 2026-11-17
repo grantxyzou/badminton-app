@@ -2626,7 +2626,6 @@
           "unarchive": "Restore"
         },
         "archive": {
-          "summary": "{count, plural, one {# job} other {# jobs}}{owing, plural, =0 {} one { · # still owes} other { · # still owe}}",
           "pickedUp": "Picked up",
           "open": "Archived ({count})",
           "openUnknown": "Archived",
@@ -2634,7 +2633,8 @@
           "empty": "Nothing archived yet.",
           "loadError": "Couldn't load the archive.",
           "notInvoiced": "Not invoiced · {amount}",
-        "stillOwed": "Still owes {amount}"
+        "stillOwed": "Still owes {amount}",
+        "owing": "{owing, plural, one {# still owes} other {# still owe}}"
         },
         "mine": "Mine",
         "all": "All",

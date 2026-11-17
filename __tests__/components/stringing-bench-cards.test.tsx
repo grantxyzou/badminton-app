@@ -99,7 +99,11 @@ describe('the archive card', () => {
     wrap(<StringingPage onBack={() => {}} />);
     fireEvent.click(await screen.findByRole('button', { name: /Archived/ }));
     const card = await screen.findByRole('region', { name: 'Picked up' });
-    expect(within(card).getByText('1 job · 1 still owes')).toBeDefined();
+    // The bench's row and label, not the old card (Grant, 2026-11-17).
+    expect(within(card).getByText('Picked up · 1')).toBeDefined();
+    expect(within(card).getByText('1 still owes')).toBeDefined();
+    expect(within(card).getAllByTestId('bench-row')).toHaveLength(1);
+    expect(within(card).queryByTestId('job-card')).toBeNull();
     expect(within(card).getByText('Still owes $28')).toBeDefined();
     fireEvent.click(within(card).getByRole('button', { name: 'Mark paid' }));
     await waitFor(() => {

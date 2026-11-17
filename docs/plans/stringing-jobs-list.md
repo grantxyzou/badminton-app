@@ -24,7 +24,7 @@ A stringer strings a racket at the wrong tension or with the wrong string becaus
 
 ## Non-goals
 
-- The stringer's own queue (`StringerJobsCard`) and the archive keep the card. This is the admin's live bench.
+- The stringer's own queue (`StringerJobsCard`) keeps the card. This is the admin's live bench (and, since 2026-11-17, its archive).
 - Any change to what a job stores. A hybrid is still "<mains> / <crosses>" in one label and a two-colour set one colour name; `lib/stringingSides.ts` only reads them.
 - Moving a status from the list. The status moves on the job page.
 
@@ -39,6 +39,7 @@ A stringer strings a racket at the wrong tension or with the wrong string becaus
 - **Grommet holes is a pill only when the count is known**; nothing when it is missing.
 - **No next-step button on the row** (Grant hid it on the canvas). The ⋮ stays: SwipeRow's pin and archive are touch-only, and the menu is a desktop's way to them.
 - **No tap-open details panel**: the row opens the job page.
+- **The archive uses the same row** (2026-11-17; Grant: "the archived list should use the same component style as the stringing jobs"): one card labelled "Picked up · n", "N still owe" under it when any do, each row's money line ("Still owes $X" or "Not invoiced · $X") and Mark paid under its pills (`BenchJobRow`'s `action`).
 
 ## Shape
 
