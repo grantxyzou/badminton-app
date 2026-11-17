@@ -8,6 +8,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Home's Balance card leads with what you owe (2026-11-17)
+
+- **"You owe" comes first**, as a large figure: amber while you owe anything, $0 with a tick when you are paid up (Grant: "This card should display: outstanding balance priority").
+- **Credit is a chip beside it** ("$10 credit"), not the sentence that used to stand in for an empty card. "Pay with credit" is a tinted button under your lines.
+- **"See details" and "Add a code" are buttons now**, each with an icon, side by side. "Have a code?" is renamed "Add a code".
+
 ## A card fee on credit cards, if the organiser turns it on (2026-11-17)
 
 - **Organisers can pass part of Stripe's fee on to members who pay by credit card** (`docs/plans/card-surcharge.md`). A switch on the card payments card, organiser only, at up to 2.4% (Canada's cap). Turning it on asks the organiser to confirm they told Mastercard and Stripe first.

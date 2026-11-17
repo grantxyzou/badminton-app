@@ -2648,6 +2648,70 @@ html:root .ink-button {
   gap: var(--space-4);
   width: 100%;
 }
+/* Home's Balance card, the amount first (the canvas, Balance option A,
+   2026-11-17; Grant: "This card should display: outstanding balance
+   priority"). What you owe leads in the data face; credit is a chip beside
+   it, a fact rather than an empty state; the card's two ways on are filled
+   secondary buttons (Grant: "more well thought link button design"). All
+   fill-only, like every container. */
+.balance-amount {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+.balance-amount-figure {
+  font-family: var(--font-mono);
+  font-size: var(--fs-stat-lg);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+}
+.credit-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: none;
+  padding: var(--space-1) var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.balance-actions {
+  display: flex;
+  gap: var(--space-3);
+}
+.balance-action {
+  flex: 1;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  background: var(--inner-card-bg);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: var(--fs-base);
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform var(--duration-press) var(--ease-out-quart);
+}
+.balance-action .material-icons { color: var(--accent); }
+.balance-action:active { background: var(--press-bg); transform: scale(0.98); }
+.balance-action:disabled { opacity: 0.5; pointer-events: none; }
+/* The one money action credit can take: tinted, so it reads as the way to
+   pay rather than a way on. */
+.balance-action--accent {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+  font-weight: 600;
+}
 .card-marks {
   display: inline-flex;
   align-items: center;
