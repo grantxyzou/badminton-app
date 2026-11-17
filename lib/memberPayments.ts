@@ -87,17 +87,19 @@ export function foldPayments(
 
   const guestRows: Array<{ month: string; name: string; date: string }> = [];
   for (const p of input.players) {
-    if (p.paid !== true) continue;
+    // Paid in full, or part-paid (docs/plans/paid-amount.md): what was RECEIVED counts, never the bill.
+    if (p.paid !== true && !((p.paidAmount ?? 0) > 0)) continue;
     if (typeof p.owedAmount !== 'number' || p.owedAmount <= 0) continue;
+    const got = p.paidAmount ?? p.owedAmount;
     const session = input.sessionById.get(p.sessionId);
     const month = monthOf(p.paidAt) ?? monthOf(p.settledAt) ?? monthOf(session?.datetime);
     const bucket = month ? byMonth.get(month) : undefined;
     if (!bucket) continue;
     if (typeof p.guestOf === 'string' && p.guestOf) {
-      bucket.other += cents(p.owedAmount);
+      bucket.other += cents(got);
       guestRows.push({ month: bucket.month, name: p.guestName ?? p.name, date: session?.datetime ?? p.paidAt ?? '' });
     } else {
-      bucket.sessions += cents(p.owedAmount);
+      bucket.sessions += cents(got);
       bucket.nights += 1;
     }
   }

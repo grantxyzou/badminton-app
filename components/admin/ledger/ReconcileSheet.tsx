@@ -15,6 +15,7 @@ interface Subject {
   date?: string | null;
   paid?: boolean;
   paidVia?: string | null;
+  paidAmount?: number | null;
   covered?: boolean;
   removed?: boolean;
   settled?: boolean;
@@ -109,7 +110,7 @@ function facts(m: Mismatch): string {
   } else {
     out.push(s.settled ? 'Settled' : 'Not settled');
     if (s.paid) out.push(s.paidVia && VIA[s.paidVia] ? `paid (${VIA[s.paidVia]})` : 'paid');
-    else out.push('not paid');
+    else out.push(s.paidAmount ? `$${s.paidAmount.toFixed(2)} received so far` : 'not paid');
     if (s.covered) out.push('covered');
     if (s.removed) out.push('removed from the list');
   }

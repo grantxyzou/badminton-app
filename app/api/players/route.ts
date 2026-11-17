@@ -1062,10 +1062,16 @@ export async function PATCH(req: NextRequest) {
       if (body.paid === true && existing.paid !== true) {
         updates.paidAt = new Date().toISOString();
         updates.paidVia = 'manual';
+        // A tap is "paid in full": the whole frozen bill is received, whatever
+        // a short transfer put against it before (docs/plans/paid-amount.md).
+        // An estimate has no bill yet; settle records it.
+        updates.paymentId = undefined;
+        if (typeof existing.settledAt === 'string' && typeof existing.owedAmount === 'number') updates.paidAmount = existing.owedAmount;
       } else if (body.paid === false) {
         updates.paidAt = undefined;
         updates.paidVia = undefined;
         updates.paymentId = undefined;
+        updates.paidAmount = undefined;
       }
       // Mutex: setting paid:true clears writtenOff. Existing behavior
       // when only paid is sent.
@@ -1232,8 +1238,14 @@ export async function PATCH(req: NextRequest) {
     // `existing` is the row before the write: a void needs the old paidAt.
     const prev = existing as unknown as Player;
     const next = updated as unknown as Player;
-    if (updates.paid === true && prev.paid !== true) await mirrorPaid(scope, next);
-    if (updates.paid === false && prev.paid === true) await mirrorUnpaid(scope, prev);
+    // The tap's payment is what was still owed: the bill less anything a
+    // short transfer already put against it. An un-tick voids every payment
+    // on the row, a part-payment's included.
+    if (updates.paid === true && prev.paid !== true) {
+      const received = typeof next.owedAmount === 'number' ? Math.round(next.owedAmount * 100) - Math.round((prev.paidAmount ?? 0) * 100) : undefined;
+      await mirrorPaid(scope, next, received);
+    }
+    if (updates.paid === false && (prev.paid === true || (prev.paidAmount ?? 0) > 0)) await mirrorUnpaid(scope, prev);
     if (updates.writtenOff === true && prev.writtenOff !== true) await mirrorCover(scope, next);
     if (updates.writtenOff === false && prev.writtenOff === true) await mirrorUncover(scope, prev);
     return NextResponse.json(publicPlayer(updated));

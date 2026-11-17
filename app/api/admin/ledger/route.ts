@@ -152,7 +152,7 @@ export async function GET(req: NextRequest) {
         else if (p.writtenOff === true) coveredCount += 1;
         else if (owed > 0) {
           unpaidCount += 1;
-          unpaidAmount += owed;
+          unpaidAmount += owed - (p.paidAmount ?? 0); // less a part-payment (docs/plans/paid-amount.md)
         }
       }
       return { sessionId: s.id, date: s.datetime!, attendanceCount: snap.playerCount, totalCost: round2(snap.totalCost), paidCount, coveredCount, unpaidAmount: round2(unpaidAmount), unpaidCount };

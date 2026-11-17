@@ -124,8 +124,13 @@ export function chargeEntry(row: Pick<Player, 'id' | 'sessionId' | 'memberId' | 
 }
 
 /** A payment against a settled row. Keyed by the e-transfer's payment doc, else by when it was marked, else `legacy`. */
-export function paymentEntry(row: Pick<Player, 'id' | 'sessionId' | 'memberId' | 'guestOf' | 'owedAmount' | 'paidAt' | 'paidVia' | 'paymentId'>): NewEntry | null {
-  const amountCents = cents(row.owedAmount);
+export function paymentEntry(
+  row: Pick<Player, 'id' | 'sessionId' | 'memberId' | 'guestOf' | 'owedAmount' | 'paidAmount' | 'paidAt' | 'paidVia' | 'paymentId'>,
+  /** What THIS payment put against the row, when the caller knows (a live hook). Without it, the row's own record: what was received, else the bill. */
+  receivedCents?: number,
+): NewEntry | null {
+  // An unsettled row has no bill yet; its payment is written at settle.
+  const amountCents = receivedCents ?? (typeof row.owedAmount === 'number' ? cents(row.paidAmount ?? row.owedAmount) : 0);
   if (amountCents <= 0) return null;
   const via = row.paidVia ?? 'manual';
   // A card payment is keyed on its Checkout Session id, like an e-transfer on
@@ -173,8 +178,9 @@ export function coverEntry(row: Pick<Player, 'id' | 'sessionId' | 'memberId' | '
  * such row until a backfill. Settle writes it now, with the SAME id and date
  * the backfill computes, so the two agree and the second 409s.
  */
-export function paymentEntryAtSettle(row: Pick<Player, 'id' | 'sessionId' | 'memberId' | 'guestOf' | 'owedAmount' | 'paid' | 'paidAt' | 'paidVia' | 'paymentId' | 'settledAt'>): NewEntry | null {
-  if (row.paid !== true) return null;
+export function paymentEntryAtSettle(row: Pick<Player, 'id' | 'sessionId' | 'memberId' | 'guestOf' | 'owedAmount' | 'paidAmount' | 'paid' | 'paidAt' | 'paidVia' | 'paymentId' | 'settledAt'>): NewEntry | null {
+  // Paid in full, or part-paid (a short transfer assigned by hand): either has money to record.
+  if (row.paid !== true && !((row.paidAmount ?? 0) > 0)) return null;
   const p = paymentEntry({ ...row, paidAt: row.paidAt ?? row.settledAt });
   if (!p) return null;
   return row.paidAt ? p : { ...p, id: `payment:${row.id}:legacy`, ...(row.settledAt ? { createdAt: row.settledAt } : {}) };
@@ -348,9 +354,9 @@ export async function mirrorUnsettle(scope: GroupScope, session: Pick<Session, '
 }
 
 /** After a row went paid false→true, by any route. `row` is the row AS WRITTEN (paidAt/paidVia set). */
-export async function mirrorPaid(scope: GroupScope, row: Player): Promise<void> {
+export async function mirrorPaid(scope: GroupScope, row: Player, receivedCents?: number): Promise<void> {
   if (!on()) return;
-  const e = paymentEntry(row);
+  const e = paymentEntry(row, receivedCents);
   if (e) await appendEntry(scope, e);
 }
 

@@ -25,6 +25,8 @@ export type MismatchSubject =
       exists: boolean;
       paid: boolean;
       paidVia: string | null;
+      /** Dollars received so far on a part-paid row (docs/plans/paid-amount.md); null when none or paid in full. */
+      paidAmount: number | null;
       covered: boolean;
       removed: boolean;
       settled: boolean;
@@ -71,6 +73,7 @@ async function subjectOf(scope: GroupScope, m: Mismatch): Promise<MismatchSubjec
       exists: !!row,
       paid: row?.paid === true,
       paidVia: row?.paidVia ?? null,
+      paidAmount: typeof row?.paidAmount === 'number' ? row.paidAmount : null,
       covered: row?.writtenOff === true,
       removed: row?.removed === true,
       settled: typeof row?.settledAt === 'string',

@@ -375,10 +375,11 @@ async function markCardPaid(scope: GroupScope, line: CardLine, memberId: string,
     // A redelivered event, or the second of two racing deliveries.
     if (row.paid === true) return row.paidVia === 'card' && row.paymentId === checkoutId ? 'ours' : 'not_applied';
     if (row.writtenOff === true || typeof row.settledAt !== 'string') return 'not_applied';
-    if (Math.round((row.owedAmount ?? 0) * 100) !== line.amountCents) return 'not_applied';
-    const written = await scope.replace('players', { ...row, paid: true, paidAt, paidVia: 'card', paymentId: checkoutId }, line.pk);
+    // What is still owed: the bill less anything received before (docs/plans/paid-amount.md).
+    if (Math.round((row.owedAmount ?? 0) * 100) - Math.round((row.paidAmount ?? 0) * 100) !== line.amountCents) return 'not_applied';
+    const written = await scope.replace('players', { ...row, paid: true, paidAt, paidVia: 'card', paymentId: checkoutId, paidAmount: row.owedAmount }, line.pk);
     if (written) {
-      await mirrorPaid(scope, written as unknown as Player);
+      await mirrorPaid(scope, written as unknown as Player, line.amountCents);
       return 'paid';
     }
     // `undefined`: gone OR changed under us (etag). Read again and decide.
@@ -556,7 +557,7 @@ export async function applyRefund(charge: Stripe.Charge, eventAccount: string | 
     if (h.kind === 'session') {
       const written = await scope.replace(
         'players',
-        { ...h.doc, paid: false, paidAt: undefined, paidVia: undefined, paymentId: undefined, refundedPaymentId: session.id },
+        { ...h.doc, paid: false, paidAt: undefined, paidVia: undefined, paymentId: undefined, paidAmount: undefined, refundedPaymentId: session.id },
         h.line.pk,
       );
       if (!written) continue; // changed under us; the next delivery re-reads

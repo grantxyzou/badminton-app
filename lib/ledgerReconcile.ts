@@ -101,7 +101,7 @@ async function rowState(scope: GroupScope, ref: OpenRef, id: string): Promise<{ 
     const row = await scope.read<Player>('players', id, ref.pk);
     if (!row) return null;
     const frozen = typeof row.settledAt === 'string' && row.paid !== true && row.writtenOff !== true;
-    return { paid: row.paid === true, owedCents: frozen ? Math.round((row.owedAmount ?? 0) * 100) : 0 };
+    return { paid: row.paid === true, owedCents: frozen ? Math.max(0, Math.round((row.owedAmount ?? 0) * 100) - Math.round((row.paidAmount ?? 0) * 100)) : 0 };
   }
   const job = await scope.read<StringingJob>('stringingJobs', id, ref.pk);
   if (!job) return null;
