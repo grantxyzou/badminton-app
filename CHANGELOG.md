@@ -8,6 +8,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Voice scoring keeps listening after the first call (2026-11-17)
+
+- **On Android, the mic stopped hearing calls after the first one** (Grant, on a Galaxy Z Fold). Chrome on Android does not reliably keep its always-on listening going, so the board now listens for one call at a time and starts listening again straight after each, and replaces a listening session that goes quiet for 15 seconds without ending. Android may play a short tone each time it starts again.
+
 ## A card payment the bank pulls back is owed again (2026-11-17)
 
 - **When a member's bank disputes a card payment (a chargeback), the lines it paid go back to owed** and a row appears under "Needs a look" with the amount, so you respond in Stripe before its deadline. If the dispute is for an amount that matches no single line, nothing is un-ticked and the row says so.

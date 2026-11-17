@@ -9,9 +9,13 @@ import { parseCall, type ParsedCall } from './voiceScore';
  * speech recogniser, handed to `lib/voiceScore.ts` one final result at a time.
  *
  * Two modes, picked by the platform:
- *  - `continuous` (Chrome on Android, desktop): listens until stopped. The
- *    recogniser ends itself after a stretch of silence, so `onend` starts it
- *    again while the person still wants it on.
+ *  - `continuous` (Chrome on Android, desktop): hands-free until stopped.
+ *    Every session hears ONE phrase (`continuous = false`), and `onend` starts
+ *    the next while the person still wants the mic on. Chrome's own
+ *    continuous mode was used until 2026-11-17 and stopped after the first
+ *    call on Grant's Fold ("after first call it stops working"): Android
+ *    Chrome does not honour it reliably, and a session that goes quiet
+ *    without ending is restarted by a watchdog (`SESSION_WATCHDOG_MS`).
  *  - `tap` (iPhone and iPad): WebKit's continuous mode is reported to stall
  *    (WebKit bug 225298 and developer reports), so one tap hears one call and
  *    stops. A continuous session that keeps ending as soon as it starts drops
@@ -72,6 +76,13 @@ export function isAppleTouch(): boolean {
 const QUICK_END_MS = 1500;
 /** That many quick ends in a row, and it drops to tap. */
 const QUICK_ENDS_TO_TAP = 3;
+/**
+ * A hands-free session that has neither heard a phrase nor ended by now is
+ * hung, not listening: it is dropped and a fresh one started. Chrome ends a
+ * silent session by itself after a few seconds, so this only fires when it
+ * did not.
+ */
+export const SESSION_WATCHDOG_MS = 15000;
 
 interface Options {
   /** False while the board is closed: nothing listens. */
@@ -105,6 +116,7 @@ export function useVoiceScore({ enabled, onCalls }: Options): VoiceScore {
   const quickEndsRef = useRef(0);
   /** `begin`, for the restart inside its own `onend`. */
   const beginRef = useRef<(() => void) | null>(null);
+  const watchdogRef = useRef<number | null>(null);
   const onCallsRef = useRef(onCalls);
   useEffect(() => {
     onCallsRef.current = onCalls;
@@ -119,12 +131,18 @@ export function useVoiceScore({ enabled, onCalls }: Options): VoiceScore {
     setMode(m);
   }, []);
 
+  const clearWatchdog = () => {
+    if (watchdogRef.current !== null) window.clearTimeout(watchdogRef.current);
+    watchdogRef.current = null;
+  };
+
   const begin = useCallback(() => {
     const Ctor = recognitionCtor();
     if (!Ctor) return;
     const rec = new Ctor();
     rec.lang = 'en-US';
-    rec.continuous = modeRef.current === 'continuous';
+    // One phrase per session in both modes; hands-free is the restart in onend.
+    rec.continuous = false;
     rec.interimResults = false;
     rec.maxAlternatives = 5;
     rec.onresult = (e) => {
@@ -145,6 +163,7 @@ export function useVoiceScore({ enabled, onCalls }: Options): VoiceScore {
     rec.onend = () => {
       if (recRef.current !== rec) return;
       recRef.current = null;
+      clearWatchdog();
       if (wantRef.current && modeRef.current === 'continuous') {
         const quick = Date.now() - startedAtRef.current < QUICK_END_MS;
         quickEndsRef.current = quick ? quickEndsRef.current + 1 : 0;
@@ -161,10 +180,26 @@ export function useVoiceScore({ enabled, onCalls }: Options): VoiceScore {
     };
     recRef.current = rec;
     startedAtRef.current = Date.now();
+    clearWatchdog();
+    if (modeRef.current === 'continuous') {
+      watchdogRef.current = window.setTimeout(() => {
+        watchdogRef.current = null;
+        if (recRef.current !== rec) return;
+        // Hung: let it go (its handlers see it is no longer current) and start over.
+        recRef.current = null;
+        try {
+          rec.abort();
+        } catch {
+          /* already gone */
+        }
+        if (wantRef.current) beginRef.current?.();
+      }, SESSION_WATCHDOG_MS);
+    }
     try {
       rec.start();
       setListening(true);
     } catch {
+      clearWatchdog();
       recRef.current = null;
       wantRef.current = false;
       setListening(false);
@@ -186,6 +221,8 @@ export function useVoiceScore({ enabled, onCalls }: Options): VoiceScore {
 
   const stop = useCallback(() => {
     wantRef.current = false;
+    if (watchdogRef.current !== null) window.clearTimeout(watchdogRef.current);
+    watchdogRef.current = null;
     const rec = recRef.current;
     recRef.current = null;
     setListening(false);
