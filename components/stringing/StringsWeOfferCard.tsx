@@ -413,9 +413,25 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
   // already shows the string, and a hidden tab shows nothing.
   const showPeek = showMap && onScreen && !aside && status !== 'failed';
 
+  // The member's racket, under the map card (Grant: "we should not loose this
+  // AI personalized analysis. In fact it should be top level visible"; moved
+  // out of the card on the canvas, 2026-11-16, so the map has the card): the
+  // strings that suit it glow on the map.
+  const fitBanner = showMap && fits && status !== 'failed' ? (
+    <div data-testid="map-fit-strip" className="bpm-fit-strip">
+      <span className="material-icons icon-md" aria-hidden="true" style={{ color: 'var(--accent)' }}>sports_tennis</span>
+      <span className="fs-sm" style={{ flex: 1, minWidth: 0, color: 'var(--text-secondary)' }}>
+        <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{t('forYourRacket', { racket: fits.racket })}</span>
+        {' · '}
+        {matches.size > 0 ? t('forYourRacketGlow') : t('forYourRacketNone')}
+      </span>
+    </div>
+  ) : null;
+
   return (
-    // Room under the card for the peek, so the map's foot is never under it.
-    <div className="glass-card p-5 space-y-3" style={showPeek ? { marginBottom: peekH } : undefined}>
+    // Room under the card and its banner for the peek, so neither is under it.
+    <div className="flex flex-col gap-3" style={showPeek ? { marginBottom: peekH } : undefined}>
+    <div className="glass-card p-5 space-y-3">
       {/* The card holds only the map and its controls (the Stringing canvas,
           idea B, 2026-11-12; Grant: "What if the map card only contains the
           map and the control?"). The list is the peek's swipe-up now, so the
@@ -424,7 +440,7 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
         compact
         icon="storefront"
         title={t('title')}
-        subtitle={mapOn ? t('viewNameMap') : t('subtitle')}
+        subtitle={mapOn ? t('mapSubtitle') : t('subtitle')}
         action={(
           <button
             type="button"
@@ -474,19 +490,6 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
                   </button>
                 ))}
               </div>
-            </div>
-          )}
-          {/* The member's racket, on the map itself (Grant: "we should not
-              loose this AI personalized analysis. In fact it should be top
-              level visible"): the strings that suit it glow. */}
-          {fits && (
-            <div data-testid="map-fit-strip" className="bpm-fit-strip">
-              <span className="material-icons icon-md" aria-hidden="true" style={{ color: 'var(--accent)' }}>sports_tennis</span>
-              <span className="fs-sm" style={{ flex: 1, minWidth: 0, color: 'var(--text-secondary)' }}>
-                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{t('forYourRacket', { racket: fits.racket })}</span>
-                {' · '}
-                {matches.size > 0 ? t('forYourRacketGlow') : t('forYourRacketNone')}
-              </span>
             </div>
           )}
           <StringMap
@@ -612,6 +615,8 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
           />
         </StringingAside>
       )}
+    </div>
+    {fitBanner}
     </div>
   );
 }
