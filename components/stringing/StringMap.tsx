@@ -21,7 +21,9 @@ export interface MapDot {
   match?: boolean;
 }
 
-const PLOT_H = 220;
+// 280, up from 220 (the Stringing canvas, Idea B frame 1, 2026-11-16: the
+// racket banner left the card and the map took its room).
+const PLOT_H = 280;
 const HIT = 44;
 // --fs-sm in pixels: the labels are drawn at the token and measured on a
 // canvas, which needs the number. Keep the two in step.
