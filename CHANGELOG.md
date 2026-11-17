@@ -8,6 +8,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## A card fee on credit cards, if the organiser turns it on (2026-11-17)
+
+- **Organisers can pass part of Stripe's fee on to members who pay by credit card** (`docs/plans/card-surcharge.md`). A switch on the card payments card, organiser only, at up to 2.4% (Canada's cap). Turning it on asks the organiser to confirm they told Mastercard and Stripe first.
+- **With it on, "Pay by card" opens a card form inside the app.** It checks the card first, then shows what you owe, the fee and the total before you pay. Debit and prepaid cards pay no fee. E-transfer stays free, and the form says so.
+- **With it off, nothing changes**: Pay by card goes to Stripe's page as before.
+
 ## Keep score asks a foldable about its outer screen (2026-11-16)
 
 - **The Android app now checks whether a foldable can show the score on its outer screen** (`docs/plans/outer-screen-scoreboard.md`, step 1). On a phone with an outer screen, Keep score shows one Preview line with the answer: it can, it can once the phone is open flat, or it can't. Nothing is drawn on the outer screen yet; the answer decides whether that gets built.

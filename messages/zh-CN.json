@@ -667,6 +667,34 @@
         "cancelledTitle": "已取消付款",
         "cancelledBody": "没有扣款。",
         "back": "返回 %APP_SHORT% App"
+      },
+      "cardFeeNote": "信用卡另收 {pct}。借记卡不收手续费。",
+      "cardForm": {
+        "title": "刷卡支付",
+        "feeNote": "信用卡另收 {pct} 的刷卡手续费，借记卡不收。付款前会先显示手续费。",
+        "owe": "应付金额",
+        "fee": "刷卡手续费（{pct}，信用卡）",
+        "noFee": "无刷卡手续费",
+        "total": "合计",
+        "cardLine": "{brand} •••• {last4} · {funding}",
+        "funding": {"credit": "信用卡", "debit": "借记卡", "prepaid": "预付卡", "unknown": "银行卡"},
+        "continue": "继续",
+        "checking": "正在核对卡片…",
+        "pay": "支付 {amount}",
+        "paying": "正在支付…",
+        "otherCard": "换一张卡",
+        "payOther": "不想付手续费？关闭此页，改用转账支付。",
+        "done": "已付款。余额将在几秒内更新。",
+        "close": "关闭",
+        "retry": "重试",
+        "errors": {
+          "generic": "刷卡支付未完成，请重试。",
+          "card_declined": "卡片被拒绝。请换一张卡，或改用转账支付。",
+          "surcharge_off": "刷卡设置已更改。请关闭此页，再点一次“刷卡支付”。",
+          "nothing_to_pay": "目前没有可以刷卡支付的款项。",
+          "already_done": "这笔付款已经完成。",
+          "club_not_ready": "俱乐部目前无法刷卡收款。"
+        }
       }
     },
     "credit": {

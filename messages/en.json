@@ -667,6 +667,34 @@
         "cancelledTitle": "Payment cancelled",
         "cancelledBody": "Nothing was charged.",
         "back": "Back to the %APP_SHORT% app"
+      },
+      "cardFeeNote": "Credit cards add {pct}. Debit cards pay no fee.",
+      "cardForm": {
+        "title": "Pay by card",
+        "feeNote": "A credit card adds a {pct} card fee. A debit card adds nothing. You see the fee before you pay.",
+        "owe": "What you owe",
+        "fee": "Card fee ({pct}, credit card)",
+        "noFee": "No card fee",
+        "total": "Total",
+        "cardLine": "{brand} •••• {last4} · {funding}",
+        "funding": {"credit": "credit", "debit": "debit", "prepaid": "prepaid", "unknown": "card"},
+        "continue": "Continue",
+        "checking": "Checking your card…",
+        "pay": "Pay {amount}",
+        "paying": "Paying…",
+        "otherCard": "Use a different card",
+        "payOther": "Rather not pay a card fee? Close this and pay by e-transfer.",
+        "done": "Paid. Your balance updates in a few seconds.",
+        "close": "Close",
+        "retry": "Try again",
+        "errors": {
+          "generic": "Couldn’t complete the card payment. Try again.",
+          "card_declined": "Your card was declined. Try another card or pay by e-transfer.",
+          "surcharge_off": "Card payments changed. Close this and tap Pay by card again.",
+          "nothing_to_pay": "There’s nothing to pay by card right now.",
+          "already_done": "This payment has already gone through.",
+          "club_not_ready": "Your club can’t take cards right now."
+        }
       }
     },
     "credit": {

@@ -8,6 +8,7 @@ import { computeOwed } from '@/lib/owedBalance';
 import { stringingTotal } from '@/lib/stringingBilling';
 import { clubPayTo } from '@/lib/payTo';
 import { clubTakesCards } from '@/lib/cardPay';
+import { memberCardFee } from '@/lib/cardSurcharge';
 
 export const dynamic = 'force-dynamic';
 
@@ -89,6 +90,9 @@ export async function GET(req: NextRequest) {
     // optional way to pay, never the balance.
     const cardPayable = unpaid.some((s) => s.settled) || stringing.length > 0;
     const cardPay = cardPayable ? await clubTakesCards(scope.groupId).catch(() => false) : false;
+    // The club's card fee on credit cards, so the button can say so BEFORE
+    // anyone taps it (docs/plans/card-surcharge.md). Null = no fee.
+    const cardFee = cardPay ? await memberCardFee(scope.groupId).catch(() => null) : null;
 
     return NextResponse.json({
       // `totalOwed` still means EVERYTHING owed, so existing callers that only
@@ -104,6 +108,7 @@ export async function GET(req: NextRequest) {
       stringing,
       payTo,
       cardPay,
+      cardFee,
     });
   } catch (error) {
     console.error('GET /api/players/unpaid error:', error);

@@ -38,11 +38,15 @@ export interface CspOptions {
 
 export function buildCsp({ nonce, dev = process.env.NODE_ENV === 'development', assetBase }: CspOptions = {}): string {
   const origin = assetOrigin(assetBase ?? process.env.NEXT_PUBLIC_ASSET_BASE);
+  // Stripe.js for the in-app card form (the card fee, docs/plans/card-surcharge.md):
+  // its script, its card-field and card-check (3-D Secure) frames, and its API.
+  // The card number is typed into Stripe's own frame and never touches this page.
+  const STRIPE_JS = 'https://js.stripe.com https://*.js.stripe.com';
   const script = dev
-    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+    ? `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${STRIPE_JS}`
     : nonce
-      ? `script-src 'self' 'nonce-${nonce}' 'unsafe-inline'`
-      : "script-src 'self' 'unsafe-inline'";
+      ? `script-src 'self' 'nonce-${nonce}' 'unsafe-inline' ${STRIPE_JS}`
+      : `script-src 'self' 'unsafe-inline' ${STRIPE_JS}`;
   return [
     "default-src 'self'",
     script,
@@ -51,7 +55,8 @@ export function buildCsp({ nonce, dev = process.env.NODE_ENV === 'development', 
     // The generated pictures' storage container, when the build names one
     // (`lib/assetUrl.ts`, docs/plans/asset-storage.md).
     `img-src 'self' data:${origin ? ` ${origin}` : ''}`,
-    "connect-src 'self'",
+    "connect-src 'self' https://api.stripe.com",
+    `frame-src ${STRIPE_JS} https://hooks.stripe.com`,
     // The four the 2026-09-28 audit found missing. `frame-ancestors` is the CSP
     // form of X-Frame-Options DENY (XFO is ignored by a browser that honours
     // this); `base-uri` stops an injected <base> from redirecting every

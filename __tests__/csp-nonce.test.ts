@@ -46,7 +46,15 @@ describe('the page policy', () => {
       expect(policy).toContain(d);
     }
     // 'unsafe-inline' stays only as the fallback a nonce-aware browser ignores.
-    expect(scriptSrc(policy)).toBe("script-src 'self' 'nonce-abc' 'unsafe-inline'");
+    expect(scriptSrc(policy)).toBe("script-src 'self' 'nonce-abc' 'unsafe-inline' https://js.stripe.com https://*.js.stripe.com");
+  });
+
+  it('lets Stripe’s card form in, and nothing else of Stripe’s (docs/plans/card-surcharge.md)', () => {
+    const policy = buildCsp({ nonce: 'abc', dev: false });
+    expect(policy).toContain("connect-src 'self' https://api.stripe.com");
+    expect(policy).toContain('frame-src https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com');
+    // The page itself still frames nowhere and is framed by nobody.
+    expect(policy).toContain("frame-ancestors 'none'");
   });
 });
 
