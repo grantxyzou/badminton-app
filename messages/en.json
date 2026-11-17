@@ -372,7 +372,6 @@
         "clusterCaption": "{count} strings at {axis} {value} · Durability {durability}",
         "clusterLabel": "{count} strings: {names}",
         "allStrings": "All strings",
-        "mapHint": "Tap a string to see more",
         "compareBy": "Compare by",
         "restringFor": "Restring with {name}",
         "coloursTitle": "Colours on the reel",
@@ -415,6 +414,7 @@
         "switchToList": "Show as a list",
         "viewNameList": "List view",
         "viewNameMap": "Map view",
+        "mapSubtitle": "Tap a dot to see the string",
         "level_Advanced": "Advanced",
         "level_Intermediate": "Intermediate",
         "level_Beginner": "Beginner",
@@ -727,6 +727,7 @@
     },
     "balance": {
         "guestLine": "{name}, your guest",
+        "paidOf": "paid {paid} of {billed}",
         "details": "See details",
         "redeem": "Have a code?",
         "groupSessions": "Badminton",

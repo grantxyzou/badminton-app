@@ -17,7 +17,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type Stripe from 'stripe';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { applyPaidCheckout, applyPaidIntent, applyRefund, cardPayOn, stripeClient } from '@/lib/cardPay';
+import { applyDispute, applyPaidCheckout, applyPaidIntent, applyRefund, cardPayOn, stripeClient } from '@/lib/cardPay';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,6 +26,8 @@ const PAID: readonly string[] = ['checkout.session.completed', 'checkout.session
 const REFUNDED = 'charge.refunded';
 /** The in-app card form's own payments, when the club charges a card fee (docs/plans/card-surcharge.md). */
 const INTENT_PAID = 'payment_intent.succeeded';
+/** A chargeback opened, and one closed (won puts the money back; lib/cardPay.ts `applyDispute`). */
+const DISPUTED: readonly string[] = ['charge.dispute.created', 'charge.dispute.closed'];
 
 export async function POST(req: NextRequest) {
   if (!cardPayOn()) return NextResponse.json({ error: 'not_found' }, { status: 404 });
@@ -46,13 +48,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'bad_signature' }, { status: 400 });
   }
 
-  if (!PAID.includes(event.type) && event.type !== REFUNDED && event.type !== INTENT_PAID) return NextResponse.json({ received: true });
+  if (!PAID.includes(event.type) && event.type !== REFUNDED && event.type !== INTENT_PAID && !DISPUTED.includes(event.type)) {
+    return NextResponse.json({ received: true });
+  }
   try {
     const result = event.type === REFUNDED
       ? await applyRefund(event.data.object as Stripe.Charge, event.account)
       : event.type === INTENT_PAID
         ? await applyPaidIntent(event.data.object as Stripe.PaymentIntent, event.account)
-        : await applyPaidCheckout(event.data.object as Stripe.Checkout.Session, event.account);
+        : DISPUTED.includes(event.type)
+          ? await applyDispute(event.data.object as Stripe.Dispute, event.account, event.type)
+          : await applyPaidCheckout(event.data.object as Stripe.Checkout.Session, event.account);
     return NextResponse.json({ received: true, result });
   } catch (err) {
     console.error('[card-pay] webhook failed; Stripe will retry', { event: event.id, err });

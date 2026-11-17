@@ -14,6 +14,22 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 - **With it on, "Pay by card" opens a card form inside the app.** It checks the card first, then shows what you owe, the fee and the total before you pay. Debit and prepaid cards pay no fee. E-transfer stays free, and the form says so.
 - **With it off, nothing changes**: Pay by card goes to Stripe's page as before.
 
+## Voice scoring keeps listening after the first call (2026-11-17)
+
+- **On Android, the mic stopped hearing calls after the first one** (Grant, on a Galaxy Z Fold). Chrome on Android does not reliably keep its always-on listening going, so the board now listens for one call at a time and starts listening again straight after each, and replaces a listening session that goes quiet for 15 seconds without ending. Android may play a short tone each time it starts again.
+
+## A card payment the bank pulls back is owed again (2026-11-17)
+
+- **When a member's bank disputes a card payment (a chargeback), the lines it paid go back to owed** and a row appears under "Needs a look" with the amount, so you respond in Stripe before its deadline. If the dispute is for an amount that matches no single line, nothing is un-ticked and the row says so.
+- **If you win the dispute, the lines are marked paid by card again on their own** and the row leaves "Needs a look". If you lose, nothing more changes.
+- Needs the two dispute events enabled on the Stripe webhook (noted in the card-pay plan).
+
+## A payment that falls short is recorded as what it was (2026-11-16)
+
+- **Assigning an e-transfer by hand to more than it covers now records what actually came.** A $30 transfer put against a $45 night leaves the night owing $15: Home shows "$15 · paid $30 of $45", the Payments card shows the $15 and "Paid $30 of $45" under the name, and the next payment — a matched e-transfer for $15, or a tap — settles it. Before, the night was marked paid in full and the $15 was never asked for.
+- The ledger records the $30 that arrived, not the $45 bill, so the money page's Collected is what the club received. Profile's "what you paid" counts the same way.
+- Marking someone paid still means paid in full; nothing about the tap changed.
+
 ## Keep score asks a foldable about its outer screen (2026-11-16)
 
 - **The Android app now checks whether a foldable can show the score on its outer screen** (`docs/plans/outer-screen-scoreboard.md`, step 1). On a phone with an outer screen, Keep score shows one Preview line with the answer: it can, it can once the phone is open flat, or it can't. Nothing is drawn on the outer screen yet; the answer decides whether that gets built.

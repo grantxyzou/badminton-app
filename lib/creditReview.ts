@@ -96,7 +96,7 @@ export async function returnCredit(scope: GroupScope, paymentId: string, adminId
     if (!row) throw new CreditReviewError('row_changed');
     if (row.paid === true) {
       if (row.paidVia !== 'credit') throw new CreditReviewError('row_changed');
-      const written = await scope.replace('players', { ...row, paid: false, paidAt: undefined, paidVia: undefined, paymentId: undefined }, c.pk);
+      const written = await scope.replace('players', { ...row, paid: false, paidAt: undefined, paidVia: undefined, paymentId: undefined, paidAmount: undefined }, c.pk);
       if (!written) throw new CreditReviewError('row_changed');
       await mirrorUnpaid(scope, row as unknown as Player);
     }

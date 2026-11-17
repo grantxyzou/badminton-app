@@ -42,6 +42,8 @@ interface Player {
   memberId?: string;
   /** Stamped at settle time. Frozen — survives retro edits to court/bird costs. */
   owedAmount?: number;
+  /** Received so far on a part-paid row (docs/plans/paid-amount.md). */
+  paidAmount?: number;
   writtenOff?: boolean;
   coverMode?: 'absorb' | 'resplit';
   /** A plus-one: the host's memberId and the guest's own name (docs/plans/plus-one.md). */
@@ -311,7 +313,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
   // Frozen money only: the sum of the still-owed rows' `owedAmount`, which
   // exists once the bill went out. Unsettled, there is no number to show.
   const stillOwedTotal = viewedSession?.settled
-    ? lists.owed.reduce((sum, p) => sum + (typeof p.owedAmount === 'number' ? p.owedAmount : 0), 0)
+    ? lists.owed.reduce((sum, p) => sum + (typeof p.owedAmount === 'number' ? p.owedAmount - (p.paidAmount ?? 0) : 0), 0)
     : null;
 
   // Single resolver — the SAME one behind /api/sessions/history and
@@ -781,6 +783,9 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                   {player.selfReportedPaid && (
                     <span className="fs-xs" style={{ color: 'var(--sev-med-text)' }}>Says they&apos;ve sent it</span>
                   )}
+                  {(player.paidAmount ?? 0) > 0 && typeof player.owedAmount === 'number' && player.paid !== true && (
+                    <span className="fs-xs" style={{ color: 'var(--text-muted)' }}>Paid {fmtMoney(player.paidAmount!)} of {fmtMoney(player.owedAmount)}</span>
+                  )}
                 </span>
               </span>
               <div className="flex items-center gap-2 flex-shrink-0">
@@ -790,7 +795,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                     style={{ color: 'var(--amber)', fontFamily: 'var(--font-mono), ui-monospace, monospace' }}
                     title="What they owe — frozen when the bill went out."
                   >
-                    {fmtMoney(player.owedAmount)}
+                    {fmtMoney(player.owedAmount - (player.paidAmount ?? 0))}
                   </span>
                 )}
                 <button

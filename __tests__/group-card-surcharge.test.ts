@@ -318,6 +318,30 @@ describe('refunds made in Stripe', () => {
   });
 });
 
+describe('a dispute (chargeback) on a payment that carried the fee', () => {
+  const dispute = (amount: number, status = 'needs_response') => ({ id: 'dp_1', object: 'dispute', charge: 'ch_1', payment_intent: 'pi_surcharge_1', amount, status, reason: 'fraudulent', created: 1_793_200_000 });
+  const result = async (res: Response) => (await res.json()).result;
+
+  it('the whole charge (fee included) makes every line owed again; won pays them by card again', async () => {
+    feeOn();
+    await deliver(await quotedAndPaid(), 'payment_intent.succeeded');
+    expect(await result(await deliver(dispute(2764), 'charge.dispute.created'))).toEqual({ unpaid: 2, already: false, review: 'card_dispute' });
+    expect(row(row1.id)).toMatchObject({ paid: false, disputedPaymentId: 'pi_surcharge_1' });
+    expect(row(row2.id)).toMatchObject({ paid: false, disputedPaymentId: 'pi_surcharge_1' });
+    expect(await result(await deliver(dispute(2764, 'won'), 'charge.dispute.closed'))).toEqual({ repaid: 2, already: false });
+    expect(row(row1.id)).toMatchObject({ paid: true, paidVia: 'card', paymentId: 'pi_surcharge_1' });
+  });
+
+  it('one line plus its share of the fee makes that line alone owed again', async () => {
+    feeOn();
+    await deliver(await quotedAndPaid(), 'payment_intent.succeeded');
+    // $15 + 35¢ (1500 × 64 / 2700 = 35.5).
+    expect(await result(await deliver(dispute(1535), 'charge.dispute.created'))).toEqual({ unpaid: 1, already: false, review: 'card_dispute' });
+    expect(row(row1.id).paid).toBe(true);
+    expect(row(row2.id).paid).toBe(false);
+  });
+});
+
 describe('two clubs', () => {
   it('a payment from another club’s account never marks this club’s rows', async () => {
     feeOn();

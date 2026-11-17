@@ -372,7 +372,6 @@
         "clusterCaption": "{count} 根线：{axis} {value} · 耐用 {durability}",
         "clusterLabel": "{count} 根线：{names}",
         "allStrings": "全部线",
-        "mapHint": "点一根线看详情",
         "compareBy": "比较",
         "restringFor": "用 {name} 穿线",
         "coloursTitle": "线轴上的颜色",
@@ -415,6 +414,7 @@
         "switchToList": "以列表显示",
         "viewNameList": "列表视图",
         "viewNameMap": "图表视图",
+        "mapSubtitle": "点一个点看这根线",
         "level_Advanced": "高级",
         "level_Intermediate": "中级",
         "level_Beginner": "初级",
@@ -727,6 +727,7 @@
     },
     "balance": {
       "guestLine": "{name}（你的朋友）",
+      "paidOf": "已付 {paid}，共 {billed}",
       "details": "查看详情",
       "redeem": "有充值码？",
       "groupSessions": "羽毛球",

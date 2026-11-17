@@ -36,6 +36,9 @@ export interface UnpaidSession {
   lastRemindedAt: string | null;
   /** Set when this is a plus-one's share on the host's balance: the guest's name. */
   guestName?: string;
+  /** A frozen bill part-paid: what was received so far, and the whole bill (`owedAmount` here is what is LEFT). */
+  paidAmount?: number;
+  billedAmount?: number;
 }
 
 /** One payable line, in cents, for matching an amount against. */
@@ -109,6 +112,9 @@ export function unpaidSessionsFrom(
         remindedCount: Array.isArray(p.remindedAt) ? p.remindedAt.length : 0,
         lastRemindedAt: Array.isArray(p.remindedAt) && p.remindedAt.length > 0 ? p.remindedAt[p.remindedAt.length - 1] : null,
         ...(typeof p.guestOf === 'string' && p.guestOf ? { guestName: p.guestName ?? p.name } : {}),
+        ...(session.settled && (p.paidAmount ?? 0) > 0 && typeof p.owedAmount === 'number'
+          ? { paidAmount: Math.round(p.paidAmount! * 100) / 100, billedAmount: Math.round(p.owedAmount * 100) / 100 }
+          : {}),
       });
     }
   }

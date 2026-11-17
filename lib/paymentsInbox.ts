@@ -175,7 +175,34 @@ export async function candidatesFor(
   return [...byPerson.values()];
 }
 
-const toAllocation = (l: OwedLine): PaymentAllocation => ({ kind: l.kind, ref: l.ref, pk: l.pk, amountCents: l.amountCents });
+const toAllocation = (l: OwedLine): PaymentAllocation => ({ kind: l.kind, ref: l.ref, pk: l.pk, amountCents: l.amountCents, lineCents: l.amountCents });
+
+/**
+ * Spread what is left of a transfer over the lines an admin chose, oldest
+ * first (docs/plans/paid-amount.md). A session line takes what is left of
+ * the money, down to a part of itself; a stringing line is paid whole or
+ * left for the next payment (a job has no part-paid state). With no amount
+ * on the payment (an unreadable email) every line is taken whole, as before.
+ */
+export function spreadOverLines(lines: PaymentAllocation[], budgetCents: number | null): PaymentAllocation[] {
+  if (budgetCents === null) return lines;
+  const out: PaymentAllocation[] = [];
+  let left = budgetCents;
+  for (const l of lines) {
+    const whole = l.lineCents ?? l.amountCents;
+    if (left <= 0) break;
+    if (l.kind === 'stringing') {
+      if (left < whole) continue;
+      out.push({ ...l, amountCents: whole });
+      left -= whole;
+    } else {
+      const got = Math.min(whole, left);
+      out.push({ ...l, amountCents: got });
+      left -= got;
+    }
+  }
+  return out;
+}
 
 /**
  * Mark each allocated line paid. Returns the allocations that actually landed;
@@ -198,13 +225,22 @@ export async function applyAllocations(
     if (a.kind === 'session') {
       const row = await scope.read<Player & Record<string, unknown>>('players', a.ref, a.pk);
       if (!row || row.paid === true || row.writtenOff === true) continue;
-      // A FROZEN line only: an admin may assign an unsettled estimate by ref,
-      // and that is a person deciding (see `resolvePayment`).
-      if (typeof row.settledAt === 'string' && Math.round((row.owedAmount ?? 0) * 100) !== a.amountCents) continue;
-      const ok = await scope.replace('players', { ...row, paid: true, paidAt: now, paidVia: via, paymentId }, a.pk);
+      // What the line still owes: a FROZEN bill less what was received so
+      // far; an unsettled estimate is what it was when matched (an admin
+      // assigning one by ref is a person deciding, see `resolvePayment`).
+      const frozen = typeof row.settledAt === 'string';
+      const remaining = frozen ? Math.round((row.owedAmount ?? 0) * 100) - Math.round((row.paidAmount ?? 0) * 100) : a.lineCents ?? a.amountCents;
+      // More money than the line owes is a guess (a re-settle lowered the
+      // bill since the match): leave it for a person.
+      if (a.amountCents > remaining || remaining <= 0) continue;
+      // Less is a part-payment: the row records what came and owes the rest
+      // (docs/plans/paid-amount.md).
+      const full = a.amountCents === remaining;
+      const paidAmount = (Math.round((row.paidAmount ?? 0) * 100) + a.amountCents) / 100;
+      const ok = await scope.replace('players', { ...row, paid: full, paidAt: now, paidVia: via, paymentId, paidAmount }, a.pk);
       if (ok) {
         landed.push(a);
-        await mirrorPaid(scope, ok as unknown as Player);
+        await mirrorPaid(scope, ok as unknown as Player, frozen ? a.amountCents : undefined);
       }
     } else {
       const job = await scope.read<StringingJob>('stringingJobs', a.ref, a.pk);
@@ -418,7 +454,7 @@ export async function resolvePayment(
     return (await scope.replace('payments', next)) ?? next;
   }
 
-  if (isCard && payment.card?.kind === 'refund') throw new AssignError('not_a_payment');
+  if (isCard && payment.card?.kind !== 'payment') throw new AssignError('not_a_payment'); // a refund or a dispute is money OUT
   // A credit row is resolved by `return_credit` (lib/creditReview.ts) or dismissed.
   if (payment.source === 'credit') throw new AssignError('not_a_payment');
   if (!action.memberId && !action.name) throw new AssignError('unknown_person');
@@ -443,7 +479,11 @@ export async function resolvePayment(
     if (chosen.length === 0) throw new AssignError('not_owed');
   }
 
-  const landed = await applyAllocations(scope, chosen.map(toAllocation), rowPaymentId, isCard ? 'card' : 'etransfer');
+  // What is left of the money goes over the chosen lines oldest first; a
+  // transfer short of them part-pays the last line it reaches.
+  const allocations = spreadOverLines(chosen.map(toAllocation), payment.amountCents !== null ? payment.amountCents - appliedCents(payment) : null);
+  if (allocations.length === 0) throw new AssignError('not_owed');
+  const landed = await applyAllocations(scope, allocations, rowPaymentId, isCard ? 'card' : 'etransfer');
   const payerName = identity.member?.name ?? action.name ?? '';
 
   if (!isCard && action.remember) await rememberSender(scope, payment.senderName, payerName, identity.memberId);
@@ -454,7 +494,7 @@ export async function resolvePayment(
   // another amount) keeps the payment IN THE QUEUE with what did land on
   // record, exactly as the automatic path does — never a "matched" payment
   // whose lines are still owed.
-  const fullyLanded = landed.length === chosen.length;
+  const fullyLanded = landed.length === allocations.length;
   const next: EtransferPayment = {
     ...payment,
     status: fullyLanded ? 'matched' : 'review',

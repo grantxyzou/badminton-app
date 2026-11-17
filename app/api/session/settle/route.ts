@@ -161,10 +161,17 @@ export async function POST(req: NextRequest) {
       // can total what the admin absorbed — they're just flagged writtenOff so
       // it's never collected.
       const owed = owedOf(player);
+      // What was received (docs/plans/paid-amount.md): a row ticked paid at
+      // the estimate records the whole bill now; a row a short transfer was
+      // assigned to is paid once the money covers the frozen bill, else owes
+      // the rest.
+      const received = typeof player.paidAmount === 'number' ? player.paidAmount : undefined;
       const updated: Player = {
         ...player,
         owedAmount: owed,
         settledAt: at,
+        ...(player.paid === true && received === undefined && owed > 0 ? { paidAmount: owed } : {}),
+        ...(player.paid !== true && received !== undefined && owed > 0 && received >= owed ? { paid: true } : {}),
       };
       await scope.upsert('players', updated);
       stampedPlayers.push({

@@ -173,7 +173,7 @@ export interface OwedResult {
  *    Home's balance line and the same week's receipt disagree (2026-10-21).
  */
 export function classifyOwed(
-  player: Pick<Player, 'paid' | 'writtenOff' | 'removed' | 'waitlisted' | 'owedAmount'>,
+  player: Pick<Player, 'paid' | 'writtenOff' | 'removed' | 'waitlisted' | 'owedAmount' | 'paidAmount'>,
   session: Pick<Session, 'id' | 'datetime' | 'settled' | 'costPerCourt' | 'courts' | 'birdUsage' | 'birdUsages'>,
   ctx: OwedContext,
 ): OwedResult {
@@ -184,8 +184,10 @@ export function classifyOwed(
   if (player.writtenOff === true) return miss('written_off');
 
   if (session.settled) {
-    const owed = player.owedAmount ?? 0;
-    if (owed > 0) return { counted: true, reason: 'counted', owedAmount: round2(owed) };
+    // Less what has already been received against the bill (a transfer an
+    // admin assigned by hand that fell short of it; docs/plans/paid-amount.md).
+    const owed = round2((player.owedAmount ?? 0) - (player.paidAmount ?? 0));
+    if (owed > 0) return { counted: true, reason: 'counted', owedAmount: owed };
     return miss('settled_zero_owed');
   }
 

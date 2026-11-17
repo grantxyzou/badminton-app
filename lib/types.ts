@@ -170,6 +170,16 @@ export interface Player {
   coverMode?: 'absorb' | 'resplit';
   /** ISO — when `paid` last went true. Absent on rows marked before 2026-10. */
   paidAt?: string;
+  /**
+   * Dollars RECEIVED against this row so far (docs/plans/paid-amount.md,
+   * 2026-11-16). `paid: true` still means paid in full; a payment short of
+   * the bill leaves `paid: false` with this set, and the row owes
+   * `owedAmount - paidAmount`. Absent on a paid row = paid in full (every
+   * row from before). Only an admin assigning a transfer by hand can make a
+   * partial; the automatic match, card and credit pay a line in full or not
+   * at all.
+   */
+  paidAmount?: number;
   /** How it was marked: an admin's tap, an e-transfer the inbox matched, credit, or a card (Stripe Checkout, docs/plans/card-pay-prototype.md). */
   paidVia?: 'manual' | 'etransfer' | 'credit' | 'card';
   /** The `payments` doc that paid it (`paidVia: 'etransfer'`), or the Stripe Checkout Session id (`paidVia: 'card'`). */
@@ -181,6 +191,13 @@ export interface Player {
    * refund know what it already undid. Additive; absent = never refunded.
    */
   refundedPaymentId?: string;
+  /**
+   * The Stripe Checkout Session whose card payment for this row was DISPUTED
+   * (a chargeback; docs/plans/card-pay-prototype.md): the bank pulled the
+   * money back, so the row went back to unpaid. A won dispute returns the
+   * money and marks the row paid again, clearing this. Additive.
+   */
+  disputedPaymentId?: string;
   /**
    * Waitlisted by the soft hold, not by a full session: the member owed for
    * too many past sessions at sign-up (docs/plans/payments.md). Cleared — and
@@ -291,7 +308,10 @@ export interface PaymentAllocation {
   ref: string;
   /** Partition key VALUE of that row: its sessionId, or the job's memberId. */
   pk: string;
+  /** What this payment put against the line — the whole line, or less of it when an admin assigned a short transfer by hand. */
   amountCents: number;
+  /** What the line owed when it was matched (`amountCents` on a full payment). Absent on allocations from before 2026-11-16. */
+  lineCents?: number;
 }
 
 /**
@@ -306,8 +326,8 @@ export interface EtransferPayment {
   groupId?: string;
   /** `'card'` since 2026-11-16: a Stripe outcome the webhook could not apply, for a person to look at (`lib/cardPay.ts`). */
   source: 'etransfer' | 'card' | 'credit';
-  /** A card row's Stripe ids: the Checkout Session, and the charge for a refund. A `refund` row is money OUT and cannot be assigned. */
-  card?: { checkoutId: string; chargeId?: string; kind: 'payment' | 'refund' };
+  /** A card row's Stripe ids: the Checkout Session, the charge for a refund or dispute, and the dispute. A `refund` or `dispute` row is money OUT and cannot be assigned. */
+  card?: { checkoutId: string; chargeId?: string; disputeId?: string; kind: 'payment' | 'refund' | 'dispute' };
   /** A credit row (lib/creditReview.ts): the line an organiser un-ticked that was paid with store credit. Resolved by `return_credit` or dismissed; never assigned. */
   credit?: { kind: 'session' | 'stringing'; ref: string; pk: string; memberId: string; amountCents: number };
   senderName: string | null;
@@ -1209,6 +1229,8 @@ export interface StringingJob {
   cardPaymentId?: string;
   /** The Checkout Session whose card payment for this job was refunded in Stripe, putting it back to unpaid. */
   refundedPaymentId?: string;
+  /** The Checkout Session whose card payment for this job was disputed (a chargeback), putting it back to unpaid until the dispute is won. */
+  disputedPaymentId?: string;
   /** Session the racket changes hands at, when there is one. */
   sessionId: string | null;
   createdAt: string;

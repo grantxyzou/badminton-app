@@ -5,7 +5,7 @@ import { render, screen, cleanup, fireEvent, act } from '@testing-library/react'
 import { NextIntlClientProvider } from 'next-intl';
 import enMessages from '../../messages/en.json';
 import CourtsideScoreboard from '../../components/stats/CourtsideScoreboard';
-import { recognitionCtor } from '../../lib/useVoiceScore';
+import { recognitionCtor, SESSION_WATCHDOG_MS } from '../../lib/useVoiceScore';
 
 /**
  * Voice scoring on the courtside board (docs/plans/voice-score.md), behind
@@ -102,7 +102,9 @@ describe('CourtsideScoreboard voice (Preview)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Listen for the score/ }));
     const rec = latest();
     expect(rec.started).toBe(true);
-    expect(rec.continuous).toBe(true);
+    // One phrase per session: Chrome's own continuous mode stopped after the
+    // first call on an Android Fold (2026-11-17), so hands-free is a restart.
+    expect(rec.continuous).toBe(false);
     expect(rec.lang).toBe('en-US');
     expect(screen.getByText('Listening…')).toBeTruthy();
     // At love all either side's first point is "1 0".
@@ -149,6 +151,56 @@ describe('CourtsideScoreboard voice (Preview)', () => {
     expect(screen.queryByText(/Who won the rally/)).toBeNull();
     expect(scoreA()).toBe('0');
     expect(scoreB()).toBe('0');
+  });
+
+  it('keeps scoring call after call, each in a fresh session (the Fold report, 2026-11-17)', () => {
+    renderBoard();
+    fireEvent.click(screen.getByRole('button', { name: /Listen for the score/ }));
+    const spy = vi.spyOn(Date, 'now');
+    let t = Date.now();
+    const call = (text: string) => {
+      say(text);
+      t += 4000; // the phrase took a few seconds: not a quick end
+      spy.mockReturnValue(t);
+      end();
+    };
+    spy.mockReturnValue(t);
+    call('one love');
+    fireEvent.click(screen.getByRole('button', { name: 'A side won' }));
+    call('2-0');
+    expect(scoreA()).toBe('2');
+    call('one two'); // B wins the serve back
+    expect(scoreB()).toBe('1');
+    call('11'); // "one one" glued by Chrome: at 2–1 that is not one rally on
+    expect(scoreB()).toBe('1');
+    call('2 all');
+    expect(scoreB()).toBe('2');
+    spy.mockRestore();
+    // A session per call, and the mic is still on.
+    expect(FakeRecognition.instances.length).toBe(6);
+    expect(screen.getByRole('button', { name: 'Stop listening' })).toBeTruthy();
+  });
+
+  it('a session that goes quiet without ending is replaced after the watchdog', () => {
+    vi.useFakeTimers();
+    try {
+      renderBoard();
+      fireEvent.click(screen.getByRole('button', { name: /Listen for the score/ }));
+      const hung = latest();
+      act(() => {
+        vi.advanceTimersByTime(SESSION_WATCHDOG_MS + 10);
+      });
+      expect(hung.aborted).toBe(true);
+      expect(latest()).not.toBe(hung);
+      expect(latest().started).toBe(true);
+      // The hung session's late end changes nothing.
+      act(() => hung.onend?.());
+      expect(screen.getByRole('button', { name: 'Stop listening' })).toBeTruthy();
+      say('one love');
+      expect(screen.getByText('Heard 1–0. Who won the rally?')).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('hands-free starts again after the silence that ends it, and stops when asked', () => {
