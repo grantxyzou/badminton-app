@@ -2587,6 +2587,10 @@
         "reasonPlaceholder": "例如：BG80 下周才到货，所以换成 Aerobite"
       },
       "actions": {
+        "sendInvoice": "发送账单",
+        "sendInvoiceHint": "向 {name} 收 {amount}",
+        "markPaid": "标记已付",
+        "markPaidHint": "已收 {amount}",
         "title": "穿线单操作",
         "close": "关闭",
         "more": "{name} 的更多操作",

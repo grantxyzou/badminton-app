@@ -2599,6 +2599,10 @@
           "reasonPlaceholder": "e.g. BG80 is out until next week, so Aerobite instead"
         },
         "actions": {
+          "sendInvoice": "Send invoice",
+          "sendInvoiceHint": "{amount} to {name}",
+          "markPaid": "Mark paid",
+          "markPaidHint": "{amount} received",
           "title": "Job actions",
           "close": "Close",
           "more": "More actions for {name}",

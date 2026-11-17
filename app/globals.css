@@ -8292,8 +8292,6 @@ html:root .glass-card.inventory-row-card { padding: var(--space-2) var(--space-3
 /* A pair the player chose: the NUMBERS in amber, never a ring (fill only). */
 .bench-spec--custom .bench-spec-lb { color: #fbbf24; }
 .bench-row-more { position: relative; flex: 0 0 auto; }
-/* The row's one button (the archive's Mark paid): above the row's open target. */
-.bench-row-action { display: flex; margin-top: var(--space-3); pointer-events: auto; }
 /* The Strings header's + (the add field): a quiet 44px round icon beside the
    one filled button, so the two never compete. Open, it takes the selected
    tint, like a pressed filter chip. */

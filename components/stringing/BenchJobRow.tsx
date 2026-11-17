@@ -44,7 +44,6 @@ export default function BenchJobRow({
   openLabel,
   open = false,
   more,
-  action,
 }: {
   job: JobCardJob;
   today: string;
@@ -63,8 +62,6 @@ export default function BenchJobRow({
   openLabel: string;
   open?: boolean;
   more?: ReactNode;
-  /** One button under the pills (the archive's "Mark paid"); the bench passes none. */
-  action?: ReactNode;
 }) {
   const t = useTranslations('admin.stringing');
   const tPlayer = useTranslations('home.stringing');
@@ -147,7 +144,6 @@ export default function BenchJobRow({
           {side(t('bench.crosses'), sides.crosses)}
           {holes !== null && <span className="bench-spec bench-spec--plain">{t('bench.grommets', { count: holes })}</span>}
         </span>
-        {action && <span className="bench-row-action">{action}</span>}
       </span>
       {more && <span className="bench-row-more">{more}</span>}
     </div>

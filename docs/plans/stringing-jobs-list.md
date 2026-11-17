@@ -39,7 +39,8 @@ A stringer strings a racket at the wrong tension or with the wrong string becaus
 - **Grommet holes is a pill only when the count is known**; nothing when it is missing.
 - **No next-step button on the row** (Grant hid it on the canvas). The ⋮ stays: SwipeRow's pin and archive are touch-only, and the menu is a desktop's way to them.
 - **No tap-open details panel**: the row opens the job page.
-- **The archive uses the same row** (2026-11-17; Grant: "the archived list should use the same component style as the stringing jobs"): one card labelled "Picked up · n", "N still owe" under it when any do, each row's money line ("Still owes $X" or "Not invoiced · $X") and Mark paid under its pills (`BenchJobRow`'s `action`).
+- **The archive uses the same row** (2026-11-17; Grant: "the archived list should use the same component style as the stringing jobs"): one card labelled "Picked up · n", "N still owe" under it when any do, each row's money line ("Still owes $X" or "Not invoiced · $X") and no button on the row.
+- **The row's money actions are in its ⋮ menu** (2026-11-17; Grant: "have the button fold into the more icon when tapped on it show a menu with existing actions, and send invoice and or mark paid"): Send invoice while the finished job's invoice has not gone, Mark paid while it owes, each with the amount, above pin, archive, open and delete; on the live bench too. Sending from the menu skips the job page's review sheet (the row shows the amount and the name); when the invoice reached nobody, the job page opens so it can be shared as a picture.
 
 ## Shape
 
