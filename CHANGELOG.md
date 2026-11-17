@@ -14,6 +14,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 - The ledger records the $30 that arrived, not the $45 bill, so the money page's Collected is what the club received. Profile's "what you paid" counts the same way.
 - Marking someone paid still means paid in full; nothing about the tap changed.
 
+## Keep score asks a foldable about its outer screen (2026-11-16)
+
+- **The Android app now checks whether a foldable can show the score on its outer screen** (`docs/plans/outer-screen-scoreboard.md`, step 1). On a phone with an outer screen, Keep score shows one Preview line with the answer: it can, it can once the phone is open flat, or it can't. Nothing is drawn on the outer screen yet; the answer decides whether that gets built.
+- **Arrives with the next Play Store build.** The website, iPhones, one-screen phones and the current Android app show nothing new.
+
 ## Inventory: the search stays tidy when it sticks (2026-11-16)
 
 - **When you scroll a long strings list, the search and filters stick below the bell, language and theme buttons** instead of under them, and their background spans the whole screen like the top bar, rather than a strip across the card.

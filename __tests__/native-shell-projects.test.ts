@@ -315,6 +315,13 @@ describe('android/', () => {
     expect(plugin).toContain('@CapacitorPlugin(name = "BpmFold")');
     expect(plugin).toContain('FoldingFeature.State.FLAT');
     expect(plugin).toContain('notifyListeners("foldChanged"');
+    // The outer-screen probe (docs/plans/outer-screen-scoreboard.md, step 1).
+    // The window-area API is experimental in androidx.window 1.3.0: without
+    // the class's opt-in, Android lint refuses the release build on Grant's
+    // machine, which is the first place anything would notice.
+    expect(plugin).toContain('public void getDualScreen(PluginCall call)');
+    expect(plugin).toContain('WindowAreaCapability.Operation.OPERATION_PRESENT_ON_AREA');
+    expect(plugin).toContain('@OptIn(markerClass = ExperimentalWindowApi.class)\npublic class BpmFoldPlugin');
     // The dependency the import needs, pinned like the other androidx versions.
     const gradle = read('android', 'app', 'build.gradle');
     expect(gradle).toContain('androidx.window:window:$androidxWindowVersion');

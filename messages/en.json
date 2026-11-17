@@ -2062,6 +2062,13 @@
       "newGame": "New game",
       "save": "Save game",
       "saveNeedsSession": "Saving needs this week's session to log into.",
+      "outer": {
+        "available": "Outer screen: this phone can show the score there.",
+        "unavailable": "Outer screen: supported, but not right now. Open the phone flat and try again.",
+        "active": "Outer screen: another app is using it.",
+        "unsupported": "Outer screen: this phone can’t show the score there.",
+        "unknown": "Outer screen: still checking…"
+      },
       "close": "Close",
       "voice": {
         "preview": "Preview",
