@@ -192,6 +192,13 @@ export interface Player {
    */
   refundedPaymentId?: string;
   /**
+   * The Stripe Checkout Session whose card payment for this row was DISPUTED
+   * (a chargeback; docs/plans/card-pay-prototype.md): the bank pulled the
+   * money back, so the row went back to unpaid. A won dispute returns the
+   * money and marks the row paid again, clearing this. Additive.
+   */
+  disputedPaymentId?: string;
+  /**
    * Waitlisted by the soft hold, not by a full session: the member owed for
    * too many past sessions at sign-up (docs/plans/payments.md). Cleared — and
    * the row promoted if there is room — when a payment brings them under it.
@@ -319,8 +326,8 @@ export interface EtransferPayment {
   groupId?: string;
   /** `'card'` since 2026-11-16: a Stripe outcome the webhook could not apply, for a person to look at (`lib/cardPay.ts`). */
   source: 'etransfer' | 'card' | 'credit';
-  /** A card row's Stripe ids: the Checkout Session, and the charge for a refund. A `refund` row is money OUT and cannot be assigned. */
-  card?: { checkoutId: string; chargeId?: string; kind: 'payment' | 'refund' };
+  /** A card row's Stripe ids: the Checkout Session, the charge for a refund or dispute, and the dispute. A `refund` or `dispute` row is money OUT and cannot be assigned. */
+  card?: { checkoutId: string; chargeId?: string; disputeId?: string; kind: 'payment' | 'refund' | 'dispute' };
   /** A credit row (lib/creditReview.ts): the line an organiser un-ticked that was paid with store credit. Resolved by `return_credit` or dismissed; never assigned. */
   credit?: { kind: 'session' | 'stringing'; ref: string; pk: string; memberId: string; amountCents: number };
   senderName: string | null;
@@ -1222,6 +1229,8 @@ export interface StringingJob {
   cardPaymentId?: string;
   /** The Checkout Session whose card payment for this job was refunded in Stripe, putting it back to unpaid. */
   refundedPaymentId?: string;
+  /** The Checkout Session whose card payment for this job was disputed (a chargeback), putting it back to unpaid until the dispute is won. */
+  disputedPaymentId?: string;
   /** Session the racket changes hands at, when there is one. */
   sessionId: string | null;
   createdAt: string;

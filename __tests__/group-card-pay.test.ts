@@ -4,6 +4,7 @@ import { GET as status, POST as connect } from '@/app/api/admin/card-pay/route';
 import { POST as checkout } from '@/app/api/payments/card/checkout/route';
 import { POST as webhook } from '@/app/api/payments/card/webhook/route';
 import { GET as unpaid } from '@/app/api/players/unpaid/route';
+import { PATCH as patchPlayer } from '@/app/api/players/route';
 import { _setStripeForTests, cardPaySettingsId, linesFromMetadata } from '@/lib/cardPay';
 import {
   resetMockStore,
@@ -408,6 +409,90 @@ describe('a refund made in the Stripe Dashboard', () => {
     refundList = [byPerson(2700)];
     expect(await result(await refundEvent('acct_somebody_else'))).toEqual({ ignored: 'account_mismatch' });
     expect(row(row1.id).paid).toBe(true);
+  });
+});
+
+describe('a dispute (chargeback) on a card payment', () => {
+  const dispute = (amount: number, status = 'needs_response') => ({ id: 'dp_1', object: 'dispute', charge: 'ch_1', payment_intent: 'pi_test_1', amount, status, reason: 'fraudulent', created: 1_793_200_000 });
+  const opened = (amount: number, account = ACCT) => deliver(dispute(amount), account, SECRET, 'charge.dispute.created');
+  const closed = (status: string, amount = 2700) => deliver(dispute(amount, status), ACCT, SECRET, 'charge.dispute.closed');
+  const result = async (res: Response) => (await res.json()).result;
+  const reviewRows = () => ((getStore()['payments'] ?? []) as Array<Record<string, unknown>>).filter((p) => p.source === 'card');
+  const livePayments = (rowId: string) => {
+    const voided = new Set(ledger().filter((e) => e.kind === 'void').map((e) => e.id.slice('void:'.length)));
+    return ledger().filter((e) => e.kind === 'payment' && e.id.includes(rowId) && !voided.has(e.id)).map((e) => e.id);
+  };
+
+  beforeEach(async () => {
+    connectClubAccount();
+    const metadata = await checkoutMetadata();
+    listedSession = paidSession(metadata);
+    await deliver(paidSession(metadata)); // both rows paid by card, $12 and $15
+  });
+
+  it('opened for the whole charge: every line is owed again, the ledger payments are voided, and a dispute row is filed for the deadline; a redelivery changes nothing', async () => {
+    expect(await result(await opened(2700))).toEqual({ unpaid: 2, already: false, review: 'card_dispute' });
+    for (const r of [row1, row2]) {
+      expect(row(r.id)).toMatchObject({ paid: false, disputedPaymentId: 'cs_test_1' });
+      expect(row(r.id).paidVia).toBeUndefined();
+      expect(livePayments(r.id)).toEqual([]);
+    }
+    expect(reviewRows().map((p) => [p.id, p.reason, p.amountCents, p.card, p.status])).toEqual([
+      ['card:cs_test_1:dispute:dp_1', 'card_dispute', 2700, { checkoutId: 'cs_test_1', chargeId: 'ch_1', disputeId: 'dp_1', kind: 'dispute' }, 'review'],
+    ]);
+    const entries = ledger().length;
+    expect(await result(await opened(2700))).toEqual({ unpaid: 0, already: true, review: 'card_dispute' });
+    expect(ledger()).toHaveLength(entries);
+    expect(reviewRows()).toHaveLength(1);
+  });
+
+  it('won: the lines are paid by card again under the same Checkout, each with a FRESH ledger entry, and the row leaves Needs a look', async () => {
+    await opened(2700);
+    expect(await result(await closed('won'))).toEqual({ repaid: 2, already: false });
+    for (const r of [row1, row2]) {
+      expect(row(r.id)).toMatchObject({ paid: true, paidVia: 'card', paymentId: 'cs_test_1' });
+      expect(row(r.id).disputedPaymentId).toBeUndefined();
+      // The original `payment:<row>:cs_test_1` is voided; the re-pay is numbered beside it.
+      expect(livePayments(r.id)).toEqual([`payment:${r.id}:cs_test_1:1`]);
+    }
+    expect(row(row1.id).paidAmount).toBe(12);
+    expect(reviewRows()[0]).toMatchObject({ status: 'ignored', matchedBy: 'stripe' });
+    const entries = ledger().length;
+    expect(await result(await closed('won'))).toEqual({ repaid: 0, already: true });
+    expect(ledger()).toHaveLength(entries);
+  });
+
+  it('won after someone paid a line another way meanwhile leaves that line alone', async () => {
+    await opened(2700);
+    await patchPlayer(makeAdminRequest('PATCH', `${BASE}/players`, { id: row1.id, paid: true, sessionId: 'session-2026-09-24' }));
+    expect(await result(await closed('won'))).toEqual({ repaid: 1, already: false });
+    expect(row(row1.id)).toMatchObject({ paid: true, paidVia: 'manual' });
+    expect(row(row2.id)).toMatchObject({ paid: true, paidVia: 'card' });
+  });
+
+  it('lost changes nothing: the lines stayed owed when it opened', async () => {
+    await opened(2700);
+    expect(await result(await closed('lost'))).toEqual({ ignored: 'not_won' });
+    expect([row(row1.id).paid, row(row2.id).paid]).toEqual([false, false]);
+    expect(reviewRows()[0].status).toBe('review');
+  });
+
+  it('for exactly one line\'s amount un-pays that line only', async () => {
+    expect(await result(await opened(1500))).toEqual({ unpaid: 1, already: false, review: 'card_dispute' });
+    expect(row(row2.id).paid).toBe(false);
+    expect(row(row1.id).paid).toBe(true);
+  });
+
+  it('for an amount matching no line un-pays nothing and files the row for a person', async () => {
+    expect(await result(await opened(700))).toEqual({ unpaid: 0, already: false, review: 'card_dispute_no_line' });
+    expect([row(row1.id).paid, row(row2.id).paid]).toEqual([true, true]);
+    expect(reviewRows().map((p) => p.reason)).toEqual(['card_dispute_no_line']);
+  });
+
+  it('from an account that is not the club\'s is ignored', async () => {
+    expect(await result(await opened(2700, 'acct_somebody_else'))).toEqual({ ignored: 'account_mismatch' });
+    expect(row(row1.id).paid).toBe(true);
+    expect(reviewRows()).toEqual([]);
   });
 });
 
