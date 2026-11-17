@@ -99,13 +99,47 @@ describe('the archive card', () => {
     wrap(<StringingPage onBack={() => {}} />);
     fireEvent.click(await screen.findByRole('button', { name: /Archived/ }));
     const card = await screen.findByRole('region', { name: 'Picked up' });
-    expect(within(card).getByText('1 job · 1 still owes')).toBeDefined();
+    // The bench's row and label, not the old card (Grant, 2026-11-17).
+    expect(within(card).getByText('Picked up · 1')).toBeDefined();
+    expect(within(card).getByText('1 still owes')).toBeDefined();
+    expect(within(card).getAllByTestId('bench-row')).toHaveLength(1);
+    expect(within(card).queryByTestId('job-card')).toBeNull();
     expect(within(card).getByText('Still owes $28')).toBeDefined();
-    fireEvent.click(within(card).getByRole('button', { name: 'Mark paid' }));
+    // The row carries no button: Mark paid is in its ⋮ menu (Grant, 2026-11-17).
+    expect(within(card).queryByRole('button', { name: 'Mark paid' })).toBeNull();
+    fireEvent.click(within(card).getByRole('button', { name: 'More actions for Kento' }));
+    const sheet = await screen.findByRole('dialog');
+    // Already invoiced-or-billed at Ready: no invoice to send, only the money.
+    expect(within(sheet).queryByRole('button', { name: /^Send invoice/ })).toBeNull();
+    fireEvent.click(within(sheet).getByRole('button', { name: /^Mark paid/ }));
     await waitFor(() => {
       const patch = fetchMock.mock.calls.find((c) => c[1]?.method === 'PATCH');
       expect(JSON.parse(String(patch![1].body))).toEqual({ memberId: 'member-kento', paid: true });
     });
+  });
+
+  it('a finished job whose invoice has not gone offers Send invoice and Mark paid in the menu', async () => {
+    const notSent = { ...base, id: 'job-9', jobNo: 'J-0009', racketLabel: 'Thruster F', status: 'ready', priceCents: 3000, billOn: 'invoice' } as StringingJob;
+    const fetchMock = respond([notSent]);
+    wrap(<StringingPage onBack={() => {}} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'More actions for Kento' }));
+    const sheet = await screen.findByRole('dialog');
+    expect(within(sheet).getByRole('button', { name: /^Mark paid/ })).toBeDefined();
+    fireEvent.click(within(sheet).getByRole('button', { name: /^Send invoice/ }));
+    await waitFor(() => {
+      const post = fetchMock.mock.calls.find((c) => c[1]?.method === 'POST' && String(c[0]).endsWith('/api/stringing/jobs/job-9/invoice'));
+      expect(post).toBeDefined();
+      expect(JSON.parse(String(post![1].body))).toEqual({ memberId: 'member-kento' });
+    });
+  });
+
+  it('a job that owes nothing has no money rows in its menu', async () => {
+    respond([{ ...base, status: 'received' } as StringingJob]);
+    wrap(<StringingPage onBack={() => {}} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'More actions for Kento' }));
+    const sheet = await screen.findByRole('dialog');
+    expect(within(sheet).queryByRole('button', { name: /^Mark paid/ })).toBeNull();
+    expect(within(sheet).queryByRole('button', { name: /^Send invoice/ })).toBeNull();
   });
 });
 

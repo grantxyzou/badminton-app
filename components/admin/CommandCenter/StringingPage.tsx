@@ -14,7 +14,7 @@ import { dueFor, todayIso } from '@/lib/stringingDue';
 import { isWaitingTooLong, waitingDays } from '@/lib/stringingWaiting';
 import { fmtMoney } from '@/lib/fmt';
 import { isWalkUpJob } from '@/lib/stringing';
-import JobCard, { JobsHeading } from '@/components/stringing/JobCard';
+import { JobsHeading } from '@/components/stringing/JobCard';
 import BenchJobRow from '@/components/stringing/BenchJobRow';
 import BenchList from '@/components/stringing/BenchList';
 import { toPlayerPendingEdit } from '@/lib/stringingPendingEdit';
@@ -127,9 +127,6 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
   /* One target at a time, so only one sheet can ever be open — same shape as
      PaymentsCard's per-row menu. */
   const [actionTarget, setActionTarget] = useState<StringingJob | null>(null);
-  /** The job a card's own next-step button is moving, and whether it failed. */
-  const [moving, setMoving] = useState<string | null>(null);
-  const [moveError, setMoveError] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
   const [actionError, setActionError] = useState(false);
   /* Two-step, in-sheet. Reset every time the sheet opens, so a confirm armed
@@ -356,22 +353,36 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
    * `pointer-events: none` above it and the menu button opting back in. That is
    * the same shape `PaymentsCard` arrived at.
    */
+  /** "Mark paid" from the ⋮ menu (Grant, 2026-11-17: the row's button folds
+   *  into the menu). The same PATCH as the job page's; the sheet stays open
+   *  saying so if it fails. */
   async function markPaid(job: StringingJob) {
-    if (moving || !online) return;
-    setMoving(job.id);
-    setMoveError(false);
+    await patchJob(job, { paid: true });
+  }
+
+  /** "Send invoice" from the ⋮ menu: the job page's send, without its review
+   *  sheet — the menu row already shows the amount and who it goes to. When
+   *  it reached nobody (no notifications, no email), the job opens, where
+   *  the invoice card shares it as a picture. */
+  async function sendInvoice(job: StringingJob) {
+    if (actionBusy || !online) return;
+    setActionBusy(true);
+    setActionError(false);
     try {
-      const res = await fetch(`${BASE}/api/stringing/jobs/${job.id}`, {
-        method: 'PATCH',
+      const res = await fetch(`${BASE}/api/stringing/jobs/${job.id}/invoice`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ memberId: job.memberId, paid: true }),
+        body: JSON.stringify({ memberId: job.memberId }),
       });
-      if (!res.ok) throw new Error(`paid ${res.status}`);
-      await loadArchive();
+      const data = (await res.json().catch(() => null)) as { invoice?: unknown; delivered?: { reached?: boolean } } | null;
+      if (!res.ok || !data?.invoice) throw new Error(`invoice ${res.status}`);
+      setActionTarget(null);
+      await Promise.all([load(), loadArchive()]);
+      if (data.delivered?.reached === false) openJob(job, isArchived(job));
     } catch {
-      setMoveError(true);
+      setActionError(true);
     } finally {
-      setMoving(null);
+      setActionBusy(false);
     }
   }
 
@@ -471,7 +482,9 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
     );
   }
 
-  /** A job in the archive: the card, with "Mark paid" while it owes. */
+  /** A job in the archive: the same row as the bench (Grant, 2026-11-17: "the
+   *  archived list should use the same component style as the stringing
+   *  jobs"). Mark paid and Send invoice are in its ⋮ menu, as on the bench. */
   function renderArchivedJob(job: StringingJob) {
     // Exactly `isBillable`: finished, priced and unpaid — the whole risk in
     // the archive is money quietly going out of sight. Plus, for an
@@ -479,36 +492,22 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
     // (docs/plans/stringing-invoice.md).
     const notInvoiced = awaitingInvoice(job);
     const owed = isBillable(job) || notInvoiced ? (job.priceCents ?? 0) / 100 : null;
+    const look = holes.forLabel(job.racketLabel);
     return swipeable(
       job,
       true,
-      <JobCard
+      <BenchJobRow
         job={job}
         today={today}
-        holes={holes.forLabel(job.racketLabel).holes}
+        catalogId={look.catalogId}
+        holes={look.holes}
         pinned={typeof job.prioritizedAt === 'string'}
         owed={owed}
         notInvoiced={notInvoiced}
-        waitingDays={null}
         pendingChange={job.pendingEdit ? toPlayerPendingEdit(job) : null}
-        surface="inner"
         onOpen={() => openJob(job, true)}
-        open={false}
         openLabel={t('actions.open')}
         more={moreButton(job)}
-        action={
-          owed !== null ? (
-            <button
-              type="button"
-              className="cc-btn cc-btn-secondary"
-              style={{ flex: 1 }}
-              disabled={moving !== null || !online}
-              onClick={() => void markPaid(job)}
-            >
-              {t('markPaid')}
-            </button>
-          ) : undefined
-        }
       />,
     );
   }
@@ -539,6 +538,10 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
 
   const targetPinned = typeof actionTarget?.prioritizedAt === 'string';
   const targetArchived = typeof actionTarget?.archivedAt === 'string';
+  // What the job still owes, invoiced or not (the money rows of the ⋮ menu).
+  const targetAwaitingInvoice = actionTarget !== null && awaitingInvoice(actionTarget);
+  const targetDue =
+    actionTarget && (isBillable(actionTarget) || targetAwaitingInvoice) ? (actionTarget.priceCents ?? 0) / 100 : null;
   // What deleting this would take off the player's balance, if anything.
   const targetOwed =
     actionTarget && isBillable(actionTarget) ? (actionTarget.priceCents ?? 0) / 100 : null;
@@ -571,6 +574,27 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
       <BottomSheetBody>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
           {actionError && <p className="field-error" role="alert">{t('actions.error')}</p>}
+          {/* The money first: what the row's button used to do, folded in here
+              (Grant, 2026-11-17). Send invoice while a finished job's invoice
+              has not gone; Mark paid while it owes, invoiced or not. */}
+          {actionTarget && targetAwaitingInvoice && targetDue !== null && (
+            <ActionRow
+              icon="receipt_long"
+              label={t('actions.sendInvoice')}
+              hint={t('actions.sendInvoiceHint', { amount: fmtMoney(targetDue), name: actionTarget.memberName })}
+              disabled={actionBusy || !online}
+              onClick={() => void sendInvoice(actionTarget)}
+            />
+          )}
+          {actionTarget && targetDue !== null && (
+            <ActionRow
+              icon="payments"
+              label={t('actions.markPaid')}
+              hint={t('actions.markPaidHint', { amount: fmtMoney(targetDue) })}
+              disabled={actionBusy || !online}
+              onClick={() => void markPaid(actionTarget)}
+            />
+          )}
           {actionTarget && !targetArchived && (
             <ActionRow
               icon={targetPinned ? 'star_border' : 'star'}
@@ -684,16 +708,24 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
           {!archiveError && archivedJobs !== null && archivedJobs.length === 0 && (
             <EmptyState icon="inventory_2">{t('archive.empty')}</EmptyState>
           )}
-          {moveError && <p className="field-error" role="alert">{t('actions.error')}</p>}
           {archivedJobs !== null && archivedJobs.length > 0 && (
-            <section className="glass-card p-5 flex flex-col gap-3" aria-label={t('archive.pickedUp')}>
-              <CardHeader
-                compact
-                icon="inventory_2"
-                title={t('archive.pickedUp')}
-                subtitle={t('archive.summary', { count: archivedJobs.length, owing: archivedJobs.filter((j) => isBillable(j) || awaitingInvoice(j)).length })}
-              />
-              {archivedJobs.map((job) => renderArchivedJob(job))}
+            /* One card of rows, as on the bench: a label with the count, then
+               the same row (docs/plans/stringing-jobs-list.md). */
+            <section className="glass-card bench-list" aria-label={t('archive.pickedUp')} data-testid="archive-list">
+              <div className="bench-group">
+                <h3 className="section-label bench-group-label">
+                  {t('archive.pickedUp')} · {archivedJobs.length}
+                </h3>
+                {(() => {
+                  const owing = archivedJobs.filter((j) => isBillable(j) || awaitingInvoice(j)).length;
+                  return owing > 0 ? (
+                    <p className="fs-sm bench-group-label" style={{ margin: 0, color: 'var(--sev-warn)', fontWeight: 600 }}>
+                      {t('archive.owing', { owing })}
+                    </p>
+                  ) : null;
+                })()}
+                {archivedJobs.map((job) => renderArchivedJob(job))}
+              </div>
             </section>
           )}
         </div>
@@ -932,8 +964,7 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
                 ) : undefined
               }
             />
-            {moveError && <p className="field-error" role="alert">{t('actions.error')}</p>}
-            {loadError && (
+              {loadError && (
               <div className="glass-card">
                 <ErrorState
                   message={t('loadError')}

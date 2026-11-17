@@ -8,6 +8,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Stringing: the archive matches the jobs list (2026-11-17)
+
+- **Archived jobs use the same rows as the live jobs**: the racket picture and name, the player, the job number and status, and M and C as two pills, in one card labelled "Picked up" with how many still owe.
+- **A row that owes says so** ("Still owes $X" or "Not invoiced · $X") above its pills.
+- **Mark paid and Send invoice moved into each job's ⋮ menu**, on the live jobs and the archive alike, with the amount beside them: Send invoice while a finished job hasn't been invoiced, Mark paid while it owes. If the invoice reaches nobody, the job opens so you can share it as a picture.
+
 ## Home's Balance card leads with what you owe (2026-11-17)
 
 - **"You owe" comes first**, as a large figure: amber while you owe anything, $0 with a tick when you are paid up (Grant: "This card should display: outstanding balance priority").

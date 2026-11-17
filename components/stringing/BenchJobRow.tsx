@@ -53,7 +53,7 @@ export default function BenchJobRow({
   pinned?: boolean;
   /** Finished, priced and unpaid (`isBillable`). */
   unpaid?: boolean;
-  /** Finished work whose invoice has not gone: shown as "Not invoiced · $X". */
+  /** Dollars owed: "Not invoiced · $X" when `notInvoiced`, else "Still owes $X" (the archive). */
   owed?: number | null;
   notInvoiced?: boolean;
   waitingDays?: number | null;
@@ -133,8 +133,10 @@ export default function BenchJobRow({
         ) : null}
         {job.cancelledAt ? (
           <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{t('cancelledByPlayer')}</span>
-        ) : owed !== null && notInvoiced ? (
-          <span className="fs-sm" style={{ fontWeight: 600, color: 'var(--sev-warn)' }}>{t('archive.notInvoiced', { amount: fmtMoney(owed) })}</span>
+        ) : owed !== null ? (
+          <span className="fs-sm" style={{ fontWeight: 600, color: 'var(--sev-warn)' }}>
+            {notInvoiced ? t('archive.notInvoiced', { amount: fmtMoney(owed) }) : t('archive.stillOwed', { amount: fmtMoney(owed) })}
+          </span>
         ) : null}
         {stage === 'waiting' && !job.cancelledAt && <PendingChangeLine name={job.memberName} edit={pendingChange} />}
         <span className="bench-row-specs">
