@@ -39,6 +39,8 @@ Either one means voice costs more attention than the +1 buttons it replaces. Kil
 
 - **A glued call is two scores** (2026-11-13, the first try on a phone, Chrome on Android: the board said "Didn't catch a score" to a plain call). Chrome writes "one zero" as "10" and "two one" as "21". When the words as written hold no score, a two-digit run is read as two (`tokens(text, glued)`), so "10 8" still reads ten–eight. A miss now shows the words heard ("Heard “…”: no score in that"), so the next one says what the phone understood.
 
+- **One phrase per session, restarted; never Chrome's continuous mode** (2026-11-17, Grant on the Fold: "Voice doesn't not work when I say 2-0 or 1-1 after first call it stops working"). Hands-free asked Chrome for `continuous = true`, which Android Chrome does not honour reliably (react-speech-recognition's maintainers call it an Android limitation; the common workaround is `continuous = false` and a restart from `onend`). Now every session hears one phrase in both modes and `onend` starts the next while the mic is wanted; a session that has neither heard a phrase nor ended after `SESSION_WATCHDOG_MS` (15 s) is dropped and replaced, for a session that goes quiet without ending. Android Chrome may beep at each restart. Not yet confirmed on the phone.
+
 ## Shape
 
 | Piece | File |
