@@ -5,8 +5,8 @@
  * NEVER GUESS WITH MONEY. An auto-match marks somebody paid without a person
  * looking, so it happens only when every one of these holds:
  *   - Google verified the email as Interac's (`authenticated`);
- *   - exactly ONE person can be the sender, known by a remembered alias or
- *     the memo, not only by a roster name that equals the bank's (F18);
+ *   - exactly ONE person can be the sender, known by a remembered alias,
+ *     not only by a roster name that equals the bank's or the memo's (F18);
  *   - the amount equals one owed line, or the oldest k lines, or the whole
  *     balance (which is the oldest-n case).
  * Everything else — over- and under-payments, two people who could be "Lin",
@@ -46,8 +46,8 @@ export interface MatchCandidate {
    * member can set their own roster name, so on its own that is a guess
    * (Claude Security F18, 2026-11-17: rename yourself to another member's
    * bank name and their transfer pays your line). Such a candidate is shown
-   * to a person, never paid automatically; a remembered alias or the memo's
-   * name is what makes it automatic.
+   * to a person, never paid automatically; only a remembered alias makes it
+   * automatic (the memo is matched against roster names too).
    */
   nameOnly?: boolean;
 }

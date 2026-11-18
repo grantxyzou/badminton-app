@@ -3,6 +3,7 @@ import { POST as inbound } from '@/app/api/payments/etransfer/route';
 import { POST as assign } from '@/app/api/admin/payments/assign/route';
 import { GET as partners } from '@/app/api/stats/partners/route';
 import { GET as attendance } from '@/app/api/stats/attendance/route';
+import { POST as addAlias } from '@/app/api/aliases/route';
 import { mintPaymentsKey } from '@/lib/paymentsInbox';
 import {
   resetMockStore,
@@ -94,6 +95,32 @@ describe('F18: a roster name equal to the bank name is not proof of who paid', (
     expect(row(bobRow.id).paid).toBe(false);
   });
 
+  it('a memo naming someone renamed to it is not proof either', async () => {
+    // Mallory renamed herself to the name in Bruce's memo.
+    const mallory = seedMember('Bruce Wayne', { id: 'mallory' });
+    const malloryRow = seedPlayer(S1, 'Bruce Wayne', { memberId: mallory.id, owedAmount: 12, settledAt: SETTLED_AT });
+    const res = await (await post({ ...email('B WAYNE HOLDINGS', '12.00'), body: 'Hi Grant,\nB WAYNE HOLDINGS has sent you $12.00 (CAD).\nMessage: BPM Sep 24 - Bruce Wayne' })).json();
+    expect(res.status).toBe('review');
+    expect(row(malloryRow.id).paid).toBe(false);
+  });
+
+  it('dismissing a name-only row remembers nothing for a bank name equal to the suggestion', async () => {
+    const mallory = seedMember('Bruce Wayne', { id: 'mallory' });
+    seedPlayer(S1, 'Bruce Wayne', { memberId: mallory.id, owedAmount: 12, settledAt: SETTLED_AT });
+    await post(email('BRUCE WAYNE', '12.00'));
+    const ok = await assign(makeAdminRequest('POST', `${BASE}/admin/payments/assign`, { paymentId: payments()[0].id, action: 'ignore', memberId: mallory.id, remember: true }));
+    expect(ok.status).toBe(200);
+    const aliases = ((getStore()['clubSettings'] ?? []) as Array<{ kind?: string }>).filter((r) => r.kind === 'alias');
+    expect(aliases).toHaveLength(0);
+  });
+
+  it('an alias added on the Roster screen carries the member’s id', async () => {
+    const gary = seedMember('Gary', { id: 'gary' });
+    const res = await addAlias(makeAdminRequest('POST', `${BASE}/aliases`, { appName: 'Gary', etransferName: 'CHEUK SHAN CHUNG' }));
+    expect(res.status).toBe(201);
+    expect((await res.json()).memberId).toBe(gary.id);
+  });
+
   it('confirming once remembers a bank name EQUAL to the roster name, so the next one is automatic', async () => {
     const lin = seedMember('Lin Dan', { id: 'lin' });
     const first = seedPlayer(S1, 'Lin Dan', { memberId: lin.id, owedAmount: 12, settledAt: SETTLED_AT });
@@ -141,6 +168,15 @@ describe('F27, F28: a name taken over does not bring the previous holder’s his
   it('attendance: the new Chris has not attended the old Chris’s sessions', async () => {
     const res = await attendance(makeRequest('GET', 'http://x/api/stats/attendance?name=Chris&weeks=12', undefined, asNewChris));
     expect(res.status).toBe(200);
+    expect((await res.json()).attended).toBe(0);
+  });
+
+  it('a guest row with a member’s name is not that member', async () => {
+    const past = new Date(Date.now() - 14 * 86_400_000).toISOString().slice(0, 10);
+    const sid = `session-${past}`;
+    seedSession(sid, { datetime: `${past}T19:00:00-07:00` });
+    seedPlayer(sid, 'Chris', { guestOf: 'viktor' });
+    const res = await attendance(makeRequest('GET', 'http://x/api/stats/attendance?name=Chris&weeks=12', undefined, asNewChris));
     expect((await res.json()).attended).toBe(0);
   });
 

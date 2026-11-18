@@ -125,10 +125,10 @@ export async function GET(req: NextRequest) {
     // when it is this person's; a legacy row with none is matched by name. And
     // the person's own rows under an EARLIER name now count too.
     const subject = ownership.selfMemberId ?? (await resolveActiveMemberId(scope.groupId, name));
-    type Row = { sessionId: string; removed?: boolean; waitlisted?: boolean; memberId?: string };
+    type Row = { sessionId: string; removed?: boolean; waitlisted?: boolean; memberId?: string; guestOf?: string };
     const sidParams = sessionIds.map((id, i) => ({ name: `@sid${i}`, value: id }));
     const byName = await scope.query<Row>('players', {
-      select: 'c.sessionId, c.name, c.removed, c.waitlisted, c.memberId',
+      select: 'c.sessionId, c.name, c.removed, c.waitlisted, c.memberId, c.guestOf',
       where: `c.sessionId IN (${placeholders}) AND LOWER(c.name) = LOWER(@name)`,
       params: [{ name: '@name', value: name }, ...sidParams],
     });
@@ -140,7 +140,8 @@ export async function GET(req: NextRequest) {
         })
       : [];
     const playerRows = [
-      ...byName.filter((r) => !r.memberId || r.memberId === subject),
+      // A guest row is never the member, whatever it is called.
+      ...byName.filter((r) => (!r.memberId && !r.guestOf) || r.memberId === subject),
       ...byId.filter((r) => r.memberId === subject),
     ];
 

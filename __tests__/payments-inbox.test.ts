@@ -313,10 +313,13 @@ describe('the memo and the reference — from a real notification', () => {
       ...over,
     });
 
-  it('an unknown legal name whose memo names a roster member matches on the FIRST payment', async () => {
+  it('an unknown legal name whose memo names a roster member is SUGGESTED, not paid (F18)', async () => {
+    // The memo is matched against roster names, which members set themselves:
+    // it names who to suggest, and "Remember" makes the next one automatic.
     const res = await post(real('MEI LING CHAN', '12.00', 'BPM Sep 24 - Lin', 'C1AB2cDEFGhJ'));
-    expect((await res.json()).status).toBe('matched');
-    expect(rowById(row1.id).paid).toBe(true);
+    expect((await res.json()).status).toBe('review');
+    expect((getStore()['payments'] as Array<{ reason: string }>)[0].reason).toBe('name_only');
+    expect(rowById(row1.id).paid).toBe(false);
   });
 
   it('a memo naming someone OTHER than the known sender is a person\'s call', async () => {

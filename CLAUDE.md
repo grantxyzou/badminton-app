@@ -69,7 +69,7 @@ The rules are in `.claude/rules/metrics.md`, which loads when Claude touches the
 
 The full rules (e-transfer auto-detection, store credit, gift cards, the ledger mirror and reconcile) are in `.claude/rules/money.md`, which loads with the money files and `components/admin/`. These hold everywhere:
 
-- **Never guess with money.** Auto-match only an authenticated Interac email with exactly one candidate, known by a remembered alias or the memo (a roster name equal to the bank's is not proof), and an exact amount; anything else is a review row. Only a SETTLED line is ever paid without a person looking.
+- **Never guess with money.** Auto-match only an authenticated Interac email with exactly one candidate, known by a remembered alias (a roster name equal to the bank's, or named in the memo, is not proof), and an exact amount; anything else is a review row. Only a SETTLED line is ever paid without a person looking.
 - **`Player.paid` stays the truth**, and the `ledger` container is append-only: never upsert, edit or delete; a reversal is `void:<id>`, and ids are derived, never minted.
 - **`lib/owedBalance.ts` is the one reading of what someone owes** — Home, the inbox, reminders and the reconcile all go through it.
 - **No amount in a push body** (the lock-screen rule).

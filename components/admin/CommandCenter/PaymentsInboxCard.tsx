@@ -674,7 +674,7 @@ function AssignSheet({ payment, onClose, onDone }: { payment: EtransferPayment; 
             {isCard ? 'Mark paid by card' : 'Mark paid'}
           </button>
         )}
-        <button type="button" className="cc-btn cc-btn-ghost" disabled={!online || busy} onClick={() => void send({ action: 'ignore', ...(!isCard && name && remember ? { name, remember: true } : {}) })}>
+        <button type="button" className="cc-btn cc-btn-ghost" disabled={!online || busy} onClick={() => void send({ action: 'ignore', ...(!isCard && name && remember && payment.senderName && payment.senderName.toLowerCase() !== name.toLowerCase() ? { name, remember: true } : {}) })}>
           {isCredit
             ? 'Keep it paid — dismiss'
             : isCard

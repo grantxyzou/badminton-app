@@ -160,9 +160,13 @@ export async function candidatesFor(
   // The memo is a third, independent clue. When it names the same person the
   // sender resolves to, the dedupe below makes it one candidate; when it names
   // SOMEONE ELSE ("Bruce paid for Gary"), that is two candidates and a person
-  // decides — exactly the case that should not be automatic.
+  // decides — exactly the case that should not be automatic. It is WEAK: it
+  // is matched against roster names, which members set themselves, so a
+  // member renamed to the name in someone's memo would be its only match
+  // (F18 review). It still names who to suggest, and splits a payer from the
+  // person they paid for.
   const fromMemo = memoRosterName(memo, roster.map((r) => r.member.name));
-  if (fromMemo) clues.push({ name: fromMemo.trim(), strong: true });
+  if (fromMemo) clues.push({ name: fromMemo.trim(), strong: false });
 
   const byPerson = new Map<string, MatchCandidate>();
   for (const clue of clues) {
@@ -417,14 +421,19 @@ async function rememberSender(
   senderName: string | null,
   payerName: string,
   memberId: string | null,
+  /** A person confirmed THIS payment is theirs (assign), not just dismissed it. */
+  confirmed: boolean,
 ): Promise<void> {
   if (!senderName || !payerName) return;
   const sender = senderName.trim().toLowerCase();
   const payer = payerName.trim().toLowerCase();
-  // A bank name EQUAL to the roster name is remembered too since F18: the
-  // name match alone no longer auto-pays, so without an alias that member's
-  // every transfer would wait for a person.
   if (!sender || !payer) return;
+  // A bank name EQUAL to the roster name is remembered too since F18 (the
+  // name match alone no longer auto-pays, so without an alias that member's
+  // every transfer would wait for a person), but ONLY when the admin marked
+  // the money theirs. A dismiss confirms nothing about whose it was, and the
+  // suggested person may be someone renamed to the sender's bank name.
+  if (sender === payer && !confirmed) return;
   const known = (await readAliases(scope)).some(
     (a) =>
       a.etransferName?.trim().toLowerCase() === sender &&
@@ -470,7 +479,7 @@ export async function resolvePayment(
     if (!isCard && action.remember && (action.memberId || action.name)) {
       const who = await resolveIdentity(action.memberId ? { memberId: action.memberId } : { name: action.name }, groupId);
       if (action.memberId && !who.memberId) throw new AssignError('unknown_person');
-      await rememberSender(scope, payment.senderName, who.member?.name ?? action.name ?? '', who.memberId);
+      await rememberSender(scope, payment.senderName, who.member?.name ?? action.name ?? '', who.memberId, false);
     }
     const next = { ...payment, status: 'ignored' as const, matchedBy: action.adminId, resolvedAt: now };
     return (await scope.replace('payments', next)) ?? next;
@@ -508,7 +517,7 @@ export async function resolvePayment(
   const landed = await applyAllocations(scope, allocations, rowPaymentId, isCard ? 'card' : 'etransfer');
   const payerName = identity.member?.name ?? action.name ?? '';
 
-  if (!isCard && action.remember) await rememberSender(scope, payment.senderName, payerName, identity.memberId);
+  if (!isCard && action.remember) await rememberSender(scope, payment.senderName, payerName, identity.memberId, true);
 
   await releaseHoldIfSettled(scope, identity.memberId);
 

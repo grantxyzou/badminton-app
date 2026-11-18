@@ -12,8 +12,8 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 The last LOW findings from the security scan.
 
-- **An e-transfer is paid automatically only when the club already knows that bank name** (F18). Before, a member could rename themselves to another member's bank name and receive their payments. A name that only matches the list now waits in "Needs a look" once; "Remember" there makes the next one automatic, including when the bank name is the same as the list name. A remembered bank name stays with the person, even if they rename.
-- **Partners and attendance follow the person, not the name** (F27, F28). Someone who takes a name another member gave up no longer sees that member's partners or attendance, and a member who renames keeps their own history.
+- **An e-transfer is paid automatically only when the club already knows that bank name** (F18). Before, a member could rename themselves to another member's bank name and receive their payments. A name that only matches the list, or only appears in the transfer's message, now waits in "Needs a look" once; "Remember" there makes the next one automatic, including when the bank name is the same as the list name. A remembered bank name stays with the person, even if they rename, and so does one added on the Roster screen.
+- **Partners and attendance follow the person, not the name** (F27, F28). Someone who takes a name another member gave up no longer sees that member's partners or attendance, a member who renames keeps their own history, and a guest with a member's name no longer counts as that member.
 
 ## Your guest's place on the waitlist (2026-11-18)
 

@@ -63,12 +63,14 @@ export async function GET(req: NextRequest) {
     // by name, as before.
     const subject = ownership.selfMemberId ?? (await resolveActiveMemberId(scope.groupId, name));
     const nameLower = name.toLowerCase();
-    const isMe = (row: { name: string; memberId?: unknown }) =>
+    // A guest row (`guestOf`) is never the member, whatever it is called
+    // (as `matchesIdentity` rules: a guest called Lin is not member Lin).
+    const isMe = (row: { name: string; memberId?: unknown; guestOf?: unknown }) =>
       typeof row.memberId === 'string' && row.memberId
         ? row.memberId === subject
-        : row.name.trim().toLowerCase() === nameLower;
-    const resources = await scope.query<{ sessionId?: unknown; name?: unknown; removed?: unknown; memberId?: unknown }>('players', {
-      select: 'c.sessionId, c.name, c.removed, c.memberId',
+        : !row.guestOf && row.name.trim().toLowerCase() === nameLower;
+    const resources = await scope.query<{ sessionId?: unknown; name?: unknown; removed?: unknown; memberId?: unknown; guestOf?: unknown }>('players', {
+      select: 'c.sessionId, c.name, c.removed, c.memberId, c.guestOf',
       where: 'c.sessionId >= @cutoff',
       params: [{ name: '@cutoff', value: cutoff }],
     });
@@ -79,7 +81,7 @@ export async function GET(req: NextRequest) {
       if (row.removed === true) continue;
       if (row.sessionId < cutoff) continue;
       const entry = bySession.get(row.sessionId) ?? { mine: false, others: [] };
-      if (isMe({ name: row.name, memberId: row.memberId })) entry.mine = true;
+      if (isMe({ name: row.name, memberId: row.memberId, guestOf: row.guestOf })) entry.mine = true;
       else entry.others.push(row.name);
       bySession.set(row.sessionId, entry);
     }
