@@ -128,6 +128,28 @@ describe('POST /api/auth/email-code/verify', () => {
     expect(again.status).toBe(401);
   });
 
+  it('PROOF WINS: the first code for an address takes the account back from whoever set its password (security F7)', async () => {
+    // Someone made this account on Akane's address with a password of their
+    // own, and is signed in somewhere. Akane proves the mailbox.
+    const akane = await seedAkane({ passwordHash: 'squatter-chose-this' });
+    const code = await codeFor();
+    const res = await verify(req('verify', { email: addr, code }));
+    expect(res.status).toBe(200);
+    const doc = stored(akane.id) as { passwordHash?: string; sessionsNotBefore?: string; emailVerified?: boolean };
+    expect(doc.passwordHash).toBeUndefined();
+    expect(doc.sessionsNotBefore).toBeDefined();
+    expect(doc.emailVerified).toBe(true);
+    // Akane is still signed in by this answer.
+    expect(res.headers.getSetCookie().join('\n')).toMatch(/member_session=[^;]+;/);
+  });
+
+  it('an address already proven keeps its password: proof wins only once', async () => {
+    const akane = await seedAkane({ emailVerified: true, passwordHash: 'hers' });
+    const code = await codeFor();
+    expect((await verify(req('verify', { email: addr, code }))).status).toBe(200);
+    expect((stored(akane.id) as { passwordHash?: string }).passwordHash).toBe('hers');
+  });
+
   it('accepts the code with spaces in it, as people copy it', async () => {
     await seedAkane();
     const code = await codeFor();

@@ -38,6 +38,7 @@ From the Claude Security scan of the server code (MEDIUM findings).
 - **Changing a PIN no longer does any work before the caller is known** (F10), and one address gets 20 tries an hour however many names it uses.
 - **The e-transfer parser tidies the email's whitespace before reading it, and searches a bounded part for the sender** (F12): a crafted email could stall the server for minutes.
 - **The page reads its club from the same cookie the sign-in check read** (F6): two session cookies could show one club's announcement to a member of another.
+- **Proving an email address takes the account back** (F7). Anyone could create a club on someone else's address with a password of their own. Now the first email code or reset for an address nobody has proven drops that password and signs every device out before signing the owner in. Someone who set a password and never confirmed their address sets it again after their first code.
 
 ## Stringing: the archive matches the jobs list (2026-11-17)
 
