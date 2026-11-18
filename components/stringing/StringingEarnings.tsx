@@ -24,6 +24,20 @@ import { comparable, periodsOf, windowAround, type EarningsPeriod, type Grain } 
 
 export type EarningsData = EarningsSummary & { now: string };
 
+/**
+ * Which period the page shows, and so which the bench's line names (Grant,
+ * 2026-11-18: "the line should follow the chosen period"). Held by the bench,
+ * which outlives the page. A KEY, not an index: a refetch that adds a month
+ * must not move the choice. `null` is the newest, so "now" stays now.
+ */
+export interface EarningsPick { grain: Grain; key: string | null }
+export const NEWEST: EarningsPick = { grain: 'month', key: null };
+
+function pickIndex(periods: readonly EarningsPeriod[], key: string | null): number {
+  const found = key === null ? -1 : periods.findIndex((p) => p.key === key);
+  return found === -1 ? periods.length - 1 : found;
+}
+
 const money = (cents: number) => fmtMoney(Math.round(cents) / 100);
 const DAY_MS = 86_400_000;
 /** A figure prints inside its segment only when the segment is this wide. */
@@ -52,12 +66,6 @@ const PILES: Array<{ key: PileKey; field: 'collectedCents' | 'owedCents' | 'notI
   { key: 'owed', field: 'owedCents', name: 'pileOwed' },
   { key: 'unbilled', field: 'notInvoicedCents', name: 'pileUnbilled' },
 ];
-
-function useMonthLabel() {
-  const t = useTranslations('admin.stringing.earnings');
-  const locale = useLocale();
-  return (month: string, current: boolean) => (current ? t('soFar', { month: monthName(month, locale, 'long') }) : monthName(month, locale, 'long'));
-}
 
 /** A period's name: long for the stepper ("November 2026", "Q4 2026 so far"),
  *  short for a column and a comparison ("Nov", "Q3 ’26", "2025"). */
@@ -100,15 +108,18 @@ const CHART_PERIODS = 6;
 
 // ── The line on the bench ──────────────────────────────────────────────────
 
-export function EarningsLine({ data, error, onOpen, onRetry }: {
+export function EarningsLine({ data, error, pick = NEWEST, onOpen, onRetry }: {
   data: EarningsData | null;
   error: boolean;
+  /** The period chosen on the page; the line names the same one. */
+  pick?: EarningsPick;
   onOpen: () => void;
   onRetry: () => void;
 }) {
   const t = useTranslations('admin.stringing.earnings');
   const tBench = useTranslations('admin.stringing');
-  const label = useMonthLabel();
+  const label = usePeriodLabel();
+  const periods = useMemo(() => (data ? periodsOf(data.months, pick.grain) : []), [data, pick.grain]);
   if (error) {
     return (
       <div className="glass-card">
@@ -119,9 +130,10 @@ export function EarningsLine({ data, error, onOpen, onRetry }: {
       </div>
     );
   }
-  if (!data) return <CardSkeleton height={84} />;
-  const m = data.months[data.months.length - 1];
-  const month = label(m.month, true);
+  if (!data || periods.length === 0) return <CardSkeleton height={84} />;
+  const period = periods[pickIndex(periods, pick.key)];
+  const m = period.total;
+  const month = label(period, 'long');
   return (
     <button
       type="button"
@@ -133,7 +145,7 @@ export function EarningsLine({ data, error, onOpen, onRetry }: {
       <span className="earn-line-body">
         <span className="section-label">{month}</span>
         {m.jobs === 0 ? (
-          <span className="fs-md" style={{ color: 'var(--text-secondary)' }}>{t('lineEmpty')}</span>
+          <span className="fs-md" style={{ color: 'var(--text-secondary)' }}>{period.current ? t('lineEmpty') : t('lineNone')}</span>
         ) : (
           <>
             <span style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)' }}>
@@ -156,13 +168,21 @@ export function EarningsLine({ data, error, onOpen, onRetry }: {
 
 // ── The page ───────────────────────────────────────────────────────────────
 
-export default function StringingEarningsPage({ data, error, onRetry }: { data: EarningsData | null; error: boolean; onRetry: () => void }) {
+export default function StringingEarningsPage({ data, error, onRetry, pick: held, onPick }: {
+  data: EarningsData | null;
+  error: boolean;
+  onRetry: () => void;
+  /** Held by the bench so its line follows; the page keeps its own when not. */
+  pick?: EarningsPick;
+  onPick?: (pick: EarningsPick) => void;
+}) {
   const t = useTranslations('admin.stringing.earnings');
   const tBench = useTranslations('admin.stringing');
-  // Month, Quarter or Year, then which one (canvas option A, Grant
-  // 2026-11-18). `null` is the newest, so a refetch keeps "now" current.
-  const [grain, setGrain] = useState<Grain>('month');
-  const [picked, setPicked] = useState<number | null>(null);
+  // Month, Quarter or Year, then which one (canvas option A, Grant 2026-11-18).
+  const [own, setOwn] = useState<EarningsPick>(NEWEST);
+  const pick = held ?? own;
+  const choose = (next: EarningsPick) => { setOwn(next); onPick?.(next); };
+  const grain = pick.grain;
   const label = usePeriodLabel();
   const spanLabel = useSpanLabel();
   const periods = useMemo(() => (data ? periodsOf(data.months, grain) : []), [data, grain]);
@@ -178,7 +198,9 @@ export default function StringingEarningsPage({ data, error, onRetry }: { data: 
   }
   if (!data) return (<><CardSkeleton height={110} /><CardSkeleton height={120} /><CardSkeleton height={220} /></>);
   const last = periods.length - 1;
-  const i = Math.min(picked ?? last, last);
+  const i = pickIndex(periods, pick.key);
+  // The newest is held as `null`, so a month that turns over moves with it.
+  const setPicked = (j: number) => choose({ grain, key: j === last ? null : periods[j].key });
   const period = periods[i];
   const cur = period.total;
   const prev = i > 0 ? periods[i - 1] : null;
@@ -199,7 +221,7 @@ export default function StringingEarningsPage({ data, error, onRetry }: { data: 
             type="button"
             role="tab"
             aria-selected={grain === g.grain}
-            onClick={() => { setGrain(g.grain); setPicked(null); }}
+            onClick={() => choose({ grain: g.grain, key: null })}
             className={`flex-1 flex items-center justify-center fs-sm rounded-full ${grain === g.grain ? 'segment-tab-active' : 'segment-tab-inactive'}`}
           >
             {t(g.name)}

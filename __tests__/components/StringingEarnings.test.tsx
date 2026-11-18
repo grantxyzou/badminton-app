@@ -2,7 +2,8 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent, within } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
-import StringingEarningsPage, { EarningsLine, axisTop, type EarningsData } from '../../components/stringing/StringingEarnings';
+import { useState } from 'react';
+import StringingEarningsPage, { EarningsLine, NEWEST, axisTop, type EarningsData, type EarningsPick } from '../../components/stringing/StringingEarnings';
 import enMessages from '../../messages/en.json';
 import type { EarningsMonth } from '../../lib/stringingEarnings';
 
@@ -49,7 +50,7 @@ describe('EarningsLine', () => {
     const onOpen = vi.fn();
     wrap(<EarningsLine data={data} error={false} onOpen={onOpen} onRetry={() => {}} />);
     const line = screen.getByTestId('earnings-line');
-    expect(line.getAttribute('aria-label')).toBe('Earnings for November so far: $60 collected, $30 owed, $30 not invoiced. Open earnings');
+    expect(line.getAttribute('aria-label')).toBe('Earnings for November 2026 so far: $60 collected, $30 owed, $30 not invoiced. Open earnings');
     fireEvent.click(line);
     expect(onOpen).toHaveBeenCalled();
   });
@@ -133,6 +134,40 @@ describe('the period: Month, Quarter or Year, then ‹ ›', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Year' }));
     expect(screen.getByTestId('earn-period').textContent).toBe('2026 so far');
     expect(screen.getAllByText('$462').length).toBeGreaterThan(0);
+  });
+});
+
+describe('the bench line follows the chosen period', () => {
+  /** The bench's wiring: one pick, held above both. */
+  function Bench() {
+    const [pick, setPick] = useState<EarningsPick>(NEWEST);
+    return (
+      <>
+        <EarningsLine data={data} error={false} pick={pick} onOpen={() => {}} onRetry={() => {}} />
+        <StringingEarningsPage data={data} error={false} onRetry={() => {}} pick={pick} onPick={setPick} />
+      </>
+    );
+  }
+  const lineLabel = () => screen.getByTestId('earnings-line').getAttribute('aria-label');
+
+  it('names the month stepped to, then the quarter picked', () => {
+    wrap(<Bench />);
+    expect(lineLabel()).toMatch(/^Earnings for November 2026 so far: \$60 collected/);
+    fireEvent.click(screen.getByRole('button', { name: 'Earlier' }));
+    expect(lineLabel()).toBe('Earnings for October 2026: $272 collected, $20 owed, $0 not invoiced. Open earnings');
+    fireEvent.click(screen.getByRole('tab', { name: 'Quarter' }));
+    expect(lineLabel()).toMatch(/^Earnings for Q4 2026 so far: \$332 collected, \$50 owed, \$30 not invoiced/);
+  });
+
+  it('says nothing was strung in a past period with no jobs, not "yet"', () => {
+    wrap(<EarningsLine data={data} error={false} pick={{ grain: 'month', key: '2026-08' }} onOpen={() => {}} onRetry={() => {}} />);
+    expect(screen.getByText('Nothing strung')).toBeTruthy();
+    expect(lineLabel()).toMatch(/^Earnings for August 2026:/);
+  });
+
+  it('a key a refetch no longer has falls back to now', () => {
+    wrap(<EarningsLine data={data} error={false} pick={{ grain: 'month', key: '2019-01' }} onOpen={() => {}} onRetry={() => {}} />);
+    expect(lineLabel()).toMatch(/^Earnings for November 2026 so far/);
   });
 });
 

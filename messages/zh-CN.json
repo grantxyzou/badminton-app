@@ -2682,6 +2682,7 @@
         "owed": "待收",
         "notInvoiced": "未开账单",
         "lineEmpty": "还没有穿线",
+        "lineNone": "没有穿线",
         "lineError": "无法加载收入",
         "lineAria": "{month}收入：已收 {collected}，待收 {owed}，未开账单 {unbilled}。打开收入",
         "title": "收入",
