@@ -35,7 +35,9 @@ A number on the page disagrees with the bench or the ledger for the same jobs: a
 - **The string cost is the shelf's**, never matched again: `summarizeStringStock` now returns `jobLines` (job id → line), and the job's cost is that line's `costPerSetCents`. A job with the player's own string costs nothing and sits under "Own string"; a job whose string matches no shelf line keeps its own label and costs nothing, because the shelf cannot price it.
 - **Payback is the shelf's, all-time**: what was bought for a string against all the work done with it. "N more jobs" divides the gap by the row's price (or the simulated one). It is not per reel: the shelf does not know which reel a set came off.
 - **Admins and organisers only** (`isAdminAuthed`), like the stock read the page sits beside.
-- **Last four months** (`lastMonths(4, now)`), the canvas's window; the current one reads "so far".
+- **Every month since the first counted job**, at most 36 (`EARNINGS_MAX_MONTHS`): the read started as the last four (the canvas's window) and widened with the time picker below; the current one reads "so far".
+- **Time selection is Month / Quarter / Year, then ‹ ›** (2026-11-18; Grant: "what about time selection? canvas first", then "go with A" over quick-range chips (B) and a scroll-and-tap chart (C)). The server still sends months; the page folds them (`lib/earningsPeriods.ts`), so a quarter's or a year's figures are the sum of its months and nothing is counted twice. The columns show the six periods up to the chosen one, and tapping one is the same as stepping to it. The bench's line stays on this month.
+- **A period still filling is set against the same months of the one before** (`comparable`): Q4 so far (October, November) against July and August, this year so far against the same months last year, named in the tile ("vs Jul–Aug"). Set against a whole quarter, two months read as a drop that is only the month still to come. A month so far is set against the whole month before, because the read counts by month.
 
 ## Shape
 
@@ -43,6 +45,7 @@ A number on the page disagrees with the bench or the ledger for the same jobs: a
 |---|---|
 | Job → shelf line | `lib/stringStockMath.ts` (`jobLines`) |
 | The fold, pure | `lib/stringingEarnings.ts` (`summarizeEarnings`) |
+| Months into quarters and years | `lib/earningsPeriods.ts` (`periodsOf`, `comparable`, `windowAround`) |
 | The read | `app/api/stringing/earnings/route.ts` |
 | The bench's line and the page | `components/admin/CommandCenter/StringingPage.tsx` (`view: 'earnings'`), `components/stringing/EarningsLine.tsx`, `components/stringing/StringingEarningsPage.tsx` |
-| Tests | `__tests__/stringing-earnings.test.ts`, `__tests__/group-stringing-earnings.test.ts`, `__tests__/components/StringingEarningsPage.test.tsx` |
+| Tests | `__tests__/stringing-earnings.test.ts`, `__tests__/earnings-periods.test.ts`, `__tests__/group-stringing-earnings.test.ts`, `__tests__/components/StringingEarningsPage.test.tsx` |

@@ -18,7 +18,14 @@ import { STRUNG_STATUSES, strungAtOf, type StringStockSummary } from './stringSt
 import { awaitingInvoice, isBillable } from './stringingBilling';
 import { lastMonths, monthOf } from './memberPayments';
 
-export const EARNINGS_MONTHS = 4;
+/**
+ * The window runs from the month of the club's first counted job to now, so
+ * the page can step back to any of them (Month / Quarter / Year, canvas
+ * option A, 2026-11-18). Never more than this many months: three years of
+ * monthly rows is a few kilobytes, and the read stays bounded however long a
+ * club has strung.
+ */
+export const EARNINGS_MAX_MONTHS = 36;
 
 /** The fields the fold reads: the route projects exactly these. */
 export type EarningsJob = Pick<StringingJob, 'id' | 'jobNo' | 'memberName' | 'status' | 'priceCents' | 'paidAt' | 'stringLabel' | 'createdAt'> &
@@ -129,13 +136,35 @@ function waitingOf(j: EarningsJob, strungAt: string | undefined): EarningsWaitin
   return { jobId: j.id, jobNo: j.jobNo, who: j.memberName, state, since: since ?? null, amountCents };
 }
 
+/** Months since year 0, so two `YYYY-MM` can be subtracted. */
+const ordinal = (month: string): number => {
+  const [y, m] = month.split('-').map(Number);
+  return y * 12 + (m - 1);
+};
+
+/** Where a counted job falls: the month its string went in, else when it was made. */
+const counted = (j: EarningsJob): boolean => STRUNG_STATUSES.has(j.status) && !(j.cancelledAt && !isPaid(j));
+const monthOfJob = (j: EarningsJob): string | null => monthOf(strungAtOf(j) ?? j.createdAt);
+
 export function summarizeEarnings(input: {
   jobs: readonly EarningsJob[];
   stock: Pick<StringStockSummary, 'lines' | 'jobLines'>;
   now: Date;
+  /** A fixed window instead of "since the first job". */
   months?: number;
 }): EarningsSummary {
-  const window = lastMonths(input.months ?? EARNINGS_MONTHS, input.now);
+  const current = monthOf(input.now.toISOString())!;
+  let span = input.months;
+  if (span === undefined) {
+    let first = ordinal(current);
+    for (const j of input.jobs) {
+      if (!counted(j)) continue;
+      const m = monthOfJob(j);
+      if (m) first = Math.min(first, ordinal(m));
+    }
+    span = ordinal(current) - first + 1;
+  }
+  const window = lastMonths(Math.max(1, Math.min(EARNINGS_MAX_MONTHS, span)), input.now);
   const byMonth = new Map<string, EarningsMonth>(window.map((month) => [month, {
     month, jobs: 0, workCents: 0, collectedCents: 0, owedCents: 0, notInvoicedCents: 0,
     stringCostCents: 0, sets: 0, strings: [], waiting: [],
@@ -154,11 +183,11 @@ export function summarizeEarnings(input: {
   }
 
   for (const j of input.jobs) {
-    if (!STRUNG_STATUSES.has(j.status)) continue;
-    // A withdrawn job is not work done, unless it was paid for all the same.
-    if (j.cancelledAt && !isPaid(j)) continue;
+    // A racket still on the bench is not work done, and a withdrawn job is
+    // not either unless it was paid for all the same.
+    if (!counted(j)) continue;
     const strungAt = strungAtOf(j);
-    const month = monthOf(strungAt ?? j.createdAt);
+    const month = monthOfJob(j);
     const own = j.ownString === true;
     const lineLabel = own ? undefined : jobLines[j.id];
     const line = lineLabel ? lineByLabel.get(lineLabel) : undefined;
