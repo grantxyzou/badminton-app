@@ -68,6 +68,8 @@ beforeEach(async () => {
   // $90 of courts split two ways: $45 each.
   seedSession(SID, { costPerCourt: 45, courts: 2, datetime: '2026-10-01T19:00:00-04:00' });
   lin = seedMember('Lin');
+  // Lin's bank name is remembered (a roster name alone never auto-pays, F18).
+  seedDoc('clubSettings', { id: 'alias-lin', kind: 'alias', appName: 'Lin', etransferName: 'Lin', memberId: lin.id, groupId: 'bpm' });
   seedPlayer(SID, 'Lin', { memberId: lin.id });
   seedPlayer(SID, 'Viktor', { memberId: seedMember('Viktor').id });
   key = await mintPaymentsKey('bpm');
