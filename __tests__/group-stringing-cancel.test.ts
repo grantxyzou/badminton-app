@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { POST as CANCEL } from '@/app/api/stringing/jobs/[id]/cancel/route';
-import { resetMockStore, getStore, setupAdminPin, makeRequest, memberCookieValue } from './helpers';
+import { resetMockStore, getStore, setupAdminPin, makeRequest, memberCookieValue, ensureSeededMember } from './helpers';
 import type { StringingJob } from '../lib/types';
 
 /**
@@ -27,13 +27,15 @@ function seedJob(over: Partial<StringingJob> = {}): StringingJob {
   return job;
 }
 
-const cancel = (job: StringingJob, name = 'Wei', memberId = 'member-wei') =>
-  CANCEL(
+const cancel = (job: StringingJob, name = 'Wei', memberId = 'member-wei') => {
+  ensureSeededMember(memberId, name);
+  return CANCEL(
     makeRequest('POST', `http://x/api/stringing/jobs/${job.id}/cancel`, undefined, {
       Cookie: `member_session=${memberCookieValue(name, memberId)}`,
     }),
     { params: Promise.resolve({ id: job.id }) },
   );
+};
 
 const stored = (id: string) => (getStore()['stringingJobs'] as StringingJob[]).find((j) => j.id === id)!;
 

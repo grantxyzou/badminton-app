@@ -189,7 +189,7 @@ export async function POST(req: NextRequest) {
     const updated: Member = {
       ...member,
       linkedProviders: [...linked],
-      ...(claimedEmail ? { email: claimedEmail, emailVerified: true } : {}),
+      ...(claimedEmail ? { email: claimedEmail, emailVerified: true, mailboxProven: true } : {}),
       // A consumed recovery code must not be replayable.
       ...(code ? { recoveryCode: undefined } : {}),
       ...(code

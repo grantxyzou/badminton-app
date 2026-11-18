@@ -12,7 +12,7 @@
  * NEW member and refuses a name that is taken — which is every approved
  * person's own name. This is the missing third way.
  *
- * WHO: the `member_session` cookie, re-checked live (`verifyLiveMemberAuth`,
+ * WHO: the `member_session` cookie, re-checked live (`verifyLiveAccountAuth`,
  * so "Sign out everywhere" and a removal bite). There is deliberately no
  * name or id in the body: a name-keyed version would let anyone put a
  * password on anyone's account.
@@ -29,7 +29,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { verifyLiveMemberAuth } from '@/lib/auth';
+import { verifyLiveAccountAuth } from '@/lib/auth';
 import { hashPassword, validatePasswordStrength } from '@/lib/passwordHash';
 import { createToken, VERIFICATION_TTL_MS } from '@/lib/authToken';
 import { sendVerificationEmail } from '@/lib/authEmail';
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'rate_limited', retryAfter: 3600 }, { status: 429 });
   }
 
-  const auth = await verifyLiveMemberAuth(req);
+  const auth = await verifyLiveAccountAuth(req);
   if (!auth) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   let body: { email?: unknown; password?: unknown };

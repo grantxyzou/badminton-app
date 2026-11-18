@@ -12,6 +12,7 @@ import { hashPin, verifyPin, FAKE_HASH, BLOCKLISTED_PINS } from '@/lib/recoveryH
 import {
   verifyMemberAuth,
   verifyLiveMemberAuth,
+  verifyLiveAccountAuth,
   isAdminAuthed,
   isAdminAuthedWithMember,
   setMemberCookie,
@@ -382,7 +383,7 @@ export async function PATCH(req: NextRequest) {
  * "your cookie is bad".
  */
 async function unknownName(req: NextRequest): Promise<NextResponse> {
-  if ((await verifyLiveMemberAuth(req)) || (await isAdminAuthedWithMember(req)).authed) {
+  if ((await verifyLiveAccountAuth(req)) || (await isAdminAuthedWithMember(req)).authed) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
   return NextResponse.json({ error: 'auth_required' }, { status: 401 });
@@ -647,7 +648,7 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'Too many attempts. Try again later.' }, { status: 429 });
   }
 
-  const caller = await verifyLiveMemberAuth(req);
+  const caller = await verifyLiveAccountAuth(req);  // the ACCOUNT check: someone in no club may still delete their account
   if (!caller) {
     return NextResponse.json({ error: 'Sign in on this device first' }, { status: 401 });
   }

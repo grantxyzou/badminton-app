@@ -21,6 +21,7 @@ async function seedAccount(over: Record<string, unknown> = {}) {
   const member = seedMember('Sindhu', {
     email: 'sindhu@example.com',
     emailVerified: true,
+    mailboxProven: true,
     passwordHash: await originalHash,
     ...over,
   });
@@ -90,11 +91,20 @@ describe('POST /api/auth/reset-password', () => {
   it('PROOF WINS: a reset on a never-proven address signs every other device out (security F7)', async () => {
     const { createToken: mint } = await import('../lib/authToken');
     const { token, record } = mint(RESET_TTL_MS);
-    const member = await seedAccount({ emailVerified: false, passwordReset: record });
+    const member = await seedAccount({ emailVerified: false, mailboxProven: false, passwordReset: record });
     const res = await reset(makeRequest('POST', RESET, { email: 'sindhu@example.com', token, password: 'a brand new password' }));
     expect(res.status).toBe(200);
     expect(stored(member.id).sessionsNotBefore).toBeDefined();
     expect(res.headers.getSetCookie().join('\n')).toMatch(/member_session=[^;]+;/);
+  });
+
+  it('a confirmation-link click is not that proof: the reset still signs the other devices out (gap 2)', async () => {
+    const { createToken: mint } = await import('../lib/authToken');
+    const { token, record } = mint(RESET_TTL_MS);
+    const member = await seedAccount({ emailVerified: true, mailboxProven: false, passwordReset: record });
+    const res = await reset(makeRequest('POST', RESET, { email: 'sindhu@example.com', token, password: 'a brand new password' }));
+    expect(res.status).toBe(200);
+    expect(stored(member.id).sessionsNotBefore).toBeDefined();
   });
 
   it('a reset on a proven address leaves the other devices signed in', async () => {

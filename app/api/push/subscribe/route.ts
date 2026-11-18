@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 import { getContainer } from '@/lib/cosmos';
-import { verifyMemberAuth, verifyLiveMemberAuth } from '@/lib/auth';
+import { verifyMemberAuth, verifyLiveAccountAuth } from '@/lib/auth';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { ensurePushContainer, hashEndpoint } from '@/lib/push';
 import { isSafePushEndpoint, MAX_PUSH_ENDPOINT_LEN } from '@/lib/pushEndpoint';
@@ -123,7 +123,7 @@ export async function POST(req: NextRequest) {
   // member and receive their targeted notifications. And re-read against
   // "Sign out everywhere": a phone signed out of the club must not register a
   // fresh device for that person's pushes.
-  const member = await verifyLiveMemberAuth(req);
+  const member = await verifyLiveAccountAuth(req);
   if (!member) return NextResponse.json({ error: 'auth_required' }, { status: 401 });
 
   try {
@@ -257,7 +257,7 @@ export async function PATCH(req: NextRequest) {
   if (!checkRateLimit(`push-locale:${ip}`, 30, 60 * 60 * 1000)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
-  const member = await verifyLiveMemberAuth(req);
+  const member = await verifyLiveAccountAuth(req);
   if (!member) return NextResponse.json({ error: 'auth_required' }, { status: 401 });
 
   let body: unknown;

@@ -143,11 +143,30 @@ describe('POST /api/auth/email-code/verify', () => {
     expect(res.headers.getSetCookie().join('\n')).toMatch(/member_session=[^;]+;/);
   });
 
-  it('an address already proven keeps its password: proof wins only once', async () => {
-    const akane = await seedAkane({ emailVerified: true, passwordHash: 'hers' });
+  it('an address already proven by a sign-in keeps its password: proof wins only once', async () => {
+    const akane = await seedAkane({ emailVerified: true, mailboxProven: true, passwordHash: 'hers' });
     const code = await codeFor();
     expect((await verify(req('verify', { email: addr, code }))).status).toBe(200);
     expect((stored(akane.id) as { passwordHash?: string }).passwordHash).toBe('hers');
+  });
+
+  it('a code proves the mailbox, so a password set after it survives the next code', async () => {
+    const akane = await seedAkane();
+    const code = await codeFor();
+    expect((await verify(req('verify', { email: addr, code }))).status).toBe(200);
+    expect((stored(akane.id) as { mailboxProven?: boolean }).mailboxProven).toBe(true);
+  });
+
+  it('a CONFIRMATION LINK is not that proof: the first code still takes the account back (gap 2)', async () => {
+    // Someone made the account on Akane's address with their password; Akane
+    // clicked the confirmation mail she never asked for, which set
+    // emailVerified. Her first code sign-in must still take it back.
+    const akane = await seedAkane({ emailVerified: true, passwordHash: 'squatter-chose-this' });
+    const code = await codeFor();
+    expect((await verify(req('verify', { email: addr, code }))).status).toBe(200);
+    const doc = stored(akane.id) as { passwordHash?: string; sessionsNotBefore?: string };
+    expect(doc.passwordHash).toBeUndefined();
+    expect(doc.sessionsNotBefore).toBeDefined();
   });
 
   it('accepts the code with spaces in it, as people copy it', async () => {

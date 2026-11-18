@@ -7,7 +7,7 @@
  * club. Nothing is created at approval, so there is no secret to hold and no
  * page to keep open: the person can close the app and is told by email.
  *
- * The caller is the live member cookie (`verifyLiveMemberAuth`, so "Sign out
+ * The caller is the live member cookie (`verifyLiveAccountAuth`, so "Sign out
  * everywhere" holds). The club comes from its link, never from the cookie:
  * a brand-new account's cookie names BPM, the club it is NOT in.
  *
@@ -18,7 +18,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { verifyLiveMemberAuth } from '@/lib/auth';
+import { verifyLiveAccountAuth } from '@/lib/auth';
 import { resolveClaimLink } from '@/lib/claimLinks';
 import { readGroup } from '@/lib/groups';
 import { accountAsks, addAccountJoinRequest, MAX_JOIN_NAME } from '@/lib/joinRequests';
@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
   if (!checkRateLimit(`groups-ask-read:${ip}`, 240, HOUR)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
-  const session = await verifyLiveMemberAuth(req);
+  const session = await verifyLiveAccountAuth(req);
   if (!session) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   try {
     const { resource } = await getContainer('members').item(session.memberId, session.memberId).read<Member>();
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
   if (!checkRateLimit(`groups-ask:${ip}`, 20, HOUR)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
-  const session = await verifyLiveMemberAuth(req);
+  const session = await verifyLiveAccountAuth(req);
   if (!session) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   if (!isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')) return NextResponse.json({ error: 'invite_not_found' }, { status: 404 });
 

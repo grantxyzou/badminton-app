@@ -107,7 +107,7 @@ export async function POST(req: NextRequest) {
     if (takeBack) delete (rest as { passwordHash?: string }).passwordHash;
     const next = {
       ...rest,
-      ...(ownAddress ? { emailVerified: true } : {}),
+      ...(ownAddress ? { emailVerified: true, mailboxProven: true } : {}),
       ...(takeBack ? { sessionsNotBefore: at, widgetPassNotBefore: at } : {}),
     } as Member & { _etag?: string };
     const container = getContainer('members');

@@ -18,12 +18,17 @@ import { listMembershipsForMember, signOutEverywhereIn } from './groups';
  * on a real person who set a password and never confirmed it: after their
  * first email code they set the password again ("Forgot your password?").
  *
- * The confirmation link mailed at sign-up (`GET /api/auth/verify-email`) is
- * NOT treated this way: its click is the normal next step of a real sign-up,
- * and it signs nobody in.
+ * THE CONFIRMATION LINK DOES NOT PROTECT THE ACCOUNT (gap 2, Grant chose
+ * "the link doesn't count as proof", 2026-11-18). It still marks the address
+ * confirmed (`emailVerified`), but the take-back keys on `mailboxProven`,
+ * which only a SIGN-IN through the address sets. Otherwise: someone makes an
+ * account on Jenny's address, Jenny clicks the confirmation mail she never
+ * asked for, and her later email-code sign-in lands in that account with the
+ * maker's password still working. The cost: a real person who confirmed by
+ * link and later signs in once by email code sets their password again.
  */
-export function unprovenPasswordOn(member: { emailVerified?: unknown; passwordHash?: unknown }): boolean {
-  return member.emailVerified !== true && typeof member.passwordHash === 'string' && member.passwordHash.length > 0;
+export function unprovenPasswordOn(member: { mailboxProven?: unknown; passwordHash?: unknown }): boolean {
+  return member.mailboxProven !== true && typeof member.passwordHash === 'string' && member.passwordHash.length > 0;
 }
 
 /** Ends every session of this person, in every club (groups on, where the

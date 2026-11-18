@@ -13,6 +13,13 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 - **A waiting guest shows their place in line** under their name, inside your "you have signed up" box: "Jenny, your guest" over "Waitlist #2" (Grant, on the canvas: "waitlist #1"). A guest with a spot says "Coming".
 - **"Add to calendar" sits a little further from "…for this week!"** and never breaks across two lines.
 
+## Security: only people on the club's list act inside it (2026-11-18)
+
+Two gaps left open by the security scan.
+
+- **Someone who is not on a club's list can no longer act inside it.** An account that never joined a club, or someone removed from it, still held a sign-in that named the club, and parts of the app took that for a member. Now acting inside a club needs a place on its list, and only creating, joining or switching a club, signing in and looking after your own account work without one.
+- **A confirmation email you never asked for can no longer lock someone else's password into your account.** If someone makes an account on your address and you click its confirmation link, your first sign-in by email code still takes the account back. A person who set a password, confirmed by link and later signs in by code sets their password again once.
+
 ## Security fixes: the smaller findings (2026-11-18)
 
 From the Claude Security scan of the server code (LOW findings marked "fix now").
