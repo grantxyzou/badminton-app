@@ -571,10 +571,9 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
         />
       </div>
 
-      {/* Filter chips */}
-      {/* Rows 12px apart, not 6: each chip is 32px drawn with a 44pt tap,
-          and at 6px a wrapped row's tap areas covered the row above. */}
-      <div style={{ display: 'flex', columnGap: 'var(--space-2)', rowGap: 'var(--space-4)', flexWrap: 'wrap', margin: 'var(--space-4) 0 var(--space-2)' }}>
+      {/* Filter chips: one sideways-scrolling row, never a second line
+          (`.filter-chips`, design-system rule). */}
+      <div className="filter-chips" style={{ margin: 'var(--space-4) 0 var(--space-2)' }}>
         {chipDefs.map(([k, label, count]) => {
           const on = filter === k;
           return (
@@ -587,6 +586,7 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
               // `.tap-44`: a 32px chip with a 44pt tap (the Apple pass, globals.css).
               className={k === 'members' || k === 'dropins' ? 'tap-44 motion-fade' : 'tap-44'}
               style={{
+                flex: '0 0 auto',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 'var(--space-2)',
@@ -661,7 +661,6 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
                   padding: 'var(--space-4) var(--space-7)',
                   alignItems: 'center',
                   gap: 'var(--space-4)',
-                  borderBottom: '1px solid rgba(var(--glass-tint), 0.04)',
                 }}
                 aria-label={`Edit ${r.member.name}`}
               >
