@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl';
 import { useRevealReady } from '@/components/primitives/Reveal';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
+import { GEAR_HEIGHTS } from '@/components/TabFallbacks';
 import ErrorState from '@/components/primitives/ErrorState';
 import { racketSrc } from '@/lib/racketLook';
 import type { UseGear } from './useGear';
@@ -49,7 +50,7 @@ export default function NextRacketCard({ gear, picks, onOpen, onOpenFit }: NextR
   if (!racket) return null;
 
   const { status, pick } = picks.view.racket;
-  if (status === 'loading') return <CardSkeleton height={176} />;
+  if (status === 'loading') return <CardSkeleton height={GEAR_HEIGHTS.nextRacket} />;
 
   if (status === 'error') {
     return (

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
+import { STATS_HEIGHTS } from '@/components/TabFallbacks';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import { BottomSheet, BottomSheetBody, BottomSheetFooter, BottomSheetHeader } from '../BottomSheet';
@@ -144,7 +145,15 @@ export default function LearnRegister({ activeName, checkIn, onCheckedIn }: Lear
   );
 
   if (!activeName) return null;
-  if (status === 'loading') return <CardSkeleton height={320} />;
+  if (status === 'loading') {
+    // The register's two parts, at the register's own gap (the parent's).
+    return (
+      <>
+        <CardSkeleton height={STATS_HEIGHTS.learnFocus} />
+        <CardSkeleton height={STATS_HEIGHTS.learnDrills} />
+      </>
+    );
+  }
   // Refused (this device holds no session for the name): the card stays, as
   // its own shape with nothing in it, and Sign in carries the weight.
   if (status === 'forbidden') {

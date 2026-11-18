@@ -4,6 +4,7 @@ import { usePageBack } from '@/lib/pageStack';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { RevealGroup, RevealSlot } from '@/components/primitives/Reveal';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
+import { GEAR_HEIGHTS } from '@/components/TabFallbacks';
 
 import FitProfilePage from './FitProfilePage';
 import FrameDetailPage from './FrameDetailPage';
@@ -58,7 +59,6 @@ export interface GearRegisterProps {
  */
 /** Slot placeholders for the Set-up register: each card's own loading
  *  skeleton, or its measured height at 400px (2026-10-03) where it had none. */
-const GEAR_HEIGHTS = { setup: 226, nextRacket: 226, tension: 257, club: 160 } as const;
 
 export default function GearRegister({ activeName, onRequestStringing }: GearRegisterProps) {
   const gear = useGear(activeName);
