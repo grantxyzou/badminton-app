@@ -135,6 +135,13 @@ export interface StringStockSummary {
   /** Jobs whose label matches no offered string, by label. */
   unmatched: Array<{ label: string; usedSets: number }>;
   totals: { purchasedCostCents: number; usedSets: number; usedCostCents: number; remainingValueCents: number; overdrawnSets: number };
+  /**
+   * Job id → the shelf line its set came off, for every counted job that
+   * carried an id and matched a line (docs/plans/stringing-earnings.md). The
+   * earnings page prices a job's string from it rather than matching labels a
+   * second time: a rule added to this matcher must reach both. ADDITIVE.
+   */
+  jobLines?: Record<string, string>;
 }
 
 export function summarizeStringStock(input: {
@@ -151,7 +158,7 @@ export function summarizeStringStock(input: {
   /** `stringColor` is optional: a job read without it counts in the mixed pool.
    *  `ownString`: the player brought the string, so the job uses no set.
    *  `strungAt`: when its string went in (`strungAtOf`), for the usage rate. */
-  jobs: readonly (Pick<StringingJob, 'stringLabel' | 'status' | 'archivedAt' | 'stringColor' | 'ownString'> & { strungAt?: string })[];
+  jobs: readonly (Pick<StringingJob, 'stringLabel' | 'status' | 'archivedAt' | 'stringColor' | 'ownString'> & { strungAt?: string; id?: string })[];
   /** The moment the usage rate is measured to; without it there is no rate. */
   now?: Date;
   /** Saved stocktakes; each string starts from its latest one. */
@@ -314,6 +321,7 @@ export function summarizeStringStock(input: {
   // the club's first one (the window never reaches back before it).
   const strungMsByKey = new Map<string, number[]>();
   let firstStrungMs = Infinity;
+  const jobLines: Record<string, string> = {};
   for (const j of input.jobs) {
     if (!STRUNG_STATUSES.has(j.status)) continue;
     // The player's own string went in, not the club's (the request sheet's
@@ -326,6 +334,7 @@ export function summarizeStringStock(input: {
     const key = byKey.has(own) ? own : renamed.get(own) ?? byOtherName(j.stringLabel) ?? own;
     const line = byKey.get(key);
     if (line) {
+      if (j.id) jobLines[j.id] = line.label;
       line.usedSets += 1;
       if (Number.isFinite(strungMs)) strungMsByKey.set(key, [...(strungMsByKey.get(key) ?? []), strungMs]);
       // Strung before the latest count (or with no date to tell): its set was
@@ -426,7 +435,7 @@ export function summarizeStringStock(input: {
     }),
     { purchasedCostCents: 0, usedSets: 0, usedCostCents: 0, remainingValueCents: 0, overdrawnSets: 0 },
   );
-  return { lines, unmatched: [...unmatched.values()].sort((a, b) => b.usedSets - a.usedSets), totals };
+  return { lines, unmatched: [...unmatched.values()].sort((a, b) => b.usedSets - a.usedSets), totals, jobLines };
 }
 
 export function numberAttr(item: CatalogItem | undefined, key: string): number | null {

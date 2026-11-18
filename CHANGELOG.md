@@ -8,6 +8,13 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Stringing: what the bench earned (2026-11-18)
+
+- **A line at the top of Stringing jobs** says this month so far: collected, owed and not invoiced. Tap it for Earnings. Organisers and admins only; a stringer who isn't an admin still sees no money.
+- **Earnings** (`docs/plans/stringing-earnings.md`): Work done against last month, After string cost with its margin, a bar of where the month's money is (Collected, Owed, Not invoiced), four months of columns you tap to pick a month, and who is still waiting to pay and for how long.
+- **After string cost** is your price minus the string that went into each racket, at the shelf's cost per set; a player's own string costs nothing. A waterfall shows the step, and **Breakdown by string type** ranks each string by what it made. Tap a string's eye for its cost per set, how many more jobs pay off what you bought, the sets left, and **Simulate price**, a what-if that changes nothing.
+- A job counts in the month its string went in, the same day the shelf counts it.
+
 ## Your guest rides on your own sign-up (2026-11-18)
 
 - **Once you have signed up and brought a guest, they show inside your green "you have signed up" box**: "↳ Jenny, your guest · waitlist" (or "· coming"), with Remove beside it (Grant, on the canvas: "I like option B").
