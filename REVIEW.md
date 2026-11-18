@@ -18,6 +18,14 @@ Every merge to `main` deploys. There is no staging, no soak, no second deploymen
 - A name-keyed write that changes one member's data must be bound to that member's `member_session` cookie or admin (rule 12). Name-only is impersonation — names are enumerable.
 - `timingSafeEqual` for every secret comparison; `randomBytes` for every id.
 
+**Money** (`.claude/rules/money.md`; Grant, 2026-11-18: "guard the money code"). `__tests__/money-guard-canary.test.ts` catches the shapes; a reviewer catches the meaning:
+- A write to `Player.paid` / `paidAmount` / `owedAmount` or `StringingJob.paidAt` goes through `scope.replace` and decides again on `undefined`. An `upsert` there overwrites a payment that landed in between.
+- Nothing pays a line without a person looking unless the line is SETTLED, the amount matches exactly, and exactly one person is the candidate. "Close enough" is a review row, never a payment.
+- An un-pay voids through the mirror; nothing edits or deletes a ledger entry, and every new ledger id is derived from what it records.
+- What a member sees owed comes from `computeOwed` / `classifyOwed`, never a second calculation.
+- No amount in a push body.
+- A redelivered or resent Stripe event must change nothing it already did, days later too: Stripe's idempotency keys last 24 hours.
+
 **Lying empty states.** `catch { setX([]) }` renders "no data yet" for "the backend is broken". Every fetch consumer must distinguish load-failed (`ErrorState`) from loaded-empty (`EmptyState`). Same family: a probe that failed or is pending rendered as a confirmed negative — tri-state it.
 
 **Session pointer and partition keys.** `getActiveSessionId()` always; a bare `SESSION_ID` or `'current-session'` is a finding. `container.item(id, partitionKeyValue)` — the second argument is the PK **value**; the mock store ignores it, so a wrong one only fails in production.

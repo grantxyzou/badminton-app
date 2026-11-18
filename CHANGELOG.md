@@ -8,6 +8,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## A payment that lands while a bill is being settled is kept (2026-11-18)
+
+- **If someone pays at the very moment you settle or edit a bill, their payment now survives.** Before, the settle could write over it with the copy it had read a moment earlier, and the person showed as unpaid again.
+- Behind the scenes, the build now refuses changes that break the app's money rules, such as editing the ledger instead of adding to it.
+
 ## Your guest's place on the waitlist (2026-11-18)
 
 - **A waiting guest shows their place in line** under their name, inside your "you have signed up" box: "Jenny, your guest" over "Waitlist #2" (Grant, on the canvas: "waitlist #1"). A guest with a spot says "Coming".
