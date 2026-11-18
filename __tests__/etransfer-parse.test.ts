@@ -289,7 +289,10 @@ describe('parseInteracEmail — hostile input stays fast', () => {
       body: `you were sent you money\nx,${' '.repeat(49_000)}y`,
     }));
     parseInteracEmail(email({ subject: 'sent you', body: `Hi,${' \t'.repeat(24_000)}b` }));
-    expect(Date.now() - start).toBeLessThan(1000);
+    // The memo and reference patterns: blank lines, and spaces after a label.
+    parseInteracEmail(email({ subject: 'X sent you $12.00', body: `${'\n'.repeat(49_000)}x` }));
+    parseInteracEmail(email({ subject: 'X sent you $12.00', body: `reference${' '.repeat(49_000)}` }));
+    expect(Date.now() - start).toBeLessThan(500);
   });
 
   it('still reads a sender past a run of padding spaces', () => {

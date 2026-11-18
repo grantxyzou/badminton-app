@@ -205,9 +205,22 @@ function findMemo(body: string): string | null {
   return memo;
 }
 
+/**
+ * Whitespace runs collapsed (a run with a line break becomes one break),
+ * before ANY pattern reads the email. Several patterns put whitespace
+ * quantifiers next to each other (`reference\s*(?:number)?\s*:`,
+ * `^\s*memo`), so a long run of spaces or blank lines made V8 backtrack
+ * quadratically: a 50,000-character body took seconds per pattern (Claude
+ * Security F12, 2026-11-17). Nothing a pattern reads depends on how much
+ * whitespace there was.
+ */
+function tidy(text: string): string {
+  return text.replace(/[^\S\n]+/g, ' ').replace(/ ?\n\s*/g, '\n');
+}
+
 export function parseInteracEmail(email: RawInteracEmail): ParsedEtransfer {
-  const subject = email.subject ?? '';
-  const body = email.body ?? '';
+  const subject = tidy(email.subject ?? '');
+  const body = tidy(email.body ?? '');
   const authenticated = isInteracAuthenticated(email.authResults, email.from ?? '');
   const unrecognized: ParsedEtransfer = {
     kind: 'unrecognized',

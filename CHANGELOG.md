@@ -36,7 +36,7 @@ From the Claude Security scan of the server code (MEDIUM findings).
 - **Only a member on the club's list can log a game result there** (F5). An account in no club could write results into BPM's session, which feed levels and kudos.
 - **An ADMIN_NAMES name becomes admin only after its own PIN checks out** (F11). Before, the name and any PIN wrote the role. With clubs on, the name has to be on BPM's list: no more search of every account for it.
 - **Changing a PIN no longer does any work before the caller is known** (F10), and one address gets 20 tries an hour however many names it uses.
-- **The e-transfer parser reads a bounded, tidied copy of the email** (F12): a crafted email could stall the server for minutes.
+- **The e-transfer parser tidies the email's whitespace before reading it, and searches a bounded part for the sender** (F12): a crafted email could stall the server for minutes.
 - **The page reads its club from the same cookie the sign-in check read** (F6): two session cookies could show one club's announcement to a member of another.
 
 ## Stringing: the archive matches the jobs list (2026-11-17)
