@@ -3,7 +3,8 @@ import { sessionIdFromDate } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
-import { ownsNameOrAdmin } from '@/lib/auth';
+import { nameOwnership } from '@/lib/auth';
+import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { topPartners } from '@/lib/recommend';
 
 export const dynamic = 'force-dynamic';
@@ -37,7 +38,8 @@ export async function GET(req: NextRequest) {
 
   // Privacy gate: this is a member's social graph (who they play with). Own
   // the name via `member_session`, or be an admin. Same posture as /stats/level.
-  if (!(await ownsNameOrAdmin(req, name))) {
+  const ownership = await nameOwnership(req, name);
+  if (!ownership.allowed) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 
@@ -53,22 +55,41 @@ export async function GET(req: NextRequest) {
     // The `>=` cutoff is valid Cosmos SQL (prod-efficient). The mock store ignores
     // it and returns everything, so we ALSO apply the cutoff + removed filter
     // JS-side — that way mock and prod behave identically (CLAUDE.md rule).
-    const resources = await scope.query<{ sessionId?: unknown; name?: unknown; removed?: unknown }>('players', {
-      select: 'c.sessionId, c.name, c.removed',
+    // WHO THE NAME IS, BY ID (Claude Security F27, 2026-11-17). The gate asks
+    // who holds the name NOW; past rows keep the name they were signed up
+    // under, so a name released by a rename or a removal and taken by someone
+    // else read the previous holder's partners. A row with a `memberId` counts
+    // as this person only when it is theirs; a legacy row with none is matched
+    // by name, as before.
+    const subject = ownership.selfMemberId ?? (await resolveActiveMemberId(scope.groupId, name));
+    const nameLower = name.toLowerCase();
+    // A guest row (`guestOf`) is never the member, whatever it is called
+    // (as `matchesIdentity` rules: a guest called Lin is not member Lin).
+    const isMe = (row: { name: string; memberId?: unknown; guestOf?: unknown }) =>
+      typeof row.memberId === 'string' && row.memberId
+        ? row.memberId === subject
+        : !row.guestOf && row.name.trim().toLowerCase() === nameLower;
+    const resources = await scope.query<{ sessionId?: unknown; name?: unknown; removed?: unknown; memberId?: unknown; guestOf?: unknown }>('players', {
+      select: 'c.sessionId, c.name, c.removed, c.memberId, c.guestOf',
       where: 'c.sessionId >= @cutoff',
       params: [{ name: '@cutoff', value: cutoff }],
     });
 
-    const bySession = new Map<string, string[]>();
+    const bySession = new Map<string, { mine: boolean; others: string[] }>();
     for (const row of resources) {
       if (typeof row.sessionId !== 'string' || typeof row.name !== 'string') continue;
       if (row.removed === true) continue;
       if (row.sessionId < cutoff) continue;
-      const arr = bySession.get(row.sessionId) ?? [];
-      arr.push(row.name);
-      bySession.set(row.sessionId, arr);
+      const entry = bySession.get(row.sessionId) ?? { mine: false, others: [] };
+      if (isMe({ name: row.name, memberId: row.memberId, guestOf: row.guestOf })) entry.mine = true;
+      else entry.others.push(row.name);
+      bySession.set(row.sessionId, entry);
     }
-    const sessions = [...bySession.entries()].map(([sessionId, names]) => ({ sessionId, names }));
+    // Only this person's sessions, with them listed under the asked-for name
+    // so `topPartners` knows whom to leave out.
+    const sessions = [...bySession.entries()]
+      .filter(([, e]) => e.mine)
+      .map(([sessionId, e]) => ({ sessionId, names: [name, ...e.others.filter((n) => n.trim().toLowerCase() !== nameLower)] }));
 
     return NextResponse.json({ partners: topPartners({ me: name, sessions, limit: 5 }) });
   } catch (error) {

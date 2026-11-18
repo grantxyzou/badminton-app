@@ -3,6 +3,7 @@ import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { isAdminAuthed, isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { createAlias, readAlias, readAliases, removeAlias, updateAlias } from '@/lib/aliases';
+import { resolveActiveMemberId } from '@/lib/memberResolve';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,7 +35,11 @@ export async function POST(req: NextRequest) {
     if (!appName || !etransferName) {
       return NextResponse.json({ error: 'Both names required' }, { status: 400 });
     }
-    const resource = await createAlias(groupScope(resolveGroupId(req)), { appName, etransferName });
+    // WITH the member's id (F18 review): the inbox follows an alias by id, so
+    // a name released later cannot carry this bank name to whoever takes it.
+    const groupId = resolveGroupId(req);
+    const memberId = (await resolveActiveMemberId(groupId, appName)) ?? undefined;
+    const resource = await createAlias(groupScope(groupId), { appName, etransferName, ...(memberId ? { memberId } : {}) });
     return NextResponse.json(resource, { status: 201 });
   } catch (error) {
     console.error('POST alias error:', error);
@@ -60,7 +65,11 @@ export async function PATCH(req: NextRequest) {
     if (typeof body.etransferName === 'string') updates.etransferName = body.etransferName.trim().slice(0, 50);
     // `replace`, never `upsert`: a row deleted between the read and the write
     // stays deleted and the admin sees a 404 rather than a resurrection.
-    const updated = await updateAlias(scope, { ...existing, ...updates });
+    // A new app name points the alias at whoever holds that name now, by id.
+    const repointed = typeof updates.appName === 'string' && updates.appName !== existing.appName
+      ? { memberId: (await resolveActiveMemberId(scope.groupId, updates.appName)) ?? undefined }
+      : {};
+    const updated = await updateAlias(scope, { ...existing, ...updates, ...repointed });
     if (!updated) return NextResponse.json({ error: 'Alias not found' }, { status: 404 });
     return NextResponse.json(updated);
   } catch (error) {

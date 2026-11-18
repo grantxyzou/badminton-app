@@ -30,6 +30,9 @@ const MOTION: Array<{ name: string; value: string; note: string }> = [
   { name: '--duration-sheet',  value: '180ms', note: 'A surface opening' },
   { name: '--duration-normal', value: '250ms', note: 'Something travelling on screen' },
   { name: '--duration-slow',   value: '400ms', note: 'A value settling — a bar filling' },
+  { name: '--duration-celebrate', value: '420ms', note: 'One-off: the sign-up icon pop' },
+  { name: '--duration-flourish',  value: '700ms', note: 'One-off: the bell ring, the launch rise' },
+  { name: '--duration-pop',       value: '320ms', note: 'One-off: the PIN box shuttle pop, the one spring' },
 ];
 
 const MOTION_RECIPES: Array<{ name: string; note: string }> = [

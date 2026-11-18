@@ -137,39 +137,60 @@ export async function candidatesFor(
   if (!senderName) return [];
   const lower = senderName.trim().toLowerCase();
   const aliases = await readAliases(scope);
-  const names = new Set<string>();
+  const roster = await rosterMembers(scope.groupId);
+  // Every clue, with how strong it is (F18). `strong` is a remembered alias
+  // or the memo; a roster name that merely equals the bank's is not, because
+  // any member can rename themselves to it.
+  const clues: Array<{ memberId?: string; name: string; strong: boolean }> = [];
   for (const a of aliases) {
-    if (typeof a.etransferName === 'string' && a.etransferName.trim().toLowerCase() === lower && a.appName) {
-      names.add(a.appName.trim());
+    if (typeof a.etransferName !== 'string' || a.etransferName.trim().toLowerCase() !== lower || !a.appName) continue;
+    if (a.memberId) {
+      // BY ID, not by the alias's name text: an alias keyed on a name would
+      // follow the NAME to whoever holds it after a rename (F18).
+      const held = roster.find((r) => r.member.id === a.memberId);
+      if (held) clues.push({ memberId: held.member.id, name: held.member.name.trim(), strong: true });
+    } else {
+      // An alias from before aliases carried an id: an admin confirmed it.
+      clues.push({ name: a.appName.trim(), strong: true });
     }
   }
-  const roster = await rosterMembers(scope.groupId);
   for (const { member } of roster) {
-    if (member.name.trim().toLowerCase() === lower) names.add(member.name.trim());
+    if (member.name.trim().toLowerCase() === lower) clues.push({ memberId: member.id, name: member.name.trim(), strong: false });
   }
   // The memo is a third, independent clue. When it names the same person the
   // sender resolves to, the dedupe below makes it one candidate; when it names
   // SOMEONE ELSE ("Bruce paid for Gary"), that is two candidates and a person
-  // decides — exactly the case that should not be automatic.
+  // decides — exactly the case that should not be automatic. It is WEAK: it
+  // is matched against roster names, which members set themselves, so a
+  // member renamed to the name in someone's memo would be its only match
+  // (F18 review). It still names who to suggest, and splits a payer from the
+  // person they paid for.
   const fromMemo = memoRosterName(memo, roster.map((r) => r.member.name));
-  if (fromMemo) names.add(fromMemo.trim());
+  if (fromMemo) clues.push({ name: fromMemo.trim(), strong: false });
 
   const byPerson = new Map<string, MatchCandidate>();
-  for (const name of names) {
-    const rosterHit = roster.find((r) => r.member.name.trim().toLowerCase() === name.toLowerCase());
+  for (const clue of clues) {
+    const rosterHit = clue.memberId
+      ? roster.find((r) => r.member.id === clue.memberId)
+      : roster.find((r) => r.member.name.trim().toLowerCase() === clue.name.toLowerCase());
     const identity = rosterHit
       ? await resolveIdentity({ memberId: rosterHit.member.id }, scope.groupId)
-      : await resolveIdentity({ name }, scope.groupId);
-    const key = identity.memberId ?? `name:${name.toLowerCase()}`;
-    if (byPerson.has(key)) continue;
+      : await resolveIdentity({ name: clue.name }, scope.groupId);
+    const key = identity.memberId ?? `name:${clue.name.toLowerCase()}`;
+    const seen = byPerson.get(key);
+    if (seen) {
+      if (clue.strong) seen.nameOnly = false;
+      continue;
+    }
     const balance = await computeOwed(scope, identity);
     byPerson.set(key, {
       memberId: identity.memberId,
-      name: rosterHit?.member.name ?? name,
+      name: rosterHit?.member.name ?? clue.name,
       // Frozen lines only: an unsettled estimate is never paid without a
       // person looking (`settledLines`). A payment of the whole Home total
       // that includes one goes to the queue as an amount mismatch.
       lines: settledLines(balance, identity.memberId),
+      nameOnly: !clue.strong,
     });
   }
   return [...byPerson.values()];
@@ -400,13 +421,23 @@ async function rememberSender(
   senderName: string | null,
   payerName: string,
   memberId: string | null,
+  /** A person confirmed THIS payment is theirs (assign), not just dismissed it. */
+  confirmed: boolean,
 ): Promise<void> {
   if (!senderName || !payerName) return;
   const sender = senderName.trim().toLowerCase();
   const payer = payerName.trim().toLowerCase();
-  if (!sender || !payer || sender === payer) return;
+  if (!sender || !payer) return;
+  // A bank name EQUAL to the roster name is remembered too since F18 (the
+  // name match alone no longer auto-pays, so without an alias that member's
+  // every transfer would wait for a person), but ONLY when the admin marked
+  // the money theirs. A dismiss confirms nothing about whose it was, and the
+  // suggested person may be someone renamed to the sender's bank name.
+  if (sender === payer && !confirmed) return;
   const known = (await readAliases(scope)).some(
-    (a) => a.etransferName?.trim().toLowerCase() === sender && a.appName?.trim().toLowerCase() === payer,
+    (a) =>
+      a.etransferName?.trim().toLowerCase() === sender &&
+      (memberId ? a.memberId === memberId : a.appName?.trim().toLowerCase() === payer),
   );
   if (known) return;
   await createAlias(scope, {
@@ -448,7 +479,7 @@ export async function resolvePayment(
     if (!isCard && action.remember && (action.memberId || action.name)) {
       const who = await resolveIdentity(action.memberId ? { memberId: action.memberId } : { name: action.name }, groupId);
       if (action.memberId && !who.memberId) throw new AssignError('unknown_person');
-      await rememberSender(scope, payment.senderName, who.member?.name ?? action.name ?? '', who.memberId);
+      await rememberSender(scope, payment.senderName, who.member?.name ?? action.name ?? '', who.memberId, false);
     }
     const next = { ...payment, status: 'ignored' as const, matchedBy: action.adminId, resolvedAt: now };
     return (await scope.replace('payments', next)) ?? next;
@@ -486,7 +517,7 @@ export async function resolvePayment(
   const landed = await applyAllocations(scope, allocations, rowPaymentId, isCard ? 'card' : 'etransfer');
   const payerName = identity.member?.name ?? action.name ?? '';
 
-  if (!isCard && action.remember) await rememberSender(scope, payment.senderName, payerName, identity.memberId);
+  if (!isCard && action.remember) await rememberSender(scope, payment.senderName, payerName, identity.memberId, true);
 
   await releaseHoldIfSettled(scope, identity.memberId);
 

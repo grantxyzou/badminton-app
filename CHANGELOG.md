@@ -13,6 +13,13 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 - **If someone pays at the very moment you settle or edit a bill, their payment now survives.** Before, the settle could write over it with the copy it had read a moment earlier, and the person showed as unpaid again.
 - Behind the scenes, the build now refuses changes that break the app's money rules, such as editing the ledger instead of adding to it.
 
+## Security: a bank name you can copy no longer pays you (2026-11-18)
+
+The last LOW findings from the security scan.
+
+- **An e-transfer is paid automatically only when the club already knows that bank name** (F18). Before, a member could rename themselves to another member's bank name and receive their payments. A name that only matches the list, or only appears in the transfer's message, now waits in "Needs a look" once; "Remember" there makes the next one automatic, including when the bank name is the same as the list name. A remembered bank name stays with the person, even if they rename, and so does one added on the Roster screen.
+- **Partners and attendance follow the person, not the name** (F27, F28). Someone who takes a name another member gave up no longer sees that member's partners or attendance, a member who renames keeps their own history, and a guest with a member's name no longer counts as that member.
+
 ## Your guest's place on the waitlist (2026-11-18)
 
 - **A waiting guest shows their place in line** under their name, inside your "you have signed up" box: "Jenny, your guest" over "Waitlist #2" (Grant, on the canvas: "waitlist #1"). A guest with a spot says "Coming".
@@ -37,6 +44,10 @@ From the Claude Security scan of the server code (LOW findings marked "fix now")
 - **Admin reads of who owes what, the string costs and the stringer's queue stop the moment someone is demoted or signed out everywhere** (F23, F24, F25).
 - **Two deployment-wide tools are the operator's alone**: the memberId migration and minting BPM's reports key (F22, F26). A key already minted stays valid until it is rotated.
 - **A crafted pick event can no longer change every object on the server** (F21).
+
+## Stringing earnings: the line follows the period you picked (2026-11-18)
+
+- **The earnings line on Stringing jobs names the period last picked on Earnings**, so "Q4 2026 so far · $488 collected" stays in front of you after you go back. It starts on this month; a period with no jobs says "Nothing strung".
 
 ## Stringing earnings: pick the month, quarter or year (2026-11-18)
 

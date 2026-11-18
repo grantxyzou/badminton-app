@@ -299,11 +299,26 @@ describe('GAP 6 — FIXED: an organiser un-ticks a row paid with store credit th
 });
 
 describe('GAP 7 — FIXED: "paid" cannot clear a resplit cover past the guard an uncover meets', () => {
+  // The clock is pinned and stepped. A charge's ledger id is derived from the
+  // row and its settledAt MILLISECOND (`charge:<row>:<ms>`, lib/ledgerMirror.ts),
+  // and the ledger is append-only, so a re-settle that lands in the same
+  // millisecond as the settle reuses the first charge's id: the $60 charge is
+  // refused as a duplicate of the $30 one and the reconcile reads
+  // amount_mismatch. On real time that happened in about 1 run in 3. A person
+  // cannot settle twice inside a millisecond, so this is a test-timing fault,
+  // not an app one.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-18T10:00:00.000Z'));
+  });
+  afterEach(() => vi.useRealTimers());
+
   it('on a settled bill someone has paid, paid: true on the resplit-covered row answers 409 paid_would_change and the row keeps its cover', async () => {
     await doSettle();
     const linId = String(rowOf('Lin').id);
     // Lin is covered by resplit: Viktor carries the whole $60.
     expect((await patchPlayer(makeAdminRequest('PATCH', `${BASE}/players`, { id: linId, writtenOff: true, coverMode: 'resplit' }))).status).toBe(200);
+    vi.setSystemTime(Date.now() + 1000); // the re-settle is a later moment
     expect((await settle(makeAdminRequest('POST', `${BASE}/session/settle`, { resettle: true }))).status).toBe(200);
     expect(rowOf('Viktor').owedAmount).toBe(60);
     expect(rowOf('Lin')).toMatchObject({ owedAmount: 0, writtenOff: true, coverMode: 'resplit' });
