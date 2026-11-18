@@ -18,6 +18,7 @@ import {
 } from './helpers';
 import type { Member } from '../lib/types';
 import { issueAccessRequest, LEGACY_ID, MAX_OPEN_REQUESTS } from '../lib/accessRequest';
+import { sealAskSecret } from '../lib/askSecret';
 
 /**
  * "I can't sign in — let me in."
@@ -310,7 +311,8 @@ describe('a request stored before one-per-device', () => {
     expect(row?.requestId).toBe(LEGACY_ID);
     expect((await approve('Lin')).status).toBe(200);
     expect(stored('Lin').accessRequest).toBeUndefined();
-    expect((await (await claim('Lin', secret)).json()).status).toBe('approved');
+    // The phone holds the SEAL the ask route handed it, never the bare secret.
+    expect((await (await claim('Lin', sealAskSecret(secret))).json()).status).toBe('approved');
   });
 });
 

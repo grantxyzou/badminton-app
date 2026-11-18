@@ -392,11 +392,13 @@ describe('PATCH /api/members/me — member-scoped PIN management', () => {
     const oldHash = await hashPin('4827');
     seedMember('Riley', { pinHash: oldHash });
 
+    // Their own signed-in phone: a signed-out caller is told nothing about
+    // the account (Claude Security F15, security-low.test.ts).
     const res = await ME_PATCH(
       makeRequest('POST', 'http://localhost:3000/api/members/me', {
         name: 'Riley',
         newPin: '5392',
-      }),
+      }, { Cookie: `member_session=${memberCookieValue('Riley')}` }),
     );
     expect(res.status).toBe(401);
     const data = await res.json();

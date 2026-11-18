@@ -11,7 +11,7 @@
  * write here — the bench moving a job to "strung" is the usage event.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { isAdminAuthed, isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
+import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { resolveGroupId } from '@/lib/groupContext';
 import { groupScope } from '@/lib/groupScope';
@@ -30,7 +30,10 @@ export async function GET(req: NextRequest) {
   if (!checkRateLimit(`stringing-stock-read:${getClientIp(req)}`, 60, 60_000)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
-  if (!isAdminAuthed(req)) return unauthorized();
+  // The FRESH check even on a read (Claude Security F23/F25, 2026-11-17): it
+  // names who owes or what the club pays, and a signature-only check kept a
+  // demoted or signed-out-everywhere admin reading it for the cookie's 30 days.
+  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
   // Each read is labelled so a failure names the read, in the log and in
   // the 503 body: four reads behind one `Promise.all` answered production
   // with a bare "read_failed" on 2026-10-10 and nothing said which.

@@ -6,7 +6,7 @@ import { rosterMemberIds } from '@/lib/roster';
 import { ensureCatalogSeeded } from '@/lib/catalogSeed';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
-import { verifyMemberAuth, nameOwnership, requireMember } from '@/lib/auth';
+import { verifyMemberAuth, nameOwnership, requireMember, isAdminAuthedWithMember } from '@/lib/auth';
 import { recommendRacket } from '@/lib/recommend';
 import { buildProfile } from '@/lib/racketProfile';
 import { recommendFit, comfortTensionDeltaLb, FIT_ENGINE_VERSION } from '@/lib/racketFit';
@@ -19,7 +19,7 @@ import type { CatalogItem, EquipmentCategory, PlayerGear } from '@/lib/types';
 import type { Rating } from '@/lib/assessment';
 import { resolveActiveSubject } from '@/lib/memberResolve';
 import { writeEvent } from '@/lib/events';
-import { effectiveArmComfort } from '@/lib/fitProfile';
+import { effectiveArmComfort, withoutArmAnswers } from '@/lib/fitProfile';
 import { buildFitInput, readGearOrNull } from '@/lib/racketFitInput';
 
 /**
@@ -100,6 +100,12 @@ function reasonFor(item: CatalogItem, stage?: number): string {
     return `Players around your level often reach for the ${item.brand} ${item.model}.`;
   }
   return `A solid all-rounder lots of players start with: the ${item.brand} ${item.model}.`;
+}
+
+/** Is the admin asking the person the recommendation is for? */
+async function adminIsSubject(req: NextRequest, memberId: string): Promise<boolean> {
+  const admin = await isAdminAuthedWithMember(req);
+  return admin.authed && admin.memberId === memberId;
 }
 
 // Lazy container bootstrap for the gear read below — real Cosmos doesn't
@@ -184,7 +190,15 @@ export async function GET(req: NextRequest) {
       // (recommending a racket the player already owns) and lose their
       // format/budget, so it falls through to the outer catch's 500 instead
       // (lying-empty-state rule).
-      const gear: PlayerGear | null = await readGearOrNull(subject.memberId);
+      const stored: PlayerGear | null = await readGearOrNull(subject.memberId);
+      // An admin asking on a member's behalf scores WITHOUT the arm answers
+      // (Claude Security F29, 2026-11-17). Its warnings and eased tension
+      // would otherwise say what the policy keeps for the member alone. Every
+      // read below uses this one copy, so no path reaches the answer.
+      // An admin signed in with the admin cookie alone is still the owner of
+      // their OWN answers.
+      const isSubject = ownsName || (stored !== null && await adminIsSubject(req, subject.memberId));
+      const gear: PlayerGear | null = stored && !isSubject ? withoutArmAnswers(stored) : stored;
 
       const ratings = (latest?.ratings as Rating[]) ?? [];
       const profile = buildProfile({ ratings, gear });

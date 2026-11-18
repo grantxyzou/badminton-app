@@ -26,7 +26,7 @@ import { nextJobSequence } from '@/lib/stringingJobNo';
 import { resolveGroupId } from '@/lib/groupContext';
 import { stringingServiceOnFor } from '@/lib/stringingService';
 import { canStringIn } from '@/lib/roster';
-import { verifyMemberAuth, isAdminAuthedWithMember } from '@/lib/auth';
+import { verifyLiveMemberAuth, isAdminAuthedWithMember } from '@/lib/auth';
 import { lastStrungFromJobs } from '@/lib/restring';
 import { isArchived, benchOrder } from '@/lib/stringingOrder';
 import { isFlagOn } from '@/lib/flags';
@@ -229,7 +229,10 @@ export async function GET(req: NextRequest) {
   }
 
   const admin = await isAdminAuthedWithMember(req);
-  const caller = verifyMemberAuth(req);
+  // LIVE: the stringer view hands back walk-ups' emails and phones, so a
+  // cookie cut off by "Sign out everywhere" must stop here too, as it does
+  // on every write (Claude Security F24, 2026-11-17).
+  const caller = await verifyLiveMemberAuth(req);
   if (!admin.authed && !caller) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }

@@ -22,7 +22,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
-import { isAdminAuthed, unauthorized } from '@/lib/auth';
+import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { getActiveSessionId } from '@/lib/cosmos';
 import { summarizeLedger, rangeWindow, type RangeKey } from '@/lib/ledgerView';
@@ -96,7 +96,10 @@ export async function GET(req: NextRequest) {
   if (!checkRateLimit(`ledger:${getClientIp(req)}`, 30, 60_000)) {
     return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
   }
-  if (!isAdminAuthed(req)) return unauthorized();
+  // The FRESH check even on a read (Claude Security F23/F25, 2026-11-17): it
+  // names who owes or what the club pays, and a signature-only check kept a
+  // demoted or signed-out-everywhere admin reading it for the cookie's 30 days.
+  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
 
   const rawRange = req.nextUrl.searchParams.get('range');
   const range: RangeKey = rawRange === '30d' || rawRange === 'all' ? rawRange : '12w';

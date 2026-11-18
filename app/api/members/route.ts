@@ -167,6 +167,17 @@ export async function PATCH(req: NextRequest) {
     ) {
       return organiserOnly();
     }
+    // Taking an admin off the roster strips their rank, so it is an
+    // organiser's too (Claude Security F20, 2026-11-17). Before any write.
+    if (
+      body.active === false &&
+      !auth.organiser &&
+      id !== auth.memberId &&
+      membership?.status === 'active' &&
+      membership.role === 'admin'
+    ) {
+      return organiserOnly();
+    }
     // Clearing a PIN is the first step of taking an account over: the next
     // admin-on-behalf "first PIN" sets one the admin knows. So it carries the
     // rule for setting one (lib/onBehalfGuard.ts), checked here, before any
@@ -390,8 +401,13 @@ export async function DELETE(req: NextRequest) {
       if (body.hard === true) {
         return NextResponse.json({ error: 'hard_delete_disabled' }, { status: 403 });
       }
-      if (!(await readMembership(auth.groupId, id))) {
+      const membership = await readMembership(auth.groupId, id);
+      if (!membership) {
         return NextResponse.json({ error: 'Member not found' }, { status: 404 });
+      }
+      // An admin's removal is a demotion: an organiser's call (F20, as PATCH).
+      if (!auth.organiser && id !== auth.memberId && membership.status === 'active' && membership.role === 'admin') {
+        return organiserOnly();
       }
     }
 

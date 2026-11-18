@@ -74,14 +74,14 @@ export async function POST(req: NextRequest) {
    * The ask hands out a sealed secret whether or not it stored anything, so a
    * seal inside its hour reads `pending` even when nothing is stored under it:
    * a stranger polling after asking under "Lin" learns nothing about Lin. Only
-   * a stored, approved ask is ever `approved`. A dead seal is `none`; a bare
-   * secret from before the seal reads the store as it always did.
+   * a stored, approved ask is ever `approved`. A dead seal is `none`, and so
+   * is a bare secret: it is read out of a seal, never from before one
+   * (lib/askSecret.ts, F14).
    */
   const opened = openAskSecret(secret);
   if (opened.kind === 'dead') return NextResponse.json({ status: 'none' });
   const raw = opened.raw;
-  const missStatus = opened.kind === 'sealed' ? 'pending' : 'none';
-  const miss = () => NextResponse.json({ status: missStatus });
+  const miss = () => NextResponse.json({ status: 'pending' });
 
   try {
     /**

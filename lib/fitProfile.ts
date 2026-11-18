@@ -11,6 +11,21 @@ import { FIT_LEVEL_OPTIONS, type FitArmComfort, type FitLevelOption, type Player
 
 /** The comfort answer the engines read. The page's soreness question wins
  *  when it has been answered; a doc from before it keeps its old answer. */
+/**
+ * A gear doc without the arm-or-shoulder answers, for anyone but its owner.
+ * The privacy policy says they are visible ONLY to the member (Grant,
+ * 2026-09-14), so every road a doc takes to someone else goes through this:
+ * the gear GET, every gear write's echo, and the engine run on an admin's
+ * behalf, whose picks and eased tension would otherwise say the answer
+ * (Claude Security F16, F29, 2026-11-17).
+ */
+export function withoutArmAnswers<T extends { fitArmComfort?: unknown; fitSoreness?: unknown }>(
+  gear: T,
+): Omit<T, 'fitArmComfort' | 'fitSoreness'> {
+  const { fitArmComfort: _arm, fitSoreness: _sore, ...rest } = gear;
+  return rest;
+}
+
 export function effectiveArmComfort(gear: Pick<PlayerGear, 'fitSoreness' | 'fitArmComfort'> | null | undefined): FitArmComfort | undefined {
   const sore = gear?.fitSoreness;
   if (sore === 'none') return 'fine';

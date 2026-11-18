@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getContainer, ensureContainer, getActiveSessionId } from '@/lib/cosmos';
 import { resolveGroupId } from '@/lib/groupContext';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
-import { verifyLiveMemberAuth } from '@/lib/auth';
+import { requireGroupMember } from '@/lib/auth';
 import { drillDocId, readDone, weekKeyFor, type DrillCompletionDoc } from '@/lib/drillsDone';
-import { resolveActiveSubject } from '@/lib/memberResolve';
 
 /**
  * Mark a drill done (or not) for the current week.
@@ -12,7 +11,12 @@ import { resolveActiveSubject } from '@/lib/memberResolve';
  * The first non-GET route under app/api/stats. Two things about it are
  * deliberate:
  *
- * 1. THE WRITER IS THE COOKIE, NEVER A NAME IN THE BODY (rule 12). Member
+ * 1. THE WRITER IS THE COOKIE'S ID, NEVER A NAME (rule 12). Not the name in
+ *    the body, and not the cookie's own `name` either: that is the account's
+ *    display name, chosen at sign-up, and it was resolved on the club's
+ *    roster, so an account named "Grant" wrote whoever held that roster name
+ *    (Claude Security F13, 2026-11-17). The id, after `requireGroupMember`
+ *    confirms an active place on the club's roster, is the person. Member
  *    names are enumerable via GET /api/members, so a name-keyed write would
  *    let anyone tick off a stranger's drills. There is no admin-on-behalf
  *    branch either — the same posture as the append-only `events` container.
@@ -40,8 +44,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
 
-  const caller = await verifyLiveMemberAuth(req);
-  if (!caller?.name) {
+  const caller = await requireGroupMember(req);
+  if (!caller?.memberId) {
     return NextResponse.json({ error: 'auth_required' }, { status: 401 });
   }
 
@@ -59,10 +63,8 @@ export async function POST(req: NextRequest) {
 
   try {
     await ensureDrillsDone();
-    const [memberId, weekKey] = await Promise.all([
-      (await resolveActiveSubject(resolveGroupId(req), caller.name)).memberId,
-      getActiveSessionId(resolveGroupId(req)).then((id) => weekKeyFor(id)),
-    ]);
+    const memberId = caller.memberId;
+    const weekKey = weekKeyFor(await getActiveSessionId(resolveGroupId(req)));
 
     const container = getContainer('drillCompletions');
     const id = drillDocId(memberId, weekKey);
