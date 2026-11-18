@@ -8,6 +8,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Your guest rides on your own sign-up (2026-11-18)
+
+- **Once you have signed up and brought a guest, they show inside your green "you have signed up" box**: "↳ Jenny, your guest · waitlist" (or "· coming"), with Remove beside it (Grant, on the canvas: "I like option B").
+- **"Bring another guest" is the button right under it**, and the list of who else is coming follows.
+- **The court note is now a footnote under that list**: "Another court opens when enough people are waiting."
+
 ## Stringing: the archive matches the jobs list (2026-11-17)
 
 - **Archived jobs use the same rows as the live jobs**: the racket picture and name, the player, the job number and status, and M and C as two pills, in one card labelled "Picked up" with how many still owe.

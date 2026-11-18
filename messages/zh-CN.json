@@ -707,6 +707,10 @@
     "guest": {
       "bring": "带一位朋友",
       "bringAnother": "再带一位朋友",
+      "yourGuest": "{name}（你的朋友）",
+      "statusIn": "已报名",
+      "statusWaiting": "候补",
+      "statusWaitingFor": "等到 {when}",
       "namePlaceholder": "朋友的名字",
       "add": "添加",
       "adding": "正在添加…",

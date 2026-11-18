@@ -869,11 +869,24 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                   </>
                 }
                 celebrate={signupEntrance === 'pop'}
-              />
+              >
+                {/* Your guests ride on your own line (the canvas, guest-added
+                    option B, 2026-11-18; Grant: "I like option B"). */}
+                {myGuests.length > 0 && (
+                  <PlusOneRow
+                    part="guests"
+                    guests={myGuests}
+                    canAdd={false}
+                    online={online}
+                    onChanged={() => void loadData()}
+                    windowEnd={windowEnd}
+                    showShare={showGuestShare}
+                  />
+                )}
+              </StatusBanner>
             </div>
-            {isFull && courtInfo && <CourtLine />}
-            <WhoElseIsIn active={activeLabels} waitlist={waitlistLabels} me={currentUser} onKudos={setKudosFor} guests={guestLabels} />
             <PlusOneRow
+              part="add"
               guests={myGuests}
               canAdd={canAddGuest}
               online={online}
@@ -881,6 +894,9 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
               windowEnd={windowEnd}
               showShare={showGuestShare}
             />
+            <WhoElseIsIn active={activeLabels} waitlist={waitlistLabels} me={currentUser} onKudos={setKudosFor} guests={guestLabels} />
+            {/* A footnote to the list of who is coming, not a line about you. */}
+            {isFull && courtInfo && <CourtLine />}
             {/* Only "Cancel my spot" is the link; the question stays plain
                 text (Grant, 2026-11-11, on the design canvas). */}
             <p className="fs-sm m-0" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>

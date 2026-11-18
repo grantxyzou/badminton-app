@@ -44,6 +44,10 @@ export interface StatusBannerProps {
   /** A button under the row, full width — the one thing the banner asks for
    *  ("Review the change"). The banner becomes a column to hold it. */
   action?: ReactNode;
+  /** Lines that belong to the banner's own subject, under the row: the
+   *  guests riding on "you have signed up" (Home's sign-up card, the canvas,
+   *  guest-added option B, 2026-11-18). The banner becomes a column. */
+  children?: ReactNode;
 }
 
 const TONE_CLASS: Record<StatusTone, string> = {
@@ -64,7 +68,7 @@ const TITLE_TONE_CLASS: Record<StatusTone, string> = {
   danger: 'text-red-400',
 };
 
-export default function StatusBanner({ tone, icon, title, body, celebrate, trailing, action }: StatusBannerProps) {
+export default function StatusBanner({ tone, icon, title, body, celebrate, trailing, action, children }: StatusBannerProps) {
   const row = (
     <>
       <span className={`material-icons icon-status ${ICON_TONE_CLASS[tone]}`} aria-hidden="true">
@@ -78,10 +82,11 @@ export default function StatusBanner({ tone, icon, title, body, celebrate, trail
     </>
   );
   const className = `${TONE_CLASS[tone]}${celebrate ? ' status-celebrate' : ''}`;
-  if (!action) return <div className={className}>{row}</div>;
+  if (!action && !children) return <div className={className}>{row}</div>;
   return (
     <div className={className} style={{ flexDirection: 'column', alignItems: 'stretch' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-4)' }}>{row}</div>
+      {children}
       {action}
     </div>
   );

@@ -2,7 +2,7 @@
 import { useTranslations } from 'next-intl';
 
 /**
- * "Another court can be added when enough people are on the waitlist." on the
+ * "Another court opens when enough people are waiting." on the
  * sign-up card while the session is full or you are on its waitlist
  * (docs/plans/waitlist-court-line.md). Grant, 2026-11-04: "everyone should see
  * the idea of court can be added if sign up fills up early".

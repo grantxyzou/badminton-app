@@ -16,7 +16,7 @@ describe('CourtLine (docs/plans/waitlist-court-line.md)', () => {
         <CourtLine />
       </NextIntlClientProvider>,
     );
-    const line = screen.getByText('Another court can be added when enough people are on the waitlist.');
+    const line = screen.getByText('Another court opens when enough people are waiting.');
     expect(line.textContent).not.toMatch(/\d/);
   });
 });
