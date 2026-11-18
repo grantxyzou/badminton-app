@@ -10,6 +10,7 @@ import { POST as codeVerify } from '@/app/api/auth/email-code/verify/route';
 import { POST as setPassword } from '@/app/api/auth/password/route';
 import { verifyLiveMemberAuth, verifyLiveAccountAuth } from '@/lib/auth';
 import { hashPin } from '@/lib/recoveryHash';
+import { mailboxIsProven, GRANDFATHERED_BEFORE } from '@/lib/emailProof';
 import {
   resetMockStore,
   getStore,
@@ -179,5 +180,27 @@ describe('gap 3: a name nobody holds pays the database work a real miss does', (
     seedMember('Lin', { id: 'lin', pinHash: await hashPin('2468') });
     await recover(makeRequest('POST', 'http://x/api/players/recover', { name: 'Lin', pin: '5839' }));
     expect(pads.count).toBe(0);
+  });
+});
+
+describe('gap 2: existing accounts are grandfathered (Grant, 2026-11-18)', () => {
+  const before = '2026-10-01T00:00:00.000Z';
+  const after = new Date(Date.parse(GRANDFATHERED_BEFORE) + 60_000).toISOString();
+
+  it('an old, confirmed account counts as proven', () => {
+    expect(mailboxIsProven({ emailVerified: true, createdAt: before })).toBe(true);
+    expect(mailboxIsProven({ emailVerified: true })).toBe(true); // no createdAt: predates it
+  });
+
+  it('a new account confirmed only by link does not', () => {
+    expect(mailboxIsProven({ emailVerified: true, createdAt: after })).toBe(false);
+  });
+
+  it('an old account never confirmed does not', () => {
+    expect(mailboxIsProven({ emailVerified: false, createdAt: before })).toBe(false);
+  });
+
+  it('an explicit false (the address changed) is never grandfathered', () => {
+    expect(mailboxIsProven({ mailboxProven: false, emailVerified: true, createdAt: before })).toBe(false);
   });
 });

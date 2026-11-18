@@ -27,8 +27,31 @@ import { listMembershipsForMember, signOutEverywhereIn } from './groups';
  * maker's password still working. The cost: a real person who confirmed by
  * link and later signs in once by email code sets their password again.
  */
-export function unprovenPasswordOn(member: { mailboxProven?: unknown; passwordHash?: unknown }): boolean {
-  return member.mailboxProven !== true && typeof member.passwordHash === 'string' && member.passwordHash.length > 0;
+type ProofFields = { mailboxProven?: unknown; emailVerified?: unknown; createdAt?: unknown };
+
+/**
+ * EXISTING ACCOUNTS ARE GRANDFATHERED (Grant, 2026-11-18). `mailboxProven` is
+ * new, so no account had it when this shipped, and without this every
+ * password holder would have lost their password and been signed out on
+ * every device at their next email-code sign-in. An account made before this
+ * moment whose address was already confirmed counts as proven. It cannot
+ * become confirmed later without being proven: confirmation links are mailed
+ * only at sign-up and when a first password is set, and setting one marks
+ * the proof explicitly (`auth/password`). An explicit `false` (the address
+ * changed) is never grandfathered. An account with no `createdAt` predates it.
+ */
+export const GRANDFATHERED_BEFORE = '2026-11-18T09:00:00.000Z';
+
+export function mailboxIsProven(member: ProofFields): boolean {
+  if (member.mailboxProven === true) return true;
+  if (member.mailboxProven === false) return false;
+  if (member.emailVerified !== true) return false;
+  const made = typeof member.createdAt === 'string' ? Date.parse(member.createdAt) : NaN;
+  return !Number.isFinite(made) || made < Date.parse(GRANDFATHERED_BEFORE);
+}
+
+export function unprovenPasswordOn(member: ProofFields & { passwordHash?: unknown }): boolean {
+  return !mailboxIsProven(member) && typeof member.passwordHash === 'string' && member.passwordHash.length > 0;
 }
 
 /** Ends every session of this person, in every club (groups on, where the

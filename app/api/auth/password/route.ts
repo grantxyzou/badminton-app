@@ -36,6 +36,7 @@ import { sendVerificationEmail } from '@/lib/authEmail';
 import { normalizeEmail, isPlausibleEmail, reserveIdentity, releaseIdentity } from '@/lib/authIdentity';
 import { outboundOriginOrNull } from '@/lib/appOrigin';
 import type { Member } from '@/lib/types';
+import { mailboxIsProven } from '@/lib/emailProof';
 
 export const dynamic = 'force-dynamic';
 
@@ -91,7 +92,7 @@ export async function POST(req: NextRequest) {
       // The proof was of the OLD address: a new one is unproven until someone
       // signs in through it (gap 2 review: a Google account setting a password
       // on Jenny's address kept the proof, and her code then took nothing back).
-      mailboxProven: previous === email ? member.mailboxProven : false,
+      mailboxProven: previous === email ? mailboxIsProven(member) : false,
       passwordHash: await hashPassword(password),
       emailVerification: verification.record,
     };

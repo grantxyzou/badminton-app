@@ -150,6 +150,22 @@ describe('POST /api/auth/email-code/verify', () => {
     expect((stored(akane.id) as { passwordHash?: string }).passwordHash).toBe('hers');
   });
 
+  it('an account made before the change, already confirmed, is grandfathered: its password stays', async () => {
+    const akane = await seedAkane({ emailVerified: true, passwordHash: 'hers', createdAt: '2026-10-01T00:00:00.000Z' });
+    const code = await codeFor();
+    expect((await verify(req('verify', { email: addr, code }))).status).toBe(200);
+    const doc = stored(akane.id) as { passwordHash?: string; sessionsNotBefore?: string };
+    expect(doc.passwordHash).toBe('hers');
+    expect(doc.sessionsNotBefore).toBeUndefined();
+  });
+
+  it('an old account that never confirmed is not grandfathered: the code takes it back', async () => {
+    const akane = await seedAkane({ emailVerified: false, passwordHash: 'squatter', createdAt: '2026-10-01T00:00:00.000Z' });
+    const code = await codeFor();
+    expect((await verify(req('verify', { email: addr, code }))).status).toBe(200);
+    expect((stored(akane.id) as { passwordHash?: string }).passwordHash).toBeUndefined();
+  });
+
   it('a code proves the mailbox, so a password set after it survives the next code', async () => {
     const akane = await seedAkane();
     const code = await codeFor();
