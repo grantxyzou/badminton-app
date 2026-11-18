@@ -43,6 +43,7 @@ import type { Member } from '@/lib/types';
 import { resolveGroupId } from '@/lib/groupContext';
 import { resolveClaimLink } from '@/lib/claimLinks';
 import { isFlagOn } from '@/lib/flags';
+import { padMissingAccount } from '@/lib/accountPad';
 
 export const dynamic = 'force-dynamic';
 
@@ -134,6 +135,7 @@ export async function POST(req: NextRequest) {
     // the same as a wrong PIN.
     if (!member) {
       await verifyPin(pin ?? code ?? '', FAKE_HASH);
+      await padMissingAccount(); // the reads and write a real account's miss does (gap 3)
       return FAIL();
     }
 

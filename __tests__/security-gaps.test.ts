@@ -1,9 +1,15 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 import { POST as postEvent } from '@/app/api/events/route';
 import { POST as createGroup } from '@/app/api/groups/route';
 import { GET as authMe } from '@/app/api/auth/me/route';
+import { POST as recover } from '@/app/api/players/recover/route';
+import { POST as adminLogin } from '@/app/api/admin/route';
+import { PATCH as mePatch } from '@/app/api/members/me/route';
+import { POST as codeVerify } from '@/app/api/auth/email-code/verify/route';
+import { POST as setPassword } from '@/app/api/auth/password/route';
 import { verifyLiveMemberAuth, verifyLiveAccountAuth } from '@/lib/auth';
+import { hashPin } from '@/lib/recoveryHash';
 import {
   resetMockStore,
   getStore,
@@ -14,6 +20,14 @@ import {
   makeRequest,
   memberCookieValue,
 } from './helpers';
+
+const pads = { count: 0 };
+vi.mock('@/lib/accountPad', () => ({
+  PAD_ROUND_TRIPS: 3,
+  padMissingAccount: async () => {
+    pads.count++;
+  },
+}));
 
 /**
  * Claude Security, gap 1 of the 2026-11-17 scan: DENY BY DEFAULT. The member
@@ -70,6 +84,28 @@ describe('groups on', () => {
     });
   });
 
+  it('an account in no club cannot tell a member’s name from a stranger’s (members/me)', async () => {
+    seedMember('Stranger', { id: 'stranger' });
+    seedMember('Lin', { id: 'lin' });
+    seedMembership(BPM, 'lin', { name: 'Lin' });
+    const ask = async (name: string) => {
+      const res = await mePatch(makeRequest('PATCH', 'http://x/api/members/me', { name, statsPrivacy: { clubComparison: true } }, as('Stranger', 'stranger')));
+      return { status: res.status, body: await res.json() };
+    };
+    expect(await ask('Nobody Here')).toEqual(await ask('Lin'));
+  });
+
+  it('setting a password on a NEW address drops the old mailbox proof (gap 2 review)', async () => {
+    // A Google account (mailbox proven at sign-up) puts a password on Jenny's
+    // address. Jenny's first code there must still take the account back.
+    seedMember('Grifter', { id: 'grifter', email: 'grifter@example.com', emailVerified: true, mailboxProven: true });
+    seedMembership(BPM, 'grifter', { name: 'Grifter' });
+    const res = await setPassword(makeRequest('POST', 'http://x/api/auth/password', { email: 'jenny@example.com', password: 'a long enough password 1' }, as('Grifter', 'grifter')));
+    expect(res.status).toBe(200);
+    const doc = (getStore()['members'] as Array<{ id: string; mailboxProven?: boolean }>).find((m) => m.id === 'grifter')!;
+    expect(doc.mailboxProven).toBe(false);
+  });
+
   describe('a member removed from the club, with the cookie they had', () => {
     beforeEach(() => {
       seedMember('Lin', { id: 'lin' });
@@ -99,5 +135,49 @@ describe('groups off', () => {
   it('a removed (inactive) member cannot write inside the club', async () => {
     seedMember('Lin', { id: 'lin', active: false });
     expect((await tap('Lin', 'lin')).status).toBe(401);
+  });
+});
+
+/**
+ * Gap 3 (Grant: "pad it"). A wrong guess against a real account reads it and
+ * writes its counter; a name nobody holds now pays comparable database work
+ * (`padMissingAccount`), so the slower answer no longer names the member.
+ */
+describe('gap 3: a name nobody holds pays the database work a real miss does', () => {
+  beforeEach(() => {
+    resetMockStore();
+    setupAdminPin();
+    pads.count = 0;
+  });
+
+  it('PIN sign-in (players/recover)', async () => {
+    await recover(makeRequest('POST', 'http://x/api/players/recover', { name: 'Nobody Here', pin: '5839' }));
+    expect(pads.count).toBe(1);
+  });
+
+  it('recovery code (players/recover)', async () => {
+    await recover(makeRequest('POST', 'http://x/api/players/recover', { name: 'Nobody Here', code: '123456' }));
+    expect(pads.count).toBe(1);
+  });
+
+  it('admin sign-in', async () => {
+    await adminLogin(makeRequest('POST', 'http://x/api/admin', { name: 'Nobody Here', pin: '5839' }));
+    expect(pads.count).toBe(1);
+  });
+
+  it('a signed-out PIN change with a current PIN', async () => {
+    await mePatch(makeRequest('PATCH', 'http://x/api/members/me', { name: 'Nobody Here', currentPin: '1111', newPin: '5392' }));
+    expect(pads.count).toBe(1);
+  });
+
+  it('an email code for an address nobody holds', async () => {
+    await codeVerify(makeRequest('POST', 'http://x/api/auth/email-code/verify', { email: 'nobody@example.com', code: '123456' }));
+    expect(pads.count).toBe(1);
+  });
+
+  it('a real member’s wrong PIN does its own work, and pays no pad', async () => {
+    seedMember('Lin', { id: 'lin', pinHash: await hashPin('2468') });
+    await recover(makeRequest('POST', 'http://x/api/players/recover', { name: 'Lin', pin: '5839' }));
+    expect(pads.count).toBe(0);
   });
 });

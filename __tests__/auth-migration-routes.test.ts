@@ -73,7 +73,9 @@ describe('POST /api/auth/migrate/start', () => {
 
   it('refuses an inactive member', async () => {
     const id = seedMember('Lin', 'member-lin', { active: false });
-    expect((await start('Lin', id)).status).toBe(403);
+    // Refused at the member check now (deny by default: an inactive member is
+    // on no roster), before the route's own inactive 403.
+    expect([401, 403]).toContain((await start('Lin', id)).status);
   });
 
   it('returns a link on the outbound origin, a short code, and stores only hashes', async () => {

@@ -13,7 +13,7 @@
  * person's own name. This is the missing third way.
  *
  * WHO: the `member_session` cookie, re-checked live (`verifyLiveAccountAuth`,
- * so "Sign out everywhere" and a removal bite). There is deliberately no
+ * so "Sign out everywhere" bites; a person in no club may still set one). There is deliberately no
  * name or id in the body: a name-keyed version would let anyone put a
  * password on anyone's account.
  *
@@ -88,6 +88,10 @@ export async function POST(req: NextRequest) {
       ...member,
       email,
       emailVerified: false,
+      // The proof was of the OLD address: a new one is unproven until someone
+      // signs in through it (gap 2 review: a Google account setting a password
+      // on Jenny's address kept the proof, and her code then took nothing back).
+      mailboxProven: previous === email ? member.mailboxProven : false,
       passwordHash: await hashPassword(password),
       emailVerification: verification.record,
     };

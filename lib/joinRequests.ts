@@ -306,9 +306,11 @@ export async function linkJoinRequest(
     await container.items.upsert({
       ...member,
       ...(providers.size > 0 ? { linkedProviders: [...providers] } : {}),
-      ...(!member.email && asker.email ? { email: asker.email, emailVerified: asker.emailVerified === true } : {}),
+      ...(!member.email && asker.email
+        ? { email: asker.email, emailVerified: asker.emailVerified === true, mailboxProven: asker.mailboxProven === true }
+        : {}),
     });
-    const { email: _e, emailVerified: _v, joinAsks: _j, linkedProviders: _l, _etag: _t, ...rest } = asker;
+    const { email: _e, emailVerified: _v, mailboxProven: _mp, joinAsks: _j, linkedProviders: _l, _etag: _t, ...rest } = asker;
     await container.items.upsert({ ...rest, active: false, mergedInto: holder.memberId, mergedInGroup: groupId });
   } catch (err) {
     await updateJoinRequests(groupId, (open) => (open.some((r) => r.id === target.id) ? null : [...open, target]));

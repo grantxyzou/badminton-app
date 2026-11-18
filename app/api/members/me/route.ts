@@ -29,6 +29,7 @@ import {
   parseStatsPrivacyPatch,
   type StatsPrivacy,
 } from '@/lib/statsPrivacy';
+import { padMissingAccount } from '@/lib/accountPad';
 
 export async function GET(req: NextRequest) {
   const ip = getClientIp(req);
@@ -383,7 +384,9 @@ export async function PATCH(req: NextRequest) {
  * "your cookie is bad".
  */
 async function unknownName(req: NextRequest): Promise<NextResponse> {
-  if ((await verifyLiveAccountAuth(req)) || (await isAdminAuthedWithMember(req)).authed) {
+  // The MEMBER check, not the account one: an account in no club would
+  // otherwise read 404 for a stranger's name and 401 for a member's.
+  if ((await verifyLiveMemberAuth(req)) || (await isAdminAuthedWithMember(req)).authed) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
   return NextResponse.json({ error: 'auth_required' }, { status: 401 });
@@ -508,6 +511,9 @@ async function handlePatch(req: NextRequest) {
   const known = isSelf || !!admin?.authed;
   if (!known && !(hadPin && currentPin)) {
     await verifyPin(currentPin ?? '0000', FAKE_HASH);
+    // A current PIN against a real account with one is counted in the
+    // database first (claimPinAttempt); every other miss pays the same (gap 3).
+    if (currentPin) await padMissingAccount();
     return NextResponse.json({ error: currentPin ? 'invalid_credentials' : 'auth_required' }, { status: 401 });
   }
 
