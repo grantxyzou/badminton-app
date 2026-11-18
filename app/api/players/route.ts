@@ -317,7 +317,8 @@ export async function POST(req: NextRequest) {
   // check was not enough: a demoted or deactivated admin kept those powers
   // for the cookie's remaining TTL (up to 30 days). The sync check
   // short-circuits, so a non-admin still costs no read.
-  const admin = isAdminAuthed(req) && (await isAdminAuthedWithMember(req)).authed;
+  const adminAuth = isAdminAuthed(req) ? await isAdminAuthedWithMember(req) : ({ authed: false } as const);
+  const admin = adminAuth.authed;
 
   /**
    * MEMBERS ONLY: YOU SIGN UP AS YOURSELF, WITH AN ACCOUNT
@@ -456,15 +457,11 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'account_claim_needs_approval' }, { status: 403 });
       }
       // An admin giving an EXISTING account its first PIN is the same move as
-      // setting it in PATCH: the same rule (lib/onBehalfGuard.ts, F1). The
-      // admin's own verdict carries the caller; re-read it only here, on the
-      // rare path that needs who the admin is.
-      if (existingMember && !ownsExistingMember && admin) {
-        const adminAuth = await isAdminAuthedWithMember(req);
-        if (adminAuth.authed) {
-          const refusal = await onBehalfRefusal(adminAuth, String(existingMember.id));
-          if (refusal) return onBehalfRefused(refusal);
-        }
+      // setting it in PATCH: the same rule (lib/onBehalfGuard.ts, F1), on the
+      // handler's one admin verdict.
+      if (existingMember && !ownsExistingMember && adminAuth.authed) {
+        const refusal = await onBehalfRefusal(adminAuth, String(existingMember.id));
+        if (refusal) return onBehalfRefused(refusal);
       }
       const memberDoc = {
         ...(existingMember ?? {
