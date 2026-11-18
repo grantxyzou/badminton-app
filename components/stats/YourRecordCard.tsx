@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRevealReady } from '@/components/primitives/Reveal';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
+import { STATS_HEIGHTS } from '@/components/TabFallbacks';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import { summarizeRecord, type GameRecord } from '@/lib/gameRecord';
@@ -92,7 +93,7 @@ export default function YourRecordCard({ activeName }: YourRecordCardProps) {
   // The Play register's RevealSlot holds this place on first load.
   useRevealReady(!activeName || status !== 'loading');
   if (!activeName) return null;
-  if (status === 'loading') return <CardSkeleton height={260} />;
+  if (status === 'loading') return <CardSkeleton height={STATS_HEIGHTS.record} />;
   // Refused (this device holds no session for the name): the card stays, as
   // its own shape with nothing in it, and Sign in carries the weight.
   // No Add button: logging a game would be refused too.

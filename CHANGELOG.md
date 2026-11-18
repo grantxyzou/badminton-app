@@ -8,6 +8,16 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Loading frames the size of what they stand in for (2026-11-18)
+
+- **While a screen loads, its grey placeholders are now the size of the cards that replace them**, so nothing jumps when the content lands. Every placeholder was re-measured against the running app: Home's now holds a place for the level card and the balance too (they used to push the page down by a card and a half once the week arrived), Profile's two groups are back in the order the page shows them, the admin console's session card and settings list, Stats' skills, scores, kudos, equipment and tension cards and the Learn register all take their current heights.
+- Behind the scenes, every card and the frame that stands in for it now read ONE set of heights, so they cannot drift apart separately again.
+
+## A background tab no longer asks the server whether it is back (2026-11-18)
+
+- **While the app sits in a tab you are not looking at, the "You're offline" check stops.** Before, a laptop with the app parked in a background tab asked the server every 15 seconds for as long as the network was down. Now the check pauses when the tab is hidden and runs again the moment you look at it, so the banner clears just as fast as before.
+
+
 ## A payment that lands while a bill is being settled is kept (2026-11-18)
 
 - **If someone pays at the very moment you settle or edit a bill, their payment now survives.** Before, the settle could write over it with the copy it had read a moment earlier, and the person showed as unpaid again.

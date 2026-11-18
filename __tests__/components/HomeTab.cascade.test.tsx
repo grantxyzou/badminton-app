@@ -49,9 +49,10 @@ describe('Home while the week loads', () => {
     vi.stubGlobal('fetch', pending());
     const { container } = renderHome({ initialAnnouncement: null });
     const skeleton = screen.getByRole('status', { name: 'Loading' });
-    // Two tiles and the sign-up card. A fourth block would be a 120px gap the
-    // sign-up card jumps up into when the week lands.
-    expect(skeleton.querySelectorAll('.glass-card')).toHaveLength(3);
+    // Two tiles, the sign-up card, the level card and the balance — and no
+    // announcement block: one would be a gap the sign-up card jumps up into
+    // when the week lands.
+    expect(skeleton.querySelectorAll('.glass-card')).toHaveLength(5);
     expect(container.textContent).not.toContain('Announcement');
   });
 

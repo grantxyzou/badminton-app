@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRevealReady } from '@/components/primitives/Reveal';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
+import { GEAR_HEIGHTS } from '@/components/TabFallbacks';
 import ErrorState from '@/components/primitives/ErrorState';
 import StatusBadge from '@/components/primitives/StatusBadge';
 import LockedCard, { PreviewRow, useSignInLink } from './LockedCard';
@@ -106,7 +107,7 @@ export default function GearSetupCard({ activeName, gear, picks, onOpenLine, onO
       </LockedCard>
     );
   }
-  if (!gear.loaded) return <CardSkeleton height={200} />;
+  if (!gear.loaded) return <CardSkeleton height={GEAR_HEIGHTS.setup} />;
 
   const { racket, spares, string, filled } = setupLines(gear.loadError ? null : gear.gear);
 

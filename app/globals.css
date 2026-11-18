@@ -6782,6 +6782,13 @@ input[type="range"].reel-hue:focus-visible {
   flex-direction: column;
   gap: var(--home-stack-gap);
 }
+/* Home's loading frame (TabSkeleton) stacks its blocks at the same gap as
+   the week it stands in for, so the hand-over moves nothing. */
+.bpm-home-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--home-stack-gap);
+}
 
 /* ── Invite QR (Command Center → Invite someone → Show as QR) ──
    A one-time invite drawn as a QR code on the organiser's screen and read by

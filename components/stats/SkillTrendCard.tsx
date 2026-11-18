@@ -13,6 +13,7 @@ import { useLevelRead } from '@/lib/useLevelRead';
 import type { UseCheckIn } from './useCheckIn';
 import { useRevealReady } from '@/components/primitives/Reveal';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
+import { STATS_HEIGHTS } from '@/components/TabFallbacks';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import CardHeader from '@/components/primitives/CardHeader';
@@ -117,11 +118,12 @@ export default function SkillTrendCard({ checkIn }: { checkIn?: UseCheckIn }) {
 
   // Loading: reserve the radar card's footprint with a skeleton rather than a
   // blank gap below the Summary segment control. Height is a deliberate middle:
-  // the card is short (~240) for a first-time user (empty "rate skills" CTA) and
-  // tall (~835) once there's assessment data, so no fixed height matches both.
+  // the card is short (254) for a first-time user (empty "rate skills" CTA) and
+  // tall (~900) once there's assessment data, so no fixed height matches both.
   // We favor the empty case (a new user's first impression) and let the reveal
-  // fade smooth the gentle downward settle for data-rich users.
-  if (!loaded) return <CardSkeleton height={320} />;
+  // fade smooth the gentle downward settle for data-rich users. The number is
+  // STATS_HEIGHTS.trend, the same one the You register's slot draws.
+  if (!loaded) return <CardSkeleton height={STATS_HEIGHTS.trend} />;
 
   // Card chrome wraps every state so the section reads consistently: the
   // title, how much is behind it, and Update as a small pill top right.

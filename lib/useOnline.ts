@@ -35,11 +35,23 @@ const OnlineContext = createContext<OnlineValue>({
   reportFetchFailure: () => {},
 });
 
+function tabHidden(): boolean {
+  return typeof document !== 'undefined' && document.visibilityState === 'hidden';
+}
+
 export function OnlineProvider({ children }: { children: ReactNode }) {
   // Start `true` on both server and first client render so hydration
   // matches; correct from navigator.onLine in an effect post-hydration.
   const [online, setOnline] = useState(true);
+  // The same answer, readable from the event handlers below without
+  // re-subscribing them on every flip.
+  const onlineRef = useRef(true);
   const pingTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const setReachable = useCallback((value: boolean) => {
+    onlineRef.current = value;
+    setOnline(value);
+  }, []);
 
   const stopPing = useCallback(() => {
     if (pingTimer.current !== null) {
@@ -57,22 +69,31 @@ export function OnlineProvider({ children }: { children: ReactNode }) {
     fetch(`${BASE}/api/session`, { method: 'GET', cache: 'no-store' })
       .then((r) => {
         if (r.ok) {
-          setOnline(true);
+          setReachable(true);
           stopPing();
         }
       })
       .catch(() => {
         /* still unreachable — the interval keeps trying */
       });
-  }, [stopPing]);
+  }, [setReachable, stopPing]);
 
+  /**
+   * The interval runs only while the tab is on screen. Nobody is reading
+   * the banner in a hidden tab, so a probe there answers a question nobody
+   * asked — and a laptop with the app parked in a background tab was asking
+   * the server every 15 s for as long as the network was down. Going hidden
+   * stops it (the `visibilitychange` handler below); coming back probes at
+   * once and starts it again.
+   */
   const startPing = useCallback(() => {
     if (pingTimer.current !== null) return; // already pinging
+    if (tabHidden()) return; // resumed by onVisible
     pingTimer.current = setInterval(probe, PING_MS);
   }, [probe]);
 
   const goOffline = useCallback(() => {
-    setOnline(false);
+    setReachable(false);
     startPing();
     /**
      * PROBE NOW, not in 15 seconds.
@@ -85,7 +106,7 @@ export function OnlineProvider({ children }: { children: ReactNode }) {
      * very next request would have succeeded.
      */
     probe();
-  }, [startPing, probe]);
+  }, [setReachable, startPing, probe]);
 
   const reportFetchFailure = useCallback(() => {
     goOffline();
@@ -118,28 +139,37 @@ export function OnlineProvider({ children }: { children: ReactNode }) {
      * `bpm:resume` is already dispatched by NativeBridge on Capacitor's
      * appStateChange — this hook was the one place in the app not listening to
      * it. `focus` and `visibilitychange` cover the web and PWA equivalents.
+     *
+     * While offline, waking also restarts the interval that going hidden
+     * stopped.
      */
     const onWake = () => {
-      if (pingTimer.current !== null) probe();
+      if (onlineRef.current) return;
+      probe();
+      startPing();
     };
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') onWake();
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        stopPing();
+        return;
+      }
+      onWake();
     };
 
     window.addEventListener('online', onOnline);
     window.addEventListener('offline', goOffline);
     window.addEventListener('focus', onWake);
     window.addEventListener('bpm:resume', onWake);
-    document.addEventListener('visibilitychange', onVisible);
+    document.addEventListener('visibilitychange', onVisibility);
     return () => {
       window.removeEventListener('online', onOnline);
       window.removeEventListener('offline', goOffline);
       window.removeEventListener('focus', onWake);
       window.removeEventListener('bpm:resume', onWake);
-      document.removeEventListener('visibilitychange', onVisible);
+      document.removeEventListener('visibilitychange', onVisibility);
       stopPing();
     };
-  }, [goOffline, stopPing, probe]);
+  }, [goOffline, startPing, stopPing, probe]);
 
   return createElement(
     OnlineContext.Provider,

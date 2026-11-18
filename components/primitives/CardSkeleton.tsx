@@ -48,15 +48,22 @@ export default function CardSkeleton({
  */
 /**
  * Home tab BODY skeleton — mirrors HomeTab's real card stack so nothing shifts
- * when data lands: the Location|When tile row, the announcement/cost card, then
- * the tall sign-up card. Heights match the live cards (measured ≈108 / 120 /
- * 210). HomeTab renders the real `<PageHeader>` above this, so there is no
- * header strip here — the header slot is the real component, not a shimmer.
+ * when data lands: the Location|When tile row, the announcement, the sign-up
+ * card, the level card and the balance row, at the stack's own 10px gap
+ * (`.bpm-home-skeleton` shares `--home-stack-gap`; it used to be `space-y-5`,
+ * so the frame was 20px taller per card than the week it stood in for).
+ * HomeTab renders the real `<PageHeader>` above this, so there is no header
+ * strip here — the header slot is the real component, not a shimmer.
+ *
+ * The level card and the balance have RevealSlots of their own, but those
+ * are INSIDE the week's slot, so they do not exist until the week has
+ * loaded: without their two blocks here the page grew by 230px the moment
+ * the week arrived (re-measured 2026-11-18 at 430px).
  */
-export function TabSkeleton({ announcement }: { announcement?: React.ReactNode } = {}) {
+export function TabSkeleton({ announcement }: { announcement: React.ReactNode }) {
   const tLoading = useTranslations('a11y');
   return (
-    <div className="space-y-5 bpm-home-skeleton" role="status" aria-label={tLoading('loading')}>
+    <div className="bpm-home-skeleton" role="status" aria-label={tLoading('loading')}>
       {/* tile row: Location | When. 133, re-measured 2026-10-03 at 400px: the
           club's address and a long date ("Monday, October 5") both wrap to two
           lines on a phone, so the old 108 (one line) jumped every week. */}
@@ -67,11 +74,15 @@ export function TabSkeleton({ announcement }: { announcement?: React.ReactNode }
       {/* The announcement. Home passes the SERVER-RENDERED card itself (it is
           the LCP element, so it is drawn for real, not shimmered), or `null`
           when the server found none — then no slot is reserved, because a
-          skeleton for a card that will not exist is a jump waiting to happen.
-          Omitted entirely, the old fixed 120px block. */}
-      {announcement === undefined ? <CardSkeleton height={120} /> : announcement}
-      {/* sign-up card */}
-      <CardSkeleton height={210} />
+          skeleton for a card that will not exist is a jump waiting to happen. */}
+      {announcement}
+      {/* The sign-up card: 192 signed up, 181 before signing up, at 430px
+          (2026-11-18); a members-first club's list card is 345. */}
+      <CardSkeleton height={192} />
+      {/* The level card (SKILL_LEAD_HEIGHT) and the balance row
+          (BALANCE_ROW_HEIGHT in HomeTab), both the same in every state. */}
+      <CardSkeleton height={160} />
+      <CardSkeleton height={50} />
     </div>
   );
 }
@@ -84,10 +95,13 @@ export function TabSkeleton({ announcement }: { announcement?: React.ReactNode }
  * code so this file — which everyone downloads — imports nothing from it.
  */
 export const CONSOLE_HEIGHTS = {
-  // Re-measured 2026-10-20 at 430px after the redesign (eyebrow + headline +
-  // two tiles + the labelled switch + two buttons + the footer pair); the
-  // same with 0 or 4 signed up, no waitlist line.
-  nextSession: 358,
+  // Re-measured 2026-11-18 at 430px: eyebrow + headline + two tiles (the
+  // signed-up tile carries its bar) + the labelled switch with its "the
+  // roster was notified" line + three buttons + the footer pair; the same
+  // with 0 or 4 signed up, no waitlist line. 427 at 390px, where the
+  // switch's line wraps. It was 358 from the 2026-10-20 redesign and the
+  // console shoved everything below it by 53px on every open.
+  nextSession: 411,
   tile: 109,
   // Re-measured 2026-10-20 at 430px after the redesign: hero block, two
   // still-owed rows, a paid-chips row and the add field (4 players, 2 owing).
@@ -97,10 +111,13 @@ export const CONSOLE_HEIGHTS = {
   // (measured 2026-11-05, 430px, the six-feathers seed).
   sessionList: 178,
   invite: 343,
-  // The grouped lists (People / Money / Club / More, eyebrows included) since
-  // the admin regroup, plus the Sign-in readiness and E-transfers rows that
-  // joined them (re-measured 2026-10-21, 430px, all flags on).
-  settings: 779,
+  // The grouped lists (People / Money / Club / More, eyebrows included):
+  // re-measured 2026-11-18 at 430px with every row a first-come club with
+  // money and stringing on shows (Club link, Sign-in readiness, Ledger,
+  // E-transfers, Credit codes, E-transfer recipient, the seven Club rows,
+  // Metrics, Release notes, Missing from the catalog); 950 at 390px. A
+  // members-first club with money off lists 595.
+  settings: 926,
   // Needs you: the eyebrow, then a list of TWO rows (48 + a 1px divider + 48)
   // — the usual count, unpaid and dormant (measured 2026-10-28, 430px).
   needsYouEyebrow: 16.5,
