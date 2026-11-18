@@ -5,7 +5,8 @@
  * NEVER GUESS WITH MONEY. An auto-match marks somebody paid without a person
  * looking, so it happens only when every one of these holds:
  *   - Google verified the email as Interac's (`authenticated`);
- *   - exactly ONE person can be the sender;
+ *   - exactly ONE person can be the sender, known by a remembered alias or
+ *     the memo, not only by a roster name that equals the bank's (F18);
  *   - the amount equals one owed line, or the oldest k lines, or the whole
  *     balance (which is the oldest-n case).
  * Everything else — over- and under-payments, two people who could be "Lin",
@@ -40,6 +41,15 @@ export interface MatchCandidate {
   /** The name the club knows them by. */
   name: string;
   lines: OwedLine[];
+  /**
+   * Found ONLY because the bank's sender name equals their roster name. Any
+   * member can set their own roster name, so on its own that is a guess
+   * (Claude Security F18, 2026-11-17: rename yourself to another member's
+   * bank name and their transfer pays your line). Such a candidate is shown
+   * to a person, never paid automatically; a remembered alias or the memo's
+   * name is what makes it automatic.
+   */
+  nameOnly?: boolean;
 }
 
 export type ReviewReason =
@@ -48,7 +58,8 @@ export type ReviewReason =
   | 'unknown_sender'
   | 'ambiguous_sender'
   | 'nothing_owed'
-  | 'amount_mismatch';
+  | 'amount_mismatch'
+  | 'name_only';
 
 export type MatchDecision =
   | { status: 'matched'; candidate: MatchCandidate; allocations: OwedLine[] }
@@ -70,6 +81,9 @@ export function decideMatch(input: {
   if (candidate.lines.length === 0) return review('nothing_owed');
   const allocations = allocateAmount(candidate.lines, input.amountCents);
   if (!allocations) return review('amount_mismatch');
+  // A name anyone can choose is not proof of who paid (F18): confirm once, and
+  // "Remember" makes the next one automatic.
+  if (candidate.nameOnly) return review('name_only');
   // Checked LAST so the queue still shows who and which lines it would have
   // been — the admin's tap is then a confirmation, not a search.
   if (!input.authenticated) return review('unauthenticated');

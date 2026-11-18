@@ -43,6 +43,7 @@ const REASON: Record<string, string> = {
   ambiguous_sender: 'More than one person has this name',
   nothing_owed: "They don't owe anything right now",
   amount_mismatch: "The amount doesn't match what they owe",
+  name_only: 'The bank name matches a name on the list. Check it once, and remember it',
   unrecognized_email: "We couldn't read this email",
   changed_while_matching: 'Something changed while matching',
   // Stripe outcomes the webhook could not act on (lib/cardPay.ts `fileCardReview`).
@@ -648,7 +649,7 @@ function AssignSheet({ payment, onClose, onDone }: { payment: EtransferPayment; 
               Selected {money(pickedCents)} of the {money(payment.amountCents)} received.
             </p>
           )}
-          {!isCard && payment.senderName && name && payment.senderName.toLowerCase() !== name.toLowerCase() && (
+          {!isCard && payment.senderName && name && (
             <label className="flex items-center gap-2 fs-sm" style={{ color: 'var(--text-secondary)' }}>
               <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
               Remember “{payment.senderName}” as {name}

@@ -12,7 +12,7 @@ import { PATCH as patchSettings } from '@/app/api/admin/payments/settings/route'
 import { groupScope } from '@/lib/groupScope';
 
 /** The aliases the inbox wrote — `kind: 'alias'` rows in `clubSettings` (docs/plans/container-fold.md). */
-const writtenAliases = () => ((getStore()['clubSettings'] ?? []) as Array<Record<string, unknown>>).filter((r) => r.kind === 'alias');
+const writtenAliases = () => ((getStore()['clubSettings'] ?? []) as Array<Record<string, unknown>>).filter((r) => r.kind === 'alias' && r.id !== 'alias-lin');
 import {
   resetMockStore,
   getStore,
@@ -79,6 +79,9 @@ beforeEach(async () => {
   lin = seedMember('Lin');
   row1 = seedPlayer(S1, 'Lin', { memberId: lin.id, owedAmount: 12, settledAt: '2026-10-02T00:00:00Z' });
   row2 = seedPlayer(S2, 'Lin', { memberId: lin.id, owedAmount: 15, settledAt: '2026-10-02T00:00:00Z' });
+  // Lin's bank name is REMEMBERED, as it is after the club confirms her first
+  // transfer once: a roster name alone never auto-pays (Claude Security F18).
+  seedDoc('clubSettings', { id: 'alias-lin', kind: 'alias', appName: 'Lin', etransferName: 'Lin', memberId: lin.id, groupId: 'bpm' });
   key = await mintPaymentsKey('bpm');
 });
 

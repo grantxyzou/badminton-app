@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
-import { ownsNameOrAdmin } from '@/lib/auth';
+import { nameOwnership } from '@/lib/auth';
+import { resolveActiveMemberId } from '@/lib/memberResolve';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,7 +67,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'name required' }, { status: 400 });
   }
 
-  if (!(await ownsNameOrAdmin(req, name))) {
+  const ownership = await nameOwnership(req, name);
+  if (!ownership.allowed) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 
@@ -116,14 +118,31 @@ export async function GET(req: NextRequest) {
     // Batch into one query filtered by sessionIds to avoid N roundtrips.
     const sessionIds = windowSessions.map((s) => s.id);
     const placeholders = sessionIds.map((_, i) => `@sid${i}`).join(',');
-    const playerRows = await scope.query<{ sessionId: string; removed?: boolean; waitlisted?: boolean }>('players', {
-      select: 'c.sessionId, c.name, c.removed, c.waitlisted',
+    //
+    // BY ID FIRST (Claude Security F28, 2026-11-17). A name released by a
+    // rename or a removal and taken by someone else used to bring the previous
+    // holder's attendance with it. A row carrying a `memberId` counts only
+    // when it is this person's; a legacy row with none is matched by name. And
+    // the person's own rows under an EARLIER name now count too.
+    const subject = ownership.selfMemberId ?? (await resolveActiveMemberId(scope.groupId, name));
+    type Row = { sessionId: string; removed?: boolean; waitlisted?: boolean; memberId?: string };
+    const sidParams = sessionIds.map((id, i) => ({ name: `@sid${i}`, value: id }));
+    const byName = await scope.query<Row>('players', {
+      select: 'c.sessionId, c.name, c.removed, c.waitlisted, c.memberId',
       where: `c.sessionId IN (${placeholders}) AND LOWER(c.name) = LOWER(@name)`,
-      params: [
-        { name: '@name', value: name },
-        ...sessionIds.map((id, i) => ({ name: `@sid${i}`, value: id })),
-      ],
+      params: [{ name: '@name', value: name }, ...sidParams],
     });
+    const byId = subject
+      ? await scope.query<Row>('players', {
+          select: 'c.sessionId, c.name, c.removed, c.waitlisted, c.memberId',
+          where: `c.sessionId IN (${placeholders}) AND c.memberId = @memberId`,
+          params: [{ name: '@memberId', value: subject }, ...sidParams],
+        })
+      : [];
+    const playerRows = [
+      ...byName.filter((r) => !r.memberId || r.memberId === subject),
+      ...byId.filter((r) => r.memberId === subject),
+    ];
 
     const attendedBySession = new Map<string, boolean>();
     for (const row of playerRows) {
