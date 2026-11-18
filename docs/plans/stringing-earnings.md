@@ -23,7 +23,7 @@ A number on the page disagrees with the bench or the ledger for the same jobs: a
 
 ## Non-goals
 
-- A stringer who is not an admin sees no money here, as everywhere else (`toStringerJob`). Per-stringer pay is not modelled.
+- A stringer who is not an admin sees no money here, as everywhere else (`toStringerJob`). Per-stringer pay is not modelled: one stringer per club for now (Grant, 2026-11-18: "we are not scaling like that yet"), so the club's earnings are that stringer's.
 - Saving a price. "Simulate price" is a what-if on the page and writes nothing.
 - Anything off the stringing jobs: sessions, shuttles and gift cards have their own money screens.
 - Tax, fees, time. "After string cost" is the price minus the string that went into the racket, nothing else.
@@ -36,7 +36,7 @@ A number on the page disagrees with the bench or the ledger for the same jobs: a
 - **Payback is the shelf's, all-time**: what was bought for a string against all the work done with it. "N more jobs" divides the gap by the row's price (or the simulated one). It is not per reel: the shelf does not know which reel a set came off.
 - **Admins and organisers only** (`isAdminAuthed`), like the stock read the page sits beside.
 - **Every month since the first counted job**, at most 36 (`EARNINGS_MAX_MONTHS`): the read started as the last four (the canvas's window) and widened with the time picker below; the current one reads "so far".
-- **Time selection is Month / Quarter / Year, then ‹ ›** (2026-11-18; Grant: "what about time selection? canvas first", then "go with A" over quick-range chips (B) and a scroll-and-tap chart (C)). The server still sends months; the page folds them (`lib/earningsPeriods.ts`), so a quarter's or a year's figures are the sum of its months and nothing is counted twice. The columns show the six periods up to the chosen one, and tapping one is the same as stepping to it. The bench's line stays on this month.
+- **Time selection is Month / Quarter / Year, then ‹ ›** (2026-11-18; Grant: "what about time selection? canvas first", then "go with A" over quick-range chips (B) and a scroll-and-tap chart (C)). The server still sends months; the page folds them (`lib/earningsPeriods.ts`), so a quarter's or a year's figures are the sum of its months and nothing is counted twice. The columns show the six periods up to the chosen one, and tapping one is the same as stepping to it. The bench's line follows the period picked (Grant, 2026-11-18: "the line should follow the chosen period"): the bench holds the choice (`EarningsPick`, a period KEY so a refetch that adds a month cannot move it; `null` is the newest), and it is this month until one is picked. It is held for as long as the bench is open, not saved.
 - **A period still filling is set against the same months of the one before** (`comparable`): Q4 so far (October, November) against July and August, this year so far against the same months last year, named in the tile ("vs Jul–Aug"). Set against a whole quarter, two months read as a drop that is only the month still to come. A month so far is set against the whole month before, because the read counts by month.
 
 ## Shape

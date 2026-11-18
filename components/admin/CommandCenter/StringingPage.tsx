@@ -37,7 +37,7 @@ import RegisterSwitch from '@/components/primitives/RegisterSwitch';
 import ListRow from '@/components/primitives/ListRow';
 import { StringingAside, useStringingAside } from '@/components/stringing/StringingAside';
 import { PaneDetail } from '@/components/primitives/PaneDetail';
-import StringingEarningsPage, { EarningsLine, type EarningsData } from '@/components/stringing/StringingEarnings';
+import StringingEarningsPage, { EarningsLine, NEWEST, type EarningsData, type EarningsPick } from '@/components/stringing/StringingEarnings';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -175,6 +175,8 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
      jobs, so a Mark paid moves the line too. */
   const [earnings, setEarnings] = useState<EarningsData | null>(null);
   const [earningsError, setEarningsError] = useState(false);
+  // The period picked on Earnings; the line on the bench names the same one.
+  const [earningsPick, setEarningsPick] = useState<EarningsPick>(NEWEST);
   const loadEarnings = useCallback(async () => {
     setEarningsError(false);
     try {
@@ -787,7 +789,7 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
       <div className={pageClass}>
         <AdminBackHeader onBack={back} title={t('earnings.title')} crumb={t('jobsTitle')} />
         <div className="flex flex-col gap-4 pb-6">
-          <StringingEarningsPage data={earnings} error={earningsError} onRetry={() => void loadEarnings()} />
+          <StringingEarningsPage data={earnings} error={earningsError} onRetry={() => void loadEarnings()} pick={earningsPick} onPick={setEarningsPick} />
         </div>
       </div>
   );
@@ -904,10 +906,11 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
           screens 362px wide against the app's 394 — visibly narrower than the
           Command Center they are opened from, and than Birds next to them. */}
       <div className="flex flex-col gap-4 pb-6">
-        {/* The month's money, first (canvas EarnRow, Grant 2026-11-17: "pull
-            out how much earning"): collected, owed and not invoiced, and a
-            tap opens Earnings. */}
-        <EarningsLine data={earnings} error={earningsError} onOpen={() => setView('earnings')} onRetry={() => void loadEarnings()} />
+        {/* The money, first (canvas EarnRow, Grant 2026-11-17: "pull out how
+            much earning"): collected, owed and not invoiced for the period
+            last picked on Earnings (this month until one is), and a tap
+            opens Earnings. */}
+        <EarningsLine data={earnings} error={earningsError} pick={earningsPick} onOpen={() => setView('earnings')} onRetry={() => void loadEarnings()} />
         {/* CLOSED is a card, first (Grant, 2026-11-12, on the design canvas:
             "Follow design system"): the player's closed-shop card — same
             header, the muted badge, the standing bedtime state — with "Open

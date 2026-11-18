@@ -33,6 +33,10 @@ From the Claude Security scan of the server code (LOW findings marked "fix now")
 - **Two deployment-wide tools are the operator's alone**: the memberId migration and minting BPM's reports key (F22, F26). A key already minted stays valid until it is rotated.
 - **A crafted pick event can no longer change every object on the server** (F21).
 
+## Stringing earnings: the line follows the period you picked (2026-11-18)
+
+- **The earnings line on Stringing jobs names the period last picked on Earnings**, so "Q4 2026 so far · $488 collected" stays in front of you after you go back. It starts on this month; a period with no jobs says "Nothing strung".
+
 ## Stringing earnings: pick the month, quarter or year (2026-11-18)
 
 - **Month, Quarter or Year at the top of Earnings, then ‹ › to step** through every month since the first job (Grant picked option A on the canvas). The whole page follows: the tiles, where it is, who is waiting, the string cost and the breakdown by string type.
