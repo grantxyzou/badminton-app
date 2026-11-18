@@ -26,6 +26,17 @@ Every merge to `main` deploys. There is no staging, no soak, no second deploymen
 - No amount in a push body.
 - A redelivered or resent Stripe event must change nothing it already did, days later too: Stripe's idempotency keys last 24 hours.
 
+**Security invariants from the 2026-11-17 scan** (`.claude/rules/security.md`; 32 findings, every HIGH in sign-in, money or admin powers). Flag a PR that:
+- Uses `verifyLiveAccountAuth` / `readLiveAccountSession` for a route that acts INSIDE a club. That check lets someone in no club through; the member check (`verifyLiveMemberAuth`, `requireGroupMember`) is the default.
+- Keys a write, a gate or a history read on a NAME (a cookie's `name`, a roster name) where a `memberId` exists. Names are self-chosen and released on rename.
+- Lets an admin set, clear or reset another member's PIN, or let them in, without `onBehalfRefusal`. Or signs the admin's phone in as that member.
+- Compares a PIN before `claimPinAttempt` counts it, or answers a name nobody holds faster or differently than a real one (`FAKE_HASH`, `padMissingAccount`).
+- Treats the email confirmation link as proof of the mailbox (`mailboxProven` is set only by a sign-in through the address).
+- Auto-pays money on a name anyone can set (a roster name or the memo) instead of a remembered alias.
+- Gives a deployment-wide power to "an admin of BPM" instead of `isOperator`.
+- Indexes a plain `{}` with member-supplied text (`__proto__`).
+`__tests__/security-invariants.test.ts` catches the shapes it can read; say so when a finding is one it cannot.
+
 **Lying empty states.** `catch { setX([]) }` renders "no data yet" for "the backend is broken". Every fetch consumer must distinguish load-failed (`ErrorState`) from loaded-empty (`EmptyState`). Same family: a probe that failed or is pending rendered as a confirmed negative — tri-state it.
 
 **Session pointer and partition keys.** `getActiveSessionId()` always; a bare `SESSION_ID` or `'current-session'` is a finding. `container.item(id, partitionKeyValue)` — the second argument is the PK **value**; the mock store ignores it, so a wrong one only fails in production.
