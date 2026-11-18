@@ -30,6 +30,7 @@ import { openRequests, pendingRequests } from '@/lib/accessRequest';
 import { updateAccessRequests } from '@/lib/accessRequestStore';
 import { resolveGroupId } from '@/lib/groupContext';
 import { rosterMemberIds } from '@/lib/roster';
+import { onBehalfRefusal, onBehalfRefused } from '@/lib/onBehalfGuard';
 import type { Member } from '@/lib/types';
 import { isUnclaimed } from '@/lib/claimLinks';
 import type { StoredAccessRequest } from '@/lib/accessRequest';
@@ -211,6 +212,14 @@ export async function POST(req: NextRequest) {
     // they exist elsewhere.
     if (!(await rosterMemberIds(admin.groupId)).has(memberId)) {
       return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    }
+    // Approving signs the asking phone in AS this person, across every club
+    // they belong to, so it is refused for a rank-holder (unless an organiser
+    // approves) and for anyone on another club's roster (lib/onBehalfGuard.ts).
+    // Declining hands nothing out and stays open to any admin.
+    if (decision === 'approve') {
+      const onBehalf = await onBehalfRefusal(admin, memberId);
+      if (onBehalf) return onBehalfRefused(onBehalf);
     }
     let refusal: 'not_found' | 'several_requests' | null = null;
 

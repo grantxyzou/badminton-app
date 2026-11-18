@@ -6,7 +6,8 @@ import { issueRecoveryCode } from '@/lib/memberRecoveryCode';
 import { appendEvent } from '@/lib/recoveryAudit';
 import { resolveGroupId } from '@/lib/groupContext';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
-import { readMembership, signOutEverywhereIn } from '@/lib/groups';
+import { signOutEverywhereIn } from '@/lib/groups';
+import { onBehalfRefusal, onBehalfRefused } from '@/lib/onBehalfGuard';
 import { isFlagOn } from '@/lib/flags';
 import { BPM_GROUP_ID } from '@/lib/groupScope';
 
@@ -63,13 +64,11 @@ export async function POST(req: NextRequest) {
   // an admin could reset the organiser, redeem the code and set a PIN of their
   // own. Ranks are an organiser's business (docs/plans/roles-v2.md), the same
   // rule `PATCH /api/members` applies to "Sign out everywhere". Your own reset
-  // is yours. Flag off every admin is an organiser.
-  if (groupsOn && !admin.organiser && member.id !== admin.memberId) {
-    const rank = (await readMembership(admin.groupId, member.id))?.role;
-    if (rank === 'owner' || rank === 'admin') {
-      return NextResponse.json({ error: 'organiser_only' }, { status: 403 });
-    }
-  }
+  // is yours. Flag off every admin is an organiser. And a person on another
+  // club's roster is not this club's to reset: the code opens the whole
+  // account, their place in that club included (lib/onBehalfGuard.ts).
+  const refusal = await onBehalfRefusal(admin, member.id);
+  if (refusal) return onBehalfRefused(refusal);
 
   const { code, stored } = await issueRecoveryCode();
   const updatedEvents = appendEvent(member.recoveryEvents, {

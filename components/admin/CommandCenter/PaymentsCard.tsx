@@ -24,6 +24,7 @@ import { sharedFetch } from '@/lib/sharedRead';
 import { sessionDay, sessionMoneyState, SESSION_CALENDAR_LIMIT } from '@/lib/sessionCalendar';
 import SessionDatePicker, { type PickerSession } from './SessionDatePicker';
 import { addPlayerByName, promotePlayer, removePlayer, restorePlayer, SESSION_FULL_ERROR } from '@/lib/sessionRowActions';
+import { onBehalfMessage } from '@/lib/onBehalfMessage';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -517,7 +518,8 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
         body: JSON.stringify({ name: actionTarget.name }),
       });
       if (!res.ok) {
-        setActionError(`Failed to generate code (${res.status})`);
+        const data = await res.json().catch(() => ({}));
+        setActionError(onBehalfMessage(data.error) ?? `Failed to generate code (${res.status})`);
         return;
       }
       const body = await res.json();
@@ -545,7 +547,7 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setActionError(data.error ?? 'Failed to clear PIN.');
+        setActionError(onBehalfMessage(data.error) ?? data.error ?? 'Failed to clear PIN.');
         return;
       }
       setActionTarget(null);

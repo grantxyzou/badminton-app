@@ -19,6 +19,7 @@ import type { Member, Alias } from '@/lib/types';
 import { isNewMember } from '@/lib/dormant';
 import { useCurrentGroup } from '@/lib/useCurrentGroup';
 import { isFlagOn } from '@/lib/flags';
+import { onBehalfMessage } from '@/lib/onBehalfMessage';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -446,7 +447,7 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setFormError(data.error ?? `Failed to generate code (${res.status}).`);
+        setFormError(onBehalfMessage(data.error) ?? data.error ?? `Failed to generate code (${res.status}).`);
         return;
       }
       const body = await res.json();

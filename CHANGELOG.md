@@ -21,6 +21,13 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 - **"Bring another guest" is the button right under it**, and the list of who else is coming follows.
 - **The court note is now a footnote under that list**: "Another court opens when enough people are waiting."
 
+## An admin can no longer open someone else's account (2026-11-17)
+
+- **Setting, clearing or resetting someone's PIN, and letting in a "let me in" ask, now follow one rule** (`lib/onBehalfGuard.ts`; Claude Security scan, findings F1–F4). An admin may do it for a member of their own club. For an admin or organiser it is an organiser's call. For anyone who is also on another club's roster it is refused: one club's admin cannot vouch for a person's place in a club they don't run, so that person gets back in with an email code, Apple or Google.
+- **Before, any club admin could do all four for anyone on their roster**, organisers included, and anyone can make a club of their own. Approving an ask or setting a PIN signed the admin's phone in as that person in every club they belong to.
+- **Setting someone's first PIN no longer signs the admin's phone in as them.**
+- The admin screens say why in a sentence ("Only an organiser can…", "They're in another club too…"), not a raw code.
+
 ## Stringing: the archive matches the jobs list (2026-11-17)
 
 - **Archived jobs use the same rows as the live jobs**: the racket picture and name, the player, the job number and status, and M and C as two pills, in one card labelled "Picked up" with how many still owe.

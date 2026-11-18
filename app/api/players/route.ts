@@ -20,6 +20,7 @@ import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { isAdminAuthed, isAdminAuthedWithMember, verifyMemberAuth, verifyLiveMemberAuth, setMemberCookie, requireMember, requireGroupMember, unauthorized } from '@/lib/auth';
 import { hashPin, verifyPin, FAKE_HASH, BLOCKLISTED_PINS } from '@/lib/recoveryHash';
 import { appendEvent } from '@/lib/recoveryAudit';
+import { onBehalfRefusal, onBehalfRefused } from '@/lib/onBehalfGuard';
 import { isOverCapacity, ACTIVE_PLAYERS_WHERE } from '@/lib/capacity';
 import { promoteFromWaitlist, releaseMembersFirst } from '@/lib/waitlistPromote';
 import { membersFirstDue, membersFirstOpen } from '@/lib/membersFirst';
@@ -316,7 +317,8 @@ export async function POST(req: NextRequest) {
   // check was not enough: a demoted or deactivated admin kept those powers
   // for the cookie's remaining TTL (up to 30 days). The sync check
   // short-circuits, so a non-admin still costs no read.
-  const admin = isAdminAuthed(req) && (await isAdminAuthedWithMember(req)).authed;
+  const adminAuth = isAdminAuthed(req) ? await isAdminAuthedWithMember(req) : ({ authed: false } as const);
+  const admin = adminAuth.authed;
 
   /**
    * MEMBERS ONLY: YOU SIGN UP AS YOURSELF, WITH AN ACCOUNT
@@ -453,6 +455,13 @@ export async function POST(req: NextRequest) {
             claimAuth.name.toLowerCase() === existingMember.name.toLowerCase()));
       if (existingMember && !ownsExistingMember && !admin) {
         return NextResponse.json({ error: 'account_claim_needs_approval' }, { status: 403 });
+      }
+      // An admin giving an EXISTING account its first PIN is the same move as
+      // setting it in PATCH: the same rule (lib/onBehalfGuard.ts, F1), on the
+      // handler's one admin verdict.
+      if (existingMember && !ownsExistingMember && adminAuth.authed) {
+        const refusal = await onBehalfRefusal(adminAuth, String(existingMember.id));
+        if (refusal) return onBehalfRefused(refusal);
       }
       const memberDoc = {
         ...(existingMember ?? {
@@ -808,7 +817,8 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const isAdmin = (await isAdminAuthedWithMember(req)).authed;
+  const adminAuth = await isAdminAuthedWithMember(req);
+  const isAdmin = adminAuth.authed;
 
   try {
     const body = await req.json();
@@ -930,6 +940,15 @@ export async function PATCH(req: NextRequest) {
             | (Record<string, unknown> & { id: string; name?: string; pinHash?: string })
             | undefined)
         : undefined;
+
+      // An admin writes this PIN onto the PERSON, so it opens their whole
+      // account: refused for a rank-holder here unless the admin is an
+      // organiser, and for anyone on another club's roster
+      // (lib/onBehalfGuard.ts, Claude Security F1).
+      if (adminAuth.authed && member) {
+        const refusal = await onBehalfRefusal(adminAuth, member.id);
+        if (refusal) return onBehalfRefused(refusal);
+      }
 
       if (!isAdmin) {
         // No member row means there is no account to prove ownership of. Fail
