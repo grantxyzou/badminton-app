@@ -180,6 +180,14 @@ export interface Player {
    * at all.
    */
   paidAmount?: number;
+  /**
+   * What the row had received when an organiser last un-ticked it, kept only
+   * while that was MORE than its bill (a bill lowered after it was paid, the
+   * club keeping the rest). A re-tick may record it again on the organiser's
+   * say-so (`restoreReceived`), bringing back what the club kept; a plain
+   * re-tick records just the bill. Cleared by any re-tick. Additive.
+   */
+  unpaidReceived?: number;
   /** How it was marked: an admin's tap, an e-transfer the inbox matched, credit, or a card (Stripe Checkout, docs/plans/card-pay-prototype.md). */
   paidVia?: 'manual' | 'etransfer' | 'credit' | 'card';
   /** The `payments` doc that paid it (`paidVia: 'etransfer'`), or the Stripe Checkout Session id (`paidVia: 'card'`). */

@@ -131,9 +131,39 @@ describe('GAP 2 — FIXED: "Edit the bill" after someone paid keeps their money 
     expect(live(id)).toBe(0); // charge +20, payment −30, kept +10
     expect(await codes()).toEqual([]);
 
-    // Un-ticking her afterwards takes the payment AND what it kept back out.
+    // Un-ticking her afterwards takes the payment AND what it kept back out,
+    // and remembers the $30 she sent.
     expect((await patchPlayer(makeAdminRequest('PATCH', `${BASE}/players`, { id, paid: false }))).status).toBe(200);
+    expect(rowOf('Lin')).toMatchObject({ paid: false, unpaidReceived: 30 });
     expect(live(id)).toBe(2000);
+    expect(await codes()).toEqual([]);
+
+    // Re-ticked, saying her $30 did come in: paid at $30, and the club's $10 is back.
+    await new Promise((r) => setTimeout(r, 2));
+    expect((await patchPlayer(makeAdminRequest('PATCH', `${BASE}/players`, { id, paid: true, restoreReceived: true }))).status).toBe(200);
+    expect(rowOf('Lin')).toMatchObject({ paid: true, paidAmount: 30 });
+    expect(rowOf('Lin').unpaidReceived).toBeUndefined();
+    const voided = new Set(ledger().filter((e) => e.kind === 'void').map((e) => e.id.slice('void:'.length)));
+    expect(ledger().filter((e) => e.kind === 'overpaid' && !voided.has(e.id)).map((e) => e.amountCents)).toEqual([1000]);
+    expect(live(id)).toBe(0); // charge +20, payment −30, kept +10
+    expect(await codes()).toEqual([]);
+  });
+
+  it('a plain re-tick after the un-tick records just the bill: the kept $10 stays out', async () => {
+    await doSettle();
+    const id = String(rowOf('Lin').id);
+    await pay(id);
+    await unsettle(makeAdminRequest('DELETE', `${BASE}/session/settle`));
+    const s = (getStore()['sessions'] as Array<Record<string, unknown>>).find((x) => x.id === SID)!;
+    s.costPerCourt = 20;
+    await new Promise((r) => setTimeout(r, 2));
+    await doSettle();
+    await patchPlayer(makeAdminRequest('PATCH', `${BASE}/players`, { id, paid: false }));
+    await new Promise((r) => setTimeout(r, 2));
+    await pay(id);
+    expect(rowOf('Lin')).toMatchObject({ paid: true, paidAmount: 20 });
+    expect(rowOf('Lin').unpaidReceived).toBeUndefined();
+    expect(live(id)).toBe(0); // charge +20, payment −20
     expect(await codes()).toEqual([]);
   });
 

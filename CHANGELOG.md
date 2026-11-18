@@ -84,6 +84,7 @@ From the Claude Security scan of the server code (MEDIUM findings).
 - **You can edit a session's bill even when people have already paid.** Before, the app asked you to un-tick everyone first.
 - **If the new bill is lower, people who paid stay paid and the club keeps the difference.** The Payments card shows it ("Paid $30 · $10 kept") and the money page counts it under "kept from over-payments".
 - **If the new bill is higher, people who paid owe only the difference**, and Home shows them "paid $30 of $45".
+- **Un-ticking someone the club kept money from, then ticking them again, asks whether their original payment really came in.** Say yes and the kept amount comes back; say no and just the bill is recorded.
 
 ## Resending an old card payment event changes nothing (2026-11-18)
 

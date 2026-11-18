@@ -421,6 +421,28 @@ export async function mirrorPaid(scope: GroupScope, row: Player, receivedCents?:
   }
 }
 
+/**
+ * After a re-tick that restored what a row received above its bill: the
+ * club's kept share comes back. Its id is keyed on the settle, so an earlier
+ * one was written and voided by the un-tick; the family `<id>`, `<id>:1` …
+ * holds each re-keep, a live member meaning nothing to write.
+ */
+export async function mirrorKept(scope: GroupScope, row: Player): Promise<void> {
+  if (!on()) return;
+  const e = overpaidEntry(row);
+  if (!e) return;
+  try {
+    const all = await entriesFor(scope, e.memberId, row.id);
+    const family = all.filter((x) => x.kind === 'overpaid' && (x.id === e.id || x.id.startsWith(`${e.id}:`)));
+    const liveIds = new Set(live(all, 'overpaid').map((x) => x.id));
+    if (family.some((x) => liveIds.has(x.id))) return;
+    await appendEntry(scope, family.length === 0 ? e : { ...e, id: `${e.id}:${family.length}` });
+  } catch (err) {
+    mirrorFailures += 1;
+    console.error('[ledger-mirror] mirrorKept failed', { rowId: row.id, err });
+  }
+}
+
 /** After a row went paid true→false. `prev` is the row BEFORE the write (it still names its paidAt/paymentId). */
 export async function mirrorUnpaid(scope: GroupScope, prev: Player): Promise<void> {
   if (!on()) return;
