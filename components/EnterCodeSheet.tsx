@@ -97,7 +97,7 @@ export default function EnterCodeSheet({ open, onClose, sessionId, onRecovered }
                 padding: 'var(--space-4)',
                 borderRadius: 'var(--radius-md)',
                 border: '1px solid var(--glass-border)',
-                background: 'var(--input-bg, rgba(255,255,255,0.05))',
+                background: 'var(--input-bg)',
                 color: 'var(--text-primary)',
               }}
             />

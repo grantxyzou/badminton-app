@@ -544,6 +544,10 @@ html[data-theme="light"][data-tab="admin"]   { --text-secondary: #6a4128; --text
 [data-theme="light"] .bg-white\/10 { background: rgba(0, 0, 0, 0.05); }
 [data-theme="light"] .bg-white\/20 { background: rgba(0, 0, 0, 0.08); }
 [data-theme="light"] .bg-green-500 { background: #16a34a; }
+/* The Advance form's selected "recent cost" chip. Tailwind's 500 green at
+   20% is pale and yellowish on the cream ground; the light tone tint is the
+   green every other selected chip wears. */
+[data-theme="light"] .bg-green-500\/20 { background: var(--tone-green-bg); }
 /* Light-mode hover-color overrides — gated so they don't stick after a tap on
    touch (mirrors the Tailwind hoverOnlyWhenSupported flag for these hand-written
    overrides of the same `hover:` utilities). */
