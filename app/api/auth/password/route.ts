@@ -12,8 +12,8 @@
  * NEW member and refuses a name that is taken — which is every approved
  * person's own name. This is the missing third way.
  *
- * WHO: the `member_session` cookie, re-checked live (`verifyLiveMemberAuth`,
- * so "Sign out everywhere" and a removal bite). There is deliberately no
+ * WHO: the `member_session` cookie, re-checked live (`verifyLiveAccountAuth`,
+ * so "Sign out everywhere" bites; a person in no club may still set one). There is deliberately no
  * name or id in the body: a name-keyed version would let anyone put a
  * password on anyone's account.
  *
@@ -29,13 +29,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { verifyLiveMemberAuth } from '@/lib/auth';
+import { verifyLiveAccountAuth } from '@/lib/auth';
 import { hashPassword, validatePasswordStrength } from '@/lib/passwordHash';
 import { createToken, VERIFICATION_TTL_MS } from '@/lib/authToken';
 import { sendVerificationEmail } from '@/lib/authEmail';
 import { normalizeEmail, isPlausibleEmail, reserveIdentity, releaseIdentity } from '@/lib/authIdentity';
 import { outboundOriginOrNull } from '@/lib/appOrigin';
 import type { Member } from '@/lib/types';
+import { mailboxIsProven } from '@/lib/emailProof';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'rate_limited', retryAfter: 3600 }, { status: 429 });
   }
 
-  const auth = await verifyLiveMemberAuth(req);
+  const auth = await verifyLiveAccountAuth(req);
   if (!auth) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   let body: { email?: unknown; password?: unknown };
@@ -88,6 +89,10 @@ export async function POST(req: NextRequest) {
       ...member,
       email,
       emailVerified: false,
+      // The proof was of the OLD address: a new one is unproven until someone
+      // signs in through it (gap 2 review: a Google account setting a password
+      // on Jenny's address kept the proof, and her code then took nothing back).
+      mailboxProven: previous === email ? mailboxIsProven(member) : false,
       passwordHash: await hashPassword(password),
       emailVerification: verification.record,
     };

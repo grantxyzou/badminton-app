@@ -5,7 +5,7 @@ import { computeClubMetrics } from '@/lib/metricsMath';
 import { firstScreenReady, launchGone } from '@/lib/useUsageBeacons';
 import { NextRequest, NextResponse } from 'next/server';
 import { setMemberCookie } from '@/lib/auth';
-import { resetMockStore, getStore, setupAdminPin } from './helpers';
+import { resetMockStore, getStore, setupAdminPin, ensureSeededMember } from './helpers';
 
 /**
  * How long opening the app takes on members' real phones (docs/plans/
@@ -16,6 +16,7 @@ type Row = Record<string, unknown>;
 let ip = 0;
 function postAs(body: unknown): NextRequest {
   const r = NextResponse.json({});
+  ensureSeededMember('m-lin', 'Lin');
   setMemberCookie(r, 'm-lin', 'Lin');
   ip++;
   return new NextRequest(new URL('/api/events', 'http://localhost/bpm'), {

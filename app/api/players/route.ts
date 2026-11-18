@@ -13,7 +13,7 @@ import { adminAddToRoster } from '@/lib/roster';
 const groupsOn = () => isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
 import { defaultMaxPlayers } from '@/lib/defaults';
 import { signupHeldForUnpaid, releaseHoldIfSettled } from '@/lib/paymentsInbox';
-import { mirrorPaid, mirrorUnpaid, mirrorCover, mirrorUncover, mirrorRowDeleted } from '@/lib/ledgerMirror';
+import { mirrorKept, mirrorPaid, mirrorUnpaid, mirrorCover, mirrorUncover, mirrorRowDeleted } from '@/lib/ledgerMirror';
 import type { Player } from '@/lib/types';
 import { randomBytes, timingSafeEqual } from 'crypto';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
@@ -1096,12 +1096,22 @@ export async function PATCH(req: NextRequest) {
         // a short transfer put against it before (docs/plans/paid-amount.md).
         // An estimate has no bill yet; settle records it.
         updates.paymentId = undefined;
-        if (typeof existing.settledAt === 'string' && typeof existing.owedAmount === 'number') updates.paidAmount = existing.owedAmount;
+        if (typeof existing.settledAt === 'string' && typeof existing.owedAmount === 'number') {
+          // "Record what they sent before": a row un-ticked while it held more
+          // than its (lowered) bill may get that amount back, and with it the
+          // share the club kept. Admin-only, and only up to what was on record.
+          const before = typeof existing.unpaidReceived === 'number' ? existing.unpaidReceived : undefined;
+          updates.paidAmount = isAdmin && body.restoreReceived === true && before !== undefined && before > existing.owedAmount ? before : existing.owedAmount;
+        }
+        updates.unpaidReceived = undefined;
       } else if (body.paid === false) {
         updates.paidAt = undefined;
         updates.paidVia = undefined;
         updates.paymentId = undefined;
         updates.paidAmount = undefined;
+        // Remember what came in above the bill, so a re-tick can bring it back.
+        const got = typeof existing.paidAmount === 'number' ? existing.paidAmount : undefined;
+        updates.unpaidReceived = existing.paid === true && got !== undefined && typeof existing.owedAmount === 'number' && got > existing.owedAmount ? got : undefined;
       }
       // Mutex: setting paid:true clears writtenOff. Existing behavior
       // when only paid is sent.
@@ -1272,8 +1282,10 @@ export async function PATCH(req: NextRequest) {
     // short transfer already put against it. An un-tick voids every payment
     // on the row, a part-payment's included.
     if (updates.paid === true && prev.paid !== true) {
-      const received = typeof next.owedAmount === 'number' ? Math.round(next.owedAmount * 100) - Math.round((prev.paidAmount ?? 0) * 100) : undefined;
+      const received = typeof next.paidAmount === 'number' ? Math.round(next.paidAmount * 100) - Math.round((prev.paidAmount ?? 0) * 100) : undefined;
       await mirrorPaid(scope, next, received);
+      // A restored over-payment brings back what the club kept.
+      await mirrorKept(scope, next);
     }
     if (updates.paid === false && (prev.paid === true || (prev.paidAmount ?? 0) > 0)) await mirrorUnpaid(scope, prev);
     if (updates.writtenOff === true && prev.writtenOff !== true) await mirrorCover(scope, next);

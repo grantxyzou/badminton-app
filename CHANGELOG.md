@@ -12,10 +12,25 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 - **Home's cards are all the same distance apart.** The bigger space before your balance is gone (Grant, on the canvas: "this gap, is weird", then "no gap even spacing"). It was meant to separate this week from your account, but it landed between your level card and your balance and looked like a hole.
 
+## Security: a bank name you can copy no longer pays you (2026-11-18)
+
+The last LOW findings from the security scan.
+
+- **An e-transfer is paid automatically only when the club already knows that bank name** (F18). Before, a member could rename themselves to another member's bank name and receive their payments. A name that only matches the list, or only appears in the transfer's message, now waits in "Needs a look" once; "Remember" there makes the next one automatic, including when the bank name is the same as the list name. A remembered bank name stays with the person, even if they rename, and so does one added on the Roster screen.
+- **Partners and attendance follow the person, not the name** (F27, F28). Someone who takes a name another member gave up no longer sees that member's partners or attendance, a member who renames keeps their own history, and a guest with a member's name no longer counts as that member.
+
 ## Your guest's place on the waitlist (2026-11-18)
 
 - **A waiting guest shows their place in line** under their name, inside your "you have signed up" box: "Jenny, your guest" over "Waitlist #2" (Grant, on the canvas: "waitlist #1"). A guest with a spot says "Coming".
 - **"Add to calendar" sits a little further from "…for this week!"** and never breaks across two lines.
+
+## Security: the three gaps the scan left open (2026-11-18)
+
+From the 2026-11-17 security scan's follow-up.
+
+- **Someone who is not on a club's list can no longer act inside it.** An account that never joined a club, or someone removed from it, still held a sign-in that named the club, and parts of the app took that for a member. Now acting inside a club needs a place on its list, and only creating, joining or switching a club, signing in and looking after your own account work without one.
+- **A confirmation email you never asked for can no longer lock someone else's password into your account.** If someone makes an account on your address and you click its confirmation link, your first sign-in by email code still takes the account back. Accounts that already existed and had confirmed their address are unaffected. A NEW account that set a password and confirmed only by link sets its password again once, at its first email-code (or Google or Apple) sign-in; changing an account's address now needs a fresh sign-in through the new one.
+- **A wrong PIN or code takes as long for a name nobody holds as for a real member's**, so timing a run of guesses no longer says who is in the club.
 
 ## Security fixes: the smaller findings (2026-11-18)
 
@@ -28,6 +43,16 @@ From the Claude Security scan of the server code (LOW findings marked "fix now")
 - **Admin reads of who owes what, the string costs and the stringer's queue stop the moment someone is demoted or signed out everywhere** (F23, F24, F25).
 - **Two deployment-wide tools are the operator's alone**: the memberId migration and minting BPM's reports key (F22, F26). A key already minted stays valid until it is rotated.
 - **A crafted pick event can no longer change every object on the server** (F21).
+
+## Stringing earnings: the line follows the period you picked (2026-11-18)
+
+- **The earnings line on Stringing jobs names the period last picked on Earnings**, so "Q4 2026 so far · $488 collected" stays in front of you after you go back. It starts on this month; a period with no jobs says "Nothing strung".
+
+## Stringing earnings: pick the month, quarter or year (2026-11-18)
+
+- **Month, Quarter or Year at the top of Earnings, then ‹ › to step** through every month since the first job (Grant picked option A on the canvas). The whole page follows: the tiles, where it is, who is waiting, the string cost and the breakdown by string type.
+- **A quarter or year still in progress is compared fairly**: Q4 so far is set against the same months of Q3 ("vs Jul–Aug"), this year against the same months last year.
+- The chart's scale fits its tallest column more closely ($308 tops out at $360, not $600).
 
 ## Stringing: what the bench earned (2026-11-18)
 
@@ -82,6 +107,13 @@ From the Claude Security scan of the server code (MEDIUM findings).
 ## Voice scoring keeps listening after the first call (2026-11-17)
 
 - **On Android, the mic stopped hearing calls after the first one** (Grant, on a Galaxy Z Fold). Chrome on Android does not reliably keep its always-on listening going, so the board now listens for one call at a time and starts listening again straight after each, and replaces a listening session that goes quiet for 15 seconds without ending. Android may play a short tone each time it starts again.
+
+## "Edit the bill" works after people have paid (2026-11-18)
+
+- **You can edit a session's bill even when people have already paid.** Before, the app asked you to un-tick everyone first.
+- **If the new bill is lower, people who paid stay paid and the club keeps the difference.** The Payments card shows it ("Paid $30 · $10 kept") and the money page counts it under "kept from over-payments".
+- **If the new bill is higher, people who paid owe only the difference**, and Home shows them "paid $30 of $45".
+- **Un-ticking someone the club kept money from, then ticking them again, asks whether their original payment really came in.** Say yes and the kept amount comes back; say no and just the bill is recorded.
 
 ## Resending an old card payment event changes nothing (2026-11-18)
 

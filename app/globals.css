@@ -64,11 +64,14 @@
   --duration-sheet: 180ms;
   --duration-normal: 250ms;
   --duration-slow: 400ms;
-  /* Two named one-offs, off the ladder on purpose: the sign-up icon's pop
-     (celebrate) and the bell ring / launch rise (flourish). A literal ms in a
-     transition or animation fails motion-duration-canary; name it here. */
+  /* Three named one-offs, off the ladder on purpose: the sign-up icon's pop
+     (celebrate), the bell ring / launch rise (flourish) and the PIN box's
+     shuttle pop, the app's one spring (pop). A literal ms or s in a
+     transition or animation, in CSS or an inline style, fails
+     motion-duration-canary; name it here. */
   --duration-celebrate: 420ms;
   --duration-flourish: 700ms;
+  --duration-pop: 320ms;
 
   /* ── Aurora ── */
   --aurora-bg: #100F0F;
@@ -544,6 +547,10 @@ html[data-theme="light"][data-tab="admin"]   { --text-secondary: #6a4128; --text
 [data-theme="light"] .bg-white\/10 { background: rgba(0, 0, 0, 0.05); }
 [data-theme="light"] .bg-white\/20 { background: rgba(0, 0, 0, 0.08); }
 [data-theme="light"] .bg-green-500 { background: #16a34a; }
+/* The Advance form's selected "recent cost" chip. Tailwind's 500 green at
+   20% is pale and yellowish on the cream ground; the light tone tint is the
+   green every other selected chip wears. */
+[data-theme="light"] .bg-green-500\/20 { background: var(--tone-green-bg); }
 /* Light-mode hover-color overrides — gated so they don't stick after a tap on
    touch (mirrors the Tailwind hoverOnlyWhenSupported flag for these hand-written
    overrides of the same `hover:` utilities). */
@@ -1264,7 +1271,7 @@ p[role='alert'] {
   backdrop-filter: blur(22px) saturate(140%);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.25s ease;
+  transition: opacity var(--duration-normal) ease;
 }
 .bpm-topbar.scrolled::before,
 .bpm-page-header.scrolled::before {
@@ -1289,7 +1296,7 @@ p[role='alert'] {
   background: transparent;
   border: 0;
   cursor: pointer;
-  transition: color 0.15s var(--ease-glass), transform 0.1s var(--ease-glass);
+  transition: color var(--duration-fast) var(--ease-glass), transform var(--duration-press) var(--ease-glass);
 }
 .bpm-topbar__back:active { transform: scale(0.94); }
 @media (hover: hover) {
@@ -1314,7 +1321,7 @@ p[role='alert'] {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-muted, #737373);
-  transition: opacity 0.2s ease;
+  transition: opacity var(--duration-fast) ease;
   max-height: 1.5em;
   line-height: 1.4;
 }
@@ -5783,7 +5790,7 @@ html:root .glass-card.bpm-job-card--open {
   cursor: pointer;
   display: inline-grid;
   place-content: center;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition: background var(--duration-fast) ease, border-color var(--duration-fast) ease;
   flex-shrink: 0;
 }
 .cc-checkbox input[type="checkbox"]::before {
@@ -5791,7 +5798,7 @@ html:root .glass-card.bpm-job-card--open {
   width: 10px;
   height: 10px;
   transform: scale(0);
-  transition: transform 0.12s ease-out;
+  transition: transform var(--duration-press) ease-out;
   background: currentColor;
   /* Sharp checkmark via clip-path so it stays crisp at 10px. */
   clip-path: polygon(14% 47%, 0 60%, 39% 100%, 100% 22%, 84% 9%, 39% 73%);
@@ -8160,6 +8167,23 @@ button.setup-next-row { cursor: pointer; }
 .earn-line-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
 .earn-figure { font-family: var(--font-mono); font-weight: 600; font-variant-numeric: tabular-nums; }
 .earn-val { font-family: var(--font-mono); font-size: var(--fs-stat-lg); font-weight: 600; line-height: var(--lh-tight); font-variant-numeric: tabular-nums; }
+.earn-stepper { display: flex; align-items: center; gap: var(--space-1); }
+.earn-period { flex: 1; min-width: 0; margin: 0; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.earn-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: none;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.earn-arrow:active { background: var(--press-bg); }
+.earn-arrow:disabled { color: var(--text-muted); opacity: 0.4; cursor: default; background: none; }
 .earn-tiles { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-3); }
 .earn-tile { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
 .earn-up { color: var(--pill-paid-text); }

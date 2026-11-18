@@ -76,6 +76,7 @@ export async function POST(req: NextRequest) {
       // Reaching this point proves control of the mailbox, which is strictly
       // stronger evidence than the verification link we would otherwise mail.
       emailVerified: true,
+      mailboxProven: true,
       ...(takeBack ? { sessionsNotBefore: at, widgetPassNotBefore: at } : {}),
     };
     await container.items.upsert(updated);

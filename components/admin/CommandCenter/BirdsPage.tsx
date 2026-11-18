@@ -51,16 +51,15 @@ function Stars({ n }: { n: number }) {
 
 /**
  * One tappable purchase row (name/date/tubes · cost · rating · tubes-left).
- * Shared by the "recent" and "older" purchase lists so the two can't drift —
- * `index` only drives the top hairline (none on the first row).
+ * Shared by the "recent" and "older" purchase lists so the two can't drift.
+ * No hairline between rows and no hover tint: space alone separates list
+ * items, and no card has a hover state (design-system rule).
  */
 function PurchaseRow({
   purchase: p,
-  index,
   onEdit,
 }: {
   purchase: BirdPurchase;
-  index: number;
   onEdit: (p: BirdPurchase) => void;
 }) {
   return (
@@ -76,11 +75,7 @@ function PurchaseRow({
         cursor: 'pointer',
         padding: 'var(--space-4) var(--space-5)',
         border: 'none',
-        borderTop: index ? '1px solid rgba(var(--glass-tint), 0.05)' : 'none',
-        transition: 'background 120ms ease',
       }}
-      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(var(--glass-tint), 0.03)'; }}
-      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--space-4)' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)', flex: 1, minWidth: 0 }}>
@@ -556,8 +551,8 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
         <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', margin: '0 var(--space-1)' }}>No purchases in the last 60 days.</p>
       ) : (
         <div className="glass-card is-flush" style={{ padding: 'var(--space-1) 0' }}>
-          {recentPurchases.map((p, i) => (
-            <PurchaseRow key={p.id} purchase={p} index={i} onEdit={openEditSheet} />
+          {recentPurchases.map((p) => (
+            <PurchaseRow key={p.id} purchase={p} onEdit={openEditSheet} />
           ))}
         </div>
       )}
@@ -579,8 +574,8 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
             Older purchases
           </p>
           <div className="glass-card is-flush" style={{ padding: 'var(--space-1) 0' }}>
-            {olderPurchases.map((p, i) => (
-              <PurchaseRow key={p.id} purchase={p} index={i} onEdit={openEditSheet} />
+            {olderPurchases.map((p) => (
+              <PurchaseRow key={p.id} purchase={p} onEdit={openEditSheet} />
             ))}
           </div>
         </>

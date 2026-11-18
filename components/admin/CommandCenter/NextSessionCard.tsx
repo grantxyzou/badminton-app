@@ -257,7 +257,7 @@ export default function NextSessionCard({ refreshKey = 0, onEdit, onAdvance, onS
   }, [load, onChanged, onShareCost, session?.signupOpen, activeCount]);
 
   const editBill = useCallback(async () => {
-    if (!confirm("Edit the bill? This clears what each person owes (paid checkmarks stay).")) return;
+    if (!confirm("Edit the bill? This clears what each person owes. Anyone who already paid keeps their payment: if the new bill is lower, the club keeps the difference; if it's higher, they owe the rest.")) return;
     setSettleError(null);
     setSettling(true);
     try {

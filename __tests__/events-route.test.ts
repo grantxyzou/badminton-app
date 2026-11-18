@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { POST } from '@/app/api/events/route';
 import { NextRequest, NextResponse } from 'next/server';
 import { setMemberCookie } from '@/lib/auth';
-import { resetMockStore, getStore, setupAdminPin } from './helpers';
+import { resetMockStore, getStore, setupAdminPin, ensureSeededMember } from './helpers';
 
 /**
  * The `events` container is what makes the Value-Hub Slice-0 kill-criterion
@@ -14,6 +14,7 @@ import { resetMockStore, getStore, setupAdminPin } from './helpers';
  */
 
 function memberCookieValue(memberId: string, name: string): string {
+  ensureSeededMember(memberId, name);
   const r = NextResponse.json({});
   setMemberCookie(r, memberId, name);
   return r.cookies.get('member_session')!.value;

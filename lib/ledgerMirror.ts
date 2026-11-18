@@ -178,6 +178,27 @@ export function coverEntry(row: Pick<Player, 'id' | 'sessionId' | 'memberId' | '
  * such row until a backfill. Settle writes it now, with the SAME id and date
  * the backfill computes, so the two agree and the second 409s.
  */
+/**
+ * The club keeps what a row received above its frozen bill (a bill lowered
+ * after it was paid; Grant, 2026-11-18). Keyed on the settle, so each re-settle
+ * writes its own and the unsettle before it voided the last.
+ */
+export function overpaidEntry(row: Pick<Player, 'id' | 'sessionId' | 'memberId' | 'guestOf' | 'owedAmount' | 'paidAmount' | 'paid' | 'settledAt'>): NewEntry | null {
+  if (row.paid !== true || typeof row.owedAmount !== 'number' || typeof row.paidAmount !== 'number') return null;
+  const over = cents(row.paidAmount) - cents(row.owedAmount);
+  if (over <= 0) return null;
+  return {
+    id: `overpaid:${row.id}:${ms(row.settledAt)}`,
+    memberId: memberOf(row),
+    account: 'member_owed',
+    kind: 'overpaid',
+    amountCents: over,
+    note: 'Kept from an over-payment',
+    ref: { kind: 'session', id: row.id, pk: row.sessionId },
+    ...(row.settledAt ? { createdAt: row.settledAt } : {}),
+  };
+}
+
 export function paymentEntryAtSettle(row: Pick<Player, 'id' | 'sessionId' | 'memberId' | 'guestOf' | 'owedAmount' | 'paidAmount' | 'paid' | 'paidAt' | 'paidVia' | 'paymentId' | 'settledAt'>): NewEntry | null {
   // Paid in full, or part-paid (a short transfer assigned by hand): either has money to record.
   if (row.paid !== true && !((row.paidAmount ?? 0) > 0)) return null;
@@ -344,6 +365,9 @@ export async function mirrorSettle(scope: GroupScope, session: Pick<Session, 'id
       // A row ticked paid BEFORE the bill was frozen gets its payment now.
       const p = paymentEntryAtSettle(row);
       if (p) await appendEntry(scope, p);
+      // Received more than the new bill: the club keeps the rest as income.
+      const o = overpaidEntry(row);
+      if (o) await appendEntry(scope, o);
     }
     const court = courtCostEntry(session, snapshot);
     if (court) await appendEntry(scope, court);
@@ -360,6 +384,10 @@ export async function mirrorUnsettle(scope: GroupScope, session: Pick<Session, '
     for (const row of rows) {
       await voidLive(scope, memberOf(row), row.id, 'charge', 'unsettled');
       await voidLive(scope, memberOf(row), row.id, 'cover', 'unsettled');
+      await voidLive(scope, memberOf(row), row.id, 'overpaid', 'unsettled');
+      // A PAYMENT stays: it is money received, recorded on the row as
+      // `paidAmount`, and the re-settle decides what it pays (Grant,
+      // 2026-11-18: "Edit the bill" after people paid).
     }
     await voidLive(scope, CLUB_LEDGER_ID, session.id, 'court_cost', 'unsettled');
   } catch (err) {
@@ -393,11 +421,35 @@ export async function mirrorPaid(scope: GroupScope, row: Player, receivedCents?:
   }
 }
 
+/**
+ * After a re-tick that restored what a row received above its bill: the
+ * club's kept share comes back. Its id is keyed on the settle, so an earlier
+ * one was written and voided by the un-tick; the family `<id>`, `<id>:1` …
+ * holds each re-keep, a live member meaning nothing to write.
+ */
+export async function mirrorKept(scope: GroupScope, row: Player): Promise<void> {
+  if (!on()) return;
+  const e = overpaidEntry(row);
+  if (!e) return;
+  try {
+    const all = await entriesFor(scope, e.memberId, row.id);
+    const family = all.filter((x) => x.kind === 'overpaid' && (x.id === e.id || x.id.startsWith(`${e.id}:`)));
+    const liveIds = new Set(live(all, 'overpaid').map((x) => x.id));
+    if (family.some((x) => liveIds.has(x.id))) return;
+    await appendEntry(scope, family.length === 0 ? e : { ...e, id: `${e.id}:${family.length}` });
+  } catch (err) {
+    mirrorFailures += 1;
+    console.error('[ledger-mirror] mirrorKept failed', { rowId: row.id, err });
+  }
+}
+
 /** After a row went paid true→false. `prev` is the row BEFORE the write (it still names its paidAt/paymentId). */
 export async function mirrorUnpaid(scope: GroupScope, prev: Player): Promise<void> {
   if (!on()) return;
   try {
     await voidLive(scope, memberOf(prev), prev.id, 'payment', 'unpaid');
+    // The money it kept goes with the payment it came from.
+    await voidLive(scope, memberOf(prev), prev.id, 'overpaid', 'unpaid');
   } catch (err) {
     mirrorFailures += 1;
     console.error('[ledger-mirror] mirrorUnpaid failed', { rowId: prev.id, err });

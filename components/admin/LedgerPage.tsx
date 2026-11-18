@@ -46,7 +46,7 @@ interface LedgerPlayerRow {
 interface MoneyData {
   range: { key: RangeKey; from: string; to: string };
   generatedAt: string;
-  income: { sessions: number; stringing: number; total: number };
+  income: { sessions: number; stringing: number; overpaid?: number; total: number };
   collected: { etransferAuto: number; etransferAdmin: number; manual: number; credit: number; card?: number; total: number };
   covered: number;
   outstanding: { sessions: number; stringing: number; total: number; people: number };
@@ -294,7 +294,11 @@ export default function LedgerPage({ onBack, onOpenSession, onOpenPastSessions }
       </div>
 
       {/* ── In and out ── */}
-      <Section title="In and out" subtitle={`${money(data.covered)} covered by you · ${bySession.length} session${bySession.length === 1 ? '' : 's'} settled`} badge={checkBadge}>
+      <Section
+        title="In and out"
+        subtitle={`${money(data.covered)} covered by you · ${bySession.length} session${bySession.length === 1 ? '' : 's'} settled${(data.income.overpaid ?? 0) > 0 ? ` · ${money(data.income.overpaid!)} kept from over-payments` : ''}`}
+        badge={checkBadge}
+      >
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 'var(--space-3)' }}>
           <div className="cc-tile cc-tile-static cc-tile-money">
             <span className="num">{fmtMoneyTile(collected.total)}</span>

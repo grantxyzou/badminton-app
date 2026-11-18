@@ -12,7 +12,7 @@ import { PATCH as patchSettings } from '@/app/api/admin/payments/settings/route'
 import { groupScope } from '@/lib/groupScope';
 
 /** The aliases the inbox wrote — `kind: 'alias'` rows in `clubSettings` (docs/plans/container-fold.md). */
-const writtenAliases = () => ((getStore()['clubSettings'] ?? []) as Array<Record<string, unknown>>).filter((r) => r.kind === 'alias');
+const writtenAliases = () => ((getStore()['clubSettings'] ?? []) as Array<Record<string, unknown>>).filter((r) => r.kind === 'alias' && r.id !== 'alias-lin');
 import {
   resetMockStore,
   getStore,
@@ -79,6 +79,9 @@ beforeEach(async () => {
   lin = seedMember('Lin');
   row1 = seedPlayer(S1, 'Lin', { memberId: lin.id, owedAmount: 12, settledAt: '2026-10-02T00:00:00Z' });
   row2 = seedPlayer(S2, 'Lin', { memberId: lin.id, owedAmount: 15, settledAt: '2026-10-02T00:00:00Z' });
+  // Lin's bank name is REMEMBERED, as it is after the club confirms her first
+  // transfer once: a roster name alone never auto-pays (Claude Security F18).
+  seedDoc('clubSettings', { id: 'alias-lin', kind: 'alias', appName: 'Lin', etransferName: 'Lin', memberId: lin.id, groupId: 'bpm' });
   key = await mintPaymentsKey('bpm');
 });
 
@@ -310,10 +313,13 @@ describe('the memo and the reference — from a real notification', () => {
       ...over,
     });
 
-  it('an unknown legal name whose memo names a roster member matches on the FIRST payment', async () => {
+  it('an unknown legal name whose memo names a roster member is SUGGESTED, not paid (F18)', async () => {
+    // The memo is matched against roster names, which members set themselves:
+    // it names who to suggest, and "Remember" makes the next one automatic.
     const res = await post(real('MEI LING CHAN', '12.00', 'BPM Sep 24 - Lin', 'C1AB2cDEFGhJ'));
-    expect((await res.json()).status).toBe('matched');
-    expect(rowById(row1.id).paid).toBe(true);
+    expect((await res.json()).status).toBe('review');
+    expect((getStore()['payments'] as Array<{ reason: string }>)[0].reason).toBe('name_only');
+    expect(rowById(row1.id).paid).toBe(false);
   });
 
   it('a memo naming someone OTHER than the known sender is a person\'s call', async () => {

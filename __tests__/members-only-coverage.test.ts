@@ -129,18 +129,18 @@ const ROUTES: Record<string, Entry> = {
   assessments: owner,
   kudos: owner,
   'players/unpaid': ownerById,
-  'stats/attendance': owner,
+  'stats/attendance': ownerById,
   'stats/club/bands': owner,
   'stats/drills': owner,
   'stats/insight': ownerById,
   'stats/level': owner,
-  'stats/partners': owner,
+  'stats/partners': ownerById,
   'kudos/eligible': { kind: 'authed', helper: 'requireGroupMember' },
   notifications: { kind: 'gated' },
   'groups/mine': { kind: 'authed', helper: 'verifyMemberAuth' },
   // The caller's OWN asks to join (docs/plans/one-way-in.md, step 4): read by a
   // signed-in account that may be in no club yet, through its own pointer.
-  'groups/ask': { kind: 'authed', helper: 'verifyLiveMemberAuth' },
+  'groups/ask': { kind: 'authed', helper: 'verifyLiveAccountAuth' },
   'groups/current': { kind: 'authed', helper: 'requireGroupMember' },
   // The home-screen widget's bearer pass (docs/plans/native-widgets.md), re-read against the membership.
   widget: { kind: 'authed', helper: 'requireWidgetMember' },

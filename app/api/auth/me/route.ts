@@ -39,7 +39,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { readLiveMemberSession } from '@/lib/auth';
+import { readLiveAccountSession } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
   // create-a-club page read a signed-out phone as signed in and skipped its
   // account step, straight into a POST that refuses the same cookie. A failed
   // read is UNKNOWN, like a throttle — never "signed out".
-  const live = await readLiveMemberSession(req);
+  const live = await readLiveAccountSession(req);
   if (live.status === 'unknown') return NextResponse.json({ signedIn: null, name: null });
   if (live.status === 'none') return NextResponse.json({ signedIn: false, name: null });
 

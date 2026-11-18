@@ -87,7 +87,7 @@ export default function PinInput({
                 height: 22,
                 width: 24,
                 flexShrink: 0,
-                animation: 'baddicon-pop 320ms var(--ease-spring) both',
+                animation: 'baddicon-pop var(--duration-pop) var(--ease-spring) both',
               }}
             />
           ))}

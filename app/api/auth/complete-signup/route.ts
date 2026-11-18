@@ -156,7 +156,8 @@ export async function POST(req: NextRequest) {
       active: true,
       createdAt: new Date().toISOString(),
       ...(pending.provider === 'email' ? {} : { linkedProviders: [pending.provider] }),
-      ...(claimEmail ? { email: claimEmail, emailVerified: true } : {}),
+      // A code or a provider proved the mailbox by signing in through it.
+      ...(claimEmail ? { email: claimEmail, emailVerified: true, mailboxProven: true } : {}),
       // In no club until an organiser lets it in or it makes one (step 6's cleanup).
       noClubSince: new Date().toISOString(),
     };

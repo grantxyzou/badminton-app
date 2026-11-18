@@ -238,7 +238,7 @@ export default function DatePicker({ value, onChange, placeholder = 'Date' }: Pr
                 fontSize: '0.72rem',
                 fontWeight: isSelected ? 700 : 400,
                 cursor: 'pointer',
-                transition: 'background 0.1s',
+                transition: 'background var(--duration-press)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',

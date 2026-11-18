@@ -56,7 +56,7 @@ export default function DemoMode({ onClose }: Props) {
           right: 16,
           width: 44,
           height: 44,
-          borderRadius: 22,
+          borderRadius: '50%',
           border: '1px solid var(--glass-border)',
           background: 'var(--glass-bg)',
           color: 'var(--text-primary)',

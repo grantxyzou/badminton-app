@@ -20,8 +20,23 @@ import ErrorState from '@/components/primitives/ErrorState';
 import CardSkeleton from '@/components/primitives/CardSkeleton';
 import { ShelfPack } from '@/components/stringing/StringPackImage';
 import type { EarningsMonth, EarningsString, EarningsSummary, WaitingState } from '@/lib/stringingEarnings';
+import { comparable, periodsOf, windowAround, type EarningsPeriod, type Grain } from '@/lib/earningsPeriods';
 
 export type EarningsData = EarningsSummary & { now: string };
+
+/**
+ * Which period the page shows, and so which the bench's line names (Grant,
+ * 2026-11-18: "the line should follow the chosen period"). Held by the bench,
+ * which outlives the page. A KEY, not an index: a refetch that adds a month
+ * must not move the choice. `null` is the newest, so "now" stays now.
+ */
+export interface EarningsPick { grain: Grain; key: string | null }
+export const NEWEST: EarningsPick = { grain: 'month', key: null };
+
+function pickIndex(periods: readonly EarningsPeriod[], key: string | null): number {
+  const found = key === null ? -1 : periods.findIndex((p) => p.key === key);
+  return found === -1 ? periods.length - 1 : found;
+}
 
 const money = (cents: number) => fmtMoney(Math.round(cents) / 100);
 const DAY_MS = 86_400_000;
@@ -32,14 +47,17 @@ function monthName(month: string, locale: string, style: 'long' | 'short'): stri
   return new Intl.DateTimeFormat(locale, { month: style, timeZone: 'UTC' }).format(new Date(`${month}-15T12:00:00Z`));
 }
 
-/** The y-axis top: the smallest of 1, 2, 3, 5 × 10ⁿ dollars, times three ticks, that holds `max`. */
+/** Round tick steps: a step this many times a power of ten. Fine enough that
+ *  the tallest column fills most of the plot ($308 tops out at $360, not $600). */
+const STEPS = [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10];
+/** The y-axis top: three equal round ticks that hold `max`. */
 export function axisTop(maxCents: number): number {
   // Never under $30, so an empty window still has a readable axis.
   const max = Math.max(30, maxCents / 100);
   const raw = max / 3;
   const mag = 10 ** Math.floor(Math.log10(raw));
-  const step = [1, 2, 3, 5, 10].map((m) => m * mag).find((s) => s >= raw) ?? 10 * mag;
-  return step * 3 * 100;
+  const step = STEPS.map((m) => m * mag).find((s) => s >= raw - 1e-9) ?? 10 * mag;
+  return Math.round(step * 3 * 100);
 }
 
 type PileKey = 'collected' | 'owed' | 'unbilled';
@@ -49,23 +67,59 @@ const PILES: Array<{ key: PileKey; field: 'collectedCents' | 'owedCents' | 'notI
   { key: 'unbilled', field: 'notInvoicedCents', name: 'pileUnbilled' },
 ];
 
-function useMonthLabel() {
+/** A period's name: long for the stepper ("November 2026", "Q4 2026 so far"),
+ *  short for a column and a comparison ("Nov", "Q3 ’26", "2025"). */
+function usePeriodLabel() {
   const t = useTranslations('admin.stringing.earnings');
   const locale = useLocale();
-  return (month: string, current: boolean) => (current ? t('soFar', { month: monthName(month, locale, 'long') }) : monthName(month, locale, 'long'));
+  return (p: EarningsPeriod, style: 'long' | 'short'): string => {
+    let name: string;
+    if (p.grain === 'month') {
+      name = style === 'long'
+        ? new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${p.key}-15T12:00:00Z`))
+        : monthName(p.key, locale, 'short');
+    } else if (p.grain === 'quarter') {
+      name = style === 'long' ? t('quarter', { q: p.part, year: p.year }) : t('quarterShort', { q: p.part, yy: String(p.year).slice(2) });
+    } else {
+      name = String(p.year);
+    }
+    return style === 'long' && p.current ? t('soFar', { month: name }) : name;
+  };
 }
+
+function useSpanLabel() {
+  const locale = useLocale();
+  return (months: EarningsMonth[], withYear: boolean): string => {
+    if (months.length === 0) return '';
+    const name = (m: string) => monthName(m, locale, 'short');
+    const first = months[0].month, end = months[months.length - 1].month;
+    const span = first === end ? name(first) : `${name(first)}–${name(end)}`;
+    return withYear ? `${span} ’${end.slice(2, 4)}` : span;
+  };
+}
+
+const GRAINS: Array<{ grain: Grain; name: 'grainMonth' | 'grainQuarter' | 'grainYear'; title: 'monthsTitle' | 'quartersTitle' | 'yearsTitle' }> = [
+  { grain: 'month', name: 'grainMonth', title: 'monthsTitle' },
+  { grain: 'quarter', name: 'grainQuarter', title: 'quartersTitle' },
+  { grain: 'year', name: 'grainYear', title: 'yearsTitle' },
+];
+/** Columns the chart shows around the chosen period. */
+const CHART_PERIODS = 6;
 
 // ── The line on the bench ──────────────────────────────────────────────────
 
-export function EarningsLine({ data, error, onOpen, onRetry }: {
+export function EarningsLine({ data, error, pick = NEWEST, onOpen, onRetry }: {
   data: EarningsData | null;
   error: boolean;
+  /** The period chosen on the page; the line names the same one. */
+  pick?: EarningsPick;
   onOpen: () => void;
   onRetry: () => void;
 }) {
   const t = useTranslations('admin.stringing.earnings');
   const tBench = useTranslations('admin.stringing');
-  const label = useMonthLabel();
+  const label = usePeriodLabel();
+  const periods = useMemo(() => (data ? periodsOf(data.months, pick.grain) : []), [data, pick.grain]);
   if (error) {
     return (
       <div className="glass-card">
@@ -76,9 +130,10 @@ export function EarningsLine({ data, error, onOpen, onRetry }: {
       </div>
     );
   }
-  if (!data) return <CardSkeleton height={84} />;
-  const m = data.months[data.months.length - 1];
-  const month = label(m.month, true);
+  if (!data || periods.length === 0) return <CardSkeleton height={84} />;
+  const period = periods[pickIndex(periods, pick.key)];
+  const m = period.total;
+  const month = label(period, 'long');
   return (
     <button
       type="button"
@@ -90,7 +145,7 @@ export function EarningsLine({ data, error, onOpen, onRetry }: {
       <span className="earn-line-body">
         <span className="section-label">{month}</span>
         {m.jobs === 0 ? (
-          <span className="fs-md" style={{ color: 'var(--text-secondary)' }}>{t('lineEmpty')}</span>
+          <span className="fs-md" style={{ color: 'var(--text-secondary)' }}>{period.current ? t('lineEmpty') : t('lineNone')}</span>
         ) : (
           <>
             <span style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)' }}>
@@ -113,10 +168,24 @@ export function EarningsLine({ data, error, onOpen, onRetry }: {
 
 // ── The page ───────────────────────────────────────────────────────────────
 
-export default function StringingEarningsPage({ data, error, onRetry }: { data: EarningsData | null; error: boolean; onRetry: () => void }) {
+export default function StringingEarningsPage({ data, error, onRetry, pick: held, onPick }: {
+  data: EarningsData | null;
+  error: boolean;
+  onRetry: () => void;
+  /** Held by the bench so its line follows; the page keeps its own when not. */
+  pick?: EarningsPick;
+  onPick?: (pick: EarningsPick) => void;
+}) {
   const t = useTranslations('admin.stringing.earnings');
   const tBench = useTranslations('admin.stringing');
-  const [picked, setPicked] = useState<number | null>(null);
+  // Month, Quarter or Year, then which one (canvas option A, Grant 2026-11-18).
+  const [own, setOwn] = useState<EarningsPick>(NEWEST);
+  const pick = held ?? own;
+  const choose = (next: EarningsPick) => { setOwn(next); onPick?.(next); };
+  const grain = pick.grain;
+  const label = usePeriodLabel();
+  const spanLabel = useSpanLabel();
+  const periods = useMemo(() => (data ? periodsOf(data.months, grain) : []), [data, grain]);
   if (error) {
     return (
       <div className="glass-card">
@@ -128,36 +197,75 @@ export default function StringingEarningsPage({ data, error, onRetry }: { data: 
     );
   }
   if (!data) return (<><CardSkeleton height={110} /><CardSkeleton height={120} /><CardSkeleton height={220} /></>);
-  const last = data.months.length - 1;
-  const i = picked ?? last;
-  const cur = data.months[i];
-  const prev = i > 0 ? data.months[i - 1] : null;
+  const last = periods.length - 1;
+  const i = pickIndex(periods, pick.key);
+  // The newest is held as `null`, so a month that turns over moves with it.
+  const setPicked = (j: number) => choose({ grain, key: j === last ? null : periods[j].key });
+  const period = periods[i];
+  const cur = period.total;
+  const prev = i > 0 ? periods[i - 1] : null;
+  const shown = windowAround(periods.length, i, CHART_PERIODS);
+  const against = prev ? comparable(period, prev) : null;
+  // Same months only: name them ("Jul–Aug", "Mar–Nov ’25"), so the tile says
+  // what it is set against.
+  const againstLabel = !prev || !against ? ''
+    : against.partial ? spanLabel(against.months, prev.grain === 'year' || prev.year !== period.year)
+    : label(prev, 'short');
+  const title = GRAINS.find((g) => g.grain === grain)!.title;
   return (
     <>
-      <Tiles cur={cur} prev={prev} />
+      <div className="segment-control flex" role="tablist" aria-label={t('grainAria')}>
+        {GRAINS.map((g) => (
+          <button
+            key={g.grain}
+            type="button"
+            role="tab"
+            aria-selected={grain === g.grain}
+            onClick={() => choose({ grain: g.grain, key: null })}
+            className={`flex-1 flex items-center justify-center fs-sm rounded-full ${grain === g.grain ? 'segment-tab-active' : 'segment-tab-inactive'}`}
+          >
+            {t(g.name)}
+          </button>
+        ))}
+      </div>
+      <div className="earn-stepper">
+        <button type="button" className="earn-arrow" aria-label={t('earlier')} disabled={i === 0} onClick={() => setPicked(i - 1)}>
+          <span className="material-icons icon-lg" aria-hidden="true">chevron_left</span>
+        </button>
+        <span className="bpm-h3 earn-period" aria-live="polite" data-testid="earn-period">{label(period, 'long')}</span>
+        <button type="button" className="earn-arrow" aria-label={t('later')} disabled={i === last} onClick={() => setPicked(i + 1)}>
+          <span className="material-icons icon-lg" aria-hidden="true">chevron_right</span>
+        </button>
+      </div>
+      <Tiles cur={cur} prevTotal={against && against.months.length > 0 ? against.total : null} prevLabel={againstLabel} />
       <WhereItIs cur={cur} />
-      <ByMonth months={data.months} selected={i} last={last} onPick={setPicked} />
+      <ByPeriod
+        title={t(title)}
+        periods={periods.slice(shown.from, shown.to)}
+        selected={i - shown.from}
+        onPick={(j) => setPicked(shown.from + j)}
+      />
       <Waiting cur={cur} now={data.now} />
       <AfterCost cur={cur} />
-      <ByString cur={cur} strings={data.strings} />
+      {/* Keyed by period: a simulated price belongs to the period it was tried on. */}
+      <ByString key={period.key} cur={cur} strings={data.strings} />
     </>
   );
 }
 
-function Tiles({ cur, prev }: { cur: EarningsMonth; prev: EarningsMonth | null }) {
+function Tiles({ cur, prevTotal, prevLabel }: { cur: EarningsMonth; prevTotal: EarningsMonth | null; prevLabel: string }) {
   const t = useTranslations('admin.stringing.earnings');
-  const locale = useLocale();
   const kept = cur.workCents - cur.stringCostCents;
-  const delta = prev ? cur.workCents - prev.workCents : null;
+  const delta = prevTotal ? cur.workCents - prevTotal.workCents : null;
   return (
     <div className="earn-tiles">
       <div className="glass-card earn-tile">
         <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{t('workDone')}</span>
         <span className="earn-val">{money(cur.workCents)}</span>
-        {delta !== null && prev ? (
+        {delta !== null ? (
           <span className={`fs-sm ${delta >= 0 ? 'earn-up' : 'earn-down'}`}>
             <span aria-hidden="true">{delta >= 0 ? '▲' : '▼'} </span>
-            {t('vs', { amount: money(Math.abs(delta)), month: monthName(prev.month, locale, 'short') })}
+            {t('vs', { amount: money(Math.abs(delta)), month: prevLabel })}
           </span>
         ) : (
           <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{t('jobs', { n: cur.jobs })}</span>
@@ -214,15 +322,14 @@ function WhereItIs({ cur }: { cur: EarningsMonth }) {
   );
 }
 
-function ByMonth({ months, selected, last, onPick }: { months: EarningsMonth[]; selected: number; last: number; onPick: (i: number) => void }) {
+function ByPeriod({ title, periods, selected, onPick }: { title: string; periods: EarningsPeriod[]; selected: number; onPick: (j: number) => void }) {
   const t = useTranslations('admin.stringing.earnings');
-  const locale = useLocale();
-  const label = useMonthLabel();
-  const top = axisTop(Math.max(...months.map((m) => m.workCents)));
+  const label = usePeriodLabel();
+  const top = axisTop(Math.max(...periods.map((p) => p.total.workCents)));
   const ticks = [3, 2, 1, 0].map((k) => String(Math.round((top / 100) * (k / 3))));
   return (
-    <section className="glass-card p-5 flex flex-col gap-3" aria-label={t('monthsTitle')}>
-      <h3 className="section-label" style={{ margin: 0 }}>{t('monthsTitle')}</h3>
+    <section className="glass-card p-5 flex flex-col gap-3" aria-label={title}>
+      <h3 className="section-label" style={{ margin: 0 }}>{title}</h3>
       <div className="earn-cols">
         <div className="earn-ticks" aria-hidden="true">
           {ticks.map((tick) => <span key={tick}>{tick}</span>)}
@@ -230,18 +337,19 @@ function ByMonth({ months, selected, last, onPick }: { months: EarningsMonth[]; 
         <div className="earn-plot">
           <div className="earn-grid" aria-hidden="true"><span /><span /><span /><span /></div>
           <div className="earn-col-row">
-            {months.map((m, j) => {
+            {periods.map((p, j) => {
+              const m = p.total;
               const on = j === selected;
               // Top of the stack first: Not invoiced, Owed, Collected on the baseline.
               const stack = [...PILES].reverse().filter((p) => m[p.field] > 0);
               return (
                 <button
-                  key={m.month}
+                  key={p.key}
                   type="button"
                   className="earn-col"
                   aria-pressed={on}
                   aria-label={t('colAria', {
-                    month: label(m.month, j === last), total: money(m.workCents),
+                    month: label(p, 'long'), total: money(m.workCents),
                     collected: money(m.collectedCents), owed: money(m.owedCents), unbilled: money(m.notInvoicedCents),
                   })}
                   onClick={() => onPick(j)}
@@ -252,7 +360,7 @@ function ByMonth({ months, selected, last, onPick }: { months: EarningsMonth[]; 
                       <span key={p.key} className={on ? `earn-fill-${p.key}` : 'earn-fill-other'} style={{ flex: m[p.field] }} />
                     ))}
                   </span>
-                  <span className="earn-col-month">{monthName(m.month, locale, 'short')}</span>
+                  <span className="earn-col-month">{label(p, 'short')}</span>
                 </button>
               );
             })}

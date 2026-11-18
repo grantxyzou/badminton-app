@@ -25,7 +25,7 @@ import type { LedgerEntry } from './types';
 
 export interface MoneyView {
   /** Charges net of voids, cents, in window. */
-  income: { sessions: number; stringing: number; total: number };
+  income: { sessions: number; stringing: number; /** Kept from over-payments: received above a bill lowered after it was paid. */ overpaid: number; total: number };
   /** Payments net of voids, cents, in window, by how they arrived. */
   collected: { etransferAuto: number; etransferAdmin: number; manual: number; credit: number; card: number; total: number };
   /** Absorb covers net of voids, cents, in window — what the admin ate. */
@@ -39,7 +39,7 @@ export interface MoneyView {
 }
 
 const empty = (): MoneyView => ({
-  income: { sessions: 0, stringing: 0, total: 0 },
+  income: { sessions: 0, stringing: 0, overpaid: 0, total: 0 },
   collected: { etransferAuto: 0, etransferAdmin: 0, manual: 0, credit: 0, card: 0, total: 0 },
   covered: 0,
   outlay: { courts: 0, shuttles: 0, strings: 0, other: 0, total: 0 },
@@ -133,6 +133,8 @@ export function summarizeLedger(
         } else v.collected.manual += got;
       } else if (kind === 'cover') {
         v.covered += -cents;
+      } else if (kind === 'overpaid') {
+        v.income.overpaid += cents;
       }
       continue;
     }
@@ -149,7 +151,7 @@ export function summarizeLedger(
     }
   }
 
-  v.income.total = v.income.sessions + v.income.stringing;
+  v.income.total = v.income.sessions + v.income.stringing + v.income.overpaid;
   v.collected.total = v.collected.etransferAuto + v.collected.etransferAdmin + v.collected.manual + v.collected.credit + v.collected.card;
   v.outlay.total = v.outlay.courts + v.outlay.shuttles + v.outlay.strings + v.outlay.other;
   v.net = v.collected.total - v.outlay.total;

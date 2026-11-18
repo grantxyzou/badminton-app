@@ -434,7 +434,9 @@ export type LiveCaller = { status: 'live'; memberId: string } | { status: 'none'
  * `unknown`, so the route can answer 503 rather than claim nobody is signed in.
  */
 export async function liveCallerMemberId(req: NextRequest): Promise<LiveCaller> {
-  const live = await readLiveMemberSession(req);
+  // The ACCOUNT check: its one caller (`auth/nudge`) writes on the person, and
+  // someone in no club is still a person with an account to keep.
+  const live = await readLiveAccountSession(req);
   if (live.status === 'live') return { status: 'live', memberId: live.session.memberId };
   if (live.status === 'unknown') return { status: 'unknown' };
   const admin = await isAdminAuthedWithMember(req);
@@ -617,25 +619,46 @@ export type LiveMemberSession =
   | { status: 'unknown' };
 
 /**
- * `verifyMemberAuth` plus the "Sign out everywhere" cutoff, for a route that
- * acts AS the member without needing an ACTIVE membership in the claimed club
- * (docs/plans/claim-your-name.md, Decisions). Same identity as the cookie —
- * its id, name and group claim — and one point read more: the membership the
- * cookie names (groups on) or the Member (groups off).
+ * THE MEMBER CHECK FOR A ROUTE THAT ACTS INSIDE THE CLUB: the cookie's
+ * identity, the "Sign out everywhere" cutoff, AND an active place on the
+ * roster of the club the cookie names (groups on: the membership is
+ * `active`; groups off: the Member is). One point read: the membership the
+ * cookie names, or the Member.
  *
- * Deliberately NOT `requireGroupMember`: a person half-way through "Create a
- * club", or removed from the club their cookie names, is signed in and in no
- * club, and `POST /api/groups`, `join` and `switch` exist for exactly them. So
- * a missing or removed membership is not a refusal here — only a session
- * minted before that membership's `sessionsNotBefore` is, whatever its status,
- * or the club picker would hand a signed-out phone a fresh cookie for the club
- * that signed it out. Nothing else is decided here: whether the account is
- * still active is each route's own read, as it was under `verifyMemberAuth`.
- *
- * `__tests__/member-session-cutoff-coverage.test.ts` classifies every caller
- * of the signature-only check against this one.
+ * DENY BY DEFAULT (Claude Security, gap 1 of the 2026-11-17 scan; OWASP's
+ * "Except for public resources, deny by default"). This used to check the
+ * cutoff alone, so an account in no club, whose cookie still names BPM, and a
+ * member REMOVED from the club, holding a 30-day cookie, both passed, and
+ * every route that took it for "a member here" let them act inside the club
+ * (game results, F5; drill ticks, F13). Now the everyday check is the strict
+ * one, and a route that must work for someone in no club says so by calling
+ * `readLiveAccountSession` / `verifyLiveAccountAuth` instead, each caller
+ * listed with its reason in `__tests__/account-check-coverage.test.ts`.
  */
 export async function readLiveMemberSession(req: NextRequest): Promise<LiveMemberSession> {
+  return readLiveSession(req, true);
+}
+
+/**
+ * THE ACCOUNT CHECK: the cookie's identity and the "Sign out everywhere"
+ * cutoff, with NO roster requirement. Only for what a person in no club must
+ * still do: create, ask to join or switch a club, finish a sign-in, manage
+ * their own account, delete it. A person half-way through "Create a club", or
+ * removed from the club their cookie names, is signed in and in no club.
+ *
+ * A missing or removed membership is not a refusal here; a session minted
+ * before that membership's `sessionsNotBefore` is, whatever its status, or the
+ * club picker would hand a signed-out phone a fresh cookie for the club that
+ * signed it out. Whether the account is still active is each route's own read.
+ *
+ * Every caller is listed in `__tests__/account-check-coverage.test.ts` with
+ * why it may act for someone in no club; a new one fails the build.
+ */
+export async function readLiveAccountSession(req: NextRequest): Promise<LiveMemberSession> {
+  return readLiveSession(req, false);
+}
+
+async function readLiveSession(req: NextRequest, roster: boolean): Promise<LiveMemberSession> {
   const cookie = req.cookies.get(MEMBER_COOKIE_NAME)?.value;
   if (!cookie) return { status: 'none' };
   const payload = verifyToken(cookie, 'member');
@@ -643,22 +666,35 @@ export async function readLiveMemberSession(req: NextRequest): Promise<LiveMembe
   const session = sessionOf(payload);
   try {
     let notBefore: string | undefined;
+    let onRoster: boolean;
     if (groupsOn()) {
-      notBefore = (await readMembership(session.groupId, session.memberId))?.sessionsNotBefore;
+      const membership = await readMembership(session.groupId, session.memberId);
+      notBefore = membership?.sessionsNotBefore;
+      onRoster = membership?.status === 'active';
     } else {
       const { resource } = await getContainer('members').item(session.memberId, session.memberId).read<Member>();
       notBefore = resource?.sessionsNotBefore;
+      onRoster = resource?.active === true;
     }
-    return sessionRevoked(payload.iat, notBefore) ? { status: 'none' } : { status: 'live', session };
+    if (sessionRevoked(payload.iat, notBefore)) return { status: 'none' };
+    if (roster && !onRoster) return { status: 'none' };
+    return { status: 'live', session };
   } catch {
     return { status: 'unknown' };
   }
 }
 
 /** `readLiveMemberSession` for a caller with no "unknown" to report: a failed
- *  re-read refuses, as `activeMemberFor` does. */
+ *  re-read refuses, as `activeMemberFor` does. On the club's roster. */
 export async function verifyLiveMemberAuth(req: NextRequest): Promise<MemberSession | null> {
   const live = await readLiveMemberSession(req);
+  return live.status === 'live' ? live.session : null;
+}
+
+/** `readLiveAccountSession` with a failed re-read refusing. No roster needed:
+ *  for the no-club routes only (see `readLiveAccountSession`). */
+export async function verifyLiveAccountAuth(req: NextRequest): Promise<MemberSession | null> {
+  const live = await readLiveAccountSession(req);
   return live.status === 'live' ? live.session : null;
 }
 

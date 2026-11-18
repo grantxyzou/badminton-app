@@ -9,6 +9,7 @@ import {
   makeRequest,
   makeAdminRequest,
   memberCookieValue,
+  ensureSeededMember,
 } from './helpers';
 import type { StringingJob } from '../lib/types';
 
@@ -26,6 +27,9 @@ const FLAG = 'NEXT_PUBLIC_FLAG_STRINGING';
 const flagBefore = process.env[FLAG];
 
 function memberReq(method: string, url: string, name: string, body?: Record<string, unknown>) {
+  // A cookie needs a member on the roster behind it (the member check denies by default).
+  const known = ((getStore()['members'] ?? []) as Array<{ name?: string }>).some((m) => String(m.name ?? '').toLowerCase() === name.toLowerCase());
+  if (!known) ensureSeededMember(`member-${name.toLowerCase()}`, name);
   return makeRequest(method, url, body, {
     Cookie: `member_session=${memberCookieValue(name)}`,
   });

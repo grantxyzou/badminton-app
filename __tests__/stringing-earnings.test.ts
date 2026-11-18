@@ -36,8 +36,18 @@ const fold = (jobs: EarningsJob[], purchases: StringPurchase[] = [purchase()], o
 const nov = (s: ReturnType<typeof fold>) => s.months.find((m) => m.month === '2026-11')!;
 
 describe('summarizeEarnings', () => {
-  it('has the last four months, oldest first, every one present', () => {
-    expect(fold([]).months.map((m) => m.month)).toEqual(['2026-08', '2026-09', '2026-10', '2026-11']);
+  it('runs from the month of the first counted job to now, every month present', () => {
+    expect(fold([]).months.map((m) => m.month)).toEqual(['2026-11']);
+    const s = fold([job({ strungAt: '2026-08-10T20:00:00Z' }), job()]);
+    expect(s.months.map((m) => m.month)).toEqual(['2026-08', '2026-09', '2026-10', '2026-11']);
+    // A racket still on the bench does not stretch the window back.
+    expect(fold([job({ status: 'received', history: [], createdAt: '2025-01-10T20:00:00Z' })]).months).toHaveLength(1);
+  });
+
+  it('never reaches back more than three years', () => {
+    const s = fold([job({ strungAt: '2019-05-10T20:00:00Z' })]);
+    expect(s.months).toHaveLength(36);
+    expect(s.months[0].month).toBe('2023-12');
   });
 
   it('puts each job in exactly one pile', () => {
