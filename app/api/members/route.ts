@@ -19,6 +19,7 @@ import {
   RosterNameTakenError,
 } from '@/lib/groups';
 import { normalizeAvatar } from '@/lib/memberAvatar';
+import { onBehalfRefusal, onBehalfRefused } from '@/lib/onBehalfGuard';
 import { carryRosterRename } from '@/lib/rosterRename';
 
 const groupsOn = () => isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
@@ -165,6 +166,14 @@ export async function PATCH(req: NextRequest) {
       (membership.role === 'owner' || membership.role === 'admin')
     ) {
       return organiserOnly();
+    }
+    // Clearing a PIN is the first step of taking an account over: the next
+    // admin-on-behalf "first PIN" sets one the admin knows. So it carries the
+    // rule for setting one (lib/onBehalfGuard.ts), checked here, before any
+    // write in this handler.
+    if (body.clearPin === true) {
+      const refusal = await onBehalfRefusal(auth, id);
+      if (refusal) return onBehalfRefused(refusal);
     }
 
     const container = getContainer('members');

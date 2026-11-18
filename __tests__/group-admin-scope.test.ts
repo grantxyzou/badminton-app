@@ -207,9 +207,13 @@ describe('reset-access on someone who holds a rank is an organiser\'s call (audi
     resetAccess(makeRequest('POST', 'http://x/api/players/reset-access', { name }, cookies('club-x')));
 
   beforeEach(() => {
-    const store = getStore()['memberships'] as { id: string; role: string }[];
+    const store = getStore()['memberships'] as { id: string; role: string; status: string }[];
     store.find((m) => m.id === `club-x:${ADMIN_MEMBER_ID}`)!.role = 'admin';
     seedMembership('club-x', lin.id, { name: 'Lin', role: 'owner' });
+    // Lin left BPM: these cases are about RANK in one club. Someone still on
+    // another club's roster is refused outright (`other_club`,
+    // __tests__/group-credential-takeover.test.ts).
+    store.find((m) => m.id === `bpm:${lin.id}`)!.status = 'left';
   });
 
   it('an admin cannot reset the organiser', async () => {

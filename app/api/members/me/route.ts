@@ -6,6 +6,7 @@ import { resolveGroupId } from '@/lib/groupContext';
 import { isFlagOn } from '@/lib/flags';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { readMembership } from '@/lib/groups';
+import { onBehalfRefusal, onBehalfRefused } from '@/lib/onBehalfGuard';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { hashPin, verifyPin, FAKE_HASH, BLOCKLISTED_PINS } from '@/lib/recoveryHash';
 import {
@@ -520,11 +521,30 @@ async function handlePatch(req: NextRequest) {
   // in the claimed group passed a string comparison and set that person's
   // first PIN — which the response then hands back a session for. The id is
   // already in hand from the resolve above, so the correct check is free.
+  //
+  // The admin door is for helping someone on THIS club's roster only: not an
+  // organiser unless the admin is one, and nobody on another club's roster
+  // (lib/onBehalfGuard.ts). A first PIN the admin chose is a way into the
+  // whole account, every club included.
+  //
+  // `provedSelf` is what may sign THIS phone in as the member below: a
+  // verified current PIN, their own live cookie, or an admin cookie that is
+  // theirs. An admin setting someone else's first PIN proved nothing of the
+  // kind, and used to leave with that person's session (F4).
+  let provedSelf = hadPin;
   if (!hadPin) {
     const caller = await verifyLiveMemberAuth(req);
     const isSelf = !!caller && caller.memberId === memberId;
-    if (!isSelf && !(await isAdminAuthedWithMember(req)).authed) {
-      return NextResponse.json({ error: 'auth_required' }, { status: 401 });
+    if (isSelf) {
+      provedSelf = true;
+    } else {
+      const admin = await isAdminAuthedWithMember(req);
+      if (!admin.authed) {
+        return NextResponse.json({ error: 'auth_required' }, { status: 401 });
+      }
+      const refusal = await onBehalfRefusal(admin, String(memberId));
+      if (refusal) return onBehalfRefused(refusal);
+      provedSelf = admin.memberId === memberId;
     }
   }
 
@@ -572,7 +592,7 @@ async function handlePatch(req: NextRequest) {
   // (no PIN means nothing to skip). Mirrors the cookie-minting in
   // POST /api/players so a member who sets their PIN in Profile isn't asked
   // for it again on the Home sign-up card.
-  if (!clearPin) {
+  if (!clearPin && provedSelf) {
     setMemberCookie(out, String(member.id), String(member.name), resolveGroupId(req));
   }
   return out;

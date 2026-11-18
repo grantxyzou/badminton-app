@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { onBehalfMessage } from '@/lib/onBehalfMessage';
 import CardHeader from '@/components/primitives/CardHeader';
 import { useOnline } from '@/lib/useOnline';
 import StateCard, { StateLink, PreviewRow } from '@/components/primitives/StateCard';
@@ -60,6 +61,9 @@ export default function AccessRequestsCard({ refreshKey = 0 }: { refreshKey?: nu
   const [organiser, setOrganiser] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  // A "Let them in" the server refused (lib/onBehalfGuard.ts): said beside
+  // that row, not as "couldn't load", because nothing failed to load.
+  const [refused, setRefused] = useState<{ memberId: string; message: string } | null>(null);
 
   const load = useCallback(async () => {
     setLoadError(false);
@@ -87,9 +91,15 @@ export default function AccessRequestsCard({ refreshKey = 0 }: { refreshKey?: nu
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ memberId: r.memberId, requestId: r.requestId, decision }),
       });
+      if (res.status === 403) {
+        const code = ((await res.json().catch(() => null)) as { error?: string } | null)?.error;
+        const message = onBehalfMessage(code);
+        if (message) { setRefused({ memberId: r.memberId, message }); return; }
+      }
       // 409: someone else asked under this name since the list loaded. Not a
       // failure — reloading shows the count, and the approve button goes.
       if (!res.ok && res.status !== 409) throw new Error(`decide ${res.status}`);
+      setRefused(null);
       await load();
     } catch {
       setLoadError(true);
@@ -254,6 +264,9 @@ export default function AccessRequestsCard({ refreshKey = 0 }: { refreshKey?: nu
                   <span className="fs-sm" style={{ display: 'block', color: 'var(--text-muted)' }}>
                     Never signed in
                   </span>
+                )}
+                {refused?.memberId === r.memberId && (
+                  <p className="field-warn" role="alert">{refused.message}</p>
                 )}
               </div>
               {/* No device string, no IP, no location. They would be theatre —
