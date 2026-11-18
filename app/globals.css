@@ -2446,6 +2446,11 @@ html:root .state-link--aside {
   font-size: var(--fs-base);
   font-weight: 400;
   color: var(--text-secondary);
+  /* A little more than a space after the title (the canvas, 2026-11-18:
+     "a little more spacing"), and never broken across two lines. */
+  display: inline-block;
+  margin-inline-start: var(--space-3);
+  white-space: nowrap;
 }
 html:root .state-link:focus-visible {
   outline: 2px solid var(--tone-ink, var(--accent));

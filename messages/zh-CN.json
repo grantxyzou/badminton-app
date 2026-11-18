@@ -710,6 +710,7 @@
       "yourGuest": "{name}（你的朋友）",
       "statusIn": "已报名",
       "statusWaiting": "候补",
+      "statusWaitingAt": "候补第 {position} 位",
       "statusWaitingFor": "等到 {when}",
       "namePlaceholder": "朋友的名字",
       "add": "添加",

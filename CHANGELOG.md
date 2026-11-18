@@ -8,6 +8,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Your guest's place on the waitlist (2026-11-18)
+
+- **A waiting guest shows their place in line** under their name, inside your "you have signed up" box: "Jenny, your guest" over "Waitlist #2" (Grant, on the canvas: "waitlist #1"). A guest with a spot says "Coming".
+- **"Add to calendar" sits a little further from "…for this week!"** and never breaks across two lines.
+
 ## Security fixes: the smaller findings (2026-11-18)
 
 From the Claude Security scan of the server code (LOW findings marked "fix now").

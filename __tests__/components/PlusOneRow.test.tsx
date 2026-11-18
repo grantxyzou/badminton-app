@@ -58,9 +58,9 @@ describe('PlusOneRow', () => {
   it('splits into the guest lines (for the banner) and the add button', () => {
     show({ part: 'guests', guests: [guest('g1', 'Jenny', { waitlisted: true }), guest('g2', 'Alex')], canAdd: true });
     expect(screen.getByText('Jenny, your guest')).toBeDefined();
-    expect(screen.getByText(/waitlist/)).toBeDefined();
+    expect(screen.getByText('On the waitlist')).toBeDefined();
     expect(screen.getByText('Alex, your guest')).toBeDefined();
-    expect(screen.getByText(/coming/)).toBeDefined();
+    expect(screen.getByText('Coming')).toBeDefined();
     expect(screen.getByRole('button', { name: 'Remove Jenny' })).toBeDefined();
     // The guest half never offers another.
     expect(screen.queryByRole('button', { name: /Bring/ })).toBeNull();
@@ -74,4 +74,15 @@ describe('PlusOneRow', () => {
     const { container } = show({ part: 'guests', guests: [], canAdd: true });
     expect(container.textContent).toBe('');
   });
+
+  it('says a waiting guest\'s place in line when it is known (the canvas: "waitlist #1")', () => {
+    show({ part: 'guests', guests: [guest('g1', 'Jenny', { waitlisted: true })], waitPositions: { g1: 1 } });
+    expect(screen.getByText('Waitlist #1')).toBeDefined();
+    cleanup();
+    // No position known: the plain word, never "#0" or "#undefined".
+    show({ part: 'guests', guests: [guest('g1', 'Jenny', { waitlisted: true })] });
+    expect(screen.queryByText(/#/)).toBeNull();
+    expect(screen.getByText('On the waitlist')).toBeDefined();
+  });
 });
+
