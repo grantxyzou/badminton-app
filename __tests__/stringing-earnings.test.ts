@@ -1,0 +1,107 @@
+import { describe, it, expect } from 'vitest';
+import { summarizeStringStock } from '@/lib/stringStock';
+import { summarizeEarnings, type EarningsJob } from '@/lib/stringingEarnings';
+import type { StringPurchase } from '@/lib/types';
+
+/**
+ * The earnings fold (docs/plans/stringing-earnings.md): the month a job's
+ * string went in, the three piles, and the string cost off the shelf's own
+ * match. NOW is 18 November 2026, Vancouver.
+ */
+
+const NOW = new Date('2026-11-18T20:00:00Z');
+let n = 0;
+const purchase = (o: Partial<StringPurchase> = {}): StringPurchase => ({
+  id: `sp-${String(++n).padStart(16, '0')}`, kind: 'stringPurchase', label: 'BG80', unit: 'reel', units: 1, metresPerUnit: 200,
+  totalCostCents: 20000, date: '2026-10-01', createdAt: '2026-10-01T00:00:00Z', createdBy: 'a', ...o,
+});
+const job = (o: Partial<EarningsJob> & { strungAt?: string } = {}): EarningsJob => {
+  const { strungAt = '2026-11-10T03:00:00Z', ...rest } = o;
+  const id = rest.id ?? `j${++n}`;
+  return {
+    id, jobNo: `J-${id}`, memberName: 'Lin', status: 'picked_up', priceCents: 3000, paidAt: null,
+    stringLabel: 'BG80', createdAt: '2026-11-01T00:00:00Z',
+    history: [{ status: 'received', at: '2026-11-01T00:00:00Z' }, { status: 'strung', at: strungAt }, { status: 'ready', at: strungAt }],
+    ...rest,
+  };
+};
+
+const fold = (jobs: EarningsJob[], purchases: StringPurchase[] = [purchase()], offered = ['BG80']) => {
+  const stock = summarizeStringStock({
+    offered, links: {}, purchases, catalog: new Map(),
+    jobs: jobs.map((j) => ({ id: j.id, stringLabel: j.stringLabel, status: j.status, archivedAt: undefined, ownString: j.ownString })),
+  });
+  return summarizeEarnings({ jobs, stock, now: NOW });
+};
+const nov = (s: ReturnType<typeof fold>) => s.months.find((m) => m.month === '2026-11')!;
+
+describe('summarizeEarnings', () => {
+  it('has the last four months, oldest first, every one present', () => {
+    expect(fold([]).months.map((m) => m.month)).toEqual(['2026-08', '2026-09', '2026-10', '2026-11']);
+  });
+
+  it('puts each job in exactly one pile', () => {
+    const s = fold([
+      job({ paidAt: '2026-11-12T00:00:00Z' }),
+      job({ priceCents: 2800 }), // Ready, unpaid, bills at Ready: owed
+      job({ priceCents: 3200, billOn: 'invoice', invoice: { sentAt: '2026-11-14T00:00:00Z' } }),
+      job({ priceCents: 2500, billOn: 'invoice' }), // not sent: not invoiced
+      job({ priceCents: 2000, status: 'strung', history: [{ status: 'strung', at: '2026-11-15T00:00:00Z' }] }),
+    ]);
+    const m = nov(s);
+    expect(m).toMatchObject({ jobs: 5, workCents: 13500, collectedCents: 3000, owedCents: 6000, notInvoicedCents: 4500 });
+    expect(m.collectedCents + m.owedCents + m.notInvoicedCents).toBe(m.workCents);
+  });
+
+  it('counts a job in the month its string went in, in Vancouver', () => {
+    // 1 Nov 03:00 UTC is still 31 October in Vancouver.
+    const s = fold([job({ strungAt: '2026-11-01T03:00:00Z' }), job({ strungAt: '2026-11-02T03:00:00Z' })]);
+    expect(s.months.find((m) => m.month === '2026-10')!.jobs).toBe(1);
+    expect(nov(s).jobs).toBe(1);
+  });
+
+  it('leaves out a racket still on the bench and a withdrawn unpaid job; keeps a withdrawn paid one', () => {
+    const s = fold([
+      job({ status: 'received', history: [] }),
+      job({ cancelledAt: '2026-11-11T00:00:00Z' }),
+      job({ cancelledAt: '2026-11-11T00:00:00Z', paidAt: '2026-11-11T00:00:00Z' }),
+    ]);
+    expect(nov(s)).toMatchObject({ jobs: 1, workCents: 3000, collectedCents: 3000 });
+  });
+
+  it('prices the string off the shelf line the stock matched, and own string at nothing', () => {
+    // $200 for 200 m at 10 m a set: $10 a set. The job says "Yonex BG80"
+    // in no way the shelf knows, so it is its own row at no cost.
+    const s = fold([job(), job({ stringLabel: 'bg80 ' }), job({ ownString: true, priceCents: 2000 }), job({ stringLabel: 'Aerobite' })]);
+    const m = nov(s);
+    expect(m.stringCostCents).toBe(2000);
+    expect(m.sets).toBe(3);
+    const by = Object.fromEntries(m.strings.map((r) => [r.key, r]));
+    expect(by['s:BG80']).toMatchObject({ jobs: 2, sets: 2, workCents: 6000, costCents: 2000 });
+    expect(by.own).toMatchObject({ jobs: 1, sets: 0, costCents: 0 });
+    expect(by['x:aerobite']).toMatchObject({ jobs: 1, sets: 1, costCents: 0 });
+    const bg80 = s.strings.find((x) => x.key === 's:BG80')!;
+    expect(bg80).toMatchObject({ costPerSetCents: 1000, purchasedCostCents: 20000, allTimeWorkCents: 6000, remainingSets: 18 });
+  });
+
+  it('lists a shelf string nobody strung this month, at nothing', () => {
+    const s = fold([job()], [purchase(), purchase({ label: 'BG65', totalCostCents: 14000 })], ['BG80', 'BG65']);
+    expect(s.strings.map((x) => x.key)).toEqual(['s:BG80', 's:BG65']);
+    expect(nov(s).strings.map((r) => r.key)).toEqual(['s:BG80']);
+  });
+
+  it('says why each unpaid job is waiting, oldest first', () => {
+    const s = fold([
+      job({ id: 'inv', billOn: 'invoice', invoice: { sentAt: '2026-11-08T00:00:00Z', lastSentAt: '2026-11-14T00:00:00Z' } }),
+      job({ id: 'ready', strungAt: '2026-11-05T00:00:00Z' }),
+      job({ id: 'unsent', billOn: 'invoice', strungAt: '2026-11-15T00:00:00Z' }),
+      job({ id: 'paid', paidAt: '2026-11-12T00:00:00Z' }),
+      job({ id: 'free', priceCents: null }),
+    ]);
+    expect(nov(s).waiting.map((w) => [w.jobId, w.state, w.since])).toEqual([
+      ['ready', 'owed', '2026-11-05T00:00:00Z'],
+      ['inv', 'invoiced', '2026-11-14T00:00:00Z'],
+      ['unsent', 'not_invoiced', '2026-11-15T00:00:00Z'],
+    ]);
+  });
+});

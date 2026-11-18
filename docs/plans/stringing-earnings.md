@@ -1,0 +1,48 @@
+# Stringing earnings
+
+**Track:** ROADMAP North Star — the stringing service (the bench). Follows `docs/plans/stringing-jobs-list.md` and reads the stock from `docs/plans/string-usage-rate.md`.
+**Status:** in-flight
+**Review on:** 2027-01-15 — after two full months, does Grant open Earnings from the bench, and did "Waiting on payment" lead to a Send invoice or a Mark paid he would otherwise have missed? If nobody opens it, the line on the bench is enough and the page is weight.
+
+## Problem
+
+Grant, 2026-11-17: "on the strining job side, can we pull out how much earning ideate with me first", then "can we add string profit analysis?". On the canvas (String stock page, boards EarnRow, EarnPiles, EarnKept, EarnKeptOpen):
+
+- "Kept what does that mean?" → "after string cost"
+- "there is so many $ amount...."
+- "a lot of the things here can be communicated with data viz. Think finance best practice and data viz design."
+- "When I come here I want to understand how much each string type has made net. I dont care about my price and per string. That calculation can show....... how does use go into strining profit?"
+- "does this update or its an what if?" → "no, call out its a simulation"
+- "go with A" for the shape, then "implement".
+
+The bench showed every job and what each one owed, and nothing added them up: not the month's work, not what came in, not what the string cost.
+
+## Kill criterion
+
+A number on the page disagrees with the bench or the ledger for the same jobs: a collected figure that is not the sum of the paid jobs, an owed figure that is not what `isBillable` says, or a string cost that is not the shelf's cost per set. One wrong total and the page is worse than none.
+
+## Non-goals
+
+- A stringer who is not an admin sees no money here, as everywhere else (`toStringerJob`). Per-stringer pay is not modelled.
+- Saving a price. "Simulate price" is a what-if on the page and writes nothing.
+- Anything off the stringing jobs: sessions, shuttles and gift cards have their own money screens.
+- Tax, fees, time. "After string cost" is the price minus the string that went into the racket, nothing else.
+
+## Decisions
+
+- **Counted by the day the string went in** (`strungAtOf`, the first `strung` in the history), the same day the usage rate counts, so a month's string cost and its work fall in the same month (the mixed-window rule). A job with no such entry (made before the history existed) counts on its `createdAt`. Only jobs in `STRUNG_STATUSES` count: a racket still on the bench is not work done.
+- **Three piles, one reading each.** Collected = `paidAt` set. Owed = `isBillable`. Not invoiced yet = priced, unpaid and not billable (an invoice-billed job not yet sent, or a racket strung and not yet Ready). A withdrawn job counts only if it was paid. An unpriced job counts as a job and adds no money.
+- **The string cost is the shelf's**, never matched again: `summarizeStringStock` now returns `jobLines` (job id → line), and the job's cost is that line's `costPerSetCents`. A job with the player's own string costs nothing and sits under "Own string"; a job whose string matches no shelf line keeps its own label and costs nothing, because the shelf cannot price it.
+- **Payback is the shelf's, all-time**: what was bought for a string against all the work done with it. "N more jobs" divides the gap by the row's price (or the simulated one). It is not per reel: the shelf does not know which reel a set came off.
+- **Admins and organisers only** (`isAdminAuthed`), like the stock read the page sits beside.
+- **Last four months** (`lastMonths(4, now)`), the canvas's window; the current one reads "so far".
+
+## Shape
+
+| Piece | File |
+|---|---|
+| Job → shelf line | `lib/stringStockMath.ts` (`jobLines`) |
+| The fold, pure | `lib/stringingEarnings.ts` (`summarizeEarnings`) |
+| The read | `app/api/stringing/earnings/route.ts` |
+| The bench's line and the page | `components/admin/CommandCenter/StringingPage.tsx` (`view: 'earnings'`), `components/stringing/EarningsLine.tsx`, `components/stringing/StringingEarningsPage.tsx` |
+| Tests | `__tests__/stringing-earnings.test.ts`, `__tests__/group-stringing-earnings.test.ts`, `__tests__/components/StringingEarningsPage.test.tsx` |

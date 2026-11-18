@@ -1,0 +1,51 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { GET as earningsGET } from '@/app/api/stringing/earnings/route';
+import { __resetCatalogSeedForTests } from '@/lib/catalogSeed';
+import { resetMockStore, seedDoc, seedMember, makeRequest, makeAdminRequest, setupAdminPin, seedTestAdminMember, memberCookieValue } from './helpers';
+
+/**
+ * The two-club gate for the earnings read (docs/plans/stringing-earnings.md):
+ * another club's jobs and purchases never reach BPM's months, and a member who
+ * is not an admin is refused before anything is read.
+ */
+
+const BASE = 'http://localhost:3000/api';
+const strungNow = () => new Date(Date.now() - 2 * 86_400_000).toISOString();
+
+beforeEach(async () => {
+  resetMockStore();
+  __resetCatalogSeedForTests();
+  setupAdminPin();
+  process.env.NEXT_PUBLIC_FLAG_STRINGING = 'true';
+  await seedTestAdminMember();
+});
+afterEach(() => {
+  delete process.env.NEXT_PUBLIC_FLAG_STRINGING;
+});
+
+describe('stringing earnings', () => {
+  it("adds up BPM's jobs only, and prices the string off BPM's shelf", async () => {
+    const lin = seedMember('Lin');
+    const at = strungNow();
+    const history = [{ status: 'strung', at }, { status: 'ready', at }];
+    seedDoc('clubSettings', { id: 'stringing-strings', groupId: 'bpm', strings: ['BG80'], links: {}, updatedAt: '', updatedBy: null });
+    seedDoc('clubSettings', { id: 'sp-0000000000000bbb', groupId: 'bpm', kind: 'stringPurchase', label: 'BG80', unit: 'reel', units: 1, metresPerUnit: 200, totalCostCents: 20000, date: '2026-10-01', createdAt: '2026-10-01T00:00:00Z', createdBy: 'x' });
+    seedDoc('stringingJobs', { id: 'job-bpm', groupId: 'bpm', memberId: lin.id, jobNo: 'J-0001', memberName: 'Lin', stringLabel: 'BG80', status: 'ready', priceCents: 3000, paidAt: null, createdAt: at, history });
+    seedDoc('stringingJobs', { id: 'job-other', groupId: 'other', memberId: lin.id, jobNo: 'J-0001', memberName: 'Lin', stringLabel: 'BG80', status: 'picked_up', priceCents: 9900, paidAt: at, createdAt: at, history });
+    seedDoc('clubSettings', { id: 'sp-0000000000000aaa', groupId: 'other', kind: 'stringPurchase', label: 'BG80', unit: 'set', units: 1, metresPerUnit: 10, totalCostCents: 9900, date: '2026-10-01', createdAt: '2026-11-01T00:00:00Z', createdBy: 'x' });
+
+    const res = await earningsGET(makeAdminRequest('GET', `${BASE}/stringing/earnings`));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    const month = body.months.find((m: { jobs: number }) => m.jobs > 0);
+    expect(month).toMatchObject({ jobs: 1, workCents: 3000, owedCents: 3000, collectedCents: 0, stringCostCents: 1000 });
+    expect(month.waiting).toEqual([expect.objectContaining({ jobId: 'job-bpm', state: 'owed', amountCents: 3000 })]);
+    expect(body.strings).toEqual([expect.objectContaining({ key: 's:BG80', purchasedCostCents: 20000, allTimeWorkCents: 3000 })]);
+  });
+
+  it('refuses a member who is not an admin', async () => {
+    const lin = seedMember('Lin');
+    const res = await earningsGET(makeRequest('GET', `${BASE}/stringing/earnings`, undefined, { Cookie: `member_session=${memberCookieValue('Lin', lin.id)}` }));
+    expect(res.status).toBe(401);
+  });
+});

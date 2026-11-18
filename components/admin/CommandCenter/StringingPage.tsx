@@ -37,6 +37,7 @@ import RegisterSwitch from '@/components/primitives/RegisterSwitch';
 import ListRow from '@/components/primitives/ListRow';
 import { StringingAside, useStringingAside } from '@/components/stringing/StringingAside';
 import { PaneDetail } from '@/components/primitives/PaneDetail';
+import StringingEarningsPage, { EarningsLine, type EarningsData } from '@/components/stringing/StringingEarnings';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -89,7 +90,7 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
   /* The bench's own pages, a TRAIL (docs/plans/back-navigation.md): Archive →
      a job → Back returns to the Archive, and a job → Add holes → Back to the
      job. Each Back used to land on the bench. */
-  type BenchView = 'bench' | 'detail' | 'new' | 'archive' | 'setup' | 'holes';
+  type BenchView = 'bench' | 'detail' | 'new' | 'archive' | 'setup' | 'holes' | 'earnings';
   const [views, setViews] = useState<BenchView[]>([]);
   const view: BenchView = topView(views, 'bench');
   // Each level keeps its own place: a job opens at its top, and Back returns
@@ -168,9 +169,32 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
     }
   }, [mine]);
 
+  /* The month's money, for the line at the top and the Earnings page
+     (docs/plans/stringing-earnings.md). Its own read and its own error:
+     a failure says so on the line, and never reads as $0. Re-read with the
+     jobs, so a Mark paid moves the line too. */
+  const [earnings, setEarnings] = useState<EarningsData | null>(null);
+  const [earningsError, setEarningsError] = useState(false);
+  const loadEarnings = useCallback(async () => {
+    setEarningsError(false);
+    try {
+      const res = await fetch(`${BASE}/api/stringing/earnings`, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`stringing earnings ${res.status}`);
+      const data = await res.json();
+      if (!Array.isArray(data?.months) || data.months.length === 0) throw new Error('stringing earnings: no months');
+      setEarnings(data as EarningsData);
+    } catch {
+      setEarnings(null);
+      setEarningsError(true);
+    }
+  }, []);
+
   useEffect(() => {
     void load();
   }, [load]);
+  useEffect(() => {
+    if (jobs !== null) void loadEarnings();
+  }, [jobs, loadEarnings]);
 
   // `shopOpen` null is "not known yet"; `shopReadFailed` separates a read that
   // FAILED from one still in flight. They used to share null, so the sign said
@@ -759,6 +783,15 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
         </div>
       </div>
   );
+  const earningsScreen = view !== 'earnings' ? null : (
+      <div className={pageClass}>
+        <AdminBackHeader onBack={back} title={t('earnings.title')} crumb={t('jobsTitle')} />
+        <div className="flex flex-col gap-4 pb-6">
+          <StringingEarningsPage data={earnings} error={earningsError} onRetry={() => void loadEarnings()} />
+        </div>
+      </div>
+  );
+  if (earningsScreen && !aside) return earningsScreen;
   if (holesScreen && !aside) return holesScreen;
   if (setupScreen && !aside) return setupScreen;
 
@@ -871,6 +904,10 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
           screens 362px wide against the app's 394 — visibly narrower than the
           Command Center they are opened from, and than Birds next to them. */}
       <div className="flex flex-col gap-4 pb-6">
+        {/* The month's money, first (canvas EarnRow, Grant 2026-11-17: "pull
+            out how much earning"): collected, owed and not invoiced, and a
+            tap opens Earnings. */}
+        <EarningsLine data={earnings} error={earningsError} onOpen={() => setView('earnings')} onRetry={() => void loadEarnings()} />
         {/* CLOSED is a card, first (Grant, 2026-11-12, on the design canvas:
             "Follow design system"): the player's closed-shop card — same
             header, the muted badge, the standing bedtime state — with "Open
@@ -1033,8 +1070,8 @@ export default function StringingPage({ onBack, crumb, embedded = false, onTakeo
       </div>
       {/* The right page on a foldable: the open job, or its place while the
           list loads, so the bench does not move when it arrives. */}
-      {aside && (archiveScreen || setupScreen || holesScreen || newScreen) ? (
-        <StringingAside id={view}>{archiveScreen ?? setupScreen ?? holesScreen ?? newScreen}</StringingAside>
+      {aside && (archiveScreen || setupScreen || holesScreen || newScreen || earningsScreen) ? (
+        <StringingAside id={view}>{archiveScreen ?? setupScreen ?? holesScreen ?? newScreen ?? earningsScreen}</StringingAside>
       ) : aside && view === 'detail' && selected && typeof selected.archivedAt === 'string' ? (
         <StringingAside id={`archived-${selected.id}`}>
           {/* Opened from the archive, so its Back returns there. */}
