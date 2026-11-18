@@ -265,6 +265,16 @@ describe('<PaymentsCard />', () => {
       expect(byWholeText('$30 owed')).toBeTruthy();
     });
 
+    it('a paid row that received more than a lowered bill says what the club kept', async () => {
+      fetchSettledPlayers([
+        { id: 'p1', name: 'Daisy', paid: true, owedAmount: 20, paidAmount: 30 },
+        { id: 'p2', name: 'Mei', paid: false, owedAmount: 20 },
+      ]);
+      render(<PaymentsCard />);
+      await waitFor(() => expect(screen.getByText('Daisy')).toBeTruthy());
+      expect(screen.getByText('Paid $30 · $10 kept')).toBeTruthy();
+    });
+
     it('hides per-row $ once the session is unsettled, even if owedAmount lingers on player docs', async () => {
       // ACTIVE_SESSION is unsettled, but the players still carry a frozen
       // owedAmount from a settle that was later undone ("Edit bill"). The

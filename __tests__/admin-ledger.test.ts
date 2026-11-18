@@ -59,7 +59,7 @@ describe('GET /api/admin/ledger', () => {
   it('an empty club is all zeros, never-reconciled, nothing unfinalized', async () => {
     const body = await get();
     expect(body.range.key).toBe('12w');
-    expect(body.income).toEqual({ sessions: 0, stringing: 0, total: 0 });
+    expect(body.income).toEqual({ sessions: 0, stringing: 0, overpaid: 0, total: 0 });
     expect(body.collected.total).toBe(0);
     expect(body.outstanding).toEqual({ sessions: 0, stringing: 0, total: 0, people: 0 });
     expect(body.credit).toEqual({ liability: 0, members: 0 });
@@ -85,7 +85,7 @@ describe('GET /api/admin/ledger', () => {
     await runLedgerBackfill('bpm', { dryRun: false });
 
     const body = await get();
-    expect(body.income).toEqual({ sessions: 3000, stringing: 3000, total: 6000 });
+    expect(body.income).toEqual({ sessions: 3000, stringing: 3000, overpaid: 0, total: 6000 });
     expect(body.collected).toEqual({ etransferAuto: 1000, etransferAdmin: 0, manual: 4000, credit: 0, card: 0, total: 5000 });
     expect(body.covered).toBe(1000);
     expect(body.outlay).toEqual({ courts: 3000, shuttles: 25000, strings: 0, other: 0, total: 28000 });

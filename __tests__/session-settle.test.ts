@@ -226,19 +226,20 @@ describe('DELETE /api/session/settle', () => {
     expect(res.status).toBe(404);
   });
 
-  it('is refused while anyone is marked paid, naming them, and touches nothing', async () => {
+  it('is allowed with someone marked paid: they stay paid and keep a record of what they paid (Grant, 2026-11-18)', async () => {
     seedPlayer(SID, 'Alice', { paid: true });
     seedPlayer(SID, 'Bob', { paid: false });
     await POST(makeAdminRequest('POST', 'http://localhost:3000/api/session/settle'));
+    const owed = (getStore()['players'] as Array<{ name: string; owedAmount?: number }>).find((p) => p.name === 'Alice')!.owedAmount;
 
     const res = await DELETE(makeAdminRequest('DELETE', 'http://localhost:3000/api/session/settle'));
-    expect(res.status).toBe(409);
-    expect(await res.json()).toEqual({ error: 'bill_has_payments', names: ['Alice'] });
+    expect(res.status).toBe(200);
     const store = getStore();
-    expect((store['sessions'] as Array<{ id: string; settled?: unknown }>).find((s) => s.id === SID)!.settled).toBeDefined();
-    const alice = (store['players'] as Array<{ name: string; owedAmount?: number; paid?: boolean }>).find((p) => p.name === 'Alice')!;
-    expect(alice.owedAmount).toBeDefined();
+    expect((store['sessions'] as Array<{ id: string; settled?: unknown }>).find((s) => s.id === SID)!.settled).toBeUndefined();
+    const alice = (store['players'] as Array<{ name: string; owedAmount?: number; paid?: boolean; paidAmount?: number }>).find((p) => p.name === 'Alice')!;
+    expect(alice.owedAmount).toBeUndefined();
     expect(alice.paid).toBe(true);
+    expect(alice.paidAmount).toBe(owed);
   });
 
   it('clears settled snapshot and per-player owed/settledAt once nobody is paid, preserving paid: false', async () => {

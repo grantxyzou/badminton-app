@@ -171,7 +171,9 @@ export async function POST(req: NextRequest) {
         owedAmount: owed,
         settledAt: at,
         ...(player.paid === true && received === undefined && owed > 0 ? { paidAmount: owed } : {}),
-        ...(player.paid !== true && received !== undefined && owed > 0 && received >= owed ? { paid: true } : {}),
+        // What came in decides: covers the bill → paid (anything above it is
+        // kept as club income, `overpaidEntry`); short of it → owes the rest.
+        ...(received !== undefined && owed > 0 ? { paid: received >= owed } : {}),
       };
       await scope.upsert('players', updated);
       stampedPlayers.push({
@@ -211,6 +213,9 @@ async function settledRows(scope: ReturnType<typeof groupScope>, sessionId: stri
 async function clearSettlement(scope: ReturnType<typeof groupScope>, session: Session, rows: Player[]): Promise<void> {
   for (const player of rows) {
     const next = { ...player } as Player & { owedAmount?: number; settledAt?: string };
+    // A row paid in full before `paidAmount` existed: write down what it
+    // received before its bill is cleared, or the re-settle cannot know.
+    if (player.paid === true && typeof player.paidAmount !== 'number' && typeof player.owedAmount === 'number') next.paidAmount = player.owedAmount;
     delete next.owedAmount;
     delete next.settledAt;
     await scope.upsert('players', next);
@@ -256,12 +261,13 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Session is not settled.' }, { status: 404 });
     }
 
+    // Allowed with people paid (Grant, 2026-11-18). Each paid row keeps what
+    // it RECEIVED (`paidAmount`), and the re-settle decides: a lower bill
+    // leaves it paid and the club keeps the difference as income; a higher
+    // one leaves it owing the rest. Until 2026-11-18 this answered 409
+    // `bill_has_payments` (money audit gap 2), because the re-settle could only
+    // stamp the new amount over `paid: true`.
     const rows = await settledRows(scope, sessionId);
-    const paid = rows.filter((p) => p.paid === true);
-    if (paid.length > 0) {
-      return NextResponse.json({ error: 'bill_has_payments', names: paid.map((p) => p.name) }, { status: 409 });
-    }
-
     await clearSettlement(scope, session, rows);
 
     return NextResponse.json({ sessionId, unsettled: true });

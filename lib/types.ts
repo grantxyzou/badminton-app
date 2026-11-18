@@ -251,6 +251,10 @@ export type LedgerKind =
   | 'credit_grant' | 'gift_redeem' | 'credit_spend' | 'credit_refund'
   // member_owed
   | 'charge' | 'payment' | 'cover'
+  // member_owed: money received above a bill that was lowered after it was
+  // paid, kept by the club as income (docs/plans/paid-amount.md; Grant,
+  // 2026-11-18: "extra income"). Positive, like a charge, so the row nets to 0.
+  | 'overpaid'
   // club_outlay
   | 'court_cost' | 'shuttle_purchase' | 'shuttle_adj' | 'expense'
   // any account: the exact negation of an earlier entry, id `void:<thatId>`

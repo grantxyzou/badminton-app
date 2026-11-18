@@ -16,7 +16,7 @@ If, a month after shipping, no row in production carries a `paidAmount` short of
 
 - **No part-payment by hand.** The admin tap stays "paid in full". A part-payment arises only when an organiser assigns a transfer by hand to lines it does not cover; nobody types "$30 of $45".
 - **No part-paid stringing job.** A job line is paid whole or left for the next payment; `StringingJob` gets no amount field.
-- **Lifting the "Edit the bill" refusal** (`bill_has_payments`, gap 2). With this field the unsettle could keep a paid row's money and the re-settle could show the difference as still owed, but a bill lowered under a full payment makes an OVER-payment, and what to do with that (credit? refund?) is a money decision not taken here. The refusal stays; the field makes lifting it a later one-line change.
+- ~~Lifting the "Edit the bill" refusal~~ — done 2026-11-18, below.
 - No change to what the automatic match, card pay or credit accept: a line in full, or nothing.
 
 ## Decisions
@@ -29,6 +29,8 @@ If, a month after shipping, no row in production carries a `paidAmount` short of
 - **Settle makes `paid` follow the money.** A row ticked paid at the estimate records the whole frozen bill; a row a short transfer was assigned to before settle is paid once the money covers the bill, else owes the rest. An over-payment (the bill came in under what was received) is left visible to the Ledger check as a mismatch, never hidden.
 - **What a member sees:** Home's balance line shows what is LEFT and "paid $30 of $45" beside the date; Profile's "what you paid" chart counts what was received; the Payments card shows the remainder and "Paid $30 of $45" under the name; the Ledger check's sentence says "$30.00 received so far".
 
+- **"Edit the bill" with people paid, and the over-payment is the club's income** (2026-11-18; Grant, asked credit or income: "creadit it extra income for me~", then picked "Keep it as club income"). The unsettle keeps every payment and the row's `paidAmount`; the re-settle marks a row paid when what it received covers the new bill and books anything above it as `overpaid` (club income, `income.overpaid` on the money view, "Paid $30 · $10 kept" on the Payments card); a row short of the new bill owes the rest. Beat: store credit (the money would have gone back to the member as next week's discount — Grant's choice was income), a refund (card fees, and a manual step for cash).
+
 ## Shape
 
 | Piece | File |
@@ -39,3 +41,4 @@ If, a month after shipping, no row in production carries a `paidAmount` short of
 | The ledger | `lib/ledgerMirror.ts` (`paymentEntry`, `paymentEntryAtSettle`, `mirrorPaid`), `lib/ledgerReconcile.ts` |
 | Readers | `lib/memberPayments.ts`, `app/api/admin/ledger/route.ts`, `lib/ledgerReconcileDetail.ts`, `components/admin/ledger/ReconcileSheet.tsx`, `components/admin/CommandCenter/PaymentsCard.tsx`, `components/UnpaidSessionsCard.tsx` |
 | Tests | `__tests__/paid-amount.test.ts`, `__tests__/payments-assign-amount.test.ts`, the two component tests |
+| Edit the bill after payments | `app/api/session/settle/route.ts` (DELETE, `clearSettlement`, POST), `lib/ledgerMirror.ts` (`overpaidEntry`, `mirrorUnsettle`, `mirrorUnpaid`), `lib/ledgerReconcile.ts`, `lib/ledgerView.ts`, `__tests__/money-audit-gaps.test.ts` GAP 2 |

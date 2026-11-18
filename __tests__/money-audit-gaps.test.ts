@@ -98,16 +98,42 @@ describe('GAP 1 — FIXED: hard-deleting a PAID settled row leaves its charge an
   });
 });
 
-describe('GAP 2 — FIXED: "Edit the bill" is refused while anyone is marked paid', () => {
-  it('DELETE /api/session/settle answers 409 bill_has_payments with the names, and the ledger does not move', async () => {
+describe('GAP 2 — FIXED: "Edit the bill" after someone paid keeps their money and re-bills them honestly (docs/plans/paid-amount.md)', () => {
+  it('a RAISED bill: Lin paid $30, the bill becomes $45, she owes $15 — and the books agree at every step', async () => {
     await doSettle();
     const id = String(rowOf('Lin').id);
     await pay(id);
-    const res = await unsettle(makeAdminRequest('DELETE', `${BASE}/session/settle`));
-    expect(res.status).toBe(409);
-    expect(await res.json()).toEqual({ error: 'bill_has_payments', names: ['Lin'] });
-    expect(rowOf('Lin')).toMatchObject({ paid: true, owedAmount: 30 });
-    expect(live(id)).toBe(0); // charge +30, payment −30, both still standing
+    expect((await unsettle(makeAdminRequest('DELETE', `${BASE}/session/settle`))).status).toBe(200);
+    expect(rowOf('Lin')).toMatchObject({ paid: true, paidAmount: 30 });
+    expect(live(id)).toBe(-3000); // the charge is voided, her payment stands
+    expect(await codes()).toEqual([]); // a bill being edited is not a gap
+    const s = (getStore()['sessions'] as Array<Record<string, unknown>>).find((x) => x.id === SID)!;
+    s.costPerCourt = 45;
+    await new Promise((r) => setTimeout(r, 2));
+    expect((await doSettle()).status).toBe(200);
+    expect(rowOf('Lin')).toMatchObject({ paid: false, owedAmount: 45, paidAmount: 30 });
+    expect(live(id)).toBe(1500);
+    expect(await codes()).toEqual([]);
+  });
+
+  it('a LOWERED bill: Lin paid $30, the bill becomes $20, she stays paid and the club keeps $10 as income', async () => {
+    await doSettle();
+    const id = String(rowOf('Lin').id);
+    await pay(id);
+    await unsettle(makeAdminRequest('DELETE', `${BASE}/session/settle`));
+    const s = (getStore()['sessions'] as Array<Record<string, unknown>>).find((x) => x.id === SID)!;
+    s.costPerCourt = 20;
+    await new Promise((r) => setTimeout(r, 2));
+    expect((await doSettle()).status).toBe(200);
+    expect(rowOf('Lin')).toMatchObject({ paid: true, owedAmount: 20, paidAmount: 30 });
+    const kept = ledger().filter((e) => e.kind === 'overpaid');
+    expect(kept.map((e) => [e.ref?.id, e.amountCents])).toEqual([[id, 1000]]);
+    expect(live(id)).toBe(0); // charge +20, payment −30, kept +10
+    expect(await codes()).toEqual([]);
+
+    // Un-ticking her afterwards takes the payment AND what it kept back out.
+    expect((await patchPlayer(makeAdminRequest('PATCH', `${BASE}/players`, { id, paid: false }))).status).toBe(200);
+    expect(live(id)).toBe(2000);
     expect(await codes()).toEqual([]);
   });
 

@@ -143,6 +143,12 @@ export async function runReconcile(groupId: string, now: number = Date.now()): P
     if (seen.has(id) || entry.cents === 0) continue;
     const ref = { kind: entry.kind, id, pk: entry.pk };
     if (entry.cents < 0) {
+      // A bill being edited: its charge was voided, its payments stand, and
+      // the row records the same money as received. Right, not a gap.
+      if (entry.kind === 'session') {
+        const row = await scope.read<Player>('players', id, entry.pk);
+        if (row && typeof row.settledAt !== 'string' && Math.round((row.paidAmount ?? 0) * 100) === -entry.cents) continue;
+      }
       // A payment with no charge under it — the charge write failed, or was voided alone.
       mismatches.push({ memberId: entry.memberId, ref, code: 'amount_mismatch', ledgerCents: entry.cents, liveCents: 0 });
       continue;

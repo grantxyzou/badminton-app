@@ -838,6 +838,10 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                 >
                   <MemberAvatar name={player.name} size={28} />
                   <span className="fs-md truncate" style={{ flex: 1, minWidth: 0 }}>{player.name}</span>
+                  {/* Paid more than a bill lowered afterwards: the club kept the rest (docs/plans/paid-amount.md). */}
+                  {!covered && !!viewedSession?.settled && typeof player.owedAmount === 'number' && (player.paidAmount ?? 0) > player.owedAmount && (
+                    <span className="fs-xs" style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Paid {fmtMoney(player.paidAmount!)} · {fmtMoney(player.paidAmount! - player.owedAmount)} kept</span>
+                  )}
                   {!!viewedSession?.settled && typeof player.owedAmount === 'number' && (
                     <span className="fs-sm" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono), ui-monospace, monospace' }}>
                       {fmtMoney(player.owedAmount)}
