@@ -32,6 +32,7 @@ import { completeSignIn } from '@/lib/authSession';
 import { resolveGroupId } from '@/lib/groupContext';
 import { unprovenPasswordOn, signOutEveryClub } from '@/lib/emailProof';
 import type { Member } from '@/lib/types';
+import { padMissingAccount } from '@/lib/accountPad';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,6 +79,7 @@ export async function POST(req: NextRequest) {
       const right = await verifyEmailCode(signup, code);
       if (!right || !signup) {
         if (signup && emailCodeLive(signup)) await noteSignupCodeFailure(email);
+        else await padMissingAccount(); // no account and no code: pay what a real miss does (gap 3)
         return FAIL();
       }
       if (!(await consumeSignupCode(signup))) return FAIL();
@@ -93,6 +95,7 @@ export async function POST(req: NextRequest) {
     const ok = await verifyEmailCode(stored, code);
     if (!ok || !member) {
       if (member && emailCodeLive(stored)) await noteEmailCodeFailure(member.id);
+      else if (!member) await padMissingAccount(); // an unknown address pays what a real one's miss does (gap 3)
       return FAIL();
     }
 
@@ -107,7 +110,7 @@ export async function POST(req: NextRequest) {
     if (takeBack) delete (rest as { passwordHash?: string }).passwordHash;
     const next = {
       ...rest,
-      ...(ownAddress ? { emailVerified: true } : {}),
+      ...(ownAddress ? { emailVerified: true, mailboxProven: true } : {}),
       ...(takeBack ? { sessionsNotBefore: at, widgetPassNotBefore: at } : {}),
     } as Member & { _etag?: string };
     const container = getContainer('members');

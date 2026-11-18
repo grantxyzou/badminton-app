@@ -4,12 +4,13 @@ import { POST } from '@/app/api/events/route';
 import { computeClubMetrics } from '@/lib/metricsMath';
 import { NextRequest, NextResponse } from 'next/server';
 import { setMemberCookie } from '@/lib/auth';
-import { resetMockStore, getStore, setupAdminPin } from './helpers';
+import { resetMockStore, getStore, setupAdminPin, ensureSeededMember } from './helpers';
 
 type Row = Record<string, unknown>;
 let ip = 0;
 function postAs(body: unknown): NextRequest {
   const r = NextResponse.json({});
+  ensureSeededMember('m-lin', 'Lin');
   setMemberCookie(r, 'm-lin', 'Lin');
   ip++;
   return new NextRequest(new URL('/api/events', 'http://localhost/bpm'), {

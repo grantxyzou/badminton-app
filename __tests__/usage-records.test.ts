@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { completeSignIn } from '@/lib/authSession';
 import { setMemberCookie } from '@/lib/auth';
 import { POST } from '@/app/api/events/route';
-import { resetMockStore, getStore, setupAdminPin } from './helpers';
+import { resetMockStore, getStore, setupAdminPin, ensureSeededMember } from './helpers';
 
 /**
  * The usage records (docs/plans/usage-metrics.md): always on since their flag
@@ -15,6 +15,7 @@ import { resetMockStore, getStore, setupAdminPin } from './helpers';
 const events = () => (getStore()['events'] ?? []) as Array<Record<string, unknown>>;
 
 function memberCookie(memberId: string, name: string): string {
+  ensureSeededMember(memberId, name);
   const r = NextResponse.json({});
   setMemberCookie(r, memberId, name);
   return `member_session=${r.cookies.get('member_session')!.value}`;

@@ -97,6 +97,17 @@ export function seedMember(name: string, overrides: Record<string, unknown> = {}
 }
 
 /** A raw `groups` doc. Defaults are a plain club owned by `overrides.ownerMemberId ?? 'owner'`. */
+/**
+ * The Member behind a hand-minted member cookie, seeded once. Since the member
+ * check denies by default (it needs an active place on the roster: the Member
+ * flag-off, a membership flag-on), a cookie for an id nobody seeded is a
+ * signed-in stranger, and a test about something else must not depend on that.
+ */
+export function ensureSeededMember(memberId: string, name: string, overrides: Record<string, unknown> = {}) {
+  const rows = (getStore()['members'] ?? []) as Array<{ id: string }>;
+  return rows.find((m) => m.id === memberId) ?? seedMember(name, { id: memberId, ...overrides });
+}
+
 export function seedGroup(id: string, overrides: Record<string, unknown> = {}) {
   return seedDoc('groups', {
     id,

@@ -18,6 +18,7 @@ import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { BPM_GROUP_ID } from '@/lib/groupScope';
 import { isFlagOn } from '@/lib/flags';
 import { readGroupAdmin, setMembershipRole, addMembership } from '@/lib/groups';
+import { padMissingAccount } from '@/lib/accountPad';
 
 /**
  * GET — auth check.
@@ -129,6 +130,8 @@ export async function POST(req: NextRequest) {
       : member.role === 'admin';
   if (!member || !(adminHere || bootstrap) || !member.pinHash) {
     await verifyPin(pin, FAKE_HASH);
+    // A name nobody holds also pays the database work a real one's guess does (gap 3).
+    if (!member) await padMissingAccount();
     return NextResponse.json({ error: 'Incorrect name or PIN' }, { status: 401 });
   }
 

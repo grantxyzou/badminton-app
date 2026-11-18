@@ -11,6 +11,7 @@ import { verifyPin, FAKE_HASH } from '@/lib/recoveryHash';
 import { verifyRecoveryCode, noteRecoveryCodeFailure } from '@/lib/memberRecoveryCode';
 import { appendEvent } from '@/lib/recoveryAudit';
 import type { Player } from '@/lib/types';
+import { padMissingAccount } from '@/lib/accountPad';
 
 export const dynamic = 'force-dynamic';
 
@@ -158,7 +159,11 @@ async function handlePost(req: NextRequest) {
       if (await verifyPin(pin, hash)) matches.push(c);
     }
     // And a name nobody holds costs one verification too, exactly as before.
-    if (candidates.length === 0) await verifyPin(pin, FAKE_HASH);
+    // ...and the database work a real account's wrong PIN does (gap 3).
+    if (candidates.length === 0) {
+      await verifyPin(pin, FAKE_HASH);
+      await padMissingAccount();
+    }
 
     if (matches.length !== 1) {
       if (player) {
@@ -228,8 +233,10 @@ async function handlePost(req: NextRequest) {
     if (await verifyRecoveryCode(c.member.recoveryCode as Parameters<typeof verifyRecoveryCode>[0], code!)) codeMatches.push(c);
   }
   if (codeCandidates.candidates.length === 0) {
-    // Constant-time miss so attackers can't enumerate members via timing.
+    // Constant-time miss so attackers can't enumerate members via timing:
+    // the scrypt, and the database work a real account's wrong code does.
     await verifyPin(code!, FAKE_HASH);
+    await padMissingAccount();
   }
 
   if (codeMatches.length !== 1) {

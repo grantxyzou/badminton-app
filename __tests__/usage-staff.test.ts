@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { completeSignIn } from '@/lib/authSession';
 import { setMemberCookie } from '@/lib/auth';
 import { POST } from '@/app/api/events/route';
-import { resetMockStore, getStore, setupAdminPin } from './helpers';
+import { resetMockStore, getStore, setupAdminPin, ensureSeededMember } from './helpers';
 
 /**
  * Roles v2, PR 4 (docs/plans/roles-v2.md): STAFF. The operator's own
@@ -15,6 +15,7 @@ const before = process.env.OPERATOR_MEMBER_IDS;
 const events = () => (getStore()['events'] ?? []) as Array<Record<string, unknown>>;
 
 function cookie(memberId: string, name: string): string {
+  ensureSeededMember(memberId, name);
   const r = NextResponse.json({});
   setMemberCookie(r, memberId, name);
   return `member_session=${r.cookies.get('member_session')!.value}`;

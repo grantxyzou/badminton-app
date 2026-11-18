@@ -110,6 +110,26 @@ describe('finishOAuthCallback', () => {
     expect((await lookupIdentity('google', 'sub-2'))?.memberId).toBe(m.id);
   });
 
+  it('rule 3 takes the account back from a password set before any sign-in through the address (gap 2)', async () => {
+    // Someone made the account on Akane's address with their own password;
+    // Akane clicked the confirmation mail she never asked for. Her Google
+    // sign-in proves the mailbox, so it must not leave their password in.
+    const m = seedMember('Akane', { email: 'akane@example.com', emailVerified: true, passwordHash: 'squatter-chose-this' });
+    await reserveIdentity('email', 'akane@example.com', m.id);
+    await finishOAuthCallback(req(), ORIGIN, claims({ sub: 'sub-9', email: 'akane@example.com', emailVerified: true }));
+    const after = stored(m.id);
+    expect(after.passwordHash).toBeUndefined();
+    expect(after.sessionsNotBefore).toBeDefined();
+    expect(after.mailboxProven).toBe(true);
+  });
+
+  it('rule 3 leaves a password alone once the mailbox was proven by a sign-in', async () => {
+    const m = seedMember('Akane', { email: 'akane@example.com', emailVerified: true, mailboxProven: true, passwordHash: 'hers' });
+    await reserveIdentity('email', 'akane@example.com', m.id);
+    await finishOAuthCallback(req(), ORIGIN, claims({ sub: 'sub-10', email: 'akane@example.com', emailVerified: true }));
+    expect(stored(m.id).passwordHash).toBe('hers');
+  });
+
   it('rule 3 refuses when OUR side is unverified', async () => {
     // An unverified email on a member is a claim they typed, not proof.
     const m = seedMember('Akane', { email: 'akane@example.com', emailVerified: false });

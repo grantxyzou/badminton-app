@@ -35,7 +35,7 @@ const ROOT = join(__dirname, '..');
  */
 const WRAPPERS = ['verifyMemberAuth', 'ownsNameOrAdmin', 'nameOwnership', 'callerMemberId', 'peekMemberSession'];
 const SIGNATURE_ONLY = new RegExp(`\\b(${WRAPPERS.join('|')})\\(`);
-const REREADING = /\b(verifyLiveMemberAuth|readLiveMemberSession|liveCallerMemberId|requireGroupMember|requireMember|activeMemberFor)\(/;
+const REREADING = /\b(verifyLiveMemberAuth|readLiveMemberSession|verifyLiveAccountAuth|readLiveAccountSession|liveCallerMemberId|requireGroupMember|requireMember|activeMemberFor)\(/;
 const TOP_LEVEL = /^(?:export\s+)?(?:default\s+)?(?:async\s+)?(?:function\*?\s+([A-Za-z0-9_$]+)|(?:const|let)\s+([A-Za-z0-9_$]+))/gm;
 const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 

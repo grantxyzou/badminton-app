@@ -9,7 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
 import { completeSignIn } from '@/lib/authSession';
-import { verifyLiveMemberAuth } from '@/lib/auth';
+import { verifyLiveAccountAuth } from '@/lib/auth';
 import { resolveOAuthIdentity } from '@/lib/authResolve';
 import {
   normalizeEmail,
@@ -22,6 +22,7 @@ import { setPendingSignup } from '@/lib/pendingSignup';
 import { clearOAuthCookies } from '@/lib/oauthState';
 import { completeHandoff, readHandoff, type CompletedHandoff, type HandoffDoc } from '@/lib/authHandoff';
 import type { Member } from '@/lib/types';
+import { unprovenPasswordOn, signOutEveryClub } from '@/lib/emailProof';
 import { resolveGroupId } from '@/lib/groupContext';
 
 export interface ProviderClaims {
@@ -200,11 +201,12 @@ export async function finishOAuthCallback(
     }
   }
 
+  // Never when the app finishes: this browser's session is not a request to
+  // link anything to it (F3), and a pop-up's may be some other person's.
+  const sessionMemberId = inApp ? null : ((await verifyLiveAccountAuth(req))?.memberId ?? null);
   const action = resolveOAuthIdentity({
     existingIdentityMemberId: existing?.memberId ?? null,
-    // Never when the app finishes: this browser's session is not a request to
-    // link anything to it (F3), and a pop-up's may be some other person's.
-    sessionMemberId: inApp ? null : ((await verifyLiveMemberAuth(req))?.memberId ?? null),
+    sessionMemberId,
     providerEmail: email,
     providerEmailVerified: claims.emailVerified,
     memberIdByVerifiedEmail,
@@ -256,12 +258,26 @@ export async function finishOAuthCallback(
       return oauthFailure(origin, 'already_linked');
     }
     const linked = new Set([...(member.linkedProviders ?? []), claims.provider]);
-    await container.items.upsert({
-      ...member,
-      linkedProviders: [...linked],
-      // Linking does NOT confer verification: rule 3 already required a
-      // verified address on both sides, and rules 1-2 did not check one at all.
-    });
+    // RULE 3 IS A SIGN-IN THROUGH THE ADDRESS: the provider proved the mailbox
+    // (gap 2 of the 2026-11-17 scan). The account's own `emailVerified` may be
+    // only a confirmation-link click, which its owner can make on a mail they
+    // never asked for, so this link takes the account back exactly as a first
+    // email code does: a password set before the proof goes, and every device
+    // is signed out, before the prover is signed in (lib/emailProof.ts).
+    const viaAddress = !existing && !sessionMemberId && action.memberId === memberIdByVerifiedEmail;
+    const takeBack = viaAddress && unprovenPasswordOn(member);
+    const at = new Date().toISOString();
+    const next: Member = { ...member, linkedProviders: [...linked] };
+    if (takeBack) {
+      delete next.passwordHash;
+      next.sessionsNotBefore = at;
+      next.widgetPassNotBefore = at;
+    }
+    if (viaAddress) next.mailboxProven = true;
+    // Linking does NOT confer `emailVerified`: rule 3 already required it, and
+    // rules 1-2 did not check one at all.
+    await container.items.upsert(next);
+    if (takeBack) await signOutEveryClub(member.id, at);
   } else {
     void touchIdentity(claims.provider, claims.sub);
   }

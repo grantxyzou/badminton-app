@@ -12,6 +12,7 @@ import { hashPin, verifyPin, FAKE_HASH, BLOCKLISTED_PINS } from '@/lib/recoveryH
 import {
   verifyMemberAuth,
   verifyLiveMemberAuth,
+  verifyLiveAccountAuth,
   isAdminAuthed,
   isAdminAuthedWithMember,
   setMemberCookie,
@@ -28,6 +29,7 @@ import {
   parseStatsPrivacyPatch,
   type StatsPrivacy,
 } from '@/lib/statsPrivacy';
+import { padMissingAccount } from '@/lib/accountPad';
 
 export async function GET(req: NextRequest) {
   const ip = getClientIp(req);
@@ -382,6 +384,8 @@ export async function PATCH(req: NextRequest) {
  * "your cookie is bad".
  */
 async function unknownName(req: NextRequest): Promise<NextResponse> {
+  // The MEMBER check, not the account one: an account in no club would
+  // otherwise read 404 for a stranger's name and 401 for a member's.
   if ((await verifyLiveMemberAuth(req)) || (await isAdminAuthedWithMember(req)).authed) {
     return NextResponse.json({ error: 'not_found' }, { status: 404 });
   }
@@ -507,6 +511,9 @@ async function handlePatch(req: NextRequest) {
   const known = isSelf || !!admin?.authed;
   if (!known && !(hadPin && currentPin)) {
     await verifyPin(currentPin ?? '0000', FAKE_HASH);
+    // A current PIN against a real account with one is counted in the
+    // database first (claimPinAttempt); every other miss pays the same (gap 3).
+    if (currentPin) await padMissingAccount();
     return NextResponse.json({ error: currentPin ? 'invalid_credentials' : 'auth_required' }, { status: 401 });
   }
 
@@ -647,7 +654,7 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'Too many attempts. Try again later.' }, { status: 429 });
   }
 
-  const caller = await verifyLiveMemberAuth(req);
+  const caller = await verifyLiveAccountAuth(req);  // the ACCOUNT check: someone in no club may still delete their account
   if (!caller) {
     return NextResponse.json({ error: 'Sign in on this device first' }, { status: 401 });
   }

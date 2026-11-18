@@ -9,7 +9,7 @@
  * organiser. Before this, only an organiser could change it (the Roster).
  *
  * WHO: the caller's own `member_session`, re-checked live
- * (`verifyLiveMemberAuth`). No name or id in the body: a name-keyed version
+ * (`verifyLiveAccountAuth`). No name or id in the body: a name-keyed version
  * would let anyone rename anyone.
  *
  * UNIQUE IN THE CLUB: the club's name reservation is the clash check, exactly
@@ -24,7 +24,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { verifyLiveMemberAuth, setMemberCookie } from '@/lib/auth';
+import { verifyLiveAccountAuth, setMemberCookie } from '@/lib/auth';
 import { resolveGroupId } from '@/lib/groupContext';
 import { BPM_GROUP_ID } from '@/lib/groupScope';
 import { groupsOn } from '@/lib/groupRoutes';
@@ -43,7 +43,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
 
-  const auth = await verifyLiveMemberAuth(req);
+  const auth = await verifyLiveAccountAuth(req);
   if (!auth) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   const body = await req.json().catch(() => null);

@@ -225,9 +225,18 @@ describe('PATCH /api/members/me — statsPrivacy', () => {
     expect(res.status).toBe(400);
   });
 
-  it('404s for an unknown member', async () => {
-    const res = await PATCH(asMember('Ghost', { name: 'Ghost', statsPrivacy: { clubComparison: true } }));
+  it('404s for an unknown member, to someone on the roster', async () => {
+    seedMember('Lin');
+    const res = await PATCH(asMember('Lin', { name: 'Ghost', statsPrivacy: { clubComparison: true } }));
     expect(res.status).toBe(404);
+  });
+
+  it('an account on no roster gets the same 401 for any name', async () => {
+    seedMember('Lin');
+    const ghost = await PATCH(asMember('Ghost', { name: 'Ghost', statsPrivacy: { clubComparison: true } }));
+    const lin = await PATCH(asMember('Ghost', { name: 'Lin', statsPrivacy: { clubComparison: true } }));
+    expect(ghost.status).toBe(401);
+    expect(lin.status).toBe(401);
   });
 
   it('leaves the PIN branch untouched', async () => {

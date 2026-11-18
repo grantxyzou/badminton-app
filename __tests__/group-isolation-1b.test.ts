@@ -113,6 +113,7 @@ describe('stringingJobs', () => {
   });
 
   it('a player’s own view lists only this group’s jobs', async () => {
+    seedMember('Wei', { id: 'member-wei' });
     push('stringingJobs', job('j-other', { racketLabel: MARKER, groupId: 'other' }));
     push('stringingJobs', job('j-bpm', { racketLabel: 'Ours', groupId: 'bpm' }));
     const res = await jobsGet(

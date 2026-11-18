@@ -687,6 +687,16 @@ export interface Member {
   contactEmail?: string;
   /** True only once a mailed verification link has actually been redeemed. */
   emailVerified?: boolean;
+  /**
+   * The address was proven by SIGNING IN through it: an email code, a reset
+   * link, or a provider (Apple, Google) that verified it at sign-up. Not by
+   * the confirmation link, whose click proves only that someone opened the
+   * mail, and the mailbox's owner may click one they never asked for (Claude
+   * Security, gap 2 of the 2026-11-17 scan). The first such proof takes the
+   * account back from a password set before it (`lib/emailProof.ts`).
+   * Additive: absent reads as never proven this way.
+   */
+  mailboxProven?: boolean;
   /** scrypt, self-describing format from lib/passwordHash.ts. STRIP-CANARY. */
   passwordHash?: string;
   /** SHA-256 of a single-use emailed token. 24h TTL. STRIP-CANARY. */
