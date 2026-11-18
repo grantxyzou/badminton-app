@@ -110,7 +110,11 @@ export async function GET(req: NextRequest) {
     interface PickEvent { memberId?: string; kind: string; catalogId?: string; engineVersion?: string; rating?: string }
     type VersionRow = { served: number; servedMembers: number; added: number; tried: number; ratedUp: number; ratedDown: number };
     const picks: { engineVersions: Record<string, VersionRow>; byCatalogId: Record<string, { added: number; tried: number; up: number; down: number }>; engagedMembers: number } =
-      { engineVersions: {}, byCatalogId: {}, engagedMembers: 0 };
+      // NULL-PROTOTYPE maps (Claude Security F21, 2026-11-17): both are keyed
+      // by strings a member's own POST /api/events chose, and on a plain `{}`
+      // the key "__proto__" reaches Object.prototype, so the `+= 1`s below
+      // wrote NaN onto every object in the one shared server process.
+      { engineVersions: Object.create(null), byCatalogId: Object.create(null), engagedMembers: 0 };
     const servedBy = new Map<string, Set<string>>();
     const engaged = new Set<string>();
     const tallyPick = (e: PickEvent, memberKey: string) => {

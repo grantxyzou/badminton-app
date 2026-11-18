@@ -3,7 +3,8 @@ import { randomBytes } from 'crypto';
 import { getContainer } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
-import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
+import { unauthorized } from '@/lib/auth';
+import { isOperator } from '@/lib/operator';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +18,16 @@ interface MigrationSummary {
 }
 
 export async function POST(req: NextRequest) {
-  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
+  // OPERATOR-ONLY (Claude Security F22, 2026-11-17), as migrate-groups is.
+  // It reads EVERY club's members and links this club's rows to whoever in
+  // the deployment shares a name, so a club admin running it learned which
+  // names exist anywhere and bound rows to strangers.
+  const op = await isOperator(req);
+  if (!op.ok) {
+    return op.reason === 'unauthorized'
+      ? unauthorized()
+      : NextResponse.json({ error: 'operator_only' }, { status: 403 });
+  }
 
   let dryRun = false;
   try {

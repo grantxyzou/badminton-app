@@ -20,6 +20,13 @@ import { signValue, verifySignedValue } from '@/lib/auth';
  * The plaintext inside is the same random secret as before; only its sha256 is
  * stored. The signature is the session HMAC (`signValue`), so a caller cannot
  * mint a seal for a secret of its own, and nothing hangs on one if it could.
+ *
+ * NO BARE SECRET IS ACCEPTED (Claude Security F14, 2026-11-17). The seal is
+ * signed, not encrypted, so anyone holding one can read the raw secret out of
+ * it. A bare secret used to be read as one from before the seal, which skips
+ * the signature and turns a miss back into `none`: ask under "Lin", poll with
+ * the raw secret, and the answer said whether Lin is on the list again. Seals
+ * last an hour and shipped on 2026-11-14, so no genuine bare secret is live.
  */
 const TTL_SECONDS = 60 * 60;
 
@@ -30,14 +37,10 @@ export function sealAskSecret(raw: string): string {
 export type OpenedAskSecret =
   /** Made here, inside its hour. `raw` is what the store was keyed on. */
   | { kind: 'sealed'; raw: string }
-  /** A bare secret from before the seal: read the store, as before. */
-  | { kind: 'legacy'; raw: string }
   /** Forged, mangled or past its hour. */
   | { kind: 'dead' };
 
 export function openAskSecret(wire: string): OpenedAskSecret {
-  // A bare secret is 64 hex characters with no dot; a seal always has one.
-  if (/^[0-9a-f]{64}$/.test(wire)) return { kind: 'legacy', raw: wire };
   const opened = verifySignedValue<{ s?: unknown }>(wire);
   return opened && typeof opened.s === 'string' && opened.s.length > 0 ? { kind: 'sealed', raw: opened.s } : { kind: 'dead' };
 }

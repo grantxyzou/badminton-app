@@ -11,6 +11,7 @@ import { parseFeel, hasFeel } from '@/lib/racketFeel';
 import { parseItemLook, hasItemLook, type ItemLook } from '@/lib/racketCustom';
 import { logStringAdded, logTension } from '@/lib/stringLog';
 import { parseCrosses } from '@/lib/stringCrosses';
+import { withoutArmAnswers } from '@/lib/fitProfile';
 import type { StringCrosses } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -94,10 +95,14 @@ async function authorizeBagWrite(req: NextRequest, name: string, bucket: 'bag' |
   const memberId = await resolveActiveMemberId(resolveGroupId(req), name);
   if (!memberId) return { error: NextResponse.json({ error: 'member_not_found' }, { status: 404 }) };
   const caller = await verifyLiveMemberAuth(req);
-  if (caller?.memberId !== memberId && !(await isAdminAuthedWithMember(req)).authed) {
+  if (caller?.memberId === memberId) return { memberId, owner: true };
+  const admin = await isAdminAuthedWithMember(req);
+  if (!admin.authed) {
     return { error: NextResponse.json({ error: 'unauthorized' }, { status: 401 }) };
   }
-  return { memberId };
+  // An admin writing someone else's bag is not its owner, so the doc that
+  // comes back loses the arm answers (`commitGearDoc`, F16).
+  return { memberId, owner: admin.memberId === memberId };
 }
 
 /** Cosmos returns `_etag` on every read; it is the concurrency token. */
@@ -220,6 +225,10 @@ type GearComputation =
  */
 async function commitGearDoc(
   memberId: string,
+  /** Is the caller the bag's owner? Anyone else gets the doc back without the
+   *  arm answers, the rule GET keeps (Claude Security F16, 2026-11-17): every
+   *  write verb echoed the whole doc, so an admin's no-op PATCH read them. */
+  owner: boolean,
   compute: (prior: StoredGear | undefined) => GearComputation,
 ): Promise<NextResponse> {
   for (let attempt = 0; attempt < MAX_GEAR_WRITE_ATTEMPTS; attempt++) {
@@ -227,7 +236,8 @@ async function commitGearDoc(
     const computed = compute(prior);
     if (!computed.ok) return computed.response;
     try {
-      return NextResponse.json({ gear: await writeGearDoc(memberId, prior, computed.next) });
+      const written = await writeGearDoc(memberId, prior, computed.next);
+      return NextResponse.json({ gear: owner || !written ? written : withoutArmAnswers(written as PlayerGear) });
     } catch (error) {
       if (!isWriteConflict(error)) throw error;
     }
@@ -287,7 +297,7 @@ export async function GET(req: NextRequest) {
       const isOwner = caller?.memberId === memberId || (!!self?.authed && self.memberId === memberId);
       if (!isOwner) {
         // `fitSoreness` is the fit profile's arm question: the same promise.
-        const { fitArmComfort: _strip, fitSoreness: _stripSore, ...safe } = gear;
+        const safe = withoutArmAnswers(gear);
         // The marker says "an answer exists that you cannot see", and it goes
         // to exactly one reader: the OWNER on a lapsed member_session (30-day
         // TTL; localStorage identity never expires — a state CLAUDE.md names
@@ -331,7 +341,7 @@ export async function POST(req: NextRequest) {
     const auth = await authorizeBagWrite(req, name);
     if (auth.error) return auth.error;
 
-    return await commitGearDoc(auth.memberId, (prior) => {
+    return await commitGearDoc(auth.memberId, auth.owner, (prior) => {
       const existing = prior?.items ?? [];
       const catalogId = typeof body.item.catalogId === 'string' ? body.item.catalogId : null;
       const label = String(body.item.label ?? '').slice(0, 80);
@@ -552,7 +562,7 @@ export async function PATCH(req: NextRequest) {
     const auth = await authorizeBagWrite(req, name, activeRacketId || itemCrosses ? 'bag' : 'prefs');
     if (auth.error) return auth.error;
 
-    return await commitGearDoc(auth.memberId, (prior) => {
+    return await commitGearDoc(auth.memberId, auth.owner, (prior) => {
       // A fresh object per attempt: `compute` re-runs after a losing race
       // with a re-read `prior`, and a stamp decided on attempt one must not
       // leak into attempt two when the re-read doc already holds the answer.
@@ -625,7 +635,7 @@ export async function DELETE(req: NextRequest) {
     const auth = await authorizeBagWrite(req, name);
     if (auth.error) return auth.error;
 
-    return await commitGearDoc(auth.memberId, (prior) => {
+    return await commitGearDoc(auth.memberId, auth.owner, (prior) => {
       const existing = prior?.items ?? [];
       if (!existing.some((i) => i.id === itemId)) {
         return { ok: false, response: NextResponse.json({ error: 'racket_not_found' }, { status: 404 }) };
@@ -681,11 +691,13 @@ export async function PUT(req: NextRequest) {
     // "same trust as anon sign-up" bar the feature was designed around.
     const caller = await verifyLiveMemberAuth(req);
     const isOwner = caller?.memberId === memberId;
-    if (!isOwner && !(await isAdminAuthedWithMember(req)).authed) {
+    const admin = isOwner ? null : await isAdminAuthedWithMember(req);
+    if (!isOwner && !admin?.authed) {
       return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     }
+    const owner = isOwner || (!!admin?.authed && admin.memberId === memberId);
 
-    return await commitGearDoc(memberId, (prior) => {
+    return await commitGearDoc(memberId, owner, (prior) => {
       const existing = prior?.items ?? [];
       const catalogId = typeof body.item.catalogId === 'string' ? body.item.catalogId : null;
       const label = String(body.item.label ?? '').slice(0, 80);

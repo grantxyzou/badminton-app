@@ -91,9 +91,6 @@ const EXEMPT: Record<string, Exempt> = {
     reason: 'owner read; a miss generates once per (member, active session) and is cached, so a replayed cookie can spend at most one call per session',
   },
   'app/api/groups/mine/route.ts#GET': read,
-  'app/api/stringing/jobs/route.ts#GET': {
-    reason: 'read: the caller’s own jobs, or the bench for a stringer; Home’s stringing card on every open. Every write on a job re-reads (REREADS)',
-  },
 
   // ── Writes that may stay blind, each for its own reason
   'app/api/players/route.ts#DELETE': {

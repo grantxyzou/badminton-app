@@ -56,7 +56,7 @@ async function gate(req: NextRequest, memberId: string) {
   if (membership.role === 'owner') {
     return { error: NextResponse.json({ error: 'owner_immutable' }, { status: 403 }) };
   }
-  return { groupId: auth.groupId, organiser: auth.organiser };
+  return { groupId: auth.groupId, organiser: auth.organiser, targetRole: membership.role };
 }
 
 export async function PATCH(req: NextRequest, { params }: Params) {
@@ -98,6 +98,11 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   try {
     const checked = await gate(req, memberId);
     if (checked.error) return checked.error;
+    // Removing an admin takes their rank away, and ranks are an organiser's
+    // (docs/plans/roles-v2.md), as PATCH says above (Claude Security F20).
+    if (checked.targetRole === 'admin' && !checked.organiser) {
+      return NextResponse.json({ error: 'organiser_only' }, { status: 403 });
+    }
     const removed = await removeFromRoster(checked.groupId!, memberId);
     if (!removed) return NextResponse.json({ error: 'not_on_roster' }, { status: 404 });
     return NextResponse.json({ memberId, status: removed.status });

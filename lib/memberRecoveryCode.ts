@@ -1,5 +1,5 @@
 import { randomInt } from 'crypto';
-import { hashPin, verifyPin } from './recoveryHash';
+import { hashPin, verifyPin, FAKE_HASH } from './recoveryHash';
 import { getContainer } from './cosmos';
 import { appendEvent } from './recoveryAudit';
 import type { RecoveryEvent } from './types';
@@ -53,12 +53,21 @@ export async function verifyRecoveryCode(
   stored: StoredRecoveryCode | undefined | null,
   candidate: string,
 ): Promise<boolean> {
-  if (!stored || typeof stored.hash !== 'string' || typeof stored.expiresAt !== 'number') {
+  // ONE SCRYPT ON EVERY PATH (Claude Security F17, 2026-11-17). A member
+  // with no live code returned at once while a name nobody holds paid the
+  // callers' FAKE_HASH, so the time a guess took said which names were real
+  // members. `verifyEmailCode` pads the same way.
+  const usable =
+    !!stored &&
+    typeof stored.hash === 'string' &&
+    typeof stored.expiresAt === 'number' &&
+    Date.now() <= stored.expiresAt &&
+    (stored.attempts ?? 0) < MAX_CODE_ATTEMPTS;
+  if (!usable) {
+    await verifyPin(candidate, FAKE_HASH);
     return false;
   }
-  if (Date.now() > stored.expiresAt) return false;
-  if ((stored.attempts ?? 0) >= MAX_CODE_ATTEMPTS) return false;
-  return verifyPin(candidate, stored.hash);
+  return verifyPin(candidate, stored!.hash);
 }
 
 /**

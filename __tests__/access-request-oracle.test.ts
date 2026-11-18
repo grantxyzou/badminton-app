@@ -76,7 +76,7 @@ describe('the poll is no name test', () => {
   it('the seal carries the secret; only its hash is stored', () => {
     const sealed = sealAskSecret('ab'.repeat(32));
     expect(openAskSecret(sealed)).toEqual({ kind: 'sealed', raw: 'ab'.repeat(32) });
-    // A bare secret from before the seal still reads the store.
-    expect(openAskSecret('cd'.repeat(32))).toEqual({ kind: 'legacy', raw: 'cd'.repeat(32) });
+    // A bare secret is dead: it can be read out of any seal (F14).
+    expect(openAskSecret('cd'.repeat(32))).toEqual({ kind: 'dead' });
   });
 });

@@ -261,15 +261,9 @@ async function handleStatsPrivacyPatch(req: NextRequest, name: string, raw: unkn
   // The resolve moved ABOVE the gate so the gate can compare ids (see below).
   const memberId = await resolveActiveMemberId(resolveGroupId(req), name);
 
-  // A name that resolves to nobody is answered before the gate, exactly as it
-  // was before. There is no one to impersonate, so 404 discloses nothing a
-  // caller could not read straight off the unauthenticated `GET /api/members`
-  // roster — and the alternative would turn "this member was deleted" into a
-  // 401 that reads as "your cookie is bad", which is a worse answer to the
-  // person actually in that state.
-  if (!memberId) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  }
+  // A name that resolves to nobody: 404 to someone signed in, the same 401 a
+  // real member's name gets to anyone else (`unknownName`, F15).
+  if (!memberId) return unknownName(req);
 
   // COMPARE IDENTITY, NOT DISPLAY TEXT. The cookie carries an immutable
   // memberId; `name` is mutable, reusable, and — once groups are on — is a
@@ -318,9 +312,7 @@ async function handleAvatarPatch(req: NextRequest, name: string, raw: unknown) {
 
   const membersContainer = getContainer('members');
   const memberId = await resolveActiveMemberId(resolveGroupId(req), name);
-  if (!memberId) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  }
+  if (!memberId) return unknownName(req);
   const caller = await verifyLiveMemberAuth(req);
   const isSelf = !!caller && caller.memberId === memberId;
   if (!isSelf && !(await isAdminAuthedWithMember(req)).authed) {
@@ -355,9 +347,7 @@ async function handleContactEmailPatch(req: NextRequest, name: string, raw: unkn
   }
 
   const memberId = await resolveActiveMemberId(resolveGroupId(req), name);
-  if (!memberId) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  }
+  if (!memberId) return unknownName(req);
   const caller = await verifyLiveMemberAuth(req);
   if (!caller || caller.memberId !== memberId) {
     return NextResponse.json({ error: 'auth_required' }, { status: 401 });
@@ -380,6 +370,22 @@ export async function PATCH(req: NextRequest) {
     console.error('PATCH /api/members/me unhandled:', err);
     return NextResponse.json({ error: 'service_unavailable' }, { status: 503 });
   }
+}
+
+/**
+ * The answer for a name that resolves to nobody. A signed-out caller gets the
+ * same 401 a real member's name gets them, so these branches cannot be asked
+ * who is in the club (Claude Security F15, 2026-11-17). The 404 they used to
+ * give everyone rested on `GET /api/members` being public, which members-only
+ * ended. Someone signed in (a member, or an admin) still gets the 404: a
+ * deleted member holding a stale screen is better told "not found" than
+ * "your cookie is bad".
+ */
+async function unknownName(req: NextRequest): Promise<NextResponse> {
+  if ((await verifyLiveMemberAuth(req)) || (await isAdminAuthedWithMember(req)).authed) {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 });
+  }
+  return NextResponse.json({ error: 'auth_required' }, { status: 401 });
 }
 
 async function handlePatch(req: NextRequest) {
@@ -483,12 +489,32 @@ async function handlePatch(req: NextRequest) {
   const memberId = await resolveActiveMemberId(resolveGroupId(req), name);
   const member = memberId ? (await membersContainer.item(memberId, memberId).read()).resource : undefined;
 
+  const hadPin = !!member && typeof member.pinHash === 'string' && member.pinHash.length > 0;
+
+  /**
+   * WHO IS ASKING, BEFORE ANYTHING ABOUT THE ACCOUNT IS SAID (Claude Security
+   * F15, 2026-11-17). A signed-out caller used to get three different 401s:
+   * `invalid_credentials` for a name nobody holds, `current_pin_required` for
+   * a member with a PIN and `auth_required` for one without, which listed the
+   * club's members and which of them a PIN guess could reach. Now a caller
+   * who is neither this member's live cookie nor an admin gets ONE answer,
+   * after one scrypt, whatever the account is; the only thing they can still
+   * do is change a PIN by proving the current one.
+   */
+  const caller = await verifyLiveMemberAuth(req);
+  const isSelf = !!memberId && !!caller && caller.memberId === memberId;
+  const admin = isSelf ? null : await isAdminAuthedWithMember(req);
+  const known = isSelf || !!admin?.authed;
+  if (!known && !(hadPin && currentPin)) {
+    await verifyPin(currentPin ?? '0000', FAKE_HASH);
+    return NextResponse.json({ error: currentPin ? 'invalid_credentials' : 'auth_required' }, { status: 401 });
+  }
+
   if (!member) {
     if (currentPin) await verifyPin(currentPin, FAKE_HASH);
     return NextResponse.json({ error: 'invalid_credentials' }, { status: 401 });
   }
 
-  const hadPin = typeof member.pinHash === 'string' && member.pinHash.length > 0;
   if (hadPin) {
     if (!currentPin) {
       // Constant-time penalty so callers can't tell "no current PIN
@@ -533,13 +559,10 @@ async function handlePatch(req: NextRequest) {
   // kind, and used to leave with that person's session (F4).
   let provedSelf = hadPin;
   if (!hadPin) {
-    const caller = await verifyLiveMemberAuth(req);
-    const isSelf = !!caller && caller.memberId === memberId;
     if (isSelf) {
       provedSelf = true;
     } else {
-      const admin = await isAdminAuthedWithMember(req);
-      if (!admin.authed) {
+      if (!admin?.authed) {
         return NextResponse.json({ error: 'auth_required' }, { status: 401 });
       }
       const refusal = await onBehalfRefusal(admin, String(memberId));

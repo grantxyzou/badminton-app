@@ -11,6 +11,8 @@ import { isAdminAuthed, isAdminAuthedWithMember, unauthorized } from '@/lib/auth
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { resolveGroupId } from '@/lib/groupContext';
 import { mintReportsKey, readReportsAccess } from '@/lib/reportsAccess';
+import { isOperatorAdmin } from '@/lib/operator';
+import { BPM_GROUP_ID } from '@/lib/groupScope';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,9 +38,17 @@ export async function POST(req: NextRequest) {
   if (!checkRateLimit(`admin-reports-key:${getClientIp(req)}`, 10, 60 * 60_000)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
-  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
+  const auth = await isAdminAuthedWithMember(req);
+  if (!auth.authed) return unauthorized();
+  // BPM's key also opens the deployment-wide problem reports
+  // (`GET /api/reports/feedback`), written by members of EVERY club, so it is
+  // the operator's to mint, a person and not a club (Claude Security F26,
+  // 2026-11-17). Another club's key reads only that club's totals.
+  if (auth.groupId === BPM_GROUP_ID && !isOperatorAdmin(auth)) {
+    return NextResponse.json({ error: 'operator_only' }, { status: 403 });
+  }
   try {
-    const key = await mintReportsKey(resolveGroupId(req));
+    const key = await mintReportsKey(auth.groupId);
     return NextResponse.json({ key }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (err) {
     console.error('POST /api/admin/reports/key failed', err);

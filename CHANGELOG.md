@@ -8,6 +8,18 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Security fixes: the smaller findings (2026-11-18)
+
+From the Claude Security scan of the server code (LOW findings marked "fix now").
+
+- **A drill tick lands on the person signed in, never on a name** (F13). An account named like a member used to write that member's drill record.
+- **Nobody signed out can tell who is in the club from the account screens** (F14, F15, F17). The "let me in" poll, the PIN change and the privacy, picture and email saves answer a stranger the same way for every name, and a recovery-code guess costs the same whether or not a code is waiting.
+- **An admin never sees a member's arm or shoulder answer** (F16, F29): not in what a gear save sends back, and not in a recommendation asked on their behalf.
+- **Taking an admin off the roster is an organiser's call** (F20), from all three places it could be done.
+- **Admin reads of who owes what, the string costs and the stringer's queue stop the moment someone is demoted or signed out everywhere** (F23, F24, F25).
+- **Two deployment-wide tools are the operator's alone**: the memberId migration and minting BPM's reports key (F22, F26). A key already minted stays valid until it is rotated.
+- **A crafted pick event can no longer change every object on the server** (F21).
+
 ## Stringing: what the bench earned (2026-11-18)
 
 - **A line at the top of Stringing jobs** says this month so far: collected, owed and not invoiced. Tap it for Earnings. Organisers and admins only; a stringer who isn't an admin still sees no money.

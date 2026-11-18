@@ -76,7 +76,7 @@ const ROUTES: Record<string, Entry> = {
   'stringing/shop': GATED,
   'stringing/strings': GATED,
   // The string inventory (docs/plans/string-inventory.md): read-only admin summary.
-  'stringing/stock': admin('isAdminAuthed'),
+  'stringing/stock': admin('isAdminAuthedWithMember'),
   'stringing/earnings': admin('isAdminAuthed'),
   // The stocktake's sheet (docs/plans/string-photo-stocktake.md): an admin or
   // one of the club's stringers, re-read per call; sets only, no money.
@@ -96,13 +96,13 @@ const ROUTES: Record<string, Entry> = {
   'admin/anomalies': admin('isAdminAuthedWithMember'),
   'admin/fit-preview': admin(),
   'admin/catalog-gaps': admin(),
-  'admin/ledger': admin(),
+  'admin/ledger': admin('isAdminAuthedWithMember'),
   'admin/ledger/entries': admin(),
   'admin/migrate-groups': admin('isOperator'),
   'admin/ledger-backfill': admin('isAdminAuthedWithMember'),
   'admin/ledger/reconcile': admin('isAdminAuthedWithMember'),
   'admin/expenses': admin(),
-  'admin/owed-audit': admin(),
+  'admin/owed-audit': admin('isAdminAuthedWithMember'),
   'admin/payments': admin('isAdminAuthedWithMember'),
   'admin/credit': admin('isAdminAuthedWithMember'),
   'admin/giftcards': admin('isAdminAuthedWithMember'),
@@ -149,7 +149,7 @@ const ROUTES: Record<string, Entry> = {
   'members/me/payments': { kind: 'authed', helper: 'requireGroupMember' },
   // A gifter's own cards (docs/plans/gift-card-ledger.md): the member cookie, then the switch.
   giftcards: { kind: 'authed', helper: 'requireGroupMember' },
-  'stringing/jobs': { kind: 'authed', helper: 'verifyMemberAuth' },
+  'stringing/jobs': { kind: 'authed', helper: 'verifyLiveMemberAuth' },
 
   // ── Public by design: nothing about the club ─────────────────────────────
   admin: { kind: 'public', reason: 'the admin-status probe: answers only `authed`' },
