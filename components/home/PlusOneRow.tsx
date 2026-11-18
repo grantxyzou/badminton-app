@@ -32,6 +32,7 @@ export default function PlusOneRow({
   windowEnd = null,
   showShare = true,
   part = 'all',
+  waitPositions,
 }: {
   /** The host's guest rows in this session, oldest first. */
   guests: Player[];
@@ -51,6 +52,8 @@ export default function PlusOneRow({
    * guest" and its form alone; `all`: both, stacked, as everywhere else.
    */
   part?: 'all' | 'guests' | 'add';
+  /** Each waiting guest's place in the session's waitlist, by row id ("waitlist #1"). */
+  waitPositions?: Record<string, number>;
 }) {
   const t = useTranslations('home.guest');
   const [open, setOpen] = useState(false);
@@ -98,7 +101,7 @@ export default function PlusOneRow({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
       {showGuests && guests.map((g) => (
-        <GuestLine key={g.id} guest={g} online={online} onChanged={onChanged} windowEnd={windowEnd} showShare={showShare} inBanner={part === 'guests'} />
+        <GuestLine key={g.id} guest={g} online={online} onChanged={onChanged} windowEnd={windowEnd} showShare={showShare} inBanner={part === 'guests'} waitPosition={waitPositions?.[g.id]} />
       ))}
       {showAdd && (
         <div>
@@ -161,14 +164,17 @@ function GuestLine({
   windowEnd,
   showShare,
   inBanner = false,
+  waitPosition,
 }: {
   guest: Player;
   online: boolean;
   onChanged: () => void;
   windowEnd: string | null;
   showShare: boolean;
-  /** Riding on the host's "you have signed up" line: "↳ Jenny, your guest · waitlist". */
+  /** Riding on the host's "you have signed up" line: "↳ Jenny, your guest · waitlist #1". */
   inBanner?: boolean;
+  /** Their place in the waitlist, when they are on it (the canvas, Grant's "waitlist #1"). */
+  waitPosition?: number;
 }) {
   const t = useTranslations('home.guest');
   const tPlayers = useTranslations('players');
@@ -219,17 +225,19 @@ function GuestLine({
         )}
         <div style={{ flex: 1, minWidth: 0 }}>
           {inBanner ? (
-            <p className="fs-md m-0" style={{ color: 'var(--text-primary)' }}>
-              {t('yourGuest', { name: guestName })}
-              <span style={{ color: guest.waitlisted ? 'var(--sev-warn)' : 'var(--text-secondary)' }}>
-                {' · '}
+            /* Name, then where they stand on a line of its own: at phone
+               width "Jenny, your guest · waitlist #5" beside Remove broke
+               mid-name. */
+            <>
+              <p className="fs-md m-0" style={{ color: 'var(--text-primary)' }}>{t('yourGuest', { name: guestName })}</p>
+              <p className="fs-sm m-0" style={{ color: guest.waitlisted ? 'var(--sev-warn)' : 'var(--text-secondary)' }}>
                 {guest.waitlisted && guest.waitingForMembers && windowEnd
                   ? t('statusWaitingFor', { when: windowEnd })
                   : guest.waitlisted
-                    ? t('statusWaiting')
+                    ? (waitPosition && waitPosition > 0 ? t('statusWaitingAt', { position: waitPosition }) : t('statusWaiting'))
                     : t('statusIn')}
-              </span>
-            </p>
+              </p>
+            </>
           ) : (
           <p className="fs-md m-0" style={{ color: 'var(--text-primary)' }}>
             {guest.waitlisted && guest.waitingForMembers && windowEnd

@@ -426,6 +426,9 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
     ? (() => { const diff = new Date(session.deadline).getTime() - Date.now(); return diff > 0 && diff <= 24 * 60 * 60 * 1000; })()
     : false;
 
+  // Each waiting row's place in line, for "Jenny, your guest · waitlist #1".
+  const waitPositions = Object.fromEntries(waitlistPlayers.map((p, i) => [p.id, i + 1]));
+
   const waitlistPosition = isWaitlisted && currentUser
     ? waitlistPlayers.findIndex(p => p.name.toLowerCase() === currentUser.toLowerCase()) + 1
     : 0;
@@ -865,7 +868,8 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 title={
                   <>
                     {currentUser ? tStates('signedUpTitle', { name: currentUser }) : tStates('signedUpTitleGeneric')}
-                    {addToCalendar && <>{' '}{addToCalendar}</>}
+                    {/* Its own gap, not a space (the canvas, 2026-11-18). */}
+                    {addToCalendar}
                   </>
                 }
                 celebrate={signupEntrance === 'pop'}
@@ -875,6 +879,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
                 {myGuests.length > 0 && (
                   <PlusOneRow
                     part="guests"
+                    waitPositions={waitPositions}
                     guests={myGuests}
                     canAdd={false}
                     online={online}
