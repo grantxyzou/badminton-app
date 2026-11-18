@@ -201,7 +201,7 @@ ${rawNotes}`;
             <button
               type="button"
               onClick={loadFromChangelog}
-              className="text-[11px]"
+              className="fs-xs"
               style={{ color: 'var(--accent)', background: 'transparent', border: 'none', padding: 'var(--space-05) var(--space-2)', cursor: 'pointer' }}
               aria-label="Refresh from CHANGELOG.md Unreleased section"
               title="Re-pull the Unreleased bullets from CHANGELOG.md"
@@ -218,7 +218,7 @@ ${rawNotes}`;
             placeholder="Paste commit messages, rough notes, bullet points..."
           />
           {changelogFreshness && (
-            <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>
+            <p className="fs-2xs mt-1" style={{ color: 'var(--text-muted)' }}>
               {changelogMeta?.source === 'published-fallback'
                 ? `Pre-filled from the most recent published version (Unreleased section was empty; baked ${changelogFreshness}). Override the version above if you're drafting the next release instead.`
                 : changelogMeta?.sinceDay

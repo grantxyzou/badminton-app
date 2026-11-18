@@ -47,6 +47,7 @@ const RADII = [
   ['--radius-lg',  '12px', 'Banners'],
   ['--radius-xl',  '16px', 'Glass card — MAX'],
   ['--radius-pill','100px','Pills, segment'],
+  ['--radius-hair','2px',  'Marks under 6px (dots, lines)'],
 ] as const;
 
 // Kept honest by __tests__/spacing-canary.test.ts, which parses the real
@@ -86,6 +87,7 @@ const TYPE = [
   { tok: '--fs-stat-lg / 22px', sample: '3.8', size: 'var(--fs-stat-lg)', weight: 700 },
   { tok: '--fs-count / 34px', sample: '12', size: 'var(--fs-count)', weight: 700 },
   { tok: '--fs-stat-xl / 38px', sample: '21', size: 'var(--fs-stat-xl)', weight: 700 },
+  { tok: '--fs-hero / 48px', sample: '$9.50', size: 'var(--fs-hero)', weight: 700 },
 ];
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {

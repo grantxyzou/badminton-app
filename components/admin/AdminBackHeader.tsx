@@ -14,7 +14,7 @@ import type { AdminNavProps } from './types';
 export default function AdminBackHeader({ onBack, title, sessionLabel, crumb = 'Admin' }: AdminNavProps) {
   const right = sessionLabel ? (
     <span
-      className="text-[10px] font-semibold px-2 py-1 rounded-full"
+      className="fs-2xs font-semibold px-2 py-1 rounded-full"
       style={{
         background: 'var(--inner-card-green-bg)',
         color: 'var(--accent)',

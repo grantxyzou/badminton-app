@@ -315,7 +315,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
           <span
             style={{
               fontFamily: 'var(--font-display, "Space Grotesk")',
-              fontSize: 54,
+              fontSize: 'var(--fs-hero)',
               fontWeight: 700,
               letterSpacing: '-0.035em',
               lineHeight: 1,
@@ -324,7 +324,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
           >
             {weeksRunway === null ? '—' : weeksRunway.toFixed(1)}
           </span>
-          <span style={{ fontFamily: 'var(--font-display, "Space Grotesk")', fontSize: 18, color: 'var(--text-secondary)', fontWeight: 600 }}>
+          <span className="bpm-h3" style={{ color: 'var(--text-secondary)' }}>
             {weeksRunway === null ? 'no data' : 'weeks'}
           </span>
           {reorderPill && (
@@ -417,7 +417,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
                 bottom: -TIMELINE_NOW_OVERFLOW,
                 width: 3,
                 background: 'var(--text-primary)',
-                borderRadius: 2,
+                borderRadius: 'var(--radius-hair)',
                 boxShadow: '0 0 0 2px var(--ink-shadow)',
               }}
               aria-label="now"
@@ -522,7 +522,7 @@ export default function BirdsPage({ onBack }: BirdsPageProps) {
                 </p>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                <span style={{ fontFamily: 'var(--font-display, "Space Grotesk")', fontSize: 18, fontWeight: 700, letterSpacing: '-0.02em' }}>
+                <span className="bpm-h3" style={{ fontWeight: 700, letterSpacing: '-0.02em' }}>
                   {b.bought}
                   <span style={{ color: 'var(--ink-faint)', fontSize: 'var(--fs-sm)', fontWeight: 500 }}> bought</span>
                 </span>

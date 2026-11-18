@@ -289,13 +289,13 @@ export default function AdvanceSessionForm({ onBack }: Props) {
             />
             {recentTitles.filter(t => t !== title).length > 0 && (
               <div className="flex gap-1.5 flex-wrap pt-1">
-                <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Recent:</span>
+                <span className="fs-2xs" style={{ color: 'var(--text-muted)' }}>Recent:</span>
                 {recentTitles.filter(t => t !== title).slice(0, 4).map(t => (
                   <button
                     key={t}
                     type="button"
                     onClick={() => setTitle(t)}
-                    className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-white/5 hover:bg-white/10 transition-colors"
+                    className="px-2 py-0.5 rounded-full fs-xs font-medium bg-white/5 hover:bg-white/10 transition-colors"
                     style={{ color: 'var(--text-secondary)' }}
                   >
                     {t}
@@ -328,7 +328,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
             </div>
             {recentLocations.filter(l => l.locationName !== locationName || l.locationAddress !== locationAddress).length > 0 && (
               <div className="flex gap-1.5 flex-wrap pt-1">
-                <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Recent:</span>
+                <span className="fs-2xs" style={{ color: 'var(--text-muted)' }}>Recent:</span>
                 {recentLocations
                   .filter(l => l.locationName !== locationName || l.locationAddress !== locationAddress)
                   .slice(0, 4)
@@ -337,7 +337,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
                       key={`${l.locationName}|${l.locationAddress}|${i}`}
                       type="button"
                       onClick={() => { setLocationName(l.locationName); setLocationAddress(l.locationAddress); }}
-                      className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-white/5 hover:bg-white/10 transition-colors max-w-[180px] truncate"
+                      className="px-2 py-0.5 rounded-full fs-xs font-medium bg-white/5 hover:bg-white/10 transition-colors max-w-[180px] truncate"
                       style={{ color: 'var(--text-secondary)' }}
                       title={l.locationAddress || l.locationName}
                     >
@@ -432,13 +432,13 @@ export default function AdvanceSessionForm({ onBack }: Props) {
             </div>
             {recentCosts.length > 0 && (
               <div className="flex gap-1.5 flex-wrap pt-1">
-                <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Recent:</span>
+                <span className="fs-2xs" style={{ color: 'var(--text-muted)' }}>Recent:</span>
                 {recentCosts.map(c => (
                   <button
                     key={c}
                     type="button"
                     onClick={() => setCostPerCourt(c)}
-                    className={`px-2 py-0.5 rounded-full text-[11px] font-medium transition-colors ${costPerCourt === c ? 'bg-green-500/20 text-green-400' : 'bg-white/5 hover:bg-white/10'}`}
+                    className={`px-2 py-0.5 rounded-full fs-xs font-medium transition-colors ${costPerCourt === c ? 'bg-green-500/20 text-green-400' : 'bg-white/5 hover:bg-white/10'}`}
                     style={costPerCourt !== c ? { color: 'var(--text-secondary)' } : undefined}
                   >
                     ${c}
@@ -455,7 +455,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
             >
               <div className="min-w-0 flex-1">
                 <p className="fs-md font-medium" style={{ color: 'var(--text-primary)' }}>Shuttles used</p>
-                <p className="text-[11px]" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                <p className="fs-xs" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
                   {tubes} tube{tubes === 1 ? '' : 's'} × ${pricePerTube.toFixed(2)} = ${(Math.round(tubes * pricePerTube * 100) / 100).toFixed(2)}
                 </p>
               </div>
@@ -465,7 +465,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
                   onClick={() => bumpTubes(-0.25)}
                   aria-label="Decrease shuttle tubes"
                   disabled={tubes <= 0}
-                  style={{ minWidth: 40, minHeight: 40, borderRadius: 'var(--radius-md)', border: '1px solid transparent', background: 'var(--input-bg)', color: 'var(--text-primary)', fontSize: 18, opacity: tubes <= 0 ? 0.4 : 1 }}
+                  style={{ minWidth: 40, minHeight: 40, borderRadius: 'var(--radius-md)', border: '1px solid transparent', background: 'var(--input-bg)', color: 'var(--text-primary)', fontSize: 'var(--icon-md)', opacity: tubes <= 0 ? 0.4 : 1 }}
                 >
                   −
                 </button>
@@ -477,14 +477,14 @@ export default function AdvanceSessionForm({ onBack }: Props) {
                   onClick={() => bumpTubes(0.25)}
                   aria-label="Increase shuttle tubes"
                   disabled={tubes >= 100}
-                  style={{ minWidth: 40, minHeight: 40, borderRadius: 'var(--radius-md)', border: '1px solid transparent', background: 'var(--input-bg)', color: 'var(--text-primary)', fontSize: 18, opacity: tubes >= 100 ? 0.4 : 1 }}
+                  style={{ minWidth: 40, minHeight: 40, borderRadius: 'var(--radius-md)', border: '1px solid transparent', background: 'var(--input-bg)', color: 'var(--text-primary)', fontSize: 'var(--icon-md)', opacity: tubes >= 100 ? 0.4 : 1 }}
                 >
                   +
                 </button>
               </div>
             </div>
             <div className="flex items-center gap-2 pt-2">
-              <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>$ / tube</span>
+              <span className="fs-xs" style={{ color: 'var(--text-muted)' }}>$ / tube</span>
               <input
                 type="number"
                 inputMode="decimal"
@@ -499,7 +499,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
                 <button
                   type="button"
                   onClick={() => setPricePerTube(autoPrice)}
-                  className="text-[11px]"
+                  className="fs-xs"
                   style={{ padding: 'var(--space-1) var(--space-3)', borderRadius: 'var(--radius-pill)', border: '1px solid transparent', background: 'var(--input-bg)', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', cursor: 'pointer', whiteSpace: 'nowrap' }}
                 >
                   Latest ${autoPrice.toFixed(2)}
@@ -548,7 +548,7 @@ export default function AdvanceSessionForm({ onBack }: Props) {
       >
         <BottomSheetHeader bare>
           <div className="flex items-center justify-between px-4 py-3">
-            <h2 className="bpm-h3" style={{ color: '#fca5a5' }}>Date is on your skip list</h2>
+            <h2 className="bpm-h3" style={{ color: 'var(--sev-crit-text)' }}>Date is on your skip list</h2>
             <button
               type="button"
               onClick={() => setShowSkipBlock(false)}

@@ -20,11 +20,11 @@ const REQUIRED_TOKENS = [
   // glass surfaces
   '--glass-bg', '--glass-border', '--glass-blur', '--inner-card-border',
   // radii ladder
-  '--radius-xs', '--radius-sm', '--radius-md', '--radius-lg', '--radius-xl', '--radius-pill',
+  '--radius-xs', '--radius-sm', '--radius-md', '--radius-lg', '--radius-xl', '--radius-pill', '--radius-hair',
   // type-size scale (standardization Phase 0)
   '--fs-2xs', '--fs-xs', '--fs-sm', '--fs-base', '--fs-md', '--fs-lg',
   // stats headline data scale + compat aliases (design-audit P0/P1)
-  '--fs-stat', '--fs-stat-lg', '--color-red', '--color-amber', '--sev-warn',
+  '--fs-stat', '--fs-stat-lg', '--fs-hero', '--color-red', '--color-amber', '--sev-warn',
   // icon glyph-size ladder (mirrors .icon-* classes; design-audit item #3)
   '--icon-xs', '--icon-sm', '--icon-md', '--icon-lg', '--icon-xl',
   // type families (--font-mono was a phantom token; see design-audit)

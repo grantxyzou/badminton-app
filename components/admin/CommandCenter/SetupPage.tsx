@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import AdminBackHeader from '../AdminBackHeader';
 import { AdminPageSkeleton } from '@/components/primitives/CardSkeleton';
 import ErrorState from '@/components/primitives/ErrorState';
+import Switch from '@/components/primitives/Switch';
 import { normalizeBirdUsages, totalTubes, totalBirdCost, currentPricePerTube } from '@/lib/birdUsages';
 import { renderGroupCanvas, renderGroupText, type ReceiptInput } from '@/lib/receiptTemplate';
 import { withLocalTz } from '@/lib/fmt';
@@ -387,7 +388,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
             <span style={{ fontFamily: 'var(--font-display, "Space Grotesk")', fontSize: 'var(--fs-base)', fontWeight: 600 }}>Sign-ups open</span>
             <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>Players can join now</span>
           </div>
-          <Toggle on={signupOpen} onChange={setSignupOpen} />
+          <Switch checked={signupOpen} onChange={setSignupOpen} ariaLabel="Sign-ups open" />
         </div>
       </div>
 
@@ -408,7 +409,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
           <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono")', fontSize: 'var(--fs-2xs)', color: 'var(--ink-faint)' }}>auto-calc</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-4)' }}>
-          <span style={{ fontFamily: 'var(--font-display, "Space Grotesk")', fontSize: 48, fontWeight: 700, letterSpacing: '-0.035em', lineHeight: 1, color: 'var(--accent)' }}>
+          <span style={{ fontFamily: 'var(--font-display, "Space Grotesk")', fontSize: 'var(--fs-hero)', fontWeight: 700, letterSpacing: '-0.035em', lineHeight: 1, color: 'var(--accent)' }}>
             {activePlayerCount > 0 ? `$${perPlayer}` : '—'}
           </span>
           <span style={{ fontFamily: 'var(--font-mono, "JetBrains Mono")', fontSize: 'var(--fs-xs)', color: 'var(--ink-faint)' }}>
@@ -433,7 +434,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
             value={costPerCourt ?? ''}
             onChange={(e) => setCostPerCourt(e.target.value === '' ? null : Math.max(0, Math.min(500, Number(e.target.value))))}
             placeholder="$ per court"
-            style={{ background: 'rgba(var(--glass-tint), 0.04)', border: '1px solid rgba(var(--glass-tint), 0.12)', borderRadius: 'var(--radius-sm)', padding: 'var(--space-3) var(--space-4)', fontSize: 'var(--fs-base)' }}
+            style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: 'var(--radius-sm)', padding: 'var(--space-3) var(--space-4)', fontSize: 'var(--fs-base)' }}
           />
           {recentCosts.length > 0 && (
             <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
@@ -447,9 +448,10 @@ export default function SetupPage({ onBack }: SetupPageProps) {
                     fontSize: 'var(--fs-xs)',
                     padding: 'var(--space-1) var(--space-4)',
                     borderRadius: 'var(--radius-pill)',
-                    background: costPerCourt === c ? 'var(--tone-green-bg)' : 'rgba(var(--glass-tint), 0.04)',
+                    // Fill-only: selected is a solid tint, never a ring.
+                    background: costPerCourt === c ? 'var(--tone-green-bg)' : 'var(--inner-card-bg)',
                     color: costPerCourt === c ? 'var(--accent)' : 'var(--text-secondary)',
-                    border: `1px solid ${costPerCourt === c ? 'var(--tone-green-border-strong)' : 'rgba(var(--glass-tint), 0.12)'}`,
+                    border: '1px solid transparent',
                     cursor: 'pointer',
                     fontFamily: 'var(--font-mono, "JetBrains Mono")',
                   }}
@@ -479,7 +481,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
             value={pricePerTube || ''}
             onChange={(e) => setPricePerTube(e.target.value === '' ? 0 : Math.max(0, Math.min(10000, Number(e.target.value))))}
             placeholder="$ per tube"
-            style={{ background: 'rgba(var(--glass-tint), 0.04)', border: '1px solid rgba(var(--glass-tint), 0.12)', borderRadius: 'var(--radius-sm)', padding: 'var(--space-3) var(--space-4)', fontSize: 'var(--fs-base)' }}
+            style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', borderRadius: 'var(--radius-sm)', padding: 'var(--space-3) var(--space-4)', fontSize: 'var(--fs-base)' }}
           />
           {autoPrice > 0 && Math.abs(autoPrice - pricePerTube) > 0.005 && (
             <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
@@ -487,7 +489,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
               <button
                 type="button"
                 onClick={() => setPricePerTube(autoPrice)}
-                style={{ fontSize: 'var(--fs-xs)', padding: 'var(--space-1) var(--space-4)', borderRadius: 'var(--radius-pill)', background: 'rgba(var(--glass-tint), 0.04)', color: 'var(--text-secondary)', border: '1px solid rgba(var(--glass-tint), 0.12)', cursor: 'pointer', fontFamily: 'var(--font-mono, "JetBrains Mono")' }}
+                style={{ fontSize: 'var(--fs-xs)', padding: 'var(--space-1) var(--space-4)', borderRadius: 'var(--radius-pill)', background: 'var(--inner-card-bg)', color: 'var(--text-secondary)', border: '1px solid transparent', cursor: 'pointer', fontFamily: 'var(--font-mono, "JetBrains Mono")' }}
               >
                 ${autoPrice.toFixed(2)}/tube
               </button>
@@ -497,7 +499,7 @@ export default function SetupPage({ onBack }: SetupPageProps) {
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'var(--space-05) 0' }}>
           <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>Show cost on Home announcement</span>
-          <Toggle on={showCostBreakdown} onChange={setShowCostBreakdown} />
+          <Switch checked={showCostBreakdown} onChange={setShowCostBreakdown} ariaLabel="Show cost on Home announcement" />
         </div>
       </div>
 
@@ -632,41 +634,6 @@ function Field({ label, children, style }: { label: string; children: React.Reac
   );
 }
 
-function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
-      onClick={() => onChange(!on)}
-      style={{
-        width: 44,
-        height: 26,
-        background: on ? 'var(--accent)' : 'rgba(var(--glass-tint), 0.1)',
-        borderRadius: 'var(--radius-pill)',
-        position: 'relative',
-        border: 0,
-        cursor: 'pointer',
-        flexShrink: 0,
-        transition: 'background 0.15s',
-      }}
-    >
-      <span
-        style={{
-          position: 'absolute',
-          width: 22,
-          height: 22,
-          borderRadius: '50%',
-          background: 'white',
-          top: 2,
-          left: on ? 20 : 2,
-          transition: 'left 0.15s',
-        }}
-      />
-    </button>
-  );
-}
-
 function Stepper({
   value,
   onDec,
@@ -687,8 +654,8 @@ function Stepper({
         alignItems: 'center',
         gap: 'var(--space-1)',
         padding: 'var(--space-1)',
-        background: 'rgba(var(--glass-tint), 0.04)',
-        border: '1px solid rgba(var(--glass-tint), 0.12)',
+        background: 'var(--inner-card-bg)',
+        border: '1px solid transparent',
         borderRadius: 'var(--radius-md)',
         flexShrink: 0,
       }}
@@ -701,7 +668,7 @@ function Stepper({
         style={{
           width: 28,
           height: 28,
-          background: 'rgba(var(--glass-tint), 0.04)',
+          background: 'var(--input-bg)',
           border: 0,
           borderRadius: 'var(--radius-sm)',
           color: 'var(--text-primary)',
@@ -722,7 +689,7 @@ function Stepper({
         style={{
           width: 28,
           height: 28,
-          background: 'rgba(var(--glass-tint), 0.04)',
+          background: 'var(--input-bg)',
           border: 0,
           borderRadius: 'var(--radius-sm)',
           color: 'var(--text-primary)',
