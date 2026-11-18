@@ -8,6 +8,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Home: every card evenly spaced (2026-11-18)
+
+- **Home's cards are all the same distance apart.** The bigger space before your balance is gone (Grant, on the canvas: "this gap, is weird", then "no gap even spacing"). It was meant to separate this week from your account, but it landed between your level card and your balance and looked like a hole.
+
 ## Your guest's place on the waitlist (2026-11-18)
 
 - **A waiting guest shows their place in line** under their name, inside your "you have signed up" box: "Jenny, your guest" over "Waitlist #2" (Grant, on the canvas: "waitlist #1"). A guest with a spot says "Coming".
