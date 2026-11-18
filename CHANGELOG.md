@@ -15,6 +15,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 - **After string cost** is your price minus the string that went into each racket, at the shelf's cost per set; a player's own string costs nothing. A waterfall shows the step, and **Breakdown by string type** ranks each string by what it made. Tap a string's eye for its cost per set, how many more jobs pay off what you bought, the sets left, and **Simulate price**, a what-if that changes nothing.
 - A job counts in the month its string went in, the same day the shelf counts it.
 
+## Your guest rides on your own sign-up (2026-11-18)
+
+- **Once you have signed up and brought a guest, they show inside your green "you have signed up" box**: "↳ Jenny, your guest · waitlist" (or "· coming"), with Remove beside it (Grant, on the canvas: "I like option B").
+- **"Bring another guest" is the button right under it**, and the list of who else is coming follows.
+- **The court note is now a footnote under that list**: "Another court opens when enough people are waiting."
+
 ## Stringing: the archive matches the jobs list (2026-11-17)
 
 - **Archived jobs use the same rows as the live jobs**: the racket picture and name, the player, the job number and status, and M and C as two pills, in one card labelled "Picked up" with how many still owe.

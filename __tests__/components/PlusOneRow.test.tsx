@@ -51,4 +51,27 @@ describe('PlusOneRow', () => {
     expect(await screen.findByText(/Kodai is on the club’s list already/)).toBeDefined();
     expect(screen.queryByText('Their share goes on your balance.')).toBeNull();
   });
+
+  /* Option B on the canvas (Grant, 2026-11-18: "I like option B"): on the
+     signed-up card the guests ride inside the host's own banner, and the add
+     button stands on its own below it. */
+  it('splits into the guest lines (for the banner) and the add button', () => {
+    show({ part: 'guests', guests: [guest('g1', 'Jenny', { waitlisted: true }), guest('g2', 'Alex')], canAdd: true });
+    expect(screen.getByText('Jenny, your guest')).toBeDefined();
+    expect(screen.getByText(/waitlist/)).toBeDefined();
+    expect(screen.getByText('Alex, your guest')).toBeDefined();
+    expect(screen.getByText(/coming/)).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Remove Jenny' })).toBeDefined();
+    // The guest half never offers another.
+    expect(screen.queryByRole('button', { name: /Bring/ })).toBeNull();
+    cleanup();
+    show({ part: 'add', guests: [guest('g1', 'Jenny')], canAdd: true });
+    expect(screen.getByRole('button', { name: /Bring another guest/ })).toBeDefined();
+    expect(screen.queryByText(/Jenny/)).toBeNull();
+  });
+
+  it('draws nothing for the guest half when there are no guests', () => {
+    const { container } = show({ part: 'guests', guests: [], canAdd: true });
+    expect(container.textContent).toBe('');
+  });
 });

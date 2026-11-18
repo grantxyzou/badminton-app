@@ -101,6 +101,7 @@ export const ICON_NAMES = [
   'star_border',
   'storefront',
   'subdirectory_arrow_left',
+  'subdirectory_arrow_right',
   'swap_horiz',
   'thumb_down',
   'thumb_up',

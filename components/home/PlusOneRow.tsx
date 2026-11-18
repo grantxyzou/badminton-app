@@ -31,6 +31,7 @@ export default function PlusOneRow({
   onChanged,
   windowEnd = null,
   showShare = true,
+  part = 'all',
 }: {
   /** The host's guest rows in this session, oldest first. */
   guests: Player[];
@@ -43,6 +44,13 @@ export default function PlusOneRow({
   windowEnd?: string | null;
   /** Whether a guest's share lands on the member's balance: not in a club that keeps its money outside the app. */
   showShare?: boolean;
+  /**
+   * Which half to draw. `guests`: the guest lines alone, set to sit INSIDE
+   * the host's green "you have signed up" banner (the canvas, guest-added
+   * option B, 2026-11-18; Grant: "I like option B"); `add`: "Bring (another)
+   * guest" and its form alone; `all`: both, stacked, as everywhere else.
+   */
+  part?: 'all' | 'guests' | 'add';
 }) {
   const t = useTranslations('home.guest');
   const [open, setOpen] = useState(false);
@@ -83,14 +91,16 @@ export default function PlusOneRow({
     }
   }
 
-  if (guests.length === 0 && !canAdd) return null;
+  const showGuests = part !== 'add';
+  const showAdd = part !== 'guests' && canAdd;
+  if ((!showGuests || guests.length === 0) && !showAdd) return null;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-      {guests.map((g) => (
-        <GuestLine key={g.id} guest={g} online={online} onChanged={onChanged} windowEnd={windowEnd} showShare={showShare} />
+      {showGuests && guests.map((g) => (
+        <GuestLine key={g.id} guest={g} online={online} onChanged={onChanged} windowEnd={windowEnd} showShare={showShare} inBanner={part === 'guests'} />
       ))}
-      {canAdd && (
+      {showAdd && (
         <div>
           {!open && (
             /* A filled secondary button, the Balance card's (the canvas, guest
@@ -150,12 +160,15 @@ function GuestLine({
   onChanged,
   windowEnd,
   showShare,
+  inBanner = false,
 }: {
   guest: Player;
   online: boolean;
   onChanged: () => void;
   windowEnd: string | null;
   showShare: boolean;
+  /** Riding on the host's "you have signed up" line: "↳ Jenny, your guest · waitlist". */
+  inBanner?: boolean;
 }) {
   const t = useTranslations('home.guest');
   const tPlayers = useTranslations('players');
@@ -197,8 +210,27 @@ function GuestLine({
   return (
     <div className="motion-fade" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-        <span className="material-icons icon-md" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>person_add</span>
+        {inBanner ? (
+          /* Lined up under the banner's check, so the guest reads as part of
+             the host's own sign-up. */
+          <span className="material-icons icon-status text-green-400" aria-hidden="true">subdirectory_arrow_right</span>
+        ) : (
+          <span className="material-icons icon-md" aria-hidden="true" style={{ color: 'var(--text-muted)' }}>person_add</span>
+        )}
         <div style={{ flex: 1, minWidth: 0 }}>
+          {inBanner ? (
+            <p className="fs-md m-0" style={{ color: 'var(--text-primary)' }}>
+              {t('yourGuest', { name: guestName })}
+              <span style={{ color: guest.waitlisted ? 'var(--sev-warn)' : 'var(--text-secondary)' }}>
+                {' · '}
+                {guest.waitlisted && guest.waitingForMembers && windowEnd
+                  ? t('statusWaitingFor', { when: windowEnd })
+                  : guest.waitlisted
+                    ? t('statusWaiting')
+                    : t('statusIn')}
+              </span>
+            </p>
+          ) : (
           <p className="fs-md m-0" style={{ color: 'var(--text-primary)' }}>
             {guest.waitlisted && guest.waitingForMembers && windowEnd
               ? t('waitingForMembers', { name: guestName, when: windowEnd })
@@ -206,6 +238,7 @@ function GuestLine({
                 ? t('waiting', { name: guestName })
                 : t('coming', { name: guestName })}
           </p>
+          )}
           {showShare && <p className="fs-sm m-0" style={{ color: 'var(--text-muted)' }}>{t('note')}</p>}
         </div>
         {lateHours === null && (
