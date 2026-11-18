@@ -8,6 +8,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## A payment that lands while a bill is being settled is kept (2026-11-18)
+
+- **If someone pays at the very moment you settle or edit a bill, their payment now survives.** Before, the settle could write over it with the copy it had read a moment earlier, and the person showed as unpaid again.
+- Behind the scenes, the build now refuses changes that break the app's money rules, such as editing the ledger instead of adding to it.
+
 ## Home: every card evenly spaced (2026-11-18)
 
 - **Home's cards are all the same distance apart.** The bigger space before your balance is gone (Grant, on the canvas: "this gap, is weird", then "no gap even spacing"). It was meant to separate this week from your account, but it landed between your level card and your balance and looked like a hole.

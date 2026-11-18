@@ -161,21 +161,26 @@ export async function POST(req: NextRequest) {
       // can total what the admin absorbed — they're just flagged writtenOff so
       // it's never collected.
       const owed = owedOf(player);
-      // What was received (docs/plans/paid-amount.md): a row ticked paid at
-      // the estimate records the whole bill now; a row a short transfer was
-      // assigned to is paid once the money covers the frozen bill, else owes
-      // the rest.
-      const received = typeof player.paidAmount === 'number' ? player.paidAmount : undefined;
-      const updated: Player = {
-        ...player,
-        owedAmount: owed,
-        settledAt: at,
-        ...(player.paid === true && received === undefined && owed > 0 ? { paidAmount: owed } : {}),
-        // What came in decides: covers the bill → paid (anything above it is
-        // kept as club income, `overpaidEntry`); short of it → owes the rest.
-        ...(received !== undefined && owed > 0 ? { paid: received >= owed } : {}),
-      };
-      await scope.upsert('players', updated);
+      // Under the etag (money guard, 2026-11-18): a payment landing on this
+      // row while the settle runs must not be overwritten by the copy read a
+      // moment ago. A lost race re-reads the row and stamps it again.
+      const updated = await replaceRow(scope, player, (row) => {
+        // What was received (docs/plans/paid-amount.md): a row ticked paid at
+        // the estimate records the whole bill now; a row a short transfer was
+        // assigned to is paid once the money covers the frozen bill, else owes
+        // the rest.
+        const received = typeof row.paidAmount === 'number' ? row.paidAmount : undefined;
+        return {
+          ...row,
+          owedAmount: owed,
+          settledAt: at,
+          ...(row.paid === true && received === undefined && owed > 0 ? { paidAmount: owed } : {}),
+          // What came in decides: covers the bill → paid (anything above it is
+          // kept as club income, `overpaidEntry`); short of it → owes the rest.
+          ...(received !== undefined && owed > 0 ? { paid: received >= owed } : {}),
+        };
+      });
+      if (!updated) continue; // deleted while the settle ran: nothing to bill
       stampedPlayers.push({
         id: player.id,
         name: player.name,
@@ -210,15 +215,35 @@ async function settledRows(scope: ReturnType<typeof groupScope>, sessionId: stri
 }
 
 /** Clear the frozen amounts off `rows` and the snapshot off the session, and void the mirror. */
+/**
+ * Write one row under the etag, re-reading and re-deciding on a lost race,
+ * so a payment that lands mid-settle is kept rather than overwritten by a
+ * stale copy (money guard, 2026-11-18; the same rule gap 3 put on the paid
+ * tap). `null` when the row is gone. Throws past three lost races: the
+ * settle answers 500 and the organiser runs it again, which is safe.
+ */
+async function replaceRow(scope: ReturnType<typeof groupScope>, row: Player, change: (row: Player) => Player): Promise<Player | null> {
+  let current: Player | undefined = row;
+  for (let attempt = 0; attempt < 3 && current; attempt++) {
+    const written = await scope.replace<Player>('players', change(current), current.sessionId);
+    if (written) return written;
+    current = await scope.read<Player>('players', row.id, row.sessionId);
+  }
+  if (!current) return null;
+  throw new Error(`settle: row ${row.id} kept changing`);
+}
+
 async function clearSettlement(scope: ReturnType<typeof groupScope>, session: Session, rows: Player[]): Promise<void> {
   for (const player of rows) {
-    const next = { ...player } as Player & { owedAmount?: number; settledAt?: string };
-    // A row paid in full before `paidAmount` existed: write down what it
-    // received before its bill is cleared, or the re-settle cannot know.
-    if (player.paid === true && typeof player.paidAmount !== 'number' && typeof player.owedAmount === 'number') next.paidAmount = player.owedAmount;
-    delete next.owedAmount;
-    delete next.settledAt;
-    await scope.upsert('players', next);
+    await replaceRow(scope, player, (row) => {
+      const next = { ...row } as Player & { owedAmount?: number; settledAt?: string };
+      // A row paid in full before `paidAmount` existed: write down what it
+      // received before its bill is cleared, or the re-settle cannot know.
+      if (row.paid === true && typeof row.paidAmount !== 'number' && typeof row.owedAmount === 'number') next.paidAmount = row.owedAmount;
+      delete next.owedAmount;
+      delete next.settledAt;
+      return next;
+    });
   }
   const nextSession = { ...session } as Session & { settled?: SettledSnapshot };
   delete nextSession.settled;
