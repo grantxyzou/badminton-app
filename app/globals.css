@@ -64,11 +64,14 @@
   --duration-sheet: 180ms;
   --duration-normal: 250ms;
   --duration-slow: 400ms;
-  /* Two named one-offs, off the ladder on purpose: the sign-up icon's pop
-     (celebrate) and the bell ring / launch rise (flourish). A literal ms in a
-     transition or animation fails motion-duration-canary; name it here. */
+  /* Three named one-offs, off the ladder on purpose: the sign-up icon's pop
+     (celebrate), the bell ring / launch rise (flourish) and the PIN box's
+     shuttle pop, the app's one spring (pop). A literal ms or s in a
+     transition or animation, in CSS or an inline style, fails
+     motion-duration-canary; name it here. */
   --duration-celebrate: 420ms;
   --duration-flourish: 700ms;
+  --duration-pop: 320ms;
 
   /* ── Aurora ── */
   --aurora-bg: #100F0F;
@@ -1268,7 +1271,7 @@ p[role='alert'] {
   backdrop-filter: blur(22px) saturate(140%);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.25s ease;
+  transition: opacity var(--duration-normal) ease;
 }
 .bpm-topbar.scrolled::before,
 .bpm-page-header.scrolled::before {
@@ -1293,7 +1296,7 @@ p[role='alert'] {
   background: transparent;
   border: 0;
   cursor: pointer;
-  transition: color 0.15s var(--ease-glass), transform 0.1s var(--ease-glass);
+  transition: color var(--duration-fast) var(--ease-glass), transform var(--duration-press) var(--ease-glass);
 }
 .bpm-topbar__back:active { transform: scale(0.94); }
 @media (hover: hover) {
@@ -1318,7 +1321,7 @@ p[role='alert'] {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-muted, #737373);
-  transition: opacity 0.2s ease;
+  transition: opacity var(--duration-fast) ease;
   max-height: 1.5em;
   line-height: 1.4;
 }
@@ -5787,7 +5790,7 @@ html:root .glass-card.bpm-job-card--open {
   cursor: pointer;
   display: inline-grid;
   place-content: center;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition: background var(--duration-fast) ease, border-color var(--duration-fast) ease;
   flex-shrink: 0;
 }
 .cc-checkbox input[type="checkbox"]::before {
@@ -5795,7 +5798,7 @@ html:root .glass-card.bpm-job-card--open {
   width: 10px;
   height: 10px;
   transform: scale(0);
-  transition: transform 0.12s ease-out;
+  transition: transform var(--duration-press) ease-out;
   background: currentColor;
   /* Sharp checkmark via clip-path so it stays crisp at 10px. */
   clip-path: polygon(14% 47%, 0 60%, 39% 100%, 100% 22%, 84% 9%, 39% 73%);
