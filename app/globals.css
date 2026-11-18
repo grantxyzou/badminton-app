@@ -767,6 +767,10 @@ body {
   --radius-lg: calc(12rem / 16);
   --radius-xl: calc(16rem / 16);
   --radius-pill: 100px;
+  /* Off the ladder on purpose, for a MARK smaller than its first rung: the
+     Roster's 7px attendance dots and the Birds timeline's 3px "now" line.
+     At --radius-xs (6px) both would be circles. Never for a surface. */
+  --radius-hair: calc(2rem / 16);
 
   /* Type-size scale — canonical inline font sizes. Use the token
      (`fontSize: 'var(--fs-sm)'`) or the matching `.fs-*` utility class
@@ -790,6 +794,12 @@ body {
   /* The single headline number on a screen (Home spots-left). Bigger than
      --fs-stat, which is a value inside a row of values. */
   --fs-count: calc(34rem / 16);
+  /* An admin page's ONE headline figure, set in display type over its own
+     hero card: Setup's per-player price, Birds' weeks of runway. Bigger than
+     --fs-count because it is the page's whole answer, not a figure on a
+     member screen. Setup's and Birds' were hand-typed 48 and 54; one rung
+     now (Grant, 2026-11-17). Not for member screens. */
+  --fs-hero: calc(48rem / 16);
   /* Single-focus numeric input — a number that IS the screen's whole task, not
      a stat among others. Currently just the game logger's score steppers,
      where the value is what the member is actively changing. Deliberately a

@@ -64,7 +64,7 @@ function Sparkline({ presence }: { presence: Array<1 | null> }) {
           style={{
             width: 7,
             height: 7,
-            borderRadius: 2,
+            borderRadius: 'var(--radius-hair)',
             background: v === 1 ? 'var(--accent)' : 'rgba(var(--glass-tint), 0.1)',
           }}
         />
@@ -548,8 +548,8 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
           alignItems: 'center',
           gap: 'var(--space-3)',
           padding: 'var(--space-4) var(--space-5)',
-          background: 'rgba(var(--glass-tint), 0.04)',
-          border: '1px solid rgba(var(--glass-tint), 0.12)',
+          background: 'var(--input-bg)',
+          border: '1px solid var(--input-border)',
           borderRadius: 'var(--radius-lg)',
           color: 'var(--text-muted)',
         }}
@@ -592,8 +592,10 @@ export default function RosterPage({ onBack, focusName = null, initialFilter = '
                 gap: 'var(--space-2)',
                 padding: 'var(--space-2) var(--space-4)',
                 borderRadius: 'var(--radius-pill)',
-                background: on ? 'var(--tone-green-bg)' : 'rgba(var(--glass-tint), 0.04)',
-                border: `1px solid ${on ? 'var(--tone-green-border-strong)' : 'rgba(var(--glass-tint), 0.12)'}`,
+                // Fill-only: the selected chip is a solid tint with accent
+                // text, never a ring (design-system rule, Grant 2026-11-17).
+                background: on ? 'var(--tone-green-bg)' : 'var(--inner-card-bg)',
+                border: '1px solid transparent',
                 fontFamily: 'var(--font-display, "Space Grotesk")',
                 fontSize: 'var(--fs-sm)',
                 fontWeight: 500,
