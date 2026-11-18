@@ -8,6 +8,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Home: every card evenly spaced (2026-11-18)
+
+- **Home's cards are all the same distance apart.** The bigger space before your balance is gone (Grant, on the canvas: "this gap, is weird", then "no gap even spacing"). It was meant to separate this week from your account, but it landed between your level card and your balance and looked like a hole.
+
 ## Security: a bank name you can copy no longer pays you (2026-11-18)
 
 The last LOW findings from the security scan.

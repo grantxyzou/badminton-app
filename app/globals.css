@@ -6762,10 +6762,12 @@ input[type="range"].reel-hue:focus-visible {
   color: var(--text-primary);
 }
 
-/* Home's two-group stack.
-   Proximity is what says "these belong together" without giving every card a
-   heading. Tight inside a group, loose between: five evenly-spaced cards read
-   as five unrelated errands, which is what Home looked like before. */
+/* Home's stack: every card the same distance apart (Grant, 2026-11-18, on the
+   canvas: "no gap even spacing"). It was two groups, this week and your
+   account, 28px apart with the cards inside each at 10px; the break fell
+   between the level card and the balance and read as a hole, not a seam.
+   The two sections stay (they are the foldable's two pages); only the space
+   between them changed. --home-group-gap is still the tab bar's bottom strip. */
 :root {
   --home-stack-gap: 10px;
   --home-group-gap: 28px;
@@ -6773,7 +6775,7 @@ input[type="range"].reel-hue:focus-visible {
 .bpm-home-stack {
   display: flex;
   flex-direction: column;
-  gap: var(--home-group-gap);
+  gap: var(--home-stack-gap);
 }
 .bpm-home-group {
   display: flex;
@@ -10065,9 +10067,9 @@ html[data-pane-flip='b'] [data-app-shell] {
     grid-column: 1;
   }
   /* A nudge renders nothing at all when it is hidden, so this margin only
-     ever separates two real cards. */
+     ever separates two real cards. The same even gap as the phone's stack. */
   .bpm-home-stack > :not(.bpm-home-group) {
-    margin-bottom: var(--home-group-gap);
+    margin-bottom: var(--home-stack-gap);
   }
   /* The tab bar spans both panes, on every tab, so it does not change width
      as you switch. Four tabs: the middle of the bar, between Stringing and
