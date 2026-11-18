@@ -29,6 +29,31 @@ export function activeRacket(gear: PlayerGear | null): GearItem | null {
 }
 
 /**
+ * The rackets in the bag a string can be paired with, in bag order: live
+ * (not retired, unless it is the one in play) and named by the catalog, one
+ * per FRAME. A typed-in racket has no frame to pair against. Two of the same
+ * frame pair identically, so the list keeps one of them, and the racket in
+ * play claims its frame first so a spare copy never hides it.
+ *
+ * This is what the strings map offers under "Change"
+ * (docs/plans/map-racket-choice.md) and the only thing its route accepts.
+ */
+export function pairableRackets(gear: PlayerGear | null): GearItem[] {
+  const active = activeRacket(gear);
+  const live = rackets(gear).filter(
+    (i) => typeof i.catalogId === 'string' && i.catalogId !== '' && (!i.retiredAt || i.id === active?.id),
+  );
+  const keep = new Set<GearItem>();
+  const frames = new Set<string>();
+  for (const i of [...live.filter((x) => x.id === active?.id), ...live]) {
+    if (frames.has(i.catalogId!)) continue;
+    frames.add(i.catalogId!);
+    keep.add(i);
+  }
+  return live.filter((i) => keep.has(i));
+}
+
+/**
  * The string on a racket (Grant, 2026-11-05: "the string should follow the
  * rackets"). A string item names the racket it is on in `racketId`; the
  * newest live string naming THIS racket is its string, with its own tension.

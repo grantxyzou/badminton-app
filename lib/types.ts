@@ -1495,6 +1495,18 @@ export interface StringFit {
   stringLevel: string | null;
 }
 
+/** One of the caller's own rackets the strings map can be matched to
+ *  (`GET /api/stringing/fit?ids=`, docs/plans/map-racket-choice.md). */
+export interface FitRacketChoice {
+  /** The racket's id in the member's own bag (`GearItem.id`): what the
+   *  route's `racket` parameter takes. Never a catalog id. */
+  id: string;
+  /** "Yonex Astrox 88D Pro", from the catalog. */
+  name: string;
+  /** The racket in play: what the map is matched to with no choice made. */
+  inPlay: boolean;
+}
+
 /** The diff a player is asked to agree to. No stringer, no memberId, no
  *  proposer — just what changes, from what, to what. */
 export interface PlayerPendingEdit {

@@ -570,3 +570,109 @@ describe('what suits your racket, on the map (Grant: "it should be top level vis
     expect(map.querySelectorAll('[data-match]')).toHaveLength(0);
   });
 });
+
+/* docs/plans/map-racket-choice.md; Grant, on the canvas (2026-11-18), on the
+   "For your Astrox 88D Pro" strip: "this should allow user change rackets". */
+describe('"Change" on the strip: which of your rackets the map is matched to', () => {
+  const links: Record<string, string> = { BG80: 's-80', BG66: 's-66', BG65: 's-65', Exbolt: 's-ex' };
+  const RACKETS = [
+    { id: 'g1', name: 'Yonex Astrox 88D Pro', inPlay: true },
+    { id: 'g2', name: 'Yonex Nanoflare 800', inPlay: false },
+  ];
+  const ASTROX = { racket: 'Yonex Astrox 88D Pro', racketId: 'g1', rackets: RACKETS, fits: { 's-80': 'good_match', 's-66': 'worth_a_look' } };
+  const NANOFLARE = { racket: 'Yonex Nanoflare 800', racketId: 'g2', rackets: RACKETS, fits: { 's-80': 'worth_a_look', 's-66': 'good_match' } };
+
+  /** `fit` answers each fit read from its URL; null is a failed read. */
+  function mockFit(fit: (url: string) => unknown | null) {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => {
+      const u = String(url);
+      if (u.includes('/catalog')) return Promise.resolve({ ok: true, json: async () => ({ items: CATALOG }) } as Response);
+      if (u.includes('/fit?')) {
+        const body = fit(u);
+        return Promise.resolve((body === null ? { ok: false, status: 503, json: async () => ({ error: 'read_failed' }) } : { ok: true, json: async () => body }) as Response);
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ strings: ['BG80', 'BG66', 'BG65', 'Exbolt'], links }) } as Response);
+    }));
+  }
+  const fitCalls = () => (globalThis.fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls.map((c) => String(c[0])).filter((u) => u.includes('/fit?'));
+  const glow = (name: RegExp) => within(screen.getByRole('group', { name: 'Strings by repulsion and durability' }))
+    .getByRole('button', { name }).querySelector<HTMLElement>('[data-dot-type]')!.dataset.match;
+
+  it('switches the map to another racket: the sheet marks the current one, and the glow follows the pick', async () => {
+    mockFit((u) => (u.includes('racket=g2') ? NANOFLARE : ASTROX));
+    wrap();
+    const strip = await screen.findByTestId('map-fit-strip');
+    expect(glow(/^Yonex BG80:/)).toBe('true');
+    expect(glow(/^Yonex BG66:/)).toBeUndefined();
+    // The first read made no choice.
+    expect(fitCalls()).toHaveLength(1);
+    expect(fitCalls()[0]).not.toContain('racket=');
+
+    fireEvent.click(within(strip).getByRole('button', { name: 'Change the racket the map is matched to. Now: your Yonex Astrox 88D Pro' }));
+    const sheet = await screen.findByRole('dialog', { name: 'Show strings for' });
+    const options = within(sheet).getAllByRole('radio');
+    expect(options.map((o) => o.getAttribute('aria-checked'))).toEqual(['true', 'false']);
+    expect(options[0].textContent).toContain('Yonex Astrox 88D Pro');
+    expect(options[0].textContent).toContain('In play');
+    expect(options[1].textContent).not.toContain('In play');
+
+    fireEvent.click(options[1]);
+    await waitFor(() => expect(screen.getByTestId('map-fit-strip').textContent).toContain('For your Yonex Nanoflare 800'));
+    expect(fitCalls()[1]).toContain('racket=g2');
+    expect(glow(/^Yonex BG66:/)).toBe('true');
+    expect(glow(/^Yonex BG80:/)).toBeUndefined();
+    // Remembered on this phone, and the peek names the same racket.
+    expect(localStorage.getItem('bpm:strings-racket')).toBe('g2');
+    fireEvent.click(screen.getByRole('button', { name: /^Yonex BG66:/ }));
+    expect(screen.getByTestId('peek-match').textContent).toContain('Good match for your Yonex Nanoflare 800');
+  });
+
+  it('shows no Change for a member with one racket, or from a server that lists none', async () => {
+    mockFit(() => ({ ...ASTROX, rackets: [RACKETS[0]] }));
+    wrap();
+    const strip = await screen.findByTestId('map-fit-strip');
+    expect(strip.textContent).toBe('sports_tennisFor your Yonex Astrox 88D Pro · glowing dots suit it best');
+    expect(within(strip).queryByRole('button')).toBeNull();
+    cleanup();
+    resetCatalogCache();
+    mockFit(() => ({ racket: 'Yonex Astrox 88D Pro', fits: { 's-80': 'good_match' } }));
+    wrap();
+    expect(within(await screen.findByTestId('map-fit-strip')).queryByRole('button')).toBeNull();
+  });
+
+  it('asks for the racket this phone remembers, and a string’s page asks for the same one', async () => {
+    localStorage.setItem('bpm:strings-racket', 'g2');
+    mockFit((u) => (u.includes('ids=') ? (u.includes('racket=g2') ? NANOFLARE : ASTROX) : { fit: null }));
+    wrap();
+    expect((await screen.findByTestId('map-fit-strip')).textContent).toContain('For your Yonex Nanoflare 800');
+    expect(fitCalls()[0]).toContain('racket=g2');
+    // Open a string from the map: its page reads the fit for the map's racket.
+    fireEvent.click(screen.getByRole('button', { name: /^Yonex BG66:/ }));
+    fireEvent.click(within(screen.getByTestId('string-peek')).getByRole('button', { name: 'Open Yonex BG66' }));
+    await waitFor(() => expect(fitCalls().some((u) => u.includes('fit?id=s-66&racket=g2'))).toBe(true));
+  });
+
+  it('forgets a remembered racket the bag no longer holds', async () => {
+    localStorage.setItem('bpm:strings-racket', 'gone');
+    // The server answers for the racket in play and says which.
+    mockFit(() => ASTROX);
+    wrap();
+    expect((await screen.findByTestId('map-fit-strip')).textContent).toContain('For your Yonex Astrox 88D Pro');
+    expect(fitCalls()[0]).toContain('racket=gone');
+    expect(localStorage.getItem('bpm:strings-racket')).toBeNull();
+  });
+
+  it('says so in the sheet when the picked racket’s read fails, and leaves the map as it was', async () => {
+    mockFit((u) => (u.includes('racket=g2') ? null : ASTROX));
+    wrap();
+    fireEvent.click(within(await screen.findByTestId('map-fit-strip')).getByRole('button', { name: /^Change the racket/ }));
+    const sheet = await screen.findByRole('dialog', { name: 'Show strings for' });
+    fireEvent.click(within(sheet).getAllByRole('radio')[1]);
+    expect((await within(sheet).findByRole('alert')).textContent).toBe('Couldn’t check that racket. Try again.');
+    expect(screen.getByTestId('map-fit-strip').textContent).toContain('For your Yonex Astrox 88D Pro');
+    expect(glow(/^Yonex BG80:/)).toBe('true');
+    expect(localStorage.getItem('bpm:strings-racket')).toBeNull();
+    expect(within(sheet).getAllByRole('radio').map((o) => o.getAttribute('aria-checked'))).toEqual(['true', 'false']);
+  });
+});
+

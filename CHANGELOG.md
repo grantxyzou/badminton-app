@@ -8,6 +8,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## The strings map: change which racket it is matched to (2026-11-18)
+
+- **"Change" on the map's "For your Astrox 88D Pro" strip** (Grant, on the canvas: "this should allow user change rackets"). A member with more than one racket in their equipment taps it, picks another, and the glowing dots, the list and each string's "How it suits you" follow that racket. A member with one racket sees the strip as before.
+- It changes the map only. The racket you play with, its string and your racket recommendation stay as they are, and the pick is remembered on that phone. A racket typed in by hand is not offered: there is nothing to match a string against.
+
 ## Loading frames the size of what they stand in for (2026-11-18)
 
 - **While a screen loads, its grey placeholders are now the size of the cards that replace them**, so nothing jumps when the content lands. Every placeholder was re-measured against the running app: Home's now holds a place for the level card and the balance too (they used to push the page down by a card and a half once the week arrived), Profile's two groups are back in the order the page shows them, the admin console's session card and settings list, Stats' skills, scores, kudos, equipment and tension cards and the Learn register all take their current heights.

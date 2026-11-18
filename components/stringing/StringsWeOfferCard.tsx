@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
@@ -44,9 +44,11 @@ import StockBadge from './StockBadge';
 import { ColourDots } from './StringColours';
 import StringPeek from './StringPeek';
 import StringListSheet, { type ListSort } from './StringListSheet';
+import MapRacketSheet from './MapRacketSheet';
 import { useTabActive } from '@/lib/tabActivity';
 import { isRefused } from '@/lib/apiFetch';
-import type { FitVerdict } from '@/lib/types';
+import type { FitRacketChoice, FitVerdict } from '@/lib/types';
+import { readMapRacket, writeMapRacket } from '@/lib/mapRacket';
 import { sharedFetch } from '@/lib/sharedRead';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -62,6 +64,26 @@ function readAxis(): MapAxis {
   } catch {
     return 'power';
   }
+}
+
+/** The map's racket match as the card holds it. */
+interface MapFits {
+  /** "Yonex Astrox 88D Pro": the racket the verdicts are for. */
+  racket: string;
+  /** Its id in the member's bag; null from a server older than the choice. */
+  racketId: string | null;
+  /** The member's rackets the map can be matched to. */
+  rackets: FitRacketChoice[];
+  verdicts: Record<string, FitVerdict>;
+}
+
+function parseFits(d: unknown): MapFits | null {
+  const o = d as { racket?: unknown; racketId?: unknown; rackets?: unknown; fits?: unknown } | null;
+  if (!o || typeof o.racket !== 'string' || !o.fits || typeof o.fits !== 'object') return null;
+  const rackets = Array.isArray(o.rackets)
+    ? o.rackets.filter((r): r is FitRacketChoice => !!r && typeof r.id === 'string' && typeof r.name === 'string').map((r) => ({ id: r.id, name: r.name, inPlay: r.inPlay === true }))
+    : [];
+  return { racket: o.racket, racketId: typeof o.racketId === 'string' ? o.racketId : null, rackets, verdicts: o.fits as Record<string, FitVerdict> };
 }
 
 /**
@@ -128,7 +150,12 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
   /** Which strings suit the member's own racket (`/api/stringing/fit?ids=`),
    *  for the map's glow, the peek and the list. null until it answers or
    *  when it cannot say (no racket, no check-in): then nothing glows. */
-  const [fits, setFits] = useState<{ racket: string; verdicts: Record<string, FitVerdict> } | null>(null);
+  const [fits, setFits] = useState<MapFits | null>(null);
+  /** "Change" on the strip: the sheet, the pick being read, and whether the
+   *  last pick's read failed (docs/plans/map-racket-choice.md). */
+  const [racketOpen, setRacketOpen] = useState(false);
+  const [racketPending, setRacketPending] = useState<string | null>(null);
+  const [racketFailed, setRacketFailed] = useState(false);
   const [peekH, setPeekH] = useState(0);
   const onScreen = useTabActive();
   // null = not read yet; 'failed' leaves the rows out rather than guess "Ask".
@@ -181,18 +208,49 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
   // The racket match for every string the catalog knows, once. A refusal or
   // a failure leaves the map unmarked: the glow is a bonus, never a claim.
   const fitIds = useMemo(() => entries.map((e) => e.item?.id).filter((x): x is string => !!x).slice(0, 40).join(','), [entries]);
+  // With a racket: the one the member picked under "Change", a row in their
+  // own bag. The server answers for the racket in play when the bag no longer
+  // holds it, and names the racket it answered for.
+  const readFits = useCallback(
+    (racket: string | null): Promise<MapFits | null> =>
+      fetch(`${BASE}/api/stringing/fit?ids=${encodeURIComponent(fitIds)}${racket ? `&racket=${encodeURIComponent(racket)}` : ''}`, { cache: 'no-store' })
+        .then((r) => (isRefused(r) || !r.ok ? null : r.json()))
+        .then(parseFits),
+    [fitIds],
+  );
   useEffect(() => {
     if (!fitIds) return;
     let cancelled = false;
-    fetch(`${BASE}/api/stringing/fit?ids=${encodeURIComponent(fitIds)}`, { cache: 'no-store' })
-      .then((r) => (isRefused(r) || !r.ok ? null : r.json()))
-      .then((d) => {
+    // The pick this phone remembers, if any.
+    const remembered = readMapRacket();
+    readFits(remembered)
+      .then((f) => {
         if (cancelled) return;
-        setFits(d && typeof d.racket === 'string' && d.fits && typeof d.fits === 'object' ? { racket: d.racket, verdicts: d.fits } : null);
+        setFits(f);
+        // A pick the bag no longer holds was not honoured: forget it.
+        if (f && remembered && f.racketId !== remembered) writeMapRacket(null);
       })
       .catch(() => { if (!cancelled) setFits(null); });
     return () => { cancelled = true; };
-  }, [fitIds]);
+  }, [fitIds, readFits]);
+
+  /** Match the map to another of the member's rackets. Applied and remembered
+   *  only once that racket's answer is in; a failure says so in the sheet and
+   *  leaves the map as it was. */
+  function chooseRacket(id: string) {
+    if (racketPending) return;
+    setRacketPending(id);
+    setRacketFailed(false);
+    readFits(id)
+      .then((f) => {
+        if (!f || f.racketId !== id) { setRacketFailed(true); return; }
+        setFits(f);
+        writeMapRacket(id);
+        setRacketOpen(false);
+      })
+      .catch(() => setRacketFailed(true))
+      .finally(() => setRacketPending(null));
+  }
   const matches = useMemo(
     () => new Set(Object.entries(fits?.verdicts ?? {}).filter(([, v]) => v === 'good_match').map(([k]) => k)),
     [fits],
@@ -417,6 +475,9 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
   // AI personalized analysis. In fact it should be top level visible"; moved
   // out of the card on the canvas, 2026-11-16, so the map has the card): the
   // strings that suit it glow on the map.
+  // "Change" (Grant, on the canvas, 2026-11-18: "this should allow user
+  // change rackets") only for a member with another racket to change to.
+  const canChangeRacket = (fits?.rackets.length ?? 0) > 1;
   const fitBanner = showMap && fits && status !== 'failed' ? (
     <div data-testid="map-fit-strip" className="bpm-fit-strip">
       <span className="material-icons icon-md" aria-hidden="true" style={{ color: 'var(--accent)' }}>sports_tennis</span>
@@ -425,6 +486,17 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
         {' · '}
         {matches.size > 0 ? t('forYourRacketGlow') : t('forYourRacketNone')}
       </span>
+      {canChangeRacket && (
+        <button
+          type="button"
+          className="bpm-fit-strip-change fs-sm tap-44"
+          aria-label={t('changeRacketLabel', { racket: fits.racket })}
+          aria-haspopup="dialog"
+          onClick={() => { setRacketFailed(false); setRacketOpen(true); }}
+        >
+          {t('changeRacket')}
+        </button>
+      )}
     </div>
   ) : null;
 
@@ -577,7 +649,18 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
         footer={otherPrices}
       />
 
+      <MapRacketSheet
+        open={racketOpen && canChangeRacket}
+        onClose={() => setRacketOpen(false)}
+        rackets={fits?.rackets ?? []}
+        current={fits?.racketId ?? null}
+        pending={racketPending}
+        failed={racketFailed}
+        onPick={chooseRacket}
+      />
+
       <StringDetailSheet
+        fitRacket={fits?.racketId ?? null}
         item={openEntry?.item ?? null}
         label={openEntry?.label ?? null}
         onRestring={onRestring ? (label) => {
@@ -601,6 +684,7 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
         <StringingAside id={asideEntry.label}>
           <StringDetailSheet
             asPage
+            fitRacket={fits?.racketId ?? null}
             item={asideEntry.item}
             label={asideEntry.label}
             onRestring={onRestring}

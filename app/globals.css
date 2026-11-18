@@ -8606,6 +8606,23 @@ html:root .glass-card.inventory-row-card { padding: var(--space-2) var(--space-3
   border-radius: var(--radius-lg);
   background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 16%, transparent), color-mix(in srgb, var(--accent) 5%, transparent));
 }
+/* "Change" at the strip's right end, for a member with more than one racket
+   (docs/plans/map-racket-choice.md): accent text, no box. The strip stays
+   its own height; `.tap-44` gives the word a 44px-tall tap. */
+.bpm-fit-strip-change {
+  flex: none;
+  min-width: 44px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  text-align: right;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity var(--duration-press) var(--ease-glass);
+}
+.bpm-fit-strip-change:active { opacity: 0.6; }
 /* A string's rating on its sheet (the canvas, frame 3): a bar in the
    trait's tint, filled to the score, its name and number inside it. */
 .string-trait-bar {
