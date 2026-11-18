@@ -30,6 +30,7 @@ import {
 import { setPendingSignup } from '@/lib/pendingSignup';
 import { completeSignIn } from '@/lib/authSession';
 import { resolveGroupId } from '@/lib/groupContext';
+import { unprovenPasswordOn, signOutEveryClub } from '@/lib/emailProof';
 import type { Member } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -98,7 +99,17 @@ export async function POST(req: NextRequest) {
     // Use it up, on the doc it was checked against.
     const { emailCode: _used, ...rest } = member;
     const ownAddress = typeof member.email === 'string' && normalizeEmail(member.email) === email;
-    const next = { ...rest, ...(ownAddress ? { emailVerified: true } : {}) } as Member & { _etag?: string };
+    // The first proof of this address takes the account back from whoever
+    // made it: a password set before the proof goes, and every device is
+    // signed out (lib/emailProof.ts, Claude Security F7).
+    const takeBack = ownAddress && unprovenPasswordOn(member);
+    const at = new Date().toISOString();
+    if (takeBack) delete (rest as { passwordHash?: string }).passwordHash;
+    const next = {
+      ...rest,
+      ...(ownAddress ? { emailVerified: true } : {}),
+      ...(takeBack ? { sessionsNotBefore: at, widgetPassNotBefore: at } : {}),
+    } as Member & { _etag?: string };
     const container = getContainer('members');
     if (typeof member._etag === 'string') {
       const written = await container
@@ -113,6 +124,7 @@ export async function POST(req: NextRequest) {
       await container.items.upsert(next);
     }
 
+    if (takeBack) await signOutEveryClub(member.id, at);
     void touchIdentity('email', email);
 
     const res = NextResponse.json({

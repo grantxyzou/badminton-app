@@ -105,14 +105,89 @@ export async function notePinFailure(member: LockableMember): Promise<void> {
   console.error('[pin-lock] gave up recording a failure after repeated conflicts');
 }
 
+/**
+ * COUNT THE GUESS BEFORE COMPARING IT (Claude Security F8/F9, 2026-11-17).
+ *
+ * `notePinFailure` counted a wrong PIN AFTER its scrypt, and every site read
+ * the lock from the doc it loaded BEFORE that scrypt. So a burst sent at once
+ * all read "unlocked", and every guess in it was compared before the first
+ * failure was written: the lock bounded nothing against a parallel attack
+ * from rotating addresses, the case it exists for.
+ *
+ * Now each guess is counted FIRST, as a provisional failure, on a fresh read
+ * under `IfMatch`, retried when another guess lands first. Those writes are
+ * serialized by the etag, so only the guesses whose count landed while the
+ * account was unlocked are compared: `FREE_ATTEMPTS` + 1 in any burst, then
+ * the lock refuses the rest. A correct PIN clears the count
+ * (`notePinSuccess`); a wrong one leaves it, already recorded.
+ *
+ * `true` = compare this guess. `false` = locked, or the count could not be
+ * written: FAIL CLOSED, answer as a wrong PIN (and still pay a scrypt against
+ * FAKE_HASH, so a refusal costs what a guess costs). The in-memory doc gets
+ * the new lock, because call sites spread it into their own later writes.
+ */
+export async function claimPinAttempt(member: LockableMember, now: number = Date.now()): Promise<boolean> {
+  const container = getContainer('members');
+  for (let attempt = 0; attempt < 8; attempt++) {
+    let fresh: (LockableMember & { _etag?: string }) | undefined;
+    try {
+      ({ resource: fresh } = await container.item(member.id, member.id).read<LockableMember & { _etag?: string }>());
+    } catch (err) {
+      console.error('[pin-lock] could not read the account to count a guess:', err);
+      return false;
+    }
+    if (!fresh) return false;
+    if (isPinLocked(fresh.pinLock, now)) {
+      member.pinLock = fresh.pinLock;
+      return false;
+    }
+    const next = recordPinFailure(fresh.pinLock, now);
+    try {
+      if (typeof fresh._etag === 'string') {
+        await container
+          .item(member.id, member.id)
+          .replace({ ...fresh, pinLock: next }, { accessCondition: { type: 'IfMatch', condition: fresh._etag } });
+      } else {
+        await container.items.upsert({ ...fresh, pinLock: next });
+      }
+      member.pinLock = next;
+      return true;
+    } catch (err) {
+      const code = (err as { code?: number; statusCode?: number })?.code ?? (err as { statusCode?: number })?.statusCode;
+      if (code === 412) continue; // another guess was counted first: count on top of it
+      console.error('[pin-lock] could not count a guess:', err);
+      return false;
+    }
+  }
+  console.error('[pin-lock] refusing a guess after repeated conflicts');
+  return false;
+}
+
+/** A correct PIN: clear the count, on a fresh read so it cannot write a stale
+ *  copy of the rest of the account back over a newer one. Best-effort. */
 export async function notePinSuccess(member: LockableMember): Promise<void> {
   if (!member.pinLock) return;
   delete member.pinLock;
-  try {
-    const doc: Record<string, unknown> = { ...member };
-    delete doc.pinLock;
-    await getContainer('members').items.upsert(doc);
-  } catch (err) {
-    console.error('[pin-lock] could not clear:', err);
+  const container = getContainer('members');
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const { resource: fresh } = await container
+        .item(member.id, member.id)
+        .read<LockableMember & { _etag?: string }>();
+      if (!fresh || !fresh.pinLock) return;
+      const doc: Record<string, unknown> = { ...fresh };
+      delete doc.pinLock;
+      if (typeof fresh._etag === 'string') {
+        await container.item(member.id, member.id).replace(doc, { accessCondition: { type: 'IfMatch', condition: fresh._etag } });
+      } else {
+        await container.items.upsert(doc);
+      }
+      return;
+    } catch (err) {
+      const code = (err as { code?: number; statusCode?: number })?.code ?? (err as { statusCode?: number })?.statusCode;
+      if (code === 412) continue;
+      console.error('[pin-lock] could not clear:', err);
+      return;
+    }
   }
 }

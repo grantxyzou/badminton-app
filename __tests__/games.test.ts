@@ -49,8 +49,11 @@ function post(body: unknown): NextRequest {
     headers: { 'content-type': 'application/json', 'x-client-ip': `games-${Math.random()}` },
   });
 }
-/** POST signed in as a given member. */
+/** POST signed in as a given member, who is an ACTIVE member of the club:
+ *  a game is logged inside the club, so the recorder must be on its roster
+ *  (`requireGroupMember`, Claude Security F5). */
 function postAs(memberId: string, name: string, body: unknown): NextRequest {
+  ensureMember(memberId, name);
   return new NextRequest(new URL('/api/games', 'http://localhost/bpm'), {
     method: 'POST',
     body: JSON.stringify(body),

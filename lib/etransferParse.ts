@@ -140,7 +140,25 @@ function cleanName(raw: string): string | null {
 /** The labelled field is the most literal source there is — read it first. */
 const FIELD_PATTERNS: RegExp[] = [/^\s*sent\s+from\s*:\s*([^\n]+)/im, /^\s*envoy[ée]\s+par\s*:\s*([^\n]+)/im];
 
-function findSender(subject: string, body: string): string | null {
+/**
+ * The sender patterns put a lazy group between whitespace quantifiers
+ * (`\s*([^,\n]+?)\s+`), so a long run of spaces with no "sent you" after it
+ * made V8 backtrack polynomially: a 50,000-character body could stall the
+ * one shared server for minutes (Claude Security F12, 2026-11-17). A real
+ * Interac notification names its sender in the subject or near the top of a
+ * body a few KB long, so the patterns read a bounded prefix with horizontal
+ * whitespace collapsed, which leaves each quantifier one space to fight over.
+ */
+const SENDER_SUBJECT_MAX = 500;
+const SENDER_BODY_MAX = 8_000;
+
+function senderSearchText(text: string, max: number): string {
+  return text.slice(0, max * 4).replace(/[^\S\n]+/g, ' ').slice(0, max);
+}
+
+function findSender(rawSubject: string, rawBody: string): string | null {
+  const subject = senderSearchText(rawSubject, SENDER_SUBJECT_MAX);
+  const body = senderSearchText(rawBody, SENDER_BODY_MAX);
   for (const re of FIELD_PATTERNS) {
     const m = re.exec(body);
     const name = m ? cleanName(m[1]) : null;
@@ -187,9 +205,22 @@ function findMemo(body: string): string | null {
   return memo;
 }
 
+/**
+ * Whitespace runs collapsed (a run with a line break becomes one break),
+ * before ANY pattern reads the email. Several patterns put whitespace
+ * quantifiers next to each other (`reference\s*(?:number)?\s*:`,
+ * `^\s*memo`), so a long run of spaces or blank lines made V8 backtrack
+ * quadratically: a 50,000-character body took seconds per pattern (Claude
+ * Security F12, 2026-11-17). Nothing a pattern reads depends on how much
+ * whitespace there was.
+ */
+function tidy(text: string): string {
+  return text.replace(/[^\S\n]+/g, ' ').replace(/ ?\n\s*/g, '\n');
+}
+
 export function parseInteracEmail(email: RawInteracEmail): ParsedEtransfer {
-  const subject = email.subject ?? '';
-  const body = email.body ?? '';
+  const subject = tidy(email.subject ?? '');
+  const body = tidy(email.body ?? '');
   const authenticated = isInteracAuthenticated(email.authResults, email.from ?? '');
   const unrecognized: ParsedEtransfer = {
     kind: 'unrecognized',

@@ -87,6 +87,22 @@ describe('POST /api/auth/reset-password', () => {
     expect(after.passwordReset).toBeUndefined();
   });
 
+  it('PROOF WINS: a reset on a never-proven address signs every other device out (security F7)', async () => {
+    const { createToken: mint } = await import('../lib/authToken');
+    const { token, record } = mint(RESET_TTL_MS);
+    const member = await seedAccount({ emailVerified: false, passwordReset: record });
+    const res = await reset(makeRequest('POST', RESET, { email: 'sindhu@example.com', token, password: 'a brand new password' }));
+    expect(res.status).toBe(200);
+    expect(stored(member.id).sessionsNotBefore).toBeDefined();
+    expect(res.headers.getSetCookie().join('\n')).toMatch(/member_session=[^;]+;/);
+  });
+
+  it('a reset on a proven address leaves the other devices signed in', async () => {
+    const { token, member } = await seedWithResetToken();
+    await reset(makeRequest('POST', RESET, { email: 'sindhu@example.com', token, password: 'a brand new password' }));
+    expect(stored(member.id).sessionsNotBefore).toBeUndefined();
+  });
+
   it('refuses to reuse a consumed token', async () => {
     const { token } = await seedWithResetToken();
     await reset(

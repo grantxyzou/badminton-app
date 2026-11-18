@@ -19,6 +19,7 @@ import { completeSignIn } from '@/lib/authSession';
 import { normalizeEmail, lookupIdentity, MAX_EMAIL_LENGTH } from '@/lib/authIdentity';
 import type { Member } from '@/lib/types';
 import { resolveGroupId } from '@/lib/groupContext';
+import { unprovenPasswordOn, signOutEveryClub } from '@/lib/emailProof';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,14 +65,21 @@ export async function POST(req: NextRequest) {
 
     // Dropping the record is what makes the link single-use.
     const { passwordReset: _consumed, ...rest } = member;
+    // The first proof of this address takes the account back from whoever
+    // made it (lib/emailProof.ts, Claude Security F7): their password is
+    // replaced below anyway, and every device they signed in is signed out.
+    const takeBack = unprovenPasswordOn(member);
+    const at = new Date().toISOString();
     const updated: Member = {
       ...rest,
       passwordHash: await hashPassword(password),
       // Reaching this point proves control of the mailbox, which is strictly
       // stronger evidence than the verification link we would otherwise mail.
       emailVerified: true,
+      ...(takeBack ? { sessionsNotBefore: at, widgetPassNotBefore: at } : {}),
     };
     await container.items.upsert(updated);
+    if (takeBack) await signOutEveryClub(member.id, at);
 
     const res = NextResponse.json({ ok: true, id: member.id, name: member.name });
     await completeSignIn(res, updated, resolveGroupId(req), 'reset');

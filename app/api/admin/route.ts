@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isOperatorAdmin } from '@/lib/operator';
-import { isPinLocked, notePinFailure, notePinSuccess } from '@/lib/pinLockout';
+import { claimPinAttempt, notePinSuccess } from '@/lib/pinLockout';
 import { randomBytes } from 'crypto';
 import {
   setAdminCookie,
@@ -94,13 +94,15 @@ export async function POST(req: NextRequest) {
     : { resource: undefined };
   let member = found as Member | undefined;
 
-  // ONE narrow fallback, and only for the bootstrap. `ADMIN_NAMES` names the
-  // people who stood up THIS deployment's first club — before any membership
-  // existed for them to be found through — so the in-group lookup above misses
-  // by construction on the very first login. BPM only, and only for a name the
-  // env var actually holds, so the ambiguity this whole change removes cannot
-  // come back through it: everyone else must be on the roster to sign in.
-  if (!member && groupId === BPM_GROUP_ID && isNameInAdminBootstrap(name)) {
+  const groupsOn = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
+
+  // ONE narrow fallback, and only for the bootstrap, and only with groups OFF.
+  // `ADMIN_NAMES` names the people who stood up THIS deployment's first club,
+  // before any membership existed for them to be found through. With groups
+  // on, BPM's roster exists and the in-group lookup above is the only way in:
+  // a deployment-wide scan of `Member.name` picked whoever held the name, and
+  // anyone can give a new account any name (Claude Security F11, 2026-11-17).
+  if (!member && !groupsOn && groupId === BPM_GROUP_ID && isNameInAdminBootstrap(name)) {
     const { resources } = await membersContainer.items
       .query<Member>({
         query: 'SELECT * FROM c WHERE LOWER(c.name) = LOWER(@name) AND c.active = true',
@@ -109,14 +111,43 @@ export async function POST(req: NextRequest) {
       .fetchAll();
     member = resources.length === 1 ? resources[0] : undefined;
   }
-  const groupsOn = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
 
-  // Bootstrap: name in ADMIN_NAMES + member exists but role !== 'admin' →
-  // promote before verifying. (Promotion of a non-admin member who knows
-  // their own PIN turns the env var into a controlled key.) BPM ONLY: the env
-  // var names the people who stood up THIS deployment's first club; it says
-  // nothing about who runs a group created through the app.
-  if (member && groupId === BPM_GROUP_ID && isNameInAdminBootstrap(name)) {
+  // Bootstrap: a name in ADMIN_NAMES may sign in here before it holds the
+  // role, and is promoted ONLY AFTER its own PIN checks out below. It used to
+  // be promoted first, so an unauthenticated request with the name and any
+  // PIN wrote the role (F11). BPM ONLY: the env var says nothing about who
+  // runs a group created through the app.
+  const bootstrap = !!member && groupId === BPM_GROUP_ID && isNameInAdminBootstrap(name);
+
+  // Constant-time miss path. Flag off: `Member.role`. Flag on: the membership
+  // in the resolved group — an admin of the Member doc with no standing there
+  // is nobody there.
+  const adminHere = !member
+    ? false
+    : groupsOn
+      ? (await readGroupAdmin(groupId, member.id)) !== undefined
+      : member.role === 'admin';
+  if (!member || !(adminHere || bootstrap) || !member.pinHash) {
+    await verifyPin(pin, FAKE_HASH);
+    return NextResponse.json({ error: 'Incorrect name or PIN' }, { status: 401 });
+  }
+
+  // Per-ACCOUNT lock (lib/pinLockout.ts): the IP limiter above is per caller,
+  // this counts guesses against the admin however they arrive. Locked reads
+  // as a plain wrong PIN, and still pays the scrypt.
+  // The guess is COUNTED before it is compared (claimPinAttempt), so a burst
+  // cannot all be compared before the lock forms (Claude Security F8).
+  if (!(await claimPinAttempt(member))) {
+    await verifyPin(pin, FAKE_HASH);
+    return NextResponse.json({ error: 'Incorrect name or PIN' }, { status: 401 });
+  }
+  const ok = await verifyPin(pin, member.pinHash);
+  if (!ok) {
+    return NextResponse.json({ error: 'Incorrect name or PIN' }, { status: 401 });
+  }
+  await notePinSuccess(member);
+
+  if (bootstrap && !adminHere) {
     if (member.role !== 'admin') {
       const promoted = { ...member, role: 'admin' as const };
       const { resource } = await membersContainer.items.upsert(promoted);
@@ -125,8 +156,8 @@ export async function POST(req: NextRequest) {
     // With groups on, the role that admits them lives on the BPM membership,
     // so the bootstrap promotes that too — or the env var would name nobody.
     // A write that fails (the name reserved by someone else, a throttle) must
-    // land on the 401 below, not a 500: the env var is a key, not a bypass.
-    if (groupsOn && !(await readGroupAdmin(groupId, member.id))) {
+    // land on a 401, not a 500 or a cookie: the env var is a key, not a bypass.
+    if (groupsOn) {
       try {
         const promotedHere = await setMembershipRole(groupId, member.id, 'admin');
         if (!promotedHere) {
@@ -135,36 +166,11 @@ export async function POST(req: NextRequest) {
       } catch (err) {
         console.error('POST /api/admin: ADMIN_NAMES bootstrap could not promote the group #1 membership:', err);
       }
+      if (!(await readGroupAdmin(groupId, member.id))) {
+        return NextResponse.json({ error: 'Incorrect name or PIN' }, { status: 401 });
+      }
     }
   }
-
-  // Constant-time miss path. Flag off: `Member.role`. Flag on: the membership
-  // in the resolved group — an admin of the Member doc with no standing there
-  // is nobody there. (BPM's memberships exist only after the backfill; until
-  // then the flag stays off, so this branch never sees an empty container.)
-  const adminHere = !member
-    ? false
-    : groupsOn
-      ? (await readGroupAdmin(groupId, member.id)) !== undefined
-      : member.role === 'admin';
-  if (!member || !adminHere || !member.pinHash) {
-    await verifyPin(pin, FAKE_HASH);
-    return NextResponse.json({ error: 'Incorrect name or PIN' }, { status: 401 });
-  }
-
-  // Per-ACCOUNT lock (lib/pinLockout.ts): the IP limiter above is per caller,
-  // this counts guesses against the admin however they arrive. Locked reads
-  // as a plain wrong PIN, and still pays the scrypt.
-  if (isPinLocked(member.pinLock)) {
-    await verifyPin(pin, FAKE_HASH);
-    return NextResponse.json({ error: 'Incorrect name or PIN' }, { status: 401 });
-  }
-  const ok = await verifyPin(pin, member.pinHash);
-  if (!ok) {
-    await notePinFailure(member);
-    return NextResponse.json({ error: 'Incorrect name or PIN' }, { status: 401 });
-  }
-  await notePinSuccess(member);
 
   const res = NextResponse.json({
     success: true,

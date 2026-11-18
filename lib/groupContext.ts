@@ -81,14 +81,21 @@ export function resolveGroupId(req: NextRequest): string {
   );
 }
 
-/** One `name=value` out of a raw `Cookie` header. Values here are base64url, so no decoding. */
+/**
+ * One `name=value` out of a raw `Cookie` header. Values here are base64url, so
+ * no decoding. LAST WINS when a name repeats, as in Next's own parser (which
+ * every gate reads through `req.cookies`): first-wins let a header carrying
+ * two member cookies pass a gate as one club and resolve to another here
+ * (Claude Security F6, 2026-11-17).
+ */
 function cookieFromHeader(header: string, name: string): string | undefined {
+  let found: string | undefined;
   for (const part of header.split(';')) {
     const eq = part.indexOf('=');
     if (eq === -1) continue;
-    if (part.slice(0, eq).trim() === name) return part.slice(eq + 1).trim();
+    if (part.slice(0, eq).trim() === name) found = part.slice(eq + 1).trim();
   }
-  return undefined;
+  return found;
 }
 
 /**

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isPinLocked, notePinFailure, notePinSuccess } from '@/lib/pinLockout';
+import { claimPinAttempt, notePinSuccess } from '@/lib/pinLockout';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
@@ -496,14 +496,14 @@ async function handlePatch(req: NextRequest) {
       await verifyPin('0000', member.pinHash);
       return NextResponse.json({ error: 'current_pin_required' }, { status: 401 });
     }
-    // Per-account lock (lib/pinLockout.ts): locked reads as a wrong PIN.
-    if (isPinLocked(member.pinLock)) {
+    // Per-account lock (lib/pinLockout.ts): the guess is counted BEFORE it
+    // is compared, and locked reads as a wrong PIN (Claude Security F8).
+    if (!(await claimPinAttempt(member))) {
       await verifyPin('0000', FAKE_HASH);
       return NextResponse.json({ error: 'invalid_credentials' }, { status: 401 });
     }
     const ok = await verifyPin(currentPin, member.pinHash);
     if (!ok) {
-      await notePinFailure(member);
       return NextResponse.json({ error: 'invalid_credentials' }, { status: 401 });
     }
     await notePinSuccess(member);
