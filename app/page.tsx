@@ -5,7 +5,7 @@ import { OnlineProvider } from '@/lib/useOnline';
 import { headers } from 'next/headers';
 import { NextRequest } from 'next/server';
 import { readActiveAnnouncements } from '@/lib/announcements';
-import { resolveGroupIdFromCookieHeader } from '@/lib/groupContext';
+import { resolveGroupId } from '@/lib/groupContext';
 import { configuredProviders } from '@/lib/oauthProviders';
 import { decidePage } from '@/lib/pageGate';
 
@@ -31,7 +31,13 @@ export const dynamic = 'force-dynamic';
  */
 export default async function Page() {
   const cookie = (await headers()).get('cookie');
-  const groupId = resolveGroupIdFromCookieHeader(cookie);
+  // ONE parse of the cookie header for both the gate and the club it reads.
+  // A header carrying member_session twice was read last-wins by the gate
+  // (Next's cookie parser) and first-wins here, so a phone could pass the
+  // gate as one club and be shown another's announcements (Claude Security
+  // F6, 2026-11-17). The club now comes from the request the gate checked.
+  const gateReq = new NextRequest('http://localhost/bpm', { headers: cookie ? { cookie } : {} });
+  const groupId = resolveGroupId(gateReq);
   // Which sign-in providers this deployment has credentials for. Pure env
   // reads — no Cosmos, no network — so it costs nothing here, and resolving it
   // on the server is what lets the provider buttons LEAD without the card
@@ -60,9 +66,7 @@ export default async function Page() {
    * `__tests__/members-only-coverage.test.ts` pins the order: gate, early
    * return, and only then the read.
    */
-  const outcome = await decidePage(
-    new NextRequest('http://localhost/bpm', { headers: cookie ? { cookie } : {} }),
-  );
+  const outcome = await decidePage(gateReq);
   if (outcome.kind !== 'app') {
     return (
       <OnlineProvider>

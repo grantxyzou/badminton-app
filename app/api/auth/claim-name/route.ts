@@ -29,7 +29,7 @@
  * accounts AND which of those have PINs: a map of who is easiest to attack.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { isPinLocked, notePinFailure, notePinSuccess } from '@/lib/pinLockout';
+import { claimPinAttempt, notePinSuccess } from '@/lib/pinLockout';
 import { getContainer } from '@/lib/cosmos';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { verifyPin, FAKE_HASH } from '@/lib/recoveryHash';
@@ -139,11 +139,12 @@ export async function POST(req: NextRequest) {
 
     if (pin) {
       // A locked account (lib/pinLockout.ts) verifies against FAKE_HASH like
-      // one with no PIN: same cost, same answer.
-      const usable = typeof member.pinHash === 'string' && !isPinLocked(member.pinLock);
+      // one with no PIN: same cost, same answer. The guess is counted BEFORE
+      // it is compared, so a parallel burst from many addresses cannot all
+      // be compared before the lock forms (Claude Security F9).
+      const usable = typeof member.pinHash === 'string' && (await claimPinAttempt(member));
       const stored = usable ? (member.pinHash as string) : FAKE_HASH;
       if (!(await verifyPin(pin, stored)) || !member.pinHash) {
-        if (usable) await notePinFailure(member);
         return FAIL();
       }
       await notePinSuccess(member);

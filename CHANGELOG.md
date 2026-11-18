@@ -28,6 +28,17 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 - **Setting someone's first PIN no longer signs the admin's phone in as them.**
 - The admin screens say why in a sentence ("Only an organiser can…", "They're in another club too…"), not a raw code.
 
+## Security fixes: PIN guessing, game results, the admin bootstrap (2026-11-17)
+
+From the Claude Security scan of the server code (MEDIUM findings).
+
+- **A burst of PIN guesses is counted before any is checked** (F8, F9). Every PIN check read the lock before comparing and counted the miss after, so guesses sent at once were all compared. Now at most six in any burst reach the real PIN, then the account locks as before.
+- **Only a member on the club's list can log a game result there** (F5). An account in no club could write results into BPM's session, which feed levels and kudos.
+- **An ADMIN_NAMES name becomes admin only after its own PIN checks out** (F11). Before, the name and any PIN wrote the role. With clubs on, the name has to be on BPM's list: no more search of every account for it.
+- **Changing a PIN no longer does any work before the caller is known** (F10), and one address gets 20 tries an hour however many names it uses.
+- **The e-transfer parser reads a bounded, tidied copy of the email** (F12): a crafted email could stall the server for minutes.
+- **The page reads its club from the same cookie the sign-in check read** (F6): two session cookies could show one club's announcement to a member of another.
+
 ## Stringing: the archive matches the jobs list (2026-11-17)
 
 - **Archived jobs use the same rows as the live jobs**: the racket picture and name, the player, the job number and status, and M and C as two pills, in one card labelled "Picked up" with how many still owe.

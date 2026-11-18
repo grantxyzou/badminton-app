@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { NextResponse } from 'next/server';
 import {
   resetMockStore,
+  getStore,
   setupAdminPin,
   seedTestAdminMember,
   seedMember,
@@ -132,6 +133,14 @@ describe('resolveGroupId', () => {
     expect(resolveGroupIdFromCookieHeader(null)).toBe(BPM_GROUP_ID);
     expect(resolveGroupIdFromCookieHeader('member_session=garbage')).toBe(BPM_GROUP_ID);
   });
+
+  it('a repeated member cookie resolves the way the gate reads it: the LAST one (security F6)', () => {
+    on();
+    const header = `member_session=${memberCookieValue('Lin', 'm1', 3600, 'club-x')}; member_session=${memberCookieValue('Lin', 'm1', 3600, 'club-y')}`;
+    const gateReads = resolveGroupId(makeRequest('GET', 'http://x/', undefined, { Cookie: header }));
+    expect(gateReads).toBe('club-y');
+    expect(resolveGroupIdFromCookieHeader(header)).toBe(gateReads);
+  });
 });
 
 describe('completeSignIn(res, member, groupId)', () => {
@@ -259,6 +268,17 @@ describe('POST /api/admin (the admin login mint site)', () => {
     try {
       const { hashPin } = await import('@/lib/recoveryHash');
       const m = seedMember('Newbie', { pinHash: await hashPin(getTestPin()) });
+      // Off BPM's roster, the name is nobody: no deployment-wide name scan with
+      // groups on, since anyone can give a new account any name (security F11).
+      const stranger = await adminLogin(makeRequest('POST', 'http://x/api/admin', { name: 'Newbie', pin: getTestPin() }));
+      expect(stranger.status).toBe(401);
+      expect(await readMembership(BPM_GROUP_ID, m.id)).toBeUndefined();
+      seedMembership(BPM_GROUP_ID, m.id, { name: 'Newbie', role: 'member' });
+      // A WRONG PIN promotes nothing: the role is written only after the PIN checks out (F11).
+      const wrong = await adminLogin(makeRequest('POST', 'http://x/api/admin', { name: 'Newbie', pin: '9157' }));
+      expect(wrong.status).toBe(401);
+      expect((await readMembership(BPM_GROUP_ID, m.id))?.role).toBe('member');
+      expect(((getStore()['members'] as { id: string; role?: string }[]).find((x) => x.id === m.id))?.role).not.toBe('admin');
       // In BPM the env var still turns a member into an admin — Member.role AND the BPM membership, which is what admits them with groups on.
       const bpm = await adminLogin(makeRequest('POST', 'http://x/api/admin', { name: 'Newbie', pin: getTestPin() }));
       expect(bpm.status).toBe(200);

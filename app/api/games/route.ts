@@ -3,7 +3,7 @@ import { randomBytes } from 'crypto';
 import { ensureContainer, getActiveSessionId } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId, noActiveSession } from '@/lib/groupContext';
-import { isAdminAuthed, isAdminAuthedWithMember, verifyLiveMemberAuth, ownsNameOrAdmin, requireMember } from '@/lib/auth';
+import { isAdminAuthed, isAdminAuthedWithMember, requireGroupMember, ownsNameOrAdmin, requireMember } from '@/lib/auth';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import type { GameResult } from '@/lib/types';
 import { invalidateGroupCalibration } from '@/lib/levelStore';
@@ -141,9 +141,15 @@ export async function POST(req: NextRequest) {
     // Game logging is identity-bound (rule 12): the recorder must hold the
     // member_session cookie (minted at sign-up, no PIN) or be an admin — never
     // name-only, since member names are enumerable via GET /api/members. Mirror
-    // the gear endpoint's owner-or-admin pattern. The cookie name is the
+    // the gear endpoint's owner-or-admin pattern. The ROSTER name is the
     // authoritative `loggedBy`; admins may log on behalf of another name.
-    const caller = await verifyLiveMemberAuth(req);
+    //
+    // And the recorder must be ON this club's roster (`requireGroupMember`, an
+    // active membership in the club the cookie names), not merely signed in:
+    // an account in no club holds a cookie naming BPM, and wrote games into
+    // BPM's session, which feed the club's level calibration and kudos
+    // (Claude Security F5, 2026-11-17).
+    const caller = await requireGroupMember(req);
     let loggedBy: string;
     if (caller) {
       loggedBy = caller.name;

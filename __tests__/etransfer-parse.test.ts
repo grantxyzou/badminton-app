@@ -272,3 +272,31 @@ describe('parseAmountCents', () => {
     expect(parseAmountCents(text)).toBe(cents);
   });
 });
+
+/**
+ * Claude Security F12 (2026-11-17): the sender patterns put a lazy group
+ * between whitespace quantifiers, so a long whitespace run with no "sent you"
+ * after it backtracked polynomially and could stall the shared server. The
+ * parser now reads a bounded prefix with horizontal whitespace collapsed.
+ */
+describe('parseInteracEmail — hostile input stays fast', () => {
+  it('a 50,000-character whitespace body and a 1,000-character subject parse in well under a second', () => {
+    const start = Date.now();
+    // "sent you" up front gets the email past the incoming check; the padded
+    // line after it is where the sender patterns used to backtrack.
+    parseInteracEmail(email({
+      subject: `e-transfer: ${' '.repeat(988)}x`,
+      body: `you were sent you money\nx,${' '.repeat(49_000)}y`,
+    }));
+    parseInteracEmail(email({ subject: 'sent you', body: `Hi,${' \t'.repeat(24_000)}b` }));
+    expect(Date.now() - start).toBeLessThan(1000);
+  });
+
+  it('still reads a sender past a run of padding spaces', () => {
+    const r = parseInteracEmail(email({
+      subject: 'INTERAC e-Transfer:      BRUCE     WAYNE      sent you money.',
+      body: 'Hi GRANT ZOU,\nBRUCE WAYNE has sent you $12.00 (CAD).',
+    }));
+    expect(r.senderName).toBe('BRUCE WAYNE');
+  });
+});

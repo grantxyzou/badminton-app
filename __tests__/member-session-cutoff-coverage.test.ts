@@ -151,7 +151,7 @@ const REREADS: string[] = [
 const ADMIN_SIGNATURE_ONLY = /\bisAdminAuthed\(/;
 const ADMIN_SYNC_WRITES: Record<string, string> = {
   'app/api/games/route.ts#POST':
-    'only the rule-7 sessionId override; the write itself is gated by verifyLiveMemberAuth or isAdminAuthedWithMember above it',
+    'only the rule-7 sessionId override; the write itself is gated by requireGroupMember or isAdminAuthedWithMember above it',
   'app/api/kudos/route.ts#POST':
     'only the rule-7 sessionId override; the rater is requireGroupMember, which already refuses a signed-out session',
   'app/api/players/route.ts#POST':

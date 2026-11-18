@@ -1,7 +1,7 @@
 import { lateCancelHoursOf, lateCancelVerdict } from '@/lib/cancelPolicy';
 import { readGroup, readMembership } from '@/lib/groups';
 import { NextRequest, NextResponse } from 'next/server';
-import { isPinLocked, notePinFailure, notePinSuccess } from '@/lib/pinLockout';
+import { claimPinAttempt, notePinSuccess } from '@/lib/pinLockout';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
 import { publicPlayer } from '@/lib/publicShapes';
 import { groupScope, type GroupScope } from '@/lib/groupScope';
@@ -835,6 +835,13 @@ export async function PATCH(req: NextRequest) {
       // (target, IP) envelope as `PATCH /api/members/me` and `/recover`, so
       // the PIN written here can't be guessed at any faster than there.
       const pinIp = getClientIp(req);
+      // A coarse per-IP bucket FIRST: the next one is keyed on a name the
+      // caller chooses, so a fresh name was a fresh 5-an-hour allowance and
+      // nothing bounded the work. `PATCH /api/members/me` closed the same
+      // hole the same way (Claude Security F10, 2026-11-17).
+      if (!checkRateLimit(`players-pin:ip:${pinIp}`, 20, 60 * 60 * 1000)) {
+        return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+      }
       const pinTarget =
         typeof body.name === 'string' ? body.name.trim().toLowerCase()
         : typeof id === 'string' ? id
@@ -845,6 +852,7 @@ export async function PATCH(req: NextRequest) {
 
       // Pre-validate pin shape (fail fast before DB load)
       let nextPinHash: string | undefined;
+      let pendingPin: string | null = null;
       let clearPin = false;
       let event: RecoveryEvent | null = null;
       if (body.pin === null) {
@@ -857,7 +865,9 @@ export async function PATCH(req: NextRequest) {
         if (BLOCKLISTED_PINS.has(body.pin)) {
           return NextResponse.json({ error: 'pin_too_common' }, { status: 400 });
         }
-        nextPinHash = await hashPin(body.pin);
+        // Hashed only once the write is known to be allowed (below): an
+        // anonymous request no longer buys a 16 MiB scrypt before the 401.
+        pendingPin = body.pin;
         event = { event: 'pin-set', at: new Date().toISOString() };
       } else {
         return NextResponse.json({ error: 'Invalid PIN format' }, { status: 400 });
@@ -975,18 +985,19 @@ export async function PATCH(req: NextRequest) {
             await verifyPin('0000', member.pinHash as string);
             return NextResponse.json({ error: 'current_pin_required' }, { status: 401 });
           }
-          if (isPinLocked(member.pinLock)) {
+          // Counted BEFORE the compare (lib/pinLockout.ts, Claude Security F8).
+          if (!(await claimPinAttempt(member))) {
             await verifyPin('0000', FAKE_HASH);
             return NextResponse.json({ error: 'invalid_credentials' }, { status: 401 });
           }
           if (!(await verifyPin(currentPin, member.pinHash as string))) {
-            await notePinFailure(member);
             return NextResponse.json({ error: 'invalid_credentials' }, { status: 401 });
           }
           await notePinSuccess(member);
         }
       }
 
+      if (pendingPin !== null) nextPinHash = await hashPin(pendingPin);
       const updatedDoc: Record<string, unknown> = {
         ...existing,
         recoveryEvents: appendEvent(existing.recoveryEvents, event!),
