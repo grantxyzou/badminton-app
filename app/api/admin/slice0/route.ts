@@ -178,14 +178,14 @@ export async function GET(req: NextRequest) {
     };
 
     /** Equipment surface beacons: events per kind, and distinct members. */
-    const gearSurfaces: Record<string, { events: number; members: number }> = {};
+    const gearSurfaces: Record<string, { events: number; members: number }> = Object.create(null); // keyed by event data (F21)
     /** Usage records (docs/plans/usage-metrics.md), tallied the same way. */
-    const usage: Record<string, { events: number; members: number }> = {};
+    const usage: Record<string, { events: number; members: number }> = Object.create(null); // keyed by event data (F21)
     const usageMembers = new Map<string, Set<string>>();
     /** Client crashes (docs/plans/client-error-beacon.md): how many, and how many members hit one. */
     const clientErrors = { events: 0, members: 0 };
     /** "Was this helpful?" under each guide (spec §8): answers per guide slug. */
-    const guideFeedback: Record<string, { yes: number; no: number }> = {};
+    const guideFeedback: Record<string, { yes: number; no: number }> = Object.create(null); // keyed by event data (F21)
     const clientErrorMembers = new Set<string>();
     /** How long opening took on real phones (docs/plans/startup-speed.md): opens timed and the typical one. */
     const appReadyMs: number[] = [];
