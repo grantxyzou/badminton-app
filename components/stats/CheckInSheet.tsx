@@ -243,7 +243,7 @@ export default function CheckInSheet({
                 </span>
               </div>
               <div className="cc-progress-track" style={{ height: 4, borderRadius: 'var(--radius-pill)', overflow: 'hidden' }}>
-                <div style={{ width: `${((step + 1) / total) * 100}%`, height: '100%', background: 'var(--accent)', transition: 'width 180ms var(--ease-out-quart)' }} />
+                <div style={{ width: `${((step + 1) / total) * 100}%`, height: '100%', background: 'var(--accent)', transition: 'width var(--duration-sheet) var(--ease-out-quart)' }} />
               </div>
             </div>
           )}
