@@ -180,6 +180,14 @@ export interface Player {
    * at all.
    */
   paidAmount?: number;
+  /**
+   * What the row had received when an organiser last un-ticked it, kept only
+   * while that was MORE than its bill (a bill lowered after it was paid, the
+   * club keeping the rest). A re-tick may record it again on the organiser's
+   * say-so (`restoreReceived`), bringing back what the club kept; a plain
+   * re-tick records just the bill. Cleared by any re-tick. Additive.
+   */
+  unpaidReceived?: number;
   /** How it was marked: an admin's tap, an e-transfer the inbox matched, credit, or a card (Stripe Checkout, docs/plans/card-pay-prototype.md). */
   paidVia?: 'manual' | 'etransfer' | 'credit' | 'card';
   /** The `payments` doc that paid it (`paidVia: 'etransfer'`), or the Stripe Checkout Session id (`paidVia: 'card'`). */
@@ -251,6 +259,10 @@ export type LedgerKind =
   | 'credit_grant' | 'gift_redeem' | 'credit_spend' | 'credit_refund'
   // member_owed
   | 'charge' | 'payment' | 'cover'
+  // member_owed: money received above a bill that was lowered after it was
+  // paid, kept by the club as income (docs/plans/paid-amount.md; Grant,
+  // 2026-11-18: "extra income"). Positive, like a charge, so the row nets to 0.
+  | 'overpaid'
   // club_outlay
   | 'court_cost' | 'shuttle_purchase' | 'shuttle_adj' | 'expense'
   // any account: the exact negation of an earlier entry, id `void:<thatId>`

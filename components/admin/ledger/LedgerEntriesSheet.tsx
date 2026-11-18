@@ -44,6 +44,7 @@ const KIND: Record<string, string> = {
   court_cost: 'Court cost',
   shuttle_purchase: 'Shuttles bought',
   shuttle_adj: 'Shuttle price change',
+  overpaid: 'Kept from an over-payment',
   expense: 'Expense',
   credit_grant: 'Credit given',
   gift_redeem: 'Credit code redeemed',

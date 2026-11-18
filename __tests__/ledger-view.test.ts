@@ -53,7 +53,7 @@ describe('summarizeLedger', () => {
       window,
       matchedBy,
     );
-    expect(v.income).toEqual({ sessions: 1200, stringing: 3000, total: 4200 });
+    expect(v.income).toEqual({ sessions: 1200, stringing: 3000, overpaid: 0, total: 4200 });
     expect(v.collected).toEqual({ etransferAuto: 1200, etransferAdmin: 1200, manual: 700, credit: 600, card: 0, total: 3700 });
     expect(v.covered).toBe(1200);
     expect(v.outlay).toEqual({ courts: 8000, shuttles: 24000, strings: 1500, other: 800, total: 34300 });
@@ -121,5 +121,21 @@ describe('summarizeLedger', () => {
     expect(rangeWindow('30d', now)).toEqual({ from: now - 30 * DAY, to: now });
     expect(rangeWindow('12w', now)).toEqual({ from: now - 84 * DAY, to: now });
     expect(rangeWindow('all', now)).toEqual({ from: 0, to: now });
+  });
+});
+
+describe('kept from an over-payment', () => {
+  it('counts as income in its own bucket, and in the total', () => {
+    const at = '2026-10-01T00:00:00.000Z';
+    const v = summarizeLedger(
+      [
+        { id: 'charge:r:1', memberId: 'm', account: 'member_owed', kind: 'charge', amountCents: 2000, ref: { kind: 'session', id: 'r', pk: 's' }, createdAt: at },
+        { id: 'payment:r:2', memberId: 'm', account: 'member_owed', kind: 'payment', amountCents: -3000, ref: { kind: 'session', id: 'r', pk: 's' }, meta: { via: 'manual' }, createdAt: at },
+        { id: 'overpaid:r:1', memberId: 'm', account: 'member_owed', kind: 'overpaid', amountCents: 1000, ref: { kind: 'session', id: 'r', pk: 's' }, createdAt: at },
+      ] as never,
+      { from: Date.parse('2026-09-01'), to: Date.parse('2026-11-01') },
+    );
+    expect(v.income).toEqual({ sessions: 2000, stringing: 0, overpaid: 1000, total: 3000 });
+    expect(v.collected.total).toBe(3000);
   });
 });

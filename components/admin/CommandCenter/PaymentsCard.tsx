@@ -45,6 +45,8 @@ interface Player {
   owedAmount?: number;
   /** Received so far on a part-paid row (docs/plans/paid-amount.md). */
   paidAmount?: number;
+  /** What it had received above its bill when last un-ticked; a re-tick may record it again. */
+  unpaidReceived?: number;
   writtenOff?: boolean;
   coverMode?: 'absorb' | 'resplit';
   /** A plus-one: the host's memberId and the guest's own name (docs/plans/plus-one.md). */
@@ -340,12 +342,18 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
     setTogglingId(player.id);
     setToggleError(null);
     const next = !player.paid;
+    // Un-ticked while it held more than a lowered bill: ask whether that money
+    // really came in, so the share the club kept comes back with it.
+    const before = player.unpaidReceived;
+    const restoreReceived = next && typeof before === 'number' && typeof player.owedAmount === 'number' && before > player.owedAmount
+      ? confirm(`${player.name} paid ${fmtMoney(before)} before you un-ticked them, on a ${fmtMoney(player.owedAmount)} bill. Record ${fmtMoney(before)} again, so the club keeps ${fmtMoney(before - player.owedAmount)}?\n\nOK: record ${fmtMoney(before)}. Cancel: record just the ${fmtMoney(player.owedAmount)} bill.`)
+      : false;
     setAllPlayers((prev) => prev.map((p) => (p.id === player.id ? { ...p, paid: next } : p)));
     try {
       const res = await fetch(`${BASE}/api/players`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: player.id, paid: next, ...(isCurrentSession ? {} : { sessionId: viewedSessionId }) }),
+        body: JSON.stringify({ id: player.id, paid: next, ...(restoreReceived ? { restoreReceived: true } : {}), ...(isCurrentSession ? {} : { sessionId: viewedSessionId }) }),
       });
       if (!res.ok) {
         // Roll back + surface so admin doesn't think they misclicked.
@@ -838,6 +846,10 @@ export default function PaymentsCard({ refreshKey = 0, onOpenPlayer, initialSess
                 >
                   <MemberAvatar name={player.name} size={28} />
                   <span className="fs-md truncate" style={{ flex: 1, minWidth: 0 }}>{player.name}</span>
+                  {/* Paid more than a bill lowered afterwards: the club kept the rest (docs/plans/paid-amount.md). */}
+                  {!covered && !!viewedSession?.settled && typeof player.owedAmount === 'number' && (player.paidAmount ?? 0) > player.owedAmount && (
+                    <span className="fs-xs" style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Paid {fmtMoney(player.paidAmount!)} · {fmtMoney(player.paidAmount! - player.owedAmount)} kept</span>
+                  )}
                   {!!viewedSession?.settled && typeof player.owedAmount === 'number' && (
                     <span className="fs-sm" style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono), ui-monospace, monospace' }}>
                       {fmtMoney(player.owedAmount)}
