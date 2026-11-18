@@ -1250,8 +1250,8 @@ p[role='alert'] {
      condensed state still changes both — it just arrives rather than
      animating. */
   transition:
-    background 0.25s ease,
-    border-color 0.25s ease;
+    background var(--duration-normal) ease,
+    border-color var(--duration-normal) ease;
 }
 .bpm-topbar::before,
 .bpm-page-header::before {
@@ -1373,8 +1373,8 @@ p[role='alert'] {
      condensed state still changes both — it just arrives rather than
      animating. */
   transition:
-    background 0.25s ease,
-    border-color 0.25s ease;
+    background var(--duration-normal) ease,
+    border-color var(--duration-normal) ease;
 }
 .bpm-page-header.scrolled {
   background: var(--topbar-bg-scrolled);
@@ -1473,7 +1473,7 @@ html[data-swiping] .bpm-topbar__back .material-icons {
 }
 html[data-swiping="release"] .bpm-topbar__back {
   transition: transform var(--duration-normal) var(--ease-out-quart),
-              color 0.15s ease;
+              color var(--duration-fast) ease;
 }
 
 /* THE PAGE ITSELF DOES NOT MOVE (2026-11-15). It used to nudge 18px right
@@ -4267,7 +4267,7 @@ html.vt-signup .vt-home-account { view-transition-name: home-account; }
 .segment-control button {
   transition: background var(--duration-fast) var(--ease-glass),
               color var(--duration-fast) var(--ease-glass),
-              transform 140ms var(--ease-glass);
+              transform var(--duration-fast) var(--ease-glass);
 }
 /* Press feedback — the control should feel it heard the tap. Subtle scale,
    snappy ease-out. (Tab switches are occasional, so this is earned.) */
@@ -5038,8 +5038,8 @@ html:root[data-tab="admin"] .bottom-sheet {
   transform: translateY(100%);
   opacity: 0;
   transition:
-    transform 180ms var(--ease-sheet),
-    opacity 180ms var(--ease-sheet);
+    transform var(--duration-sheet) var(--ease-sheet),
+    opacity var(--duration-sheet) var(--ease-sheet);
 }
 .bottom-sheet[data-state="open"] {
   transform: translateY(0);
@@ -6762,10 +6762,12 @@ input[type="range"].reel-hue:focus-visible {
   color: var(--text-primary);
 }
 
-/* Home's two-group stack.
-   Proximity is what says "these belong together" without giving every card a
-   heading. Tight inside a group, loose between: five evenly-spaced cards read
-   as five unrelated errands, which is what Home looked like before. */
+/* Home's stack: every card the same distance apart (Grant, 2026-11-18, on the
+   canvas: "no gap even spacing"). It was two groups, this week and your
+   account, 28px apart with the cards inside each at 10px; the break fell
+   between the level card and the balance and read as a hole, not a seam.
+   The two sections stay (they are the foldable's two pages); only the space
+   between them changed. --home-group-gap is still the tab bar's bottom strip. */
 :root {
   --home-stack-gap: 10px;
   --home-group-gap: 28px;
@@ -6773,7 +6775,7 @@ input[type="range"].reel-hue:focus-visible {
 .bpm-home-stack {
   display: flex;
   flex-direction: column;
-  gap: var(--home-group-gap);
+  gap: var(--home-stack-gap);
 }
 .bpm-home-group {
   display: flex;
@@ -7145,9 +7147,9 @@ button.skill-lead:focus-visible { outline: 2px solid var(--accent); outline-offs
   visibility: hidden;
   transform: translateY(calc(-100% - var(--space-7)));
   transition:
-    transform 220ms var(--ease-out-quart),
-    opacity 180ms ease,
-    visibility 0s linear 220ms;
+    transform var(--duration-sheet) var(--ease-out-quart),
+    opacity var(--duration-sheet) ease,
+    visibility 0s linear var(--duration-sheet);
 }
 
 .top-toast[data-open='true'] .top-toast-card {
@@ -7155,11 +7157,12 @@ button.skill-lead:focus-visible { outline: 2px solid var(--accent); outline-offs
   visibility: visible;
   transform: translateY(0);
   /* A small overshoot on the way in so it lands rather than stops. Kept
-     under 300ms and the bounce subtle (was 420ms at 1.4): it is a notice, not
-     a celebration, and the 220ms exit stays faster than the entrance. */
+     to `normal` and the bounce subtle (was 420ms at 1.4, then 280ms): it is
+     a notice, not a celebration, and the `sheet` exit stays faster than the
+     entrance. */
   transition:
-    transform 280ms cubic-bezier(0.34, 1.2, 0.64, 1),
-    opacity 200ms ease,
+    transform var(--duration-normal) cubic-bezier(0.34, 1.2, 0.64, 1),
+    opacity var(--duration-sheet) ease,
     visibility 0s;
 }
 
@@ -9554,8 +9557,8 @@ html:root .state-link:active { opacity: 0.6; }
 }
 .ptr[data-settle="true"] {
   transition:
-    transform 260ms var(--ease-sheet),
-    opacity 200ms var(--ease-sheet);
+    transform var(--duration-normal) var(--ease-sheet),
+    opacity var(--duration-sheet) var(--ease-sheet);
 }
 .ptr-disc {
   width: 36px;
@@ -10065,9 +10068,9 @@ html[data-pane-flip='b'] [data-app-shell] {
     grid-column: 1;
   }
   /* A nudge renders nothing at all when it is hidden, so this margin only
-     ever separates two real cards. */
+     ever separates two real cards. The same even gap as the phone's stack. */
   .bpm-home-stack > :not(.bpm-home-group) {
-    margin-bottom: var(--home-group-gap);
+    margin-bottom: var(--home-stack-gap);
   }
   /* The tab bar spans both panes, on every tab, so it does not change width
      as you switch. Four tabs: the middle of the bar, between Stringing and
