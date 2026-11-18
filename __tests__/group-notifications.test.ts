@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   resetMockStore,
   getStore,
@@ -101,9 +101,19 @@ describe('GET /api/notifications', () => {
   });
 
   it('shows the newest page and trims what is past the keep line', async () => {
-    for (let i = 0; i < NOTICE_KEEP + 5; i++) {
-      await recordNotices(A, [ANA], { type: 'announcement', text: `n${i}` });
-      await new Promise((r) => setTimeout(r, 1));
+    // Each notice a second after the last, on a pinned clock. A notice's
+    // order is its `at` MILLISECOND, and a real `setTimeout(1)` lands in the
+    // same millisecond about 1 time in 55 (measured), so the newest two tied
+    // and n63 sorted first in roughly 1 run in 50.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-18T10:00:00.000Z'));
+    try {
+      for (let i = 0; i < NOTICE_KEEP + 5; i++) {
+        await recordNotices(A, [ANA], { type: 'announcement', text: `n${i}` });
+        vi.setSystemTime(Date.now() + 1000);
+      }
+    } finally {
+      vi.useRealTimers();
     }
     const body = (await (await listGet(list(A))).json()) as ListBody;
     expect(body.notices).toHaveLength(NOTICE_PAGE_SIZE);
