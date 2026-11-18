@@ -930,3 +930,56 @@ describe('summarize-review-run.mjs (post-review diagnostic)', () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+describe('warn-security-scan.mjs (PreToolUse on Bash)', () => {
+  const SCRIPT = join(SCRIPTS, 'warn-security-scan.mjs');
+
+  /** A repo on `main` with one commit, then a branch that changes `files`. */
+  function branch(files: string[]): string {
+    const dir = tmp('secscan-');
+    const git = (...args: string[]) =>
+      spawnSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'commit.gpgsign=false', ...args], { cwd: dir, encoding: 'utf8' });
+    git('init', '-q', '-b', 'main');
+    git('commit', '-q', '--allow-empty', '-m', 'base');
+    git('checkout', '-q', '-b', 'feature');
+    for (const f of files) {
+      mkdirSync(join(dir, f, '..'), { recursive: true });
+      writeFileSync(join(dir, f), 'x\n');
+    }
+    git('add', '-A');
+    git('commit', '-q', '-m', 'change');
+    return dir;
+  }
+  const open = (dir: string, command = 'gh pr create --base main --title x') =>
+    run(SCRIPT, { input: JSON.stringify({ tool_input: { command }, cwd: dir }) });
+
+  it('says nothing for a command that is not gh pr create', () => {
+    const r = run(SCRIPT, { input: JSON.stringify({ tool_input: { command: 'git push' }, cwd: branch(['lib/auth.ts']) }) });
+    expect(r.status).toBe(0);
+    expect(r.stdout).toBe('');
+  });
+
+  it('says nothing for a PR that touches no sign-in, money or admin code', () => {
+    const r = open(branch(['components/HomeTab.tsx', 'app/api/kudos/route.ts']));
+    expect(r.status).toBe(0);
+    expect(r.stdout).toBe('');
+  });
+
+  it('warns, without deciding the permission, when the PR touches them', () => {
+    const r = open(branch(['lib/pinLockout.ts', 'app/api/admin/ledger/route.ts', 'app/api/payments/etransfer/route.ts']));
+    expect(r.status).toBe(0);
+    const out = JSON.parse(r.stdout);
+    expect(out.systemMessage).toMatch(/Scan changes/);
+    expect(out.systemMessage).toContain('lib/pinLockout.ts');
+    expect(out.hookSpecificOutput.hookEventName).toBe('PreToolUse');
+    expect(out.hookSpecificOutput.additionalContext).toContain('app/api/admin/ledger/route.ts');
+    expect(out.hookSpecificOutput.permissionDecision).toBeUndefined();
+  });
+
+  it('is silent outside a git repo', () => {
+    const r = open(tmp('secscan-nogit-'));
+    expect(r.status).toBe(0);
+    expect(r.stdout).toBe('');
+  });
+});
