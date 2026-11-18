@@ -8162,6 +8162,23 @@ button.setup-next-row { cursor: pointer; }
 .earn-line-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
 .earn-figure { font-family: var(--font-mono); font-weight: 600; font-variant-numeric: tabular-nums; }
 .earn-val { font-family: var(--font-mono); font-size: var(--fs-stat-lg); font-weight: 600; line-height: var(--lh-tight); font-variant-numeric: tabular-nums; }
+.earn-stepper { display: flex; align-items: center; gap: var(--space-1); }
+.earn-period { flex: 1; min-width: 0; margin: 0; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.earn-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: none;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.earn-arrow:active { background: var(--press-bg); }
+.earn-arrow:disabled { color: var(--text-muted); opacity: 0.4; cursor: default; background: none; }
 .earn-tiles { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-3); }
 .earn-tile { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
 .earn-up { color: var(--pill-paid-text); }

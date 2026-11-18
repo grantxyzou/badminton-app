@@ -25,6 +25,12 @@ From the Claude Security scan of the server code (LOW findings marked "fix now")
 - **Two deployment-wide tools are the operator's alone**: the memberId migration and minting BPM's reports key (F22, F26). A key already minted stays valid until it is rotated.
 - **A crafted pick event can no longer change every object on the server** (F21).
 
+## Stringing earnings: pick the month, quarter or year (2026-11-18)
+
+- **Month, Quarter or Year at the top of Earnings, then ‹ › to step** through every month since the first job (Grant picked option A on the canvas). The whole page follows: the tiles, where it is, who is waiting, the string cost and the breakdown by string type.
+- **A quarter or year still in progress is compared fairly**: Q4 so far is set against the same months of Q3 ("vs Jul–Aug"), this year against the same months last year.
+- The chart's scale fits its tallest column more closely ($308 tops out at $360, not $600).
+
 ## Stringing: what the bench earned (2026-11-18)
 
 - **A line at the top of Stringing jobs** says this month so far: collected, owed and not invoiced. Tap it for Earnings. Organisers and admins only; a stringer who isn't an admin still sees no money.

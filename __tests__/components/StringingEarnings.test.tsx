@@ -79,8 +79,8 @@ describe('StringingEarningsPage', () => {
 
   it('a tapped column picks its month', () => {
     wrap(<StringingEarningsPage data={data} error={false} onRetry={() => {}} />);
-    fireEvent.click(screen.getByRole('button', { name: /^October: \$292 of work/ }));
-    expect(screen.getByRole('button', { name: /^October: / }).getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: /^October 2026: \$292 of work/ }));
+    expect(screen.getByRole('button', { name: /^October 2026: / }).getAttribute('aria-pressed')).toBe('true');
     expect(screen.getAllByText('$208').length).toBeGreaterThan(0); // 292 − 84 after string cost
     expect(screen.queryByRole('region', { name: 'Waiting on payment' })).toBeNull();
   });
@@ -100,10 +100,47 @@ describe('StringingEarningsPage', () => {
   });
 });
 
+describe('the period: Month, Quarter or Year, then ‹ ›', () => {
+  it('opens on this month so far, steps back, and stops at the ends', () => {
+    wrap(<StringingEarningsPage data={data} error={false} onRetry={() => {}} />);
+    expect(screen.getByTestId('earn-period').textContent).toBe('November 2026 so far');
+    expect((screen.getByRole('button', { name: 'Later' }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Earlier' }));
+    expect(screen.getByTestId('earn-period').textContent).toBe('October 2026');
+    expect(screen.getAllByText('$292').length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole('button', { name: 'Earlier' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Earlier' }));
+    expect(screen.getByTestId('earn-period').textContent).toBe('August 2026');
+    expect((screen.getByRole('button', { name: 'Earlier' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('a quarter adds its months up and compares with the quarter before', () => {
+    const wide: EarningsData = {
+      ...data,
+      months: [month('2026-06', { jobs: 2, workCents: 5000, collectedCents: 5000, stringCostCents: 1000, sets: 2 }), ...data.months.slice(0)],
+    };
+    wrap(<StringingEarningsPage data={wide} error={false} onRetry={() => {}} />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Quarter' }));
+    expect(screen.getByTestId('earn-period').textContent).toBe('Q4 2026 so far');
+    // Oct $292 + Nov $120.
+    expect(screen.getAllByText('$412').length).toBeGreaterThan(0);
+    // Q4 so far is its first two months, so it is set against Q3's first two
+    // that exist: August only (July is before the window, June is Q2).
+    expect(screen.getByText('$412 vs Aug')).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'By quarter · tap one' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /^Q2 2026: \$50 of work/ }));
+    expect(screen.getByTestId('earn-period').textContent).toBe('Q2 2026');
+    fireEvent.click(screen.getByRole('tab', { name: 'Year' }));
+    expect(screen.getByTestId('earn-period').textContent).toBe('2026 so far');
+    expect(screen.getAllByText('$462').length).toBeGreaterThan(0);
+  });
+});
+
 describe('axisTop', () => {
   it('rounds up to three ticks of a round step', () => {
     expect(axisTop(29200)).toBe(30000);
-    expect(axisTop(12000)).toBe(15000);
+    expect(axisTop(30800)).toBe(36000); // not $600: the tallest column fills most of the plot
+    expect(axisTop(12000)).toBe(12000);
     expect(axisTop(0)).toBe(3000);
   });
 });
