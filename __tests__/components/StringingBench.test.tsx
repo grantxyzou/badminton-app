@@ -148,7 +148,10 @@ describe('the shop sign', () => {
     }));
     wrap(<StringingPage onBack={() => {}} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Close shop' }));
-    expect((await screen.findByRole('alert')).textContent).toBe(enMessages.admin.stringing.shop.toggleError);
+    // By its words: the earnings line's own failure (this mock answers it a
+    // job list) is another alert on the page.
+    const said = await screen.findByText(enMessages.admin.stringing.shop.toggleError);
+    expect(said.closest('[role="alert"]')).not.toBeNull();
     // The sign stays what it was: still open, still offering Close shop.
     expect(document.querySelector('[data-state="open"]')).not.toBeNull();
     expect(screen.getByRole('button', { name: 'Close shop' })).toBeDefined();

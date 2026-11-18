@@ -267,6 +267,24 @@
   --chart-green-1: #b5ecc8;
   --chart-green-2: #3cc46c;
   --chart-green-3: #1f7a45;
+  /* STRINGING EARNINGS (docs/plans/stringing-earnings.md): where the month's
+     money is — Collected, Owed, Not invoiced yet — one categorical order,
+     run through the dataviz validator on both surfaces (all checks pass on
+     the light ground and on #1c1a17); the same three steps serve both modes.
+     Ink is what reads ON a segment. Grey is every month not chosen. */
+  --earn-collected: #16a34a;
+  --earn-owed: #3b82f6;
+  --earn-unbilled: #d97706;
+  --earn-collected-ink: #ffffff;
+  --earn-owed-ink: #ffffff;
+  --earn-unbilled-ink: #1a2332;
+  --earn-other: rgba(255, 255, 255, 0.16);
+  --earn-work: #94a3b8;
+  --earn-cost: #ef4444;
+  --earn-row: rgba(255, 255, 255, 0.04);
+  --earn-row-open: rgba(74, 222, 128, 0.08);
+  --earn-grid: rgba(255, 255, 255, 0.08);
+  --earn-axis: rgba(255, 255, 255, 0.18);
   --tone-green-bg: rgba(74, 222, 128, 0.13);
   --tone-green-border: rgba(74, 222, 128, 0.25);
   --tone-green-border-strong: rgba(74, 222, 128, 0.3);
@@ -458,6 +476,13 @@
   --chart-green-1: #14532d;
   --chart-green-2: #2fb35f;
   --chart-green-3: #9fdcb5;
+  --earn-other: #cfcac2;
+  --earn-work: #475569;
+  --earn-cost: #dc2626;
+  --earn-row: rgba(26, 35, 50, 0.03);
+  --earn-row-open: rgba(22, 163, 74, 0.06);
+  --earn-grid: rgba(26, 35, 50, 0.08);
+  --earn-axis: rgba(26, 35, 50, 0.16);
   --tone-green-bg: rgba(22, 163, 74, 0.1);
   --tone-green-border: rgba(22, 163, 74, 0.25);
   --tone-green-border-strong: rgba(22, 163, 74, 0.3);
@@ -8102,6 +8127,187 @@ button.setup-next-row { cursor: pointer; }
 .shelf-fold { min-height: 48px; gap: var(--space-3); }
 .shelf-row:active,
 .shelf-fold:active { background: var(--press-bg); }
+
+/* ── Stringing earnings (docs/plans/stringing-earnings.md, canvas EarnRow,
+   EarnPiles, EarnKept). Fill-only, like every container; the chart marks
+   follow the dataviz rules: 2px surface gaps between fills, 4px rounded data
+   ends on the baseline, values in text ink beside a coloured key. ── */
+.earn-line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  text-align: left;
+  color: var(--text-primary);
+}
+.earn-line-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.earn-figure { font-family: var(--font-mono); font-weight: 600; font-variant-numeric: tabular-nums; }
+.earn-val { font-family: var(--font-mono); font-size: var(--fs-stat-lg); font-weight: 600; line-height: var(--lh-tight); font-variant-numeric: tabular-nums; }
+.earn-tiles { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-3); }
+.earn-tile { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.earn-up { color: var(--pill-paid-text); }
+.earn-down { color: var(--sev-crit-text); }
+.earn-warn { color: var(--sev-warn); }
+.earn-bar { display: flex; gap: var(--space-05); }
+.earn-seg {
+  display: flex;
+  align-items: center;
+  height: calc(28rem / 16);
+  padding-left: var(--space-3);
+  border-radius: calc(4rem / 16);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+.earn-fill-collected { background: var(--earn-collected); color: var(--earn-collected-ink); }
+.earn-fill-owed { background: var(--earn-owed); color: var(--earn-owed-ink); }
+.earn-fill-unbilled { background: var(--earn-unbilled); color: var(--earn-unbilled-ink); }
+.earn-fill-other { background: var(--earn-other); }
+.earn-legend { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-5); }
+.earn-key { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--fs-sm); color: var(--text-secondary); }
+.earn-swatch { width: calc(10rem / 16); height: calc(10rem / 16); border-radius: calc(3rem / 16); flex: none; }
+/* By month: a y-axis, a hairline grid, one stacked column per month. */
+.earn-cols { display: flex; gap: var(--space-3); padding-top: var(--space-5); }
+.earn-ticks {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: calc(150rem / 16);
+  padding-bottom: calc(22rem / 16);
+  box-sizing: border-box;
+  font-family: var(--font-mono);
+  font-size: var(--fs-2xs);
+  line-height: 1;
+  color: var(--text-muted);
+}
+.earn-plot { position: relative; flex: 1; height: calc(150rem / 16); }
+.earn-grid {
+  position: absolute;
+  inset: 0 0 calc(22rem / 16) 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  pointer-events: none;
+}
+.earn-grid > span { height: 1px; background: var(--earn-grid); }
+.earn-grid > span:last-child { background: var(--earn-axis); }
+.earn-col-row { position: relative; display: flex; height: 100%; }
+.earn-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.earn-col[aria-pressed='true'] { color: var(--text-primary); font-weight: 700; }
+.earn-col-total { font-family: var(--font-mono); font-size: var(--fs-xs); }
+/* The stack is as tall as its month's total on the same scale as the grid:
+   the plot's 150 less the 22 under the baseline (the month name, 18, and the
+   4 gap), so 128 is the axis top. Its parts share that height by their
+   amounts, and the total sits on top of the bar. */
+.earn-col > * { flex: none; }
+.earn-col-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-05);
+  width: calc(22rem / 16);
+  max-height: calc(128rem / 16);
+}
+.earn-col-stack > span { min-height: calc(2rem / 16); }
+.earn-col-stack > span:first-child { border-radius: calc(4rem / 16) calc(4rem / 16) 0 0; }
+.earn-col-month { font-size: var(--fs-sm); line-height: calc(18rem / 16); }
+/* Waterfall: total, the decrease floating at its height, what is left. */
+.earn-fall {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-5);
+  height: calc(150rem / 16);
+  padding: var(--space-5) var(--space-3) 0;
+  border-bottom: 1px solid var(--earn-axis);
+}
+.earn-fall-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: var(--space-1); height: 100%; }
+.earn-fall-bar { width: 100%; max-width: calc(56rem / 16); border-radius: calc(4rem / 16) calc(4rem / 16) 0 0; }
+.earn-fall-bar--float { border-radius: calc(4rem / 16); }
+.earn-fall-work { background: var(--earn-work); }
+.earn-fall-cost { background: var(--earn-cost); }
+.earn-fall-kept { background: var(--earn-collected); }
+.earn-fall-labels { display: flex; gap: var(--space-5); padding: 0 var(--space-3); }
+.earn-fall-labels > span { flex: 1; text-align: center; }
+/* Breakdown by string type: one tile per string, its details open IN it. */
+.earn-string { display: flex; flex-direction: column; border-radius: var(--radius-lg); background: var(--earn-row); }
+.earn-string[data-open='true'] { background: var(--earn-row-open); }
+.earn-string-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  min-height: 52px;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+.earn-string-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.earn-string-name { display: flex; align-items: baseline; gap: var(--space-2); white-space: nowrap; overflow: hidden; }
+.earn-string-name > span:first-child { overflow: hidden; text-overflow: ellipsis; }
+.earn-string-bar { display: flex; align-items: center; gap: var(--space-2); }
+.earn-string-fill { height: calc(14rem / 16); background: var(--earn-collected); border-radius: 0 calc(4rem / 16) calc(4rem / 16) 0; }
+.earn-own {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  background: var(--earn-row);
+  color: var(--text-muted);
+}
+.earn-eye { position: relative; flex: none; color: var(--text-muted); opacity: 0.7; }
+.earn-eye[data-open='true']::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 8%;
+  width: calc(1.5rem / 16);
+  height: 84%;
+  background: currentColor;
+  transform: translateX(-50%) rotate(-45deg);
+}
+.earn-kv {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  column-gap: var(--space-4);
+  row-gap: var(--space-2);
+  padding: var(--space-1) var(--space-3) var(--space-4);
+  font-size: var(--fs-base);
+}
+.earn-kv > :nth-child(odd) { color: var(--text-muted); }
+.earn-kv > :nth-child(even) { justify-self: end; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.earn-step { display: inline-flex; align-items: center; gap: var(--space-05); }
+.earn-step button {
+  width: calc(28rem / 16);
+  height: calc(28rem / 16);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+.earn-step button:active { background: var(--press-bg); }
+.earn-wait { display: flex; align-items: center; gap: var(--space-4); min-height: 48px; padding: 0 var(--space-1); }
 .shelf-row:disabled { opacity: 0.5; pointer-events: none; }
 .shelf-row-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-05); }
 .shelf-row-name { font-size: var(--fs-md); color: var(--text-primary); overflow-wrap: anywhere; }
