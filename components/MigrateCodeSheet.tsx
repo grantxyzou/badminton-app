@@ -84,7 +84,7 @@ export default function MigrateCodeSheet({ open, onClose }: Props) {
                 padding: 'var(--space-4)',
                 borderRadius: 'var(--radius-md)',
                 border: '1px solid var(--glass-border)',
-                background: 'var(--input-bg, rgba(255,255,255,0.05))',
+                background: 'var(--input-bg)',
                 color: 'var(--text-primary)',
               }}
             />
