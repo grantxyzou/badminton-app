@@ -48,11 +48,16 @@ describe('44pt tap targets', () => {
     expect(sw).toMatch(/className="segment-control flex w-full">\s*\{views\.map\(\(id\) => \(\s*<button/);
   });
 
-  it('puts .tap-44 on the Roster filter chips, with rows far enough apart to keep each tap', () => {
+  it('puts .tap-44 on the Roster filter chips, in one row tall enough to keep each tap', () => {
     const roster = read('components', 'admin', 'CommandCenter', 'RosterPage.tsx');
     expect(roster).toContain("? 'tap-44 motion-fade' : 'tap-44'}");
-    // 32px chips with 44px taps: at a 6px row gap the second row covered the first.
-    expect(roster).toContain("columnGap: 'var(--space-2)', rowGap: 'var(--space-4)', flexWrap: 'wrap'");
+    // One sideways-scrolling row (the filter rule), never a wrapped second row.
+    // A scroller clips vertically too, so the row must be 44px tall or the
+    // 32px chips' 44px taps are cut (they wrapped until 2026-11-18, when a
+    // 6px row gap let the second row's taps cover the first).
+    expect(roster).toContain('<div className="filter-chips"');
+    expect(roster).not.toMatch(/flexWrap: 'wrap', margin: 'var\(--space-4\) 0 var\(--space-2\)'/);
+    expect(css).toMatch(/\.filter-chips \{[^}]*min-height: 44px;[^}]*overflow-x: auto;/);
   });
 
   it('gives the round top buttons a tap that measures 44 across', () => {
