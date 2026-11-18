@@ -8,6 +8,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## A background tab no longer asks the server whether it is back (2026-11-18)
+
+- **While the app sits in a tab you are not looking at, the "You're offline" check stops.** Before, a laptop with the app parked in a background tab asked the server every 15 seconds for as long as the network was down. Now the check pauses when the tab is hidden and runs again the moment you look at it, so the banner clears just as fast as before.
+
+
 ## A payment that lands while a bill is being settled is kept (2026-11-18)
 
 - **If someone pays at the very moment you settle or edit a bill, their payment now survives.** Before, the settle could write over it with the copy it had read a moment earlier, and the person showed as unpaid again.
