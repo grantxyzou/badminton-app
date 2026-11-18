@@ -291,6 +291,21 @@ export function expenseEntry(input: { amountCents: number; note: string; date: s
 
 // ── Reading what is already there (for voids and counters) ─────────────────
 
+/**
+ * Did this Checkout (or e-transfer) ever pay this line, whatever has happened
+ * to the line since? Reads the ledger, where a payment entry stays even once
+ * voided. A late redelivery of a card webhook uses it to tell "money that
+ * already did its job" from "money that never found its line" — only the
+ * second is refunded (2026-11-18: a manual Resend of a three-day-old event
+ * refunded a payment the app had applied, because the line had changed since
+ * and Stripe's idempotency key had expired).
+ */
+export async function everPaidBy(scope: GroupScope, row: { id: string; memberId?: string | null; guestOf?: string | null }, paymentId: string): Promise<boolean> {
+  const memberId = row.memberId ?? row.guestOf ?? UNLINKED_LEDGER_ID;
+  const entries = await entriesFor(scope, memberId, row.id);
+  return entries.some((e) => e.kind === 'payment' && (e.id === `payment:${row.id}:${paymentId}` || e.id.startsWith(`payment:${row.id}:${paymentId}:`) || e.meta?.paymentId === paymentId));
+}
+
 async function entriesFor(scope: GroupScope, memberId: string, refId: string): Promise<LedgerEntry[]> {
   await ensureLedger();
   const rows = await scope.query<LedgerEntry>('ledger', {
