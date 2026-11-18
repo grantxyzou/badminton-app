@@ -40,7 +40,7 @@ import { isFlagOn } from './flags';
 import { groupDocId, groupScope, type GroupScope } from './groupScope';
 import { computeOwed, settledLines, type OwedLine } from './owedBalance';
 import { resolveIdentity } from './playerIdentity';
-import { mirrorPaid, mirrorStringingChanged, mirrorUnpaid } from './ledgerMirror';
+import { everPaidBy, mirrorPaid, mirrorStringingChanged, mirrorUnpaid } from './ledgerMirror';
 import { isBillable } from './stringingBilling';
 import { ensurePayments, releaseHoldIfSettled } from './paymentsInbox';
 import { requireOutboundOrigin } from './appOrigin';
@@ -392,6 +392,23 @@ async function fileCardReview(
 type LineOutcome = 'paid' | 'ours' | 'not_applied';
 
 /**
+ * This Checkout paid the line once already, and the line has changed since
+ * (un-ticked, refunded, disputed, re-settled, deleted). The money did its job:
+ * a redelivery must NOT refund it. Stripe's idempotency key on the refund
+ * lasts 24 hours, so it cannot be what stops a Resend days later; the row's
+ * own stamps and the ledger's payment entry (kept even when voided) can.
+ */
+async function paidByThisBefore(scope: GroupScope, line: CardLine, checkoutId: string, doc: { id: string; memberId?: string | null; guestOf?: string | null; refundedPaymentId?: string; disputedPaymentId?: string; paymentId?: string; cardPaymentId?: string } | undefined, memberId: string): Promise<boolean> {
+  if (doc && [doc.refundedPaymentId, doc.disputedPaymentId, doc.paymentId, doc.cardPaymentId].includes(checkoutId)) return true;
+  try {
+    return await everPaidBy(scope, doc ?? { id: line.ref, memberId: line.kind === 'stringing' ? line.pk : memberId }, checkoutId);
+  } catch {
+    // Can't tell: never refund on a guess. The caller files it for a person.
+    return true;
+  }
+}
+
+/**
  * Mark one row paid by this Checkout Session, or say why not. A row is paid
  * only when it is still this member's, still SETTLED, still unpaid, and still
  * owes exactly what was charged for it.
@@ -444,7 +461,7 @@ async function markJobCardPaid(scope: GroupScope, line: CardLine, memberId: stri
 
 export type ApplyResult =
   | { ignored: 'not_paid' | 'not_ours' | 'unknown_club' | 'account_mismatch' | 'amount_mismatch' }
-  | { applied: number; alreadyOurs: number; refundedCents: number };
+  | { applied: number; alreadyOurs: number; appliedBefore?: number; refundedCents: number };
 
 /**
  * Money that landed for a member's lines, from either way of paying by card:
@@ -543,8 +560,23 @@ async function applyPaidSource(source: PaidSource, eventAccount: string | undefi
   const paidAt = new Date((source.created ?? Math.floor(Date.now() / 1000)) * 1000).toISOString();
   let applied = 0;
   let alreadyOurs = 0;
+  let appliedBefore = 0;
   let unappliedCents = 0;
   for (const line of lines) {
+    // A line this payment paid ONCE and that has changed since (un-ticked,
+    // refunded, disputed, deleted) is settled business: a redelivery neither
+    // pays it again over the organiser's decision nor refunds money that
+    // already did its job (2026-11-18). Only a line it never touched is new.
+    const doc = line.kind === 'stringing'
+      ? await scope.read<StringingJob>('stringingJobs', line.ref, line.pk)
+      : await scope.read<Player & Record<string, unknown>>('players', line.ref, line.pk);
+    const holdsItNow = !!doc && (line.kind === 'stringing'
+      ? (doc as StringingJob).paidAt !== null && (doc as StringingJob).cardPaymentId === source.id
+      : (doc as Player).paid === true && (doc as Player).paymentId === source.id);
+    if (!holdsItNow && (await paidByThisBefore(scope, line, source.id, doc as never, memberId))) {
+      appliedBefore += 1;
+      continue;
+    }
     const outcome = await markCardPaid(scope, line, memberId, source.id, paidAt);
     if (outcome === 'paid') applied += 1;
     else if (outcome === 'ours') alreadyOurs += 1;
@@ -571,7 +603,7 @@ async function applyPaidSource(source: PaidSource, eventAccount: string | undefi
   if (applied > 0 && isFlagOn('NEXT_PUBLIC_FLAG_PAYMENTS_AUTO')) {
     await releaseHoldIfSettled(scope, memberId);
   }
-  return { applied, alreadyOurs, refundedCents };
+  return { applied, alreadyOurs, appliedBefore, refundedCents };
 }
 
 // ── Refunds made in the Stripe Dashboard ────────────────────────────────────

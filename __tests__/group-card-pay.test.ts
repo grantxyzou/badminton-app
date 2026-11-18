@@ -261,7 +261,7 @@ describe('the webhook', () => {
     const metadata = await checkoutMetadata();
     const res = await deliver(paidSession(metadata));
     expect(res.status).toBe(200);
-    expect((await res.json()).result).toEqual({ applied: 2, alreadyOurs: 0, refundedCents: 0 });
+    expect((await res.json()).result).toEqual({ applied: 2, alreadyOurs: 0, appliedBefore: 0, refundedCents: 0 });
     for (const r of [row1, row2]) {
       expect(row(r.id)).toMatchObject({ paid: true, paidVia: 'card', paymentId: 'cs_test_1' });
       expect(ledger().some((e) => e.id === `payment:${r.id}:cs_test_1`)).toBe(true);
@@ -269,9 +269,21 @@ describe('the webhook', () => {
     const entries = ledger().length;
 
     const again = await deliver(paidSession(metadata));
-    expect((await again.json()).result).toEqual({ applied: 0, alreadyOurs: 2, refundedCents: 0 });
+    expect((await again.json()).result).toEqual({ applied: 0, alreadyOurs: 2, appliedBefore: 0, refundedCents: 0 });
     expect(ledger()).toHaveLength(entries);
     expect(fake.refunds.create).not.toHaveBeenCalled();
+  });
+
+  it('a Resend DAYS later, after the lines changed, refunds nothing: that money already paid them (2026-11-18)', async () => {
+    const metadata = await checkoutMetadata();
+    await deliver(paidSession(metadata));
+    // Since then: one line un-ticked by an organiser, the other deleted outright.
+    await patchPlayer(makeAdminRequest('PATCH', `${BASE}/players`, { id: row1.id, paid: false, sessionId: 'session-2026-09-24' }));
+    (getStore()['players'] as Array<{ id: string }>).splice((getStore()['players'] as Array<{ id: string }>).findIndex((p) => p.id === row2.id), 1);
+    const again = await deliver(paidSession(metadata));
+    expect((await again.json()).result).toEqual({ applied: 0, alreadyOurs: 0, appliedBefore: 2, refundedCents: 0 });
+    expect(fake.refunds.create).not.toHaveBeenCalled();
+    expect(row(row1.id).paid).toBe(false); // the organiser's un-tick stands
   });
 
   it('refunds a line paid another way meanwhile, keyed so a redelivery cannot refund twice', async () => {
@@ -279,7 +291,7 @@ describe('the webhook', () => {
     Object.assign(row(row2.id), { paid: true, paidVia: 'etransfer', paymentId: 'pay_1' });
 
     const res = await deliver(paidSession(metadata));
-    expect((await res.json()).result).toEqual({ applied: 1, alreadyOurs: 0, refundedCents: 1500 });
+    expect((await res.json()).result).toEqual({ applied: 1, alreadyOurs: 0, appliedBefore: 0, refundedCents: 1500 });
     expect(row(row2.id)).toMatchObject({ paidVia: 'etransfer', paymentId: 'pay_1' });
     const [params, opts] = fake.refunds.create.mock.calls[0] as unknown as [Record<string, unknown>, Record<string, unknown>];
     expect(params).toMatchObject({ payment_intent: 'pi_test_1', amount: 1500 });
@@ -305,7 +317,7 @@ describe('the webhook', () => {
     const metadata = await checkoutMetadata();
     row(row1.id).owedAmount = 14;
     const res = await deliver(paidSession(metadata));
-    expect((await res.json()).result).toEqual({ applied: 1, alreadyOurs: 0, refundedCents: 1200 });
+    expect((await res.json()).result).toEqual({ applied: 1, alreadyOurs: 0, appliedBefore: 0, refundedCents: 1200 });
     expect(row(row1.id).paid).not.toBe(true);
   });
 });
@@ -340,11 +352,11 @@ describe('stringing jobs are paid by card in the same Checkout', () => {
 
   it('the webhook marks the job paid by this Checkout, mirrors it, and a redelivery changes nothing', async () => {
     const metadata = await checkoutMetadata();
-    expect((await (await deliver(paidSession(metadata, 5700))).json()).result).toEqual({ applied: 3, alreadyOurs: 0, refundedCents: 0 });
+    expect((await (await deliver(paidSession(metadata, 5700))).json()).result).toEqual({ applied: 3, alreadyOurs: 0, appliedBefore: 0, refundedCents: 0 });
     expect(job()).toMatchObject({ cardPaymentId: 'cs_test_1' });
     expect(typeof job().paidAt).toBe('string');
     expect(ledger().some((e) => e.id.startsWith(`payment:${JOB}:`))).toBe(true);
-    expect((await (await deliver(paidSession(metadata, 5700))).json()).result).toEqual({ applied: 0, alreadyOurs: 3, refundedCents: 0 });
+    expect((await (await deliver(paidSession(metadata, 5700))).json()).result).toEqual({ applied: 0, alreadyOurs: 3, appliedBefore: 0, refundedCents: 0 });
   });
 
   it('a refund of exactly the job’s price in Stripe puts the job back to owed and leaves the sessions paid', async () => {

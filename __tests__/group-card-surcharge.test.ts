@@ -262,11 +262,11 @@ describe('paying', () => {
     feeOn();
     const pi = await quotedAndPaid();
     const res = await deliver(pi, 'payment_intent.succeeded');
-    expect((await res.json()).result).toEqual({ applied: 2, alreadyOurs: 0, refundedCents: 0 });
+    expect((await res.json()).result).toEqual({ applied: 2, alreadyOurs: 0, appliedBefore: 0, refundedCents: 0 });
     expect(row(row1.id)).toEqual(expect.objectContaining({ paid: true, paidVia: 'card', paymentId: 'pi_surcharge_1' }));
     const payments = ledger().filter((e) => e.kind === 'payment').map((e) => e.amountCents).sort((a, b) => a - b);
     expect(payments).toEqual([-1500, -1200]);
-    expect((await (await deliver(pi, 'payment_intent.succeeded')).json()).result).toEqual({ applied: 0, alreadyOurs: 2, refundedCents: 0 });
+    expect((await (await deliver(pi, 'payment_intent.succeeded')).json()).result).toEqual({ applied: 0, alreadyOurs: 2, appliedBefore: 0, refundedCents: 0 });
   });
 
   it('a fee above 2.4% of the lines is not applied: it goes to Needs a look', async () => {
@@ -291,7 +291,7 @@ describe('paying', () => {
     Object.assign(row(row2.id), { paid: true, paidVia: 'manual', paidAt: '2026-10-03T00:00:00Z' });
     const res = await deliver(pi, 'payment_intent.succeeded');
     // $15 line + floor(1500 × 64 / 2700) = 35¢ of the fee.
-    expect((await res.json()).result).toEqual({ applied: 1, alreadyOurs: 0, refundedCents: 1535 });
+    expect((await res.json()).result).toEqual({ applied: 1, alreadyOurs: 0, appliedBefore: 0, refundedCents: 1535 });
     expect((fake.refunds.create.mock.calls as unknown as Array<[Record<string, unknown>]>)[0][0]).toEqual(expect.objectContaining({ payment_intent: 'pi_surcharge_1', amount: 1535 }));
   });
 });

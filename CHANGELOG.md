@@ -62,6 +62,10 @@ From the Claude Security scan of the server code (MEDIUM findings).
 
 - **On Android, the mic stopped hearing calls after the first one** (Grant, on a Galaxy Z Fold). Chrome on Android does not reliably keep its always-on listening going, so the board now listens for one call at a time and starts listening again straight after each, and replaces a listening session that goes quiet for 15 seconds without ending. Android may play a short tone each time it starts again.
 
+## Resending an old card payment event changes nothing (2026-11-18)
+
+- **Resending an old card payment from Stripe no longer refunds it or re-ticks lines.** If the lines it paid were un-ticked, refunded or deleted since, the app now knows that money already did its job and leaves everything alone. Before, a resend days later could refund the payment to the card, or tick a line an organiser had un-ticked.
+
 ## A card payment the bank pulls back is owed again (2026-11-17)
 
 - **When a member's bank disputes a card payment (a chargeback), the lines it paid go back to owed** and a row appears under "Needs a look" with the amount, so you respond in Stripe before its deadline. If the dispute is for an amount that matches no single line, nothing is un-ticked and the row says so.
