@@ -24,7 +24,7 @@ The map, the peek, the list or a string's own page says "your &lt;racket&gt;" ab
 - A racket the catalog does not know. A typed-in racket has no frame to pair a string against, so it is not offered, and a member whose racket in play is typed in still sees no strip (as before).
 - Remembering the pick anywhere, on the phone or the account (see Decisions).
 - A member with one racket: nothing new on their screen.
-- A member whose racket in play is typed in by name. They told us what they play, so the strip does not ask again, and the catalog cannot pair it, so there is still no strip. Linking a typed racket to its catalog row (keeping its string) is a gear-route change of its own.
+- A member whose racket in play is typed in by name. They told us what they play, so the strip does not ask again, and the catalog cannot pair it, so there is no strip (Grant, 2026-11-19: "If we don't have data on the racket for the strining page just don't show. Until we have data base"). The strip appears on its own once the racket is in the catalog and the member's bag row points at it.
 - Opening the check-in from the strip. It points at Stats, where the check-in is.
 
 <!--
