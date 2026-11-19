@@ -8,6 +8,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## The strings map: the racket you picked goes with your request (2026-11-19)
+
+- **Pick a racket on the map, choose a string, and "Restring with this string" opens the request on that racket and that string.** Before, the request opened with no racket chosen (Grant: "when racket is selected the verdict in the string sheet should updated to the racket").
+- **Once the request is sent, the map goes back to the racket you play with** ("After the string and racket request submitted, then the verdict goes back to the in play configuration"). Leaving the request without sending it keeps your pick.
+
 ## The strings map: the AI badge, and the dots it recommends (2026-11-19)
 
 - **The "For your Astrox 88D Pro" strip wears the AI badge, and the glowing dots wear its rainbow rim** (Grant, on a screenshot: "AI badge, can you apply the same AI rainbow stroke around the dots recommended that glow?"). The racket is on the strip's first line and "Glowing dots suit it best" on the second.

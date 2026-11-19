@@ -309,6 +309,26 @@ describe('picking a racket from the kit', () => {
     expect(screen.getByRole('option', { name: 'Astrox 99 Pro' })).toBeDefined();
   });
 
+  it('opens on the racket the strings map was matched to, and on none for one the kit does not hold', async () => {
+    // docs/plans/map-racket-choice.md: the verdict the member read on a
+    // string's page was for that racket, so the request starts on it.
+    mockApi(['BG65']);
+    const rackets = [{ id: 'r1', label: 'Astrox 99 Pro' }, { id: 'r2', label: 'Nanoflare 800' }] as UseGear['rackets'];
+    const sheet = (id: string) => render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <RequestStringingSheet open onClose={() => {}} onRequested={() => {}} gear={fakeGear({ rackets })} initialRacketId={id} />
+      </NextIntlClientProvider>,
+    );
+    sheet('r2');
+    await waitFor(() => expect((screen.getByLabelText('Which racket?') as HTMLSelectElement).value).toBe('Nanoflare 800'));
+    cleanup();
+    resetSharedReads();
+    sheet('someone-elses');
+    await waitFor(() => expect(screen.getByLabelText('Which racket?')).toBeDefined());
+    await new Promise((r) => setTimeout(r, 0));
+    expect((screen.getByLabelText('Which racket?') as HTMLSelectElement).value).toBe('');
+  });
+
   it('falls back to typing when the kit is empty', async () => {
     mockApi(['BG65']);
     wrapWithGear(fakeGear({ rackets: [] }));

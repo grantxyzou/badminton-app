@@ -77,6 +77,10 @@ interface Props {
    *  "Restring with this string". Ignored when it is not on the shelf or is
    *  out of stock, so a stale link never picks what cannot be had. */
   initialString?: string | null;
+  /** Opens the form on this racket from the member's kit (a bag item id):
+   *  the one the strings map was matched to when the string was chosen.
+   *  Ignored when the kit does not hold it. */
+  initialRacketId?: string | null;
 }
 
 /**
@@ -116,7 +120,7 @@ interface Props {
  * for the string as free text rather than presenting an empty list. An empty
  * list is a dead end; a text box is not.
  */
-export default function RequestStringingSheet({ open, onClose, onRequested, gear, initialTension = null, initialString = null }: Props) {
+export default function RequestStringingSheet({ open, onClose, onRequested, gear, initialTension = null, initialString = null, initialRacketId = null }: Props) {
   const t = useTranslations('home.stringing');
   // `close` lives in the shared namespace — every sheet in the app uses it.
   const tCommon = useTranslations('recovery');
@@ -209,6 +213,24 @@ export default function RequestStringingSheet({ open, onClose, onRequested, gear
       setPickedString(label);
     }
   }, [open, stringApplied, initialString, shelf]);
+
+  /* The racket the strings map was matched to when the string was chosen,
+     picked once per opening and only once the kit has answered: the verdict
+     the member read was for that racket, so the request starts on it. A
+     racket the kit does not hold picks nothing, and the member chooses. */
+  const [racketApplied, setRacketApplied] = useState(false);
+  useEffect(() => {
+    if (open) setRacketApplied(false);
+  }, [open]);
+  useEffect(() => {
+    if (!open || racketApplied || !initialRacketId || kitLoading || kitUnreadable) return;
+    setRacketApplied(true);
+    const mine = gear?.rackets.find((r) => r.id === initialRacketId);
+    if (mine) {
+      setCustomRacket(false);
+      setRacketLabel(mine.label);
+    }
+  }, [open, racketApplied, initialRacketId, kitLoading, kitUnreadable, gear]);
 
   // The own-string price (docs/plans/bench-redesign.md, PR 2). Unread or
   // failed reads as "Ask", which is what the row said before it existed.

@@ -225,3 +225,89 @@ describe('the Bench, for an admin whose admin sign-in has lapsed', () => {
     expect(screen.queryByText('J-0042')).toBeNull();
   });
 });
+
+/* docs/plans/map-racket-choice.md; Grant, 2026-11-19: "when racket is
+   selected the verdict in the string sheet should updated to the racket.
+   After the string and racket request submitted, then the verdict goes back
+   to the in play configuration". */
+describe('a racket picked on the strings map rides into the request, and the map goes back after it is sent', () => {
+  const RACKETS = [
+    { id: 'g1', name: 'Yonex Astrox 88D Pro', inPlay: true },
+    { id: 'g2', name: 'Yonex Nanoflare 800', inPlay: false },
+  ];
+  const fitFor = (racket: 'g1' | 'g2') => ({
+    racket: RACKETS.find((r) => r.id === racket)!.name, racketId: racket, rackets: RACKETS,
+    fits: racket === 'g1' ? { 's-80': 'good_match' } : { 's-66': 'good_match' },
+  });
+  const str = (id: string, model: string, repulsion: number, durability: number) => ({ id, category: 'string', brand: 'Yonex', model, attributes: { repulsion, durability, control: 7 } });
+
+  function stubFlow() {
+    const urls: string[] = [];
+    const posts: unknown[] = [];
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      const u = String(url);
+      urls.push(u);
+      let body: unknown = {};
+      let status = 200;
+      if (u.includes('/stringing/requests') && init?.method === 'POST') {
+        posts.push(JSON.parse(String(init.body)));
+        status = 201;
+        body = { job: { id: 'j9', stage: 'awaiting_dropoff' } };
+      } else if (u.includes('/shop')) body = { open: true };
+      else if (u.includes('view=player')) body = { jobs: [], view: 'player', lastStrungAt: null };
+      else if (u.includes('/stringing/strings')) body = { strings: ['BG80', 'BG66', 'BG65'], links: { BG80: 's-80', BG66: 's-66', BG65: 's-65' }, prices: { BG80: 2800 } };
+      else if (u.includes('/stringing/pricing')) body = { services: [], ownStringCents: 1800, note: '' };
+      else if (u.includes('/stringing/fit?ids=')) body = fitFor(u.includes('racket=g2') ? 'g2' : 'g1');
+      else if (u.includes('/stringing/fit?id=')) body = { fit: null };
+      else if (u.includes('/equipment/gear')) body = { gear: { id: 'gear-m', memberId: 'm', activeRacketId: 'g1', updatedAt: '2026-11-19T00:00:00Z', items: [
+        { id: 'g1', catalogId: 'r-88d', category: 'racket', label: 'Yonex Astrox 88D Pro' },
+        { id: 'g2', catalogId: 'r-nf', category: 'racket', label: 'Yonex Nanoflare 800' },
+      ] } };
+      else if (u.includes('/catalog')) body = { items: u.includes('category=string') ? [str('s-80', 'BG80', 8, 6), str('s-66', 'BG66', 9, 4), str('s-65', 'BG65', 5, 9)] : [] };
+      return Promise.resolve({ ok: true, status, json: async () => body } as Response);
+    }));
+    return { urls, posts };
+  }
+
+  it('opens the request on the picked racket and string, and reads the match for the racket in play once it is sent', async () => {
+    signIn();
+    const { urls, posts } = stubFlow();
+    wrap(<StringingTab />);
+    fireEvent.click(await screen.findByRole('button', { name: R.strings }));
+    const strip = await screen.findByTestId('map-fit-strip');
+    expect(strip.textContent).toContain('For your Yonex Astrox 88D Pro');
+
+    // Pick the spare on the map.
+    fireEvent.click(within(strip).getByRole('button', { name: /^Change the racket/ }));
+    fireEvent.click(within(await screen.findByRole('dialog', { name: 'Select a racket' })).getAllByRole('radio')[1]);
+    await waitFor(() => expect(screen.getByTestId('map-fit-strip').textContent).toContain('For your Yonex Nanoflare 800'));
+
+    // A string's page reads its verdict for that racket, and its request carries both.
+    fireEvent.click(screen.getByRole('button', { name: /^Yonex BG66:/ }));
+    fireEvent.click(within(screen.getByTestId('string-peek')).getByRole('button', { name: 'Open Yonex BG66' }));
+    await waitFor(() => expect(urls.some((u) => u.includes('fit?id=s-66&racket=g2'))).toBe(true));
+    fireEvent.click(await screen.findByRole('button', { name: 'Restring with this string' }));
+    await waitFor(() => expect((screen.getByLabelText('Which racket?') as HTMLSelectElement).value).toBe('Yonex Nanoflare 800'));
+    await waitFor(() => expect(screen.getByRole('radio', { name: /BG66/ }).getAttribute('aria-checked')).toBe('true'));
+
+    // Backing out without sending keeps the pick: the map is still on the spare.
+    fireEvent.click(screen.getByRole('button', { name: R.strings }));
+    await waitFor(() => expect(screen.getByTestId('map-fit-strip').textContent).toContain('For your Yonex Nanoflare 800'));
+
+    // From the string's page again: send it, and the map is back on the racket in play.
+    fireEvent.click(screen.getByRole('button', { name: /^Yonex BG66:/ }));
+    fireEvent.click(within(screen.getByTestId('string-peek')).getByRole('button', { name: 'Open Yonex BG66' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Restring with this string' }));
+    await waitFor(() => expect((screen.getByLabelText('Which racket?') as HTMLSelectElement).value).toBe('Yonex Nanoflare 800'));
+    await waitFor(() => expect(screen.getByRole('radio', { name: /BG66/ }).getAttribute('aria-checked')).toBe('true'));
+    fireEvent.click(screen.getByRole('button', { name: 'Next: string tension' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Send the request' }));
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(posts[0]).toMatchObject({ racketLabel: 'Yonex Nanoflare 800', stringLabel: 'BG66' });
+    const before = urls.length;
+    fireEvent.click(screen.getByRole('button', { name: R.strings }));
+    await waitFor(() => expect(screen.getByTestId('map-fit-strip').textContent).toContain('For your Yonex Astrox 88D Pro'));
+    expect(urls.slice(before).filter((u) => u.includes('fit?ids=')).every((u) => !u.includes('racket='))).toBe(true);
+  });
+});
+

@@ -39,6 +39,9 @@ interface Props {
   /** While "A change to confirm" is open the page stands in for the whole
    *  tab: the tab hides its heading and register switch. */
   onTakeover?: (on: boolean) => void;
+  /** A request was sent. The tab puts the strings map back on the racket in
+   *  play (docs/plans/map-racket-choice.md). */
+  onRequested?: () => void;
 }
 
 /**
@@ -60,7 +63,7 @@ interface Props {
  * collapsed by default under one step strip for the newest racket (Grant:
  * "Does not need collapseing", "this and the bottom card is redudant").
  */
-export default function StringingCard({ hasIdentity, onShowStrings, onTakeover }: Props) {
+export default function StringingCard({ hasIdentity, onShowStrings, onTakeover, onRequested }: Props) {
   /* The kit's ONE owner in this tree, handed to the request sheet as a prop.
      `useGear` is single-owner by rule — four components once read the gear
      endpoint independently and raced each other's responses. `useActiveName`
@@ -81,6 +84,9 @@ export default function StringingCard({ hasIdentity, onShowStrings, onTakeover }
   const [prefillTension, setPrefillTension] = useState<number | null>(null);
   // The string a string's page sent us here with ("Restring with this string").
   const [prefillString, setPrefillString] = useState<string | null>(null);
+  /** The racket the strings map was matched to when that string was chosen
+   *  (a bag item id), so the form opens on the racket the verdict was for. */
+  const [prefillRacket, setPrefillRacket] = useState<string | null>(null);
   // Above every early return — this component has several, and a hook
   // after one of them is a Rules-of-Hooks violation that only shows up when
   // the branch flips (here: the shop opening). The id of the racket whose
@@ -167,6 +173,7 @@ export default function StringingCard({ hasIdentity, onShowStrings, onTakeover }
     if (intent === null || open !== true) return;
     setPrefillTension(typeof intent === 'number' ? intent : null);
     setPrefillString(typeof intent === 'object' ? intent.string : null);
+    setPrefillRacket(typeof intent === 'object' ? intent.racket ?? null : null);
     setSheetOpen(true);
   }, [onScreen, open, hasIdentity]);
 
@@ -198,7 +205,7 @@ export default function StringingCard({ hasIdentity, onShowStrings, onTakeover }
         <RevealGroup>
           <RevealSlot canBeEmpty placeholder={<CardSkeleton height={STRINGING_HEIGHTS.shelf} />}>
             <StringsWeOfferCard
-              onRestring={canRequest ? (label) => { setPrefillTension(null); setPrefillString(label); setSheetOpen(true); } : undefined}
+              onRestring={canRequest ? (label, racket) => { setPrefillTension(null); setPrefillString(label); setPrefillRacket(racket); setSheetOpen(true); } : undefined}
             />
           </RevealSlot>
         </RevealGroup>
@@ -331,7 +338,7 @@ export default function StringingCard({ hasIdentity, onShowStrings, onTakeover }
               follow pattern"). Nothing on this tab competes with it. */}
           <button
             type="button"
-            onClick={() => { setPrefillTension(null); setPrefillString(null); setSheetOpen(true); }}
+            onClick={() => { setPrefillTension(null); setPrefillString(null); setPrefillRacket(null); setSheetOpen(true); }}
             // Refused means the request would be refused too — no button that fails.
             disabled={!hasIdentity || !online || jobsProblem === 'refused'}
             className="btn-primary w-full flex items-center justify-center gap-2"
@@ -391,10 +398,11 @@ export default function StringingCard({ hasIdentity, onShowStrings, onTakeover }
       <RequestStringingSheet
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
-        onRequested={loadJobs}
+        onRequested={() => { loadJobs(); onRequested?.(); }}
         gear={activeName.name ? gear : null}
         initialTension={prefillTension}
         initialString={prefillString}
+        initialRacketId={prefillRacket}
       />
     </>
   );
