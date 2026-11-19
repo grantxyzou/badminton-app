@@ -6,7 +6,6 @@
  *                  the body blocks, the footer
  *   racketCard     a job's racket render beside its spec, strings as M and C,
  *                  and the cost ONCE at the bottom
- *   stageTracker   the player's five-step track, as the status screen draws it
  *   heading / para / muted / button / signoff   the small blocks between
  *
  * Mail clients are not browsers: no CSS variables, no flexbox or grid in
@@ -97,25 +96,6 @@ export function button(label: string, url: string): string {
     `<a href="${e(url)}" style="display:inline-block;padding:14px 26px;font-family:${DISPLAY};font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:12px">${e(label)}</a>` +
     `</td></tr></table>`
   );
-}
-
-/** The player's track, five steps, the current one lit (the status screen's labels). */
-export function stageTracker(labels: readonly string[], current: number): string {
-  const cells = labels
-    .map((label, i) => {
-      const done = i < current;
-      const now = i === current;
-      const dot = done || now ? C.accent : C.hollow;
-      return (
-        `<td width="${Math.floor(100 / labels.length)}%" style="padding:3px" valign="top">` +
-        `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>` +
-        `<td class="em-step" align="center" valign="top" height="58" style="height:58px;border-radius:12px;padding:10px 4px;background:${now ? C.accentSoft : C.tint};font-family:${SANS};font-size:11px;line-height:1.3;font-weight:${now ? 700 : 400};color:${now ? C.accent : C.muted}">` +
-        `<div style="width:18px;height:18px;border-radius:9px;background:${dot};${done || now ? '' : 'opacity:.4;'}margin:0 auto 6px"></div>${e(label)}</td>` +
-        `</tr></table></td>`
-      );
-    })
-    .join('');
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px"><tr>${cells}</tr></table>`;
 }
 
 // ── The racket card ──────────────────────────────────────────────────────────
@@ -275,7 +255,6 @@ const PHONE_STYLE =
   '.em-body{padding:24px 16px 10px !important}' +
   '.rc-cost{font-size:30px !important}' +
   '.rc-tn{padding-left:6px !important}' +
-  '.em-step{height:72px !important}' +
   '}</style>';
 
 /**

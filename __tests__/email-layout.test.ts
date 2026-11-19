@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { racketCard, racketPictureUrl, stageTracker, stringTags, emailHtml, escapeHtml } from '@/lib/emailLayout';
+import { racketCard, racketPictureUrl, stringTags, emailHtml, escapeHtml } from '@/lib/emailLayout';
 import { composeInvoiceEmail } from '@/lib/stringingInvoice';
 import { composeWalkUpEmail } from '@/lib/stringingWalkUpEmail';
 import { composeEmail } from '@/lib/stringingNotifyEmail';
@@ -114,12 +114,9 @@ describe('the cost is drawn once', () => {
 });
 
 describe('the member’s stringing email', () => {
-  it('shows the app’s five steps with the current one lit', () => {
+  it('has no stage tracker (Grant, 2026-11-19: "useless")', () => {
     const copy = composeEmail(buildPlayerNotice(job({ status: 'strung' })), 'Lin', 'BPM Core')!;
-    for (const label of ['Waiting for your racket', 'With the stringer', 'Being strung', 'Ready for you', 'Picked up']) {
-      expect(copy.html).toContain(label);
-    }
-    expect(copy.html).toMatch(/font-weight:700;color:#15803d">[^]*?Being strung/);
+    expect(copy.html).not.toContain('Waiting for your racket');
     expect(copy.subject).toBe('Your racket is on the bench — J-0042');
   });
 
@@ -140,8 +137,4 @@ describe('the frame', () => {
     expect(emailHtml({ origin: null, tag: 'Test', preheader: 'p', body: '', footer: 'f' })).not.toContain('<img');
   });
 
-  it('the tracker lights exactly one step', () => {
-    const html = stageTracker(['a', 'b', 'c'], 1);
-    expect(html.split('font-weight:700').length - 1).toBe(1);
-  });
 });

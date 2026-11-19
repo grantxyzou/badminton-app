@@ -23,11 +23,9 @@ import type { PlayerNotice } from './stringingNotify';
 import { gmailTransport } from './mailTransport';
 import { APP_NAME } from './brand';
 import { outboundOriginOrNull } from './appOrigin';
-import { emailHtml, heading, para, racketCard, signoff, stageTracker } from './emailLayout';
+import { emailHtml, heading, para, racketCard, signoff } from './emailLayout';
 import { racketPictureFor } from './emailRacket';
-import { PLAYER_TRACK } from './stringing';
 import { formatReadyBy } from './stringingDue';
-import en from '../messages/en.json';
 
 export interface MailResult {
   sent: boolean;
@@ -52,9 +50,6 @@ async function send(to: string, subject: string, text: string, html: string): Pr
   await transport.sendMail({ from: `${APP_NAME} <${user}>`, to, subject, text, html });
   return { sent: true };
 }
-
-/** The status screen's own words for each step (English, like the rest). */
-const STAGE_LABELS = PLAYER_TRACK.map((k) => en.home.stringing.stage[k]);
 
 /** Subject, text and HTML per stage. Only `being_strung` and `ready_for_you`
  *  reach here — `shouldNotify` filters the rest, because telling someone about
@@ -90,7 +85,6 @@ export function composeEmail(
       heading(ready ? 'Your racket is ready' : 'Your racket is on the bench') +
       para(`Hi ${playerName},`) +
       para(ready ? `Your ${notice.racketLabel} is strung and ready to pick up.` : `Your ${notice.racketLabel} is being strung now. We'll let you know when it's ready.`) +
-      stageTracker(STAGE_LABELS, PLAYER_TRACK.indexOf(notice.key)) +
       racketCard({
         job: { racketLabel: notice.racketLabel, ...notice.spec },
         pictureUrl: pictures.racket,
