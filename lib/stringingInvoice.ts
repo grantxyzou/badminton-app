@@ -84,7 +84,8 @@ export function composeInvoiceEmail(
       racketCard({
         job,
         pictureUrl: opts.racket ?? null,
-        facts: [{ label: 'Invoice', value: no, mono: true }, { label: 'Job', value: job.jobNo, mono: true }],
+        refs: { left: { label: 'Invoice', value: no }, right: { label: 'Job', value: job.jobNo } },
+        facts: [],
         cost: { label: 'Amount due', value: amount, owed: true },
       }) +
       action,

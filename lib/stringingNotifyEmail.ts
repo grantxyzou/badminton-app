@@ -88,10 +88,8 @@ export function composeEmail(
       racketCard({
         job: { racketLabel: notice.racketLabel, ...notice.spec },
         pictureUrl: pictures.racket,
-        facts: [
-          ...(notice.readyBy ? [{ label: ready ? 'Ready since' : 'Expected ready', value: formatReadyBy(notice.readyBy, 'en-US') ?? notice.readyBy }] : []),
-          { label: 'Job', value: notice.jobNo, mono: true },
-        ],
+        refs: { right: { label: 'Job', value: notice.jobNo } },
+        facts: notice.readyBy ? [{ label: ready ? 'Ready since' : 'Expected ready', value: formatReadyBy(notice.readyBy, 'en-US') ?? notice.readyBy }] : [],
         cost: notice.quote ? { label: 'Quote', value: notice.quote } : { label: 'Price', value: 'Ask', note: 'Your stringer will price it' },
       }) +
       signoff('See you on the court.', clubName),

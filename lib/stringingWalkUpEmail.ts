@@ -109,10 +109,7 @@ export function composeWalkUpEmail(
     : job.paidAt
       ? { label: 'Paid', value: fmtMoney(job.priceCents / 100) }
       : { label: 'Pay at pickup', value: fmtMoney(job.priceCents / 100), owed: true };
-  const facts = [
-    ...(job.readyBy ? [{ label: 'Ready by', value: formatReadyBy(job.readyBy, 'en-US') ?? job.readyBy }] : []),
-    { label: 'Job', value: job.jobNo, mono: true },
-  ];
+  const facts = job.readyBy ? [{ label: 'Ready by', value: formatReadyBy(job.readyBy, 'en-US') ?? job.readyBy }] : [];
   const htmlAfter = kind === 'spec' ? after : owes ? ['Bring the amount above, or pay your stringer at pickup.'] : [];
   const html = emailHtml({
     origin: pictures.origin,
@@ -122,7 +119,7 @@ export function composeWalkUpEmail(
       heading(kind === 'spec' ? 'Your racket is with us' : 'Your racket is ready') +
       para(`Hi ${job.memberName},`) +
       para(lead) +
-      racketCard({ job, pictureUrl: pictures.racket, facts, cost }) +
+      racketCard({ job, pictureUrl: pictures.racket, refs: { right: { label: 'Job', value: job.jobNo } }, facts, cost }) +
       htmlAfter.map(para).join(''),
     footer,
   });

@@ -63,29 +63,30 @@ describe('the racket picture', () => {
 
 describe('the strings, as the bench reads them', () => {
   it('draws M and C with their tensions', () => {
-    const html = racketCard({ job: job(), pictureUrl: null, facts: [], cost: null });
+    const html = racketCard({ job: job(), pictureUrl: null, refs: {}, facts: [], cost: null });
     expect(html).toContain('>M<');
     expect(html).toContain('>C<');
     expect(html).toContain('26 lb');
     expect(html).toContain('28 lb');
   });
 
-  it('tags a custom tension, two strings, a two-colour set and the player’s own string', () => {
+  it('tags a custom tension, a two-colour set and the player’s own string; two strings need no tag', () => {
     expect(stringTags(job({ tensionMains: 28, tensionCrosses: 26 })).map((t) => t.text)).toEqual(['Custom tension']);
-    expect(stringTags(job({ stringLabel: 'Exbolt 63 / BG80 Power' })).map((t) => t.text)).toEqual(['Two strings']);
+    // The M and C lines already name both strings.
+    expect(stringTags(job({ stringLabel: 'Exbolt 63 / BG80 Power' }))).toEqual([]);
     expect(stringTags(job({ stringColor: 'Red/White' })).map((t) => t.text)).toEqual(['Two-colour set']);
     expect(stringTags(job({ ownString: true })).map((t) => t.text)).toEqual(['Your own string']);
     expect(stringTags(job())).toEqual([]);
   });
 
   it('a colour it cannot read is a hollow dot, never a guess', () => {
-    const html = racketCard({ job: job({ stringColor: 'Sunset haze' }), pictureUrl: null, facts: [], cost: null });
+    const html = racketCard({ job: job({ stringColor: 'Sunset haze' }), pictureUrl: null, refs: {}, facts: [], cost: null });
     expect(html).not.toContain('background:var(');
     expect(html).toContain('border:1px solid');
   });
 
   it('escapes everything a person typed', () => {
-    const html = racketCard({ job: job({ racketLabel: '<img src=x onerror=alert(1)>' }), pictureUrl: null, facts: [], cost: null });
+    const html = racketCard({ job: job({ racketLabel: '<img src=x onerror=alert(1)>' }), pictureUrl: null, refs: {}, facts: [], cost: null });
     expect(html).not.toContain('<img src=x');
     expect(html).toContain(escapeHtml('<img src=x onerror=alert(1)>'));
   });
@@ -95,6 +96,9 @@ describe('the cost is drawn once', () => {
   it('invoice: the amount in the card, and the button says Pay now', () => {
     const { html } = composeInvoiceEmail(job(), { clubName: 'BPM Core', appUrl: `${ORIGIN}/bpm/?tab=home` });
     expect(shown(html, '$30')).toBe(1);
+    // The invoice and job numbers sit across the top of the card, invoice first.
+    expect(html.indexOf('INV-0042')).toBeLessThan(html.indexOf('J-0042', html.indexOf('INV-0042')));
+    expect(html.indexOf('INV-0042')).toBeLessThan(html.indexOf('>Racket<'));
     expect(html).toContain('>Pay now<');
   });
 

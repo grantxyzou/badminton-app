@@ -156,20 +156,24 @@ export function stringTags(job: CardJob, customs: readonly CustomColour[] = []):
   const sides = jobSides(job, customs);
   const out: Array<{ text: string; warn: boolean }> = [];
   if (sides.customTension) out.push({ text: 'Custom tension', warn: true });
-  if (sides.customStrings) out.push({ text: 'Two strings', warn: false });
-  else if (comboParts(colourIdOf(job.stringColor ?? null, customs))) out.push({ text: 'Two-colour set', warn: false });
+  // Two different strings get no tag: the M and C lines already name both
+  // (Grant, 2026-11-19, struck it out on the design).
+  if (!sides.customStrings && comboParts(colourIdOf(job.stringColor ?? null, customs))) out.push({ text: 'Two-colour set', warn: false });
   if (job.ownString) out.push({ text: 'Your own string', warn: false });
   return out;
 }
 
 /**
- * The racket card: the render on the left (42% of the width), the facts on
- * the right, and the cost ONCE at the bottom. Nothing else in the email
- * repeats the cost.
+ * The racket card: the job's reference numbers across the top (the invoice
+ * left, the job right), then the render beside the racket's spec, and the
+ * cost ONCE at the bottom. Nothing else in the email repeats the cost.
  */
 export function racketCard(opts: {
   job: CardJob;
   pictureUrl: string | null;
+  /** Reference numbers, across the top of the card: `left` (an invoice) and
+   *  `right` (the job). */
+  refs: { left?: { label: string; value: string }; right?: { label: string; value: string } };
   facts: Array<{ label: string; value: string; mono?: boolean }>;
   cost: CardCost | null;
   customs?: readonly CustomColour[];
@@ -211,8 +215,16 @@ export function racketCard(opts: {
     costBlock +
     `</div>`;
 
+  const ref = (r: { label: string; value: string } | undefined, align: 'left' | 'right') =>
+    `<td align="${align}" valign="top" style="padding:14px 18px 0;text-align:${align}">` +
+    (r ? `${label(r.label)}<div style="font-family:${MONO};font-size:14px;font-weight:500;color:${C.ink}">${e(r.value)}</div>` : '') +
+    `</td>`;
+  const refRow = opts.refs.left || opts.refs.right
+    ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="font-size:16px;line-height:1.4"><tr>${ref(opts.refs.left, 'left')}${ref(opts.refs.right, 'right')}</tr></table>`
+    : '';
+
   if (!picture) {
-    return `<div style="margin:0 0 18px;border-radius:16px;background:${C.tint}">${info}</div>`;
+    return `<div style="margin:0 0 18px;border-radius:16px;background:${C.tint}">${refRow}${info}</div>`;
   }
 
   /* "Fluid hybrid": two inline-block columns that sit side by side when the
@@ -222,6 +234,7 @@ export function racketCard(opts: {
      ignores max-width, gets the same two columns from a conditional table. */
   return (
     `<div style="margin:0 0 18px;border-radius:16px;background:${C.tint};font-size:0;line-height:0;text-align:center">` +
+    refRow +
     `<!--[if mso]><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td width="${PIC_W}" valign="top"><![endif]-->` +
     `<div style="display:inline-block;vertical-align:top;width:100%;max-width:${PIC_W}px">` +
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding:12px">` +
