@@ -109,7 +109,7 @@ export function stageTracker(labels: readonly string[], current: number): string
       return (
         `<td width="${Math.floor(100 / labels.length)}%" style="padding:3px" valign="top">` +
         `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>` +
-        `<td align="center" valign="top" height="58" style="height:58px;border-radius:12px;padding:10px 4px;background:${now ? C.accentSoft : C.tint};font-family:${SANS};font-size:11px;line-height:1.3;font-weight:${now ? 700 : 400};color:${now ? C.accent : C.muted}">` +
+        `<td class="em-step" align="center" valign="top" height="58" style="height:58px;border-radius:12px;padding:10px 4px;background:${now ? C.accentSoft : C.tint};font-family:${SANS};font-size:11px;line-height:1.3;font-weight:${now ? 700 : 400};color:${now ? C.accent : C.muted}">` +
         `<div style="width:18px;height:18px;border-radius:9px;background:${dot};${done || now ? '' : 'opacity:.4;'}margin:0 auto 6px"></div>${e(label)}</td>` +
         `</tr></table></td>`
       );
@@ -154,17 +154,17 @@ function sideRow(letter: string, string: string, colour: string | null, tension:
     `<td width="22" valign="middle" style="padding:3px 6px 3px 0"><div style="width:20px;height:20px;line-height:20px;border-radius:6px;background:${C.card};text-align:center;font-family:${MONO};font-size:11px;font-weight:700;color:${C.muted}">${letter}</div></td>` +
     `<td width="12" valign="middle" style="padding:3px 6px 3px 0">${dot}</td>` +
     `<td valign="middle" style="padding:3px 0;font-family:${SANS};font-size:14px;line-height:20px;font-weight:600;color:${C.ink}">${e(string)}</td>` +
-    `<td valign="middle" align="right" style="padding:3px 0 3px 8px;white-space:nowrap;font-family:${MONO};font-size:13px;line-height:20px;font-weight:${custom ? 700 : 500};color:${custom ? C.amber : C.ink}">${tension} lb</td>` +
+    `<td class="rc-tn" valign="middle" align="right" style="padding:3px 0 3px 8px;white-space:nowrap;font-family:${MONO};font-size:13px;line-height:20px;font-weight:${custom ? 700 : 500};color:${custom ? C.amber : C.ink}">${tension} lb</td>` +
     `</tr>`
   );
 }
 
 function label(text: string, extra = ''): string {
-  return `<div style="font-family:${MONO};font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:${C.muted};margin:0 0 2px">${e(text)}${extra}</div>`;
+  return `<div style="font-family:${MONO};font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:${C.muted};margin:0 0 2px">${e(text)}${extra ? `<span style="display:inline-block;width:8px"></span>${extra}` : ''}</div>`;
 }
 
 function tag(text: string, warn: boolean): string {
-  return ` <span style="display:inline-block;margin-left:6px;padding:2px 8px;border-radius:100px;background:${warn ? C.amberSoft : C.card};color:${warn ? C.amber : C.muted};font-family:${SANS};font-size:11px;font-weight:600;letter-spacing:0;text-transform:none;vertical-align:middle">${e(text)}</span>`;
+  return `<span style="display:inline-block;margin:2px 6px 0 0;padding:2px 8px;border-radius:100px;background:${warn ? C.amberSoft : C.card};color:${warn ? C.amber : C.muted};font-family:${SANS};font-size:11px;font-weight:600;letter-spacing:0;text-transform:none;vertical-align:middle">${e(text)}</span>`;
 }
 
 /**
@@ -213,7 +213,7 @@ export function racketCard(opts: {
 
   const costBlock = cost
     ? `<div style="padding-top:10px">${label(cost.label)}` +
-      `<div style="font-family:${DISPLAY};font-size:34px;line-height:1;font-weight:700;color:${cost.owed ? C.amber : C.ink}">${e(cost.value)}</div>` +
+      `<div class="rc-cost" style="font-family:${DISPLAY};font-size:34px;line-height:1;font-weight:700;color:${cost.owed ? C.amber : C.ink}">${e(cost.value)}</div>` +
       (cost.note ? `<div style="margin-top:4px;font-family:${SANS};font-size:12px;color:${C.muted}">${e(cost.note)}</div>` : '') +
       `</div>`
     : '';
@@ -225,8 +225,8 @@ export function racketCard(opts: {
   return (
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 18px;border-radius:16px;background:${C.tint};border-collapse:separate">` +
     `<tr>` +
-    (picture ? `<td width="42%" align="center" valign="middle" style="padding:20px 8px;border-radius:16px 0 0 16px;background:${C.accentSoft}">${picture}</td>` : '') +
-    `<td valign="top" style="padding:18px 18px 16px">` +
+    (picture ? `<td class="rc-pic" width="42%" align="center" valign="middle" style="padding:20px 8px;border-radius:16px 0 0 16px;background:${C.accentSoft}">${picture}</td>` : '') +
+    `<td class="rc-info" valign="top" style="padding:18px 18px 16px">` +
     `<div style="margin:0 0 10px">${label('Racket')}<div style="font-family:${DISPLAY};font-size:19px;line-height:1.2;font-weight:700;color:${C.ink}">${e(job.racketLabel)}</div></div>` +
     `<div style="margin:0 0 10px">${label('Strings', tags)}${strings}</div>` +
     factRows +
@@ -236,6 +236,26 @@ export function racketCard(opts: {
 }
 
 // ── The whole message ────────────────────────────────────────────────────────
+
+/**
+ * On a phone the racket card's two columns are narrow, and at 42% the render
+ * squeezed the spec (Grant, 2026-11-19: "these are squished"). Gmail and Apple
+ * Mail apply a <style> block's media query to class names, so a phone gives
+ * the render less of the width and the whole frame less padding. A client
+ * that ignores it (Outlook desktop) is never that narrow.
+ */
+const PHONE_STYLE =
+  '<style>@media only screen and (max-width:480px){' +
+  '.em-outer{padding:12px 6px !important}' +
+  '.em-head{padding:16px !important}' +
+  '.em-body{padding:24px 16px 10px !important}' +
+  '.rc-pic{width:32% !important;padding:14px 2px !important}' +
+  '.rc-pic img{width:70px !important;height:auto !important}' +
+  '.rc-info{padding:14px 12px !important}' +
+  '.rc-cost{font-size:30px !important}' +
+  '.rc-tn{padding-left:6px !important}' +
+  '.em-step{height:72px !important}' +
+  '}</style>';
 
 /**
  * The frame every email shares: the dark header with the app's mark and a
@@ -250,17 +270,17 @@ export function emailHtml(opts: { origin: string | null; tag: string; preheader:
     `<div style="margin-top:4px;font-family:${DISPLAY};font-size:10px;line-height:1;font-weight:700;letter-spacing:.2em;color:${C.logo}">MOTIONCRAFT STUDIO</div></td>`;
 
   return (
-    `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only"></head>` +
+    `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light only">${PHONE_STYLE}</head>` +
     `<body style="margin:0;padding:0;background:${C.page}">` +
     // The line a mail app shows under the subject in the inbox list.
     `<div style="display:none;max-height:0;overflow:hidden;opacity:0">${e(opts.preheader)}</div>` +
-    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${C.page}"><tr><td align="center" style="padding:24px 12px">` +
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${C.page}"><tr><td class="em-outer" align="center" style="padding:24px 12px">` +
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;border-radius:20px;overflow:hidden;background:${C.card};border-collapse:separate">` +
-    `<tr><td style="background:${C.head};padding:20px 24px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>` +
+    `<tr><td class="em-head" style="background:${C.head};padding:20px 24px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>` +
     `<td><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>${logo}</tr></table></td>` +
     `<td align="right" valign="middle" style="font-family:${MONO};font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:${C.logo}">${e(opts.tag)}</td>` +
     `</tr></table></td></tr>` +
-    `<tr><td style="padding:30px 24px 14px">${opts.body}</td></tr>` +
+    `<tr><td class="em-body" style="padding:30px 24px 14px">${opts.body}</td></tr>` +
     `<tr><td style="background:${C.tint};padding:18px 24px 22px;font-family:${SANS};font-size:12px;line-height:1.5;color:${C.muted}">` +
     `<strong style="color:${C.ink}">${e(APP_NAME)}</strong> · Motioncraft Studio<br>${e(opts.footer)}</td></tr>` +
     `</table></td></tr></table></body></html>`
