@@ -268,7 +268,7 @@ describe('foldable layout', () => {
 
   it("draws Home's loading frame as the right pane", () => {
     const skeleton = readFileSync(join(__dirname, '..', 'components', 'primitives', 'CardSkeleton.tsx'), 'utf8');
-    expect(skeleton).toMatch(/className="space-y-5 bpm-home-skeleton"/);
+    expect(skeleton).toMatch(/className="bpm-home-skeleton"/);
     expect(pane).toMatch(/\.bpm-home-skeleton\s*\{\s*max-width:\s*calc\(\(100% - var\(--fold-gap\)\) \/ 2\);\s*margin-left:\s*auto;/);
   });
 });

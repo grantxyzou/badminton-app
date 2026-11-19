@@ -20,6 +20,8 @@ describe('useOnline', () => {
     cleanup();
     vi.restoreAllMocks();
     vi.useRealTimers();
+    // A test that overrode the tab's visibility hands jsdom's own back.
+    delete (document as { visibilityState?: unknown }).visibilityState;
   });
 
   it('defaults to online', () => {
@@ -114,5 +116,71 @@ describe('useOnline', () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
     expect(fetchMock.mock.calls.length).toBe(callsAfterRecovery); // stopped
     expect(String(fetchMock.mock.calls[0][0])).toContain('/api/session');
+  });
+
+  it('stops pinging while the tab is hidden and probes at once when it is visible again', async () => {
+    // Nobody reads the banner in a hidden tab, so a probe there answers a
+    // question nobody asked — and a laptop with the app parked in a
+    // background tab asked the server every 15 s for as long as the network
+    // was down. Hidden stops the interval; visible probes and restarts it.
+    vi.useFakeTimers();
+    const fetchMock = vi.fn().mockResolvedValue({ ok: false });
+    vi.stubGlobal('fetch', fetchMock);
+    let visibility: DocumentVisibilityState = 'visible';
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => visibility });
+
+    const { result } = setup();
+    await act(async () => { result.current.report(); });
+    expect(fetchMock).toHaveBeenCalledTimes(1); // the immediate probe
+    await act(async () => { await vi.advanceTimersByTimeAsync(15_000); });
+    expect(fetchMock).toHaveBeenCalledTimes(2); // one tick while on screen
+
+    visibility = 'hidden';
+    await act(async () => { document.dispatchEvent(new Event('visibilitychange')); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(60_000); });
+    expect(fetchMock).toHaveBeenCalledTimes(2); // four ticks' worth, none sent
+    expect(result.current.online).toBe(false); // still honest about it
+
+    visibility = 'visible';
+    await act(async () => { document.dispatchEvent(new Event('visibilitychange')); });
+    expect(fetchMock).toHaveBeenCalledTimes(3); // probes at once, still down
+    expect(result.current.online).toBe(false);
+
+    // The interval is back: the next tick runs.
+    await act(async () => { await vi.advanceTimersByTimeAsync(15_000); });
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+
+  it('going offline in a hidden tab starts no interval; the first look back does', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false })  // the immediate probe on the offline event
+      .mockResolvedValue({ ok: true });      // whatever comes next: recovered
+    vi.stubGlobal('fetch', fetchMock);
+    let visibility: DocumentVisibilityState = 'hidden';
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => visibility });
+
+    const { result } = setup();
+    await act(async () => { window.dispatchEvent(new Event('offline')); });
+    expect(result.current.online).toBe(false);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(45_000); });
+    expect(fetchMock).toHaveBeenCalledTimes(1); // no interval was started
+
+    visibility = 'visible';
+    await act(async () => { document.dispatchEvent(new Event('visibilitychange')); });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.current.online).toBe(true);
+  });
+
+  it('a wake while online probes nothing', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+    vi.stubGlobal('fetch', fetchMock);
+    setup();
+    await act(async () => { window.dispatchEvent(new Event('focus')); });
+    await act(async () => { document.dispatchEvent(new Event('visibilitychange')); });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

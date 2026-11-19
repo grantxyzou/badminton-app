@@ -29,8 +29,9 @@ import { useOnline } from '@/lib/useOnline';
  */
 export const STRINGING_HEIGHTS = {
   // The open service card with nothing in (title, Submit a request, See
-  // pricing details): 172 at 390px, measured 2026-10-28 after the canvas pass.
-  service: 172,
+  // pricing details): 170 at 390px and at 430px, re-measured 2026-11-18
+  // (172 after the 2026-10-28 canvas pass). Closed, it is 217.
+  service: 170,
   // 679 at 390px on the MAP (five strings linked to the catalog, which is
   // how production opens); the list view of three unlinked strings is 462.
   shelf: 679,
@@ -69,18 +70,47 @@ export function StringingFallback() {
  */
 export const STATS_HEIGHTS = {
   greeting: 94,
-  // 240 empty (a first-time member's "rate your skills") to 680+ with data:
-  // no one height fits, and the empty case is the first impression.
-  trend: 320,
+  // 254 empty (a first-time member's "rate your skills") to 898 with data
+  // (strengths, work on next, the collapsed "All 14 skills"), re-measured
+  // 2026-11-18 at 430px: no one height fits, and the empty case is the first
+  // impression, so the frame is the empty card and a data-rich member's
+  // settles DOWN into place. It sat at 320 — neither — until then.
+  trend: 254,
   // With By side (2026-10-20): three side strips, two stand-out rows and the
-  // footnote in two panels, 468 at 390px with the comparison revealed. A
-  // private card has no By side panel and is shorter; revealed is the common
+  // footnote in two panels, 465 at 390px and 430px with the comparison
+  // revealed (2026-11-18). A private card is 200; revealed is the common
   // case once the question is answered.
-  whereYouSit: 468,
+  whereYouSit: 465,
   kudosReceived: 140,
-  record: 201,
+  // Scores with games logged: 257 at 430px (2026-11-18); with none logged
+  // the card carries the "log your first game" ask and is 330.
+  record: 257,
   playWith: 212,
-  giveKudos: 112,
+  // Send kudos: 143 (2026-11-18; it was drawn at 112 from before the card
+  // took its subtitle).
+  giveKudos: 143,
+  // Learn's two parts: the weekly-focus hero (a gradient surface, not a
+  // glass card) and the "Two things to do" card, 149 + 260 at 430px
+  // (2026-11-18). One 320 block used to stand in for both.
+  learnFocus: 149,
+  learnDrills: 260,
+} as const;
+
+/**
+ * Placeholder heights for the Equipment register's slots, measured at 430px
+ * (2026-11-18). Here beside STATS_HEIGHTS so the register and each card's
+ * own loading frame read one set of numbers — the cards used to carry a
+ * second copy each (200 / 176 / 180), none of them the slot's.
+ */
+export const GEAR_HEIGHTS = {
+  // The Set-up card with a main racket and strings (racket art, two lines,
+  // the fitting button, the spare rackets row): 357; with nothing logged 331.
+  setup: 357,
+  nextRacket: 213,
+  // The tension card, doubles: 359 at 430px, 379 at 390px (the reading's
+  // sentence wraps once more).
+  tension: 359,
+  club: 160,
 } as const;
 
 /**
@@ -101,13 +131,14 @@ export function StatsFallback() {
       <p className="fs-md text-gray-400" style={{ marginTop: 'var(--space-1)' }}>
         {t('subheadV2')}
       </p>
-      {/* 98: the OverviewStrip's OWN loading height (blank captions), which is
-          the frame this hands over to. Loaded it can grow to 115 when a level
-          trend wraps to a second line — data, not loading, decides that. */}
+      {/* 92: the OverviewStrip's OWN loading height (blank captions), which is
+          the frame this hands over to (re-measured 2026-11-18; it had been
+          drawn at 98). Loaded it grows to 108 when a level trend wraps to a
+          second line — data, not loading, decides that. */}
       <div className="grid grid-cols-3 gap-3">
-        <CardSkeleton height={98} />
-        <CardSkeleton height={98} />
-        <CardSkeleton height={98} />
+        <CardSkeleton height={92} />
+        <CardSkeleton height={92} />
+        <CardSkeleton height={92} />
       </div>
       <div className="stats-shell-switch">
         <div className="segment-control w-full" style={{ height: 32 }} aria-hidden="true" />
@@ -126,9 +157,10 @@ export function StatsFallback() {
 
 /**
  * The member Profile page's shape: header, the identity card (84), then the
- * first two settings groups, each an eyebrow label over its list (195, 97).
- * Measured at 400px, 2026-10-03. It used to be one 220px block, which matched
- * nothing on the page it stood in for.
+ * first two settings groups, each an eyebrow label over its list — Your
+ * clubs (97), then Notifications (195). Re-measured 2026-11-18 at 430px: the
+ * two groups had swapped places since 2026-10-03 and the frame still drew
+ * them the old way round. It used to be one 220px block before that.
  */
 export function ProfileSkeleton({ title }: { title: string }) {
   const tLoading = useTranslations('a11y');
@@ -142,9 +174,9 @@ export function ProfileSkeleton({ title }: { title: string }) {
       <PageHeader>{title}</PageHeader>
       <CardSkeleton height={84} />
       {label}
-      <CardSkeleton height={195} />
-      {label}
       <CardSkeleton height={97} />
+      {label}
+      <CardSkeleton height={195} />
     </div>
   );
 }
