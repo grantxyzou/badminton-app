@@ -47,6 +47,7 @@ import { requireOutboundOrigin } from './appOrigin';
 import type { EtransferPayment, Player, StringingJob } from './types';
 import { APP_NAME } from './brand';
 import { feeShareOf, linesPartOfRefund, maxAllowedSurcharge } from './surchargeMath';
+import { sendCardReceipt, sessionDay, type ReceiptLine } from './cardReceiptEmail';
 
 export const CARD_PAY_SETTINGS_ID = 'card-pay';
 export function cardPaySettingsId(groupId: string): string {
@@ -562,6 +563,9 @@ async function applyPaidSource(source: PaidSource, eventAccount: string | undefi
   let alreadyOurs = 0;
   let appliedBefore = 0;
   let unappliedCents = 0;
+  // The lines THIS delivery newly paid, for the member's receipt. A
+  // redelivery finds them already this payment's and adds nothing here.
+  const receipt: ReceiptLine[] = [];
   for (const line of lines) {
     // A line this payment paid ONCE and that has changed since (un-ticked,
     // refunded, disputed, deleted) is settled business: a redelivery neither
@@ -578,7 +582,10 @@ async function applyPaidSource(source: PaidSource, eventAccount: string | undefi
       continue;
     }
     const outcome = await markCardPaid(scope, line, memberId, source.id, paidAt);
-    if (outcome === 'paid') applied += 1;
+    if (outcome === 'paid') {
+      applied += 1;
+      receipt.push({ label: receiptLabel(line, doc, memberId), amountCents: line.amountCents });
+    }
     else if (outcome === 'ours') alreadyOurs += 1;
     else unappliedCents += line.amountCents;
   }
@@ -603,7 +610,26 @@ async function applyPaidSource(source: PaidSource, eventAccount: string | undefi
   if (applied > 0 && isFlagOn('NEXT_PUBLIC_FLAG_PAYMENTS_AUTO')) {
     await releaseHoldIfSettled(scope, memberId);
   }
+  if (receipt.length > 0) {
+    // After every write and any refund; never throws (lib/cardReceiptEmail.ts).
+    // The fee kept is these lines' share of it: the whole fee when every line landed.
+    const paidCents = receipt.reduce((sum, l) => sum + l.amountCents, 0);
+    await sendCardReceipt(groupId, memberId, receipt, feeShareOf(paidCents, total, source.feeCents), refundedCents, paidAt);
+  }
   return { applied, alreadyOurs, appliedBefore, refundedCents };
+}
+
+/** How a paid line reads on the receipt: the night it was for (and whose
+ *  share, for a guest), or the restring's job number. */
+function receiptLabel(line: CardLine, doc: unknown, memberId: string): string {
+  if (line.kind === 'stringing') {
+    const job = doc as StringingJob | undefined;
+    return job?.jobNo ? `Stringing · ${job.jobNo}` : 'Stringing';
+  }
+  const row = doc as (Player & { sessionId?: string }) | undefined;
+  const day = sessionDay(row?.sessionId ?? line.pk);
+  const base = day ? `Badminton · ${day}` : 'Badminton';
+  return row && row.guestOf === memberId && row.memberId !== memberId && row.name ? `${base} · for ${row.name}` : base;
 }
 
 // ── Refunds made in the Stripe Dashboard ────────────────────────────────────
