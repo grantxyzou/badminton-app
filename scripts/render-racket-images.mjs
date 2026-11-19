@@ -16,7 +16,7 @@
  *
  * Drives `/design/racket-render` (dev-only) in system Chrome, asks it to render
  * each look in `lib/racketLook.ts`, and writes `public/rackets/<id>.webp` plus
- * `_default.webp`. The live 3D viewer and these images share one model and one
+ * `_default.webp` and `_unknown.webp`. The live 3D viewer and these images share one model and one
  * studio (`lib/racketModel.ts`, `lib/racketStage.ts`), so they cannot drift
  * apart. Re-run whenever a look is added or changed — the coverage test in
  * `__tests__/racket-look.test.ts` fails until you do.
@@ -46,7 +46,8 @@ try {
   const page = await browser.newPage({ viewport: { width: 600, height: 900 }, deviceScaleFactor: 1 });
   await page.goto(`${base}/design/racket-render`, { waitUntil: 'networkidle' });
   await page.waitForFunction(() => typeof window.__renderRacket === 'function', null, { timeout: 120_000 });
-  const ids = only ? [only] : ['_default', ...(await page.evaluate(() => window.__racketIds))];
+  // `_unknown` (list images only): the matte black racket for one we have no data for.
+  const ids = only ? [only] : ['_default', ...(sub ? [] : ['_unknown']), ...(await page.evaluate(() => window.__racketIds))];
   if (!only) {
     // A look that left the table must not leave its image behind.
     const keep = new Set(ids.map((id) => `${id}.webp`));

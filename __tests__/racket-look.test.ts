@@ -45,12 +45,13 @@ describe('pre-rendered racket images', () => {
   // either of these fails: the images are rendered from the 3D model, never
   // drawn by hand, so a look without an image is a render that was not run.
   it('every look, and the default, has an image', () => {
-    const missing = ['_default', ...Object.keys(RACKET_LOOKS)].filter((id) => !existsSync(join(IMAGES, `${id}.webp`)));
+    // `_unknown` is the matte black racket the emails show for one we have no data for.
+    const missing = ['_default', '_unknown', ...Object.keys(RACKET_LOOKS)].filter((id) => !existsSync(join(IMAGES, `${id}.webp`)));
     expect(missing).toEqual([]);
   });
 
   it('no image is left behind for a racket the table no longer has', () => {
-    const known = new Set(['_default', ...Object.keys(RACKET_LOOKS)]);
+    const known = new Set(['_default', '_unknown', ...Object.keys(RACKET_LOOKS)]);
     const stray = readdirSync(IMAGES).filter((f) => f.endsWith('.webp') && !known.has(f.replace(/\.webp$/, '')));
     expect(stray).toEqual([]);
   });

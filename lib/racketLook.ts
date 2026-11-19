@@ -46,6 +46,14 @@ export interface RacketLook {
    default look only. */
 export const DEFAULT_LOOK: RacketLook = { colourway: 'BPM', frame: '#23282c', accent: '#16a34a', grip: '#16191c' };
 
+/**
+ * A racket we have NO data for (typed in by hand, not in the catalog), as the
+ * emails show it: the same model in matte black, so it never pretends to be a
+ * real colourway. Rendered once to `public/rackets/_unknown.webp` by
+ * `scripts/render-racket-images.mjs` (the render page makes it matte).
+ */
+export const UNKNOWN_LOOK: RacketLook = { colourway: 'Unknown', frame: '#1a1a1c', accent: '#1a1a1c', grip: '#161618', pattern: 'plain' };
+
 export const RACKET_LOOKS: Record<string, RacketLook> = {
   "racket-yonex-astrox-88d-pro": { colourway: "Black/Silver", frame: "#768b92", accent: "#b8bdc6", grip: "#d9d9d9" },
   "racket-yonex-astrox-88s-pro": { colourway: "Emerald Blue", frame: "#128182", accent: "#c3a45a", grip: "#1c1c1c" },
