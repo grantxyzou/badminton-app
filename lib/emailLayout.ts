@@ -88,12 +88,13 @@ export function signoff(line: string, club: string): string {
   return `<p style="margin:0 0 4px;font-family:${SANS};font-size:15px;line-height:1.55;color:${C.ink}">${e(line)}<br>— ${e(club)}</p>`;
 }
 
-/** The one action in an email. A bulletproof table button: Outlook draws it too. */
+/** The one action in an email: full width, like the app's main button
+ *  (`.btn-primary`). A bulletproof table button, so Outlook draws it too. */
 export function button(label: string, url: string): string {
   return (
-    `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:4px 0 16px"><tr>` +
-    `<td style="border-radius:12px;background:${C.accent}">` +
-    `<a href="${e(url)}" style="display:inline-block;padding:14px 26px;font-family:${DISPLAY};font-size:16px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:12px">${e(label)}</a>` +
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:4px 0 16px"><tr>` +
+    `<td align="center" style="border-radius:12px;background:${C.accent}">` +
+    `<a href="${e(url)}" style="display:block;padding:15px 24px;font-family:${DISPLAY};font-size:17px;font-weight:700;color:#ffffff;text-align:center;text-decoration:none;border-radius:12px">${e(label)}</a>` +
     `</td></tr></table>`
   );
 }
