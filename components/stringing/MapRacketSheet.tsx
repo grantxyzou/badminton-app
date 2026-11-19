@@ -2,7 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
-import RacketThumb from '@/components/stats/RacketThumb';
+import { racketHeadSrc } from '@/lib/racketLook';
 import { useOnline } from '@/lib/useOnline';
 import type { FitRacketChoice } from '@/lib/types';
 
@@ -66,9 +66,15 @@ export default function MapRacketSheet({
                   className={`cc-choice${busy ? ' motion-busy' : ''}`}
                   style={{ alignItems: 'center' }}
                 >
-                  {/* The racket as Equipment draws it: a picture already made
-                      for that model, so it costs a small cached download. */}
-                  <RacketThumb catalogId={r.catalogId} />
+                  {/* The racket's HEAD, close up (Grant, 2026-11-19: "racket is
+                      hard to see if we don't zoom in on the frames"): the
+                      full-length picture at a row's size is a thin line, and
+                      the frame's paint is what tells two rackets apart. The
+                      close-up Equipment and the bench already draw. */}
+                  <span className="racket-head-thumb" aria-hidden="true">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- a static racket render, sized by its tile */}
+                    <img src={racketHeadSrc(r.catalogId)} alt="" width={540} height={646} loading="lazy" decoding="async" />
+                  </span>
                   <span className="flex flex-col" style={{ flex: 1, minWidth: 0, gap: 'var(--space-05)' }}>
                     <span className="fs-md" style={{ fontWeight: 600, color: selected ? 'var(--accent)' : 'var(--text-primary)' }}>{r.name}</span>
                     {r.inPlay && <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{t('racketInPlay')}</span>}

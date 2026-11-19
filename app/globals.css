@@ -7673,6 +7673,23 @@ html:root .glass-card.setup-card::before {
 .setup-thumb--saved { width: 50px; height: 64px; }
 .setup-thumb--saved img { width: 28px; height: 58px; }
 
+/* A racket's head, close up, on the same pale tile: for a row where the
+   racket has to be TOLD APART (the strings map's "Change" sheet). The frame's
+   paint is the difference between two rackets, and at a row's size the
+   full-length picture above shows almost none of it. The picture is the head
+   render (540×646, `racketHeadSrc`), so the tile keeps that shape. */
+.racket-head-thumb {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 68px;
+  height: 80px;
+  border-radius: var(--radius-md);
+  background: var(--thumb-tile);
+}
+.racket-head-thumb img { width: 60px; height: 72px; object-fit: contain; }
+
 .setup-eyebrow {
   margin: 0;
   font-size: var(--fs-2xs);

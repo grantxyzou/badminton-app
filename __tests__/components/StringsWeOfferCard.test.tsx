@@ -613,14 +613,14 @@ describe('"Change" on the strip: which of your rackets the map is matched to', (
     expect(fitCalls()[0]).not.toContain('racket=');
 
     fireEvent.click(within(strip).getByRole('button', { name: 'Change the racket the map is matched to. Now: your Yonex Astrox 88D Pro' }));
-    const sheet = await screen.findByRole('dialog', { name: 'Show strings for' });
+    const sheet = await screen.findByRole('dialog', { name: 'Select a racket' });
     const options = within(sheet).getAllByRole('radio');
     expect(options.map((o) => o.getAttribute('aria-checked'))).toEqual(['true', 'false']);
     expect(options[0].textContent).toContain('Yonex Astrox 88D Pro');
     expect(options[0].textContent).toContain('In play');
     expect(options[1].textContent).not.toContain('In play');
-    // Each racket is drawn as Equipment draws it.
-    expect(options.map((o) => o.querySelector('img')?.getAttribute('src'))).toEqual([expect.stringContaining('rackets/'), expect.stringContaining('rackets/')]);
+    // Each racket shows its head, close up: the frame is what tells two apart.
+    expect(options.map((o) => o.querySelector('img')?.getAttribute('src'))).toEqual([expect.stringContaining('rackets/head/'), expect.stringContaining('rackets/head/')]);
 
     fireEvent.click(options[1]);
     await waitFor(() => expect(screen.getByTestId('map-fit-strip').textContent).toContain('For your Yonex Nanoflare 800'));
@@ -652,7 +652,7 @@ describe('"Change" on the strip: which of your rackets the map is matched to', (
     mockFit((u) => (u.includes('racket=g2') ? NANOFLARE : ASTROX));
     const first = wrap();
     fireEvent.click(within(await screen.findByTestId('map-fit-strip')).getByRole('button', { name: /^Change the racket/ }));
-    fireEvent.click(within(await screen.findByRole('dialog', { name: 'Show strings for' })).getAllByRole('radio')[1]);
+    fireEvent.click(within(await screen.findByRole('dialog', { name: 'Select a racket' })).getAllByRole('radio')[1]);
     await waitFor(() => expect(screen.getByTestId('map-fit-strip').textContent).toContain('For your Yonex Nanoflare 800'));
     expect(Object.keys(localStorage)).toEqual([]);
     // The tab is opened afresh (a reload, the next day).
@@ -668,7 +668,7 @@ describe('"Change" on the strip: which of your rackets the map is matched to', (
     mockFit((u) => (u.includes('racket=g2') ? null : ASTROX));
     wrap();
     fireEvent.click(within(await screen.findByTestId('map-fit-strip')).getByRole('button', { name: /^Change the racket/ }));
-    const sheet = await screen.findByRole('dialog', { name: 'Show strings for' });
+    const sheet = await screen.findByRole('dialog', { name: 'Select a racket' });
     fireEvent.click(within(sheet).getAllByRole('radio')[1]);
     expect((await within(sheet).findByRole('alert')).textContent).toBe('Couldn’t check that racket. Try again.');
     expect(screen.getByTestId('map-fit-strip').textContent).toContain('For your Yonex Astrox 88D Pro');
