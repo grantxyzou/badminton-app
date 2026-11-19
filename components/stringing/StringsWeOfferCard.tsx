@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import CardHeader from '@/components/primitives/CardHeader';
+import AIBadge from '@/components/primitives/AIBadge';
 import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import Collapse from '@/components/primitives/Collapse';
@@ -95,7 +96,7 @@ function parseFits(d: unknown): { fits: MapFits | null; ask: MapAsk | null } {
     return { fits: null, ask };
   }
   const rackets = Array.isArray(o.rackets)
-    ? o.rackets.filter((r): r is FitRacketChoice => !!r && typeof r.id === 'string' && typeof r.name === 'string').map((r) => ({ id: r.id, name: r.name, inPlay: r.inPlay === true }))
+    ? o.rackets.filter((r): r is FitRacketChoice => !!r && typeof r.id === 'string' && typeof r.name === 'string').map((r) => ({ id: r.id, name: r.name, inPlay: r.inPlay === true, ...(typeof r.catalogId === 'string' ? { catalogId: r.catalogId } : null) }))
     : [];
   return { fits: { racket: o.racket, racketId: typeof o.racketId === 'string' ? o.racketId : null, rackets, verdicts: o.fits as Record<string, FitVerdict> }, ask: null };
 }
@@ -529,11 +530,14 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
   const canChangeRacket = (fits?.rackets.length ?? 0) > 1;
   const fitBanner = showMap && fits && status !== 'failed' ? (
     <div ref={stripRef} data-testid="map-fit-strip" className="bpm-fit-strip">
-      <span className="material-icons icon-md" aria-hidden="true" style={{ color: 'var(--accent)' }}>sports_tennis</span>
-      <span className="fs-sm" style={{ flex: 1, minWidth: 0, color: 'var(--text-secondary)' }}>
+      {/* The match is the app's own analysis of this racket and these skills,
+          so it wears the AI badge, and the dots it picked wear its rim
+          (Grant, on a screenshot, 2026-11-19). */}
+      <AIBadge label={t('aiBadgeLabel')}>{t('aiBadge')}</AIBadge>
+      {/* The racket on one line, what the glow means on the next. */}
+      <span className="fs-sm" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', color: 'var(--text-secondary)' }}>
         <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{t('forYourRacket', { racket: fits.racket })}</span>
-        {' · '}
-        {matches.size > 0 ? t('forYourRacketGlow') : t('forYourRacketNone')}
+        <span>{matches.size > 0 ? t('forYourRacketGlow') : t('forYourRacketNone')}</span>
       </span>
       {canChangeRacket && (
         <button
@@ -553,12 +557,11 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
     // it can make a recommendation"). The same strip, the same place.
     <div ref={stripRef} data-testid="map-fit-strip" className="bpm-fit-strip">
       <span className="material-icons icon-md" aria-hidden="true" style={{ color: 'var(--accent)' }}>sports_tennis</span>
-      <span className="fs-sm" style={{ flex: 1, minWidth: 0, color: 'var(--text-secondary)' }}>
+      <span className="fs-sm" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', color: 'var(--text-secondary)' }}>
         <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
           {ask.kind === 'racket' ? t('askRacket') : t('forYourRacket', { racket: ask.racket })}
         </span>
-        {' · '}
-        {ask.kind === 'racket' ? t('askRacketWhy') : t('askCheckIn')}
+        <span>{ask.kind === 'racket' ? t('askRacketWhy') : t('askCheckIn')}</span>
       </span>
       {ask.kind === 'racket' ? (
         // Without a name to key the write by, there is nothing to add to.

@@ -548,12 +548,16 @@ describe('what suits your racket, on the map (Grant: "it should be top level vis
     mockWithFit({ racket: 'Yonex Astrox 88D Pro', fits: { 's-80': 'good_match', 's-66': 'worth_a_look', 's-65': 'not_for_frame', 's-ex': 'good_match' } });
     wrap();
     const strip = await screen.findByTestId('map-fit-strip');
-    expect(strip.textContent).toContain('For your Yonex Astrox 88D Pro · glowing dots suit it best');
+    expect(strip.textContent).toBe('AIFor your Yonex Astrox 88D ProGlowing dots suit it best');
+    // The strip wears the AI badge, and the dots it recommends wear its rim.
+    expect(strip.querySelector('.badge-ai')?.getAttribute('aria-label')).toBe('Matched to your racket and your skills by the app');
     const map = screen.getByRole('group', { name: 'Strings by repulsion and durability' });
     const glow = (name: RegExp) => within(map).getByRole('button', { name }).querySelector<HTMLElement>('[data-dot-type]')!.dataset.match;
     expect(glow(/^Yonex BG80:/)).toBe('true');
     expect(glow(/^Yonex Exbolt 63:/)).toBe('true');
     expect(glow(/^Yonex BG66:/)).toBeUndefined();
+    expect(within(map).getByRole('button', { name: /^Yonex BG80:/ }).querySelector('.map-dot-ai')).not.toBeNull();
+    expect(within(map).getByRole('button', { name: /^Yonex BG66:/ }).querySelector('.map-dot-ai')).toBeNull();
     fireEvent.click(within(map).getByRole('button', { name: /^Yonex BG80:/ }));
     expect(screen.getByTestId('peek-match').textContent).toBe('check_circleGood match for your Yonex Astrox 88D Pro');
     // The fit was asked once, for every string the catalog knows.
@@ -615,6 +619,8 @@ describe('"Change" on the strip: which of your rackets the map is matched to', (
     expect(options[0].textContent).toContain('Yonex Astrox 88D Pro');
     expect(options[0].textContent).toContain('In play');
     expect(options[1].textContent).not.toContain('In play');
+    // Each racket is drawn as Equipment draws it.
+    expect(options.map((o) => o.querySelector('img')?.getAttribute('src'))).toEqual([expect.stringContaining('rackets/'), expect.stringContaining('rackets/')]);
 
     fireEvent.click(options[1]);
     await waitFor(() => expect(screen.getByTestId('map-fit-strip').textContent).toContain('For your Yonex Nanoflare 800'));
@@ -632,7 +638,7 @@ describe('"Change" on the strip: which of your rackets the map is matched to', (
     mockFit(() => ({ ...ASTROX, rackets: [RACKETS[0]] }));
     wrap();
     const strip = await screen.findByTestId('map-fit-strip');
-    expect(strip.textContent).toBe('sports_tennisFor your Yonex Astrox 88D Pro · glowing dots suit it best');
+    expect(strip.textContent).toBe('AIFor your Yonex Astrox 88D ProGlowing dots suit it best');
     expect(within(strip).queryByRole('button')).toBeNull();
     cleanup();
     resetCatalogCache();
@@ -714,7 +720,9 @@ describe('the strip asks when there is no racket to match', () => {
     }));
     wrap();
     const strip = await screen.findByTestId('map-fit-strip');
-    expect(strip.textContent).toBe('sports_tennisWhat racket do you play with? · add it and the strings that suit it will glowAdd racket');
+    expect(strip.textContent).toBe('sports_tennisWhat racket do you play with?Add it and the strings that suit it will glowAdd racket');
+    // Nothing is recommended yet: no AI badge until there is a match to mark.
+    expect(strip.querySelector('.badge-ai')).toBeNull();
     expect(screen.getByRole('group', { name: 'Strings by repulsion and durability' }).querySelectorAll('[data-match]')).toHaveLength(0);
 
     fireEvent.click(within(strip).getByRole('button', { name: 'Add racket' }));
@@ -727,7 +735,7 @@ describe('the strip asks when there is no racket to match', () => {
     fireEvent.change(within(sheet).getByRole('searchbox', { name: 'Search rackets' }), { target: { value: '88d' } });
     fireEvent.click(within(sheet).getByRole('button', { name: /Yonex Astrox 88D Pro/ }));
 
-    await waitFor(() => expect(screen.getByTestId('map-fit-strip').textContent).toContain('For your Yonex Astrox 88D Pro · glowing dots suit it best'));
+    await waitFor(() => expect(screen.getByTestId('map-fit-strip').textContent).toContain('For your Yonex Astrox 88D ProGlowing dots suit it best'));
     // One write: the catalog racket, for Lin, as the racket in play.
     expect(posts).toEqual([{ name: 'Lin', makeActive: true, item: { catalogId: 'r-88d', category: 'racket', label: 'Yonex Astrox 88D Pro' } }]);
     expect(within(screen.getByRole('group', { name: 'Strings by repulsion and durability' })).getByRole('button', { name: /^Yonex BG80:/ }).querySelector<HTMLElement>('[data-dot-type]')!.dataset.match).toBe('true');
@@ -752,7 +760,7 @@ describe('the strip asks when there is no racket to match', () => {
     window.addEventListener('bpm:navigate', onNav);
     wrap();
     const strip = await screen.findByTestId('map-fit-strip');
-    expect(strip.textContent).toBe('sports_tennisFor your Yonex Astrox 88D Pro · rate your skills on Stats and the strings that suit it will glowGo to Stats');
+    expect(strip.textContent).toBe('sports_tennisFor your Yonex Astrox 88D ProRate your skills on Stats and the strings that suit it will glowGo to Stats');
     fireEvent.click(within(strip).getByRole('button', { name: 'Go to Stats' }));
     window.removeEventListener('bpm:navigate', onNav);
     expect(seen).toEqual([{ tab: 'skills', game: null }]);

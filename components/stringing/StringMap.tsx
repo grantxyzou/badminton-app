@@ -344,6 +344,11 @@ export default function StringMap({
             ].filter(Boolean).join(', ') || 'none',
           }}
         >
+          {/* The AI rim round a string that suits the member's racket (Grant,
+              2026-11-19: "apply the same AI rainbow stroke around the dots
+              recommended that glow"): the badge's own rainbow, so the strip's
+              AI badge and the dots it speaks for are visibly one idea. */}
+          {m.members.some((n) => dots[n].match) && <span className="map-dot-ai" />}
           {many ? m.members.length : null}
         </span>
       </button>

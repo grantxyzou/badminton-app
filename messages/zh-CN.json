@@ -415,6 +415,8 @@
         "askRacketNoMatch": "没有匹配的球拍。你可以在“数据”的装备里按名称添加。",
         "askRacketLoadError": "没能加载球拍。请关闭后再试一次。",
         "askRacketMore": "还有 {count} 支球拍 · 搜索找到你的",
+        "aiBadge": "AI",
+        "aiBadgeLabel": "由应用根据你的球拍和技术匹配",
         "forYourRacketNone": "这里没有明显合适的",
         "forYourRacketGlow": "发光的点最适合",
         "forYourRacket": "适合你的 {racket}",

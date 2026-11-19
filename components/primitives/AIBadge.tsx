@@ -3,7 +3,15 @@ import type { ReactNode } from 'react';
 /**
  * AI provenance marker — the small pill wearing the conic rainbow rim.
  *
- * Says "a model wrote this", and it is the ONLY thing that says it. The rim
+ * Says "a model wrote this", and it is the ONLY thing that says it.
+ *
+ * ONE WIDER USE, by the owner's call (Grant, 2026-11-19): the strings map's
+ * "For your <racket>" strip wears it, and the dots it recommends wear the
+ * same rim (`.map-dot-ai`). That match comes from the app's pairing engine
+ * (rules over the member's racket and skill ratings), not from a language
+ * model, so its label says "matched by the app", never "AI generated".
+ *
+ * The rim
  * used to be worn by the whole insight card as well (`.insight-rim`), which
  * meant a 400px surface was spending the app's loudest visual device on
  * provenance — a footnote at the size of a headline, competing with the
