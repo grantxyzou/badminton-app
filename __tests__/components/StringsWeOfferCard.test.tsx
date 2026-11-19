@@ -619,8 +619,8 @@ describe('"Change" on the strip: which of your rackets the map is matched to', (
     expect(options[0].textContent).toContain('Yonex Astrox 88D Pro');
     expect(options[0].textContent).toContain('In play');
     expect(options[1].textContent).not.toContain('In play');
-    // Each racket is drawn as Equipment draws it.
-    expect(options.map((o) => o.querySelector('img')?.getAttribute('src'))).toEqual([expect.stringContaining('rackets/'), expect.stringContaining('rackets/')]);
+    // Each racket shows its head, close up: the frame is what tells two apart.
+    expect(options.map((o) => o.querySelector('img')?.getAttribute('src'))).toEqual([expect.stringContaining('rackets/head/'), expect.stringContaining('rackets/head/')]);
 
     fireEvent.click(options[1]);
     await waitFor(() => expect(screen.getByTestId('map-fit-strip').textContent).toContain('For your Yonex Nanoflare 800'));
