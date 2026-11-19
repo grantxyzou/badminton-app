@@ -68,6 +68,11 @@ export default function StringingTab({ isAdmin = false, adminSession = true, onA
   const tNav = useTranslations('nav');
   const t = useTranslations('home.stringing.registers');
   const [uncontrolled, setUncontrolled] = useState<StringingView>('racket');
+  /** The racket the strings map is matched to under "Change" (a bag item id),
+   *  null for the racket in play. Held here so it outlives the Strings
+   *  register (which unmounts for the request form), and cleared once a
+   *  request is sent (docs/plans/map-racket-choice.md). */
+  const [mapRacket, setMapRacket] = useState<string | null>(null);
   const view = controlled ?? uncontrolled;
   const setView = onViewChange ?? setUncontrolled;
   // Sent here to request a stringing (Stats' tension card): the form lives on
@@ -150,7 +155,13 @@ export default function StringingTab({ isAdmin = false, adminSession = true, onA
             <RevealSlot placeholder={<CardSkeleton height={STRINGING_HEIGHTS.service} />}>
               {/* "A change to confirm" is a page that takes the tab over,
                   as a bench sub-screen does. */}
-              <StringingCard hasIdentity={hasIdentity} onShowStrings={() => setView('strings')} onTakeover={setTakeover} />
+              <StringingCard
+                hasIdentity={hasIdentity}
+                onShowStrings={() => setView('strings')}
+                onTakeover={setTakeover}
+                // Sent: the map goes back to the racket in play.
+                onRequested={() => setMapRacket(null)}
+              />
             </RevealSlot>
           </RevealGroup>
         )}
@@ -163,7 +174,9 @@ export default function StringingTab({ isAdmin = false, adminSession = true, onA
                 // A string's page "Restring with this string": the request
                 // lives on Submit request, which remounts on the switch and
                 // reads the marker the way Stats' tension link does.
-                onRestring={(label) => { requestStringingWith(label); setView('racket'); }}
+                onRestring={(label, racket) => { requestStringingWith(label, racket); setView('racket'); }}
+                mapRacket={mapRacket}
+                onMapRacket={setMapRacket}
               />
             </RevealSlot>
           </RevealGroup>

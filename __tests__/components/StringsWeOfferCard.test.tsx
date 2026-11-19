@@ -647,6 +647,42 @@ describe('"Change" on the strip: which of your rackets the map is matched to', (
     expect(within(await screen.findByTestId('map-fit-strip')).queryByRole('button')).toBeNull();
   });
 
+  it('takes a pick the tab holds: it survives a remount, is handed up when made, and a reset from the tab is read again', async () => {
+    // "After the string and racket request submitted, then the verdict goes
+    // back to the in play configuration" (Grant, 2026-11-19). The card
+    // unmounts for the request form, so the tab holds the pick.
+    mockFit((u) => (u.includes('racket=g2') ? NANOFLARE : ASTROX));
+    const picks: (string | null)[] = [];
+    const restrings: unknown[][] = [];
+    const tree = (held: string | null) => (
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <StringsWeOfferCard mapRacket={held} onMapRacket={(id) => picks.push(id)} onRestring={(...args) => restrings.push(args)} />
+      </NextIntlClientProvider>
+    );
+    // Mounted with the pick already made (back from the request form).
+    const view = render(tree('g2'));
+    expect((await screen.findByTestId('map-fit-strip')).textContent).toContain('For your Yonex Nanoflare 800');
+    expect(fitCalls()).toHaveLength(1);
+    expect(fitCalls()[0]).toContain('racket=g2');
+    // "Restring with this string" hands the racket on with the string.
+    fireEvent.click(screen.getByRole('button', { name: /^Yonex BG66:/ }));
+    fireEvent.click(within(screen.getByTestId('string-peek')).getByRole('button', { name: 'Open Yonex BG66' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Restring with this string' }));
+    await waitFor(() => expect(restrings).toEqual([['BG66', 'g2']]));
+    // The tab clears it (a request was sent): the match is read for the racket in play.
+    view.rerender(tree(null));
+    await waitFor(() => expect(screen.getByTestId('map-fit-strip').textContent).toContain('For your Yonex Astrox 88D Pro'));
+    expect(fitCalls()[fitCalls().length - 1]).not.toContain('racket=');
+    // A pick made here goes up to the tab, and is not read twice when it comes back down.
+    const before = fitCalls().filter((u) => u.includes('ids=')).length;
+    fireEvent.click(within(screen.getByTestId('map-fit-strip')).getByRole('button', { name: /^Change the racket/ }));
+    fireEvent.click(within(await screen.findByRole('dialog', { name: 'Select a racket' })).getAllByRole('radio')[1]);
+    await waitFor(() => expect(picks).toEqual(['g2']));
+    view.rerender(tree('g2'));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(fitCalls().filter((u) => u.includes('ids=')).length).toBe(before + 1);
+  });
+
   it('opens on the racket in play every time: a pick is for the visit, and nothing is stored', async () => {
     // Grant, 2026-11-19: "My main is default selected on the stringing page".
     mockFit((u) => (u.includes('racket=g2') ? NANOFLARE : ASTROX));

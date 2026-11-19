@@ -34,10 +34,14 @@ export function requestStringing(): void {
 
 /** Open the request form with this string already picked — a string's page,
  *  "Restring with this string" (docs/plans/stringing-canvas-redesign.md).
- *  Stored as JSON so it can never be read as a tension. */
-export function requestStringingWith(stringLabel: string): void {
+ *  Stored as JSON so it can never be read as a tension.
+ *
+ *  `racketId` is the racket the strings map was matched to when the string
+ *  was chosen (a bag item id, docs/plans/map-racket-choice.md): the verdict
+ *  the member just read was for THAT racket, so the request opens on it. */
+export function requestStringingWith(stringLabel: string, racketId?: string | null): void {
   try {
-    sessionStorage.setItem(STRINGING_INTENT_KEY, JSON.stringify({ string: stringLabel }));
+    sessionStorage.setItem(STRINGING_INTENT_KEY, JSON.stringify({ string: stringLabel, ...(racketId ? { racket: racketId } : null) }));
   } catch {
     /* storage unavailable: the tab switch still happens */
   }
@@ -54,8 +58,8 @@ export function hasStringingIntent(): boolean {
 
 /** Reads and clears the marker, so a later visit opens on the card. `'open'`
  *  means open the form at its default; a number, at that tension; `{ string }`,
- *  with that string picked. */
-export function takeStringingIntent(): number | 'open' | { string: string } | null {
+ *  with that string picked, and `racket` (a bag item id) with that racket. */
+export function takeStringingIntent(): number | 'open' | { string: string; racket?: string } | null {
   try {
     const raw = sessionStorage.getItem(STRINGING_INTENT_KEY);
     sessionStorage.removeItem(STRINGING_INTENT_KEY);
@@ -63,7 +67,10 @@ export function takeStringingIntent(): number | 'open' | { string: string } | nu
     if (raw?.startsWith('{')) {
       const parsed: unknown = JSON.parse(raw);
       const label = parsed && typeof parsed === 'object' ? (parsed as { string?: unknown }).string : null;
-      return typeof label === 'string' && label.trim() && label.length <= 80 ? { string: label } : null;
+      if (typeof label !== 'string' || !label.trim() || label.length > 80) return null;
+      const racket = (parsed as { racket?: unknown }).racket;
+      // A bag item id: matched against the member's own kit, never trusted.
+      return typeof racket === 'string' && racket && racket.length <= 120 ? { string: label, racket } : { string: label };
     }
     const n = raw === null ? NaN : Number(raw);
     return Number.isInteger(n) && n >= TENSION_MIN_LB && n <= TENSION_MAX_LB ? n : null;

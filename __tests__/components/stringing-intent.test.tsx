@@ -194,6 +194,17 @@ describe('arriving from a string\'s page', () => {
     expect(hasStringingIntent()).toBe(false);
   });
 
+  it('carries the racket the strings map was matched to, and drops one that is not an id', () => {
+    requestStringingWith('BG80 white', 'g2');
+    expect(takeStringingIntent()).toEqual({ string: 'BG80 white', racket: 'g2' });
+    requestStringingWith('BG80 white', null);
+    expect(takeStringingIntent()).toEqual({ string: 'BG80 white' });
+    sessionStorage.setItem('badminton_stringing_intent', '{"string": "BG80 white", "racket": 7}');
+    expect(takeStringingIntent()).toEqual({ string: 'BG80 white' });
+    sessionStorage.setItem('badminton_stringing_intent', JSON.stringify({ string: 'BG80 white', racket: 'x'.repeat(500) }));
+    expect(takeStringingIntent()).toEqual({ string: 'BG80 white' });
+  });
+
   it('ignores a malformed marker rather than reading it as a tension', () => {
     sessionStorage.setItem('badminton_stringing_intent', '{"string": 24}');
     expect(takeStringingIntent()).toBeNull();

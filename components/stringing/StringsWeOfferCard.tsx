@@ -132,8 +132,15 @@ interface Props {
    *  listed" instead of rendering nothing. */
   showEmpty?: boolean;
   /** A string's page "Restring with this string": the tab opens the request
-   *  with it picked. */
-  onRestring?: (label: string) => void;
+   *  with it picked, on the racket the map was matched to (a bag item id;
+   *  null when the map has no match to speak of). */
+  onRestring?: (label: string, racketId: string | null) => void;
+  /** The racket picked under "Change" (a bag item id), or null for the racket
+   *  in play. The Stringing tab holds it, because this card unmounts when the
+   *  tab switches to the request form and the pick has to still be there when
+   *  the member comes back without sending one. Uncontrolled without it. */
+  mapRacket?: string | null;
+  onMapRacket?: (id: string | null) => void;
 }
 
 /** The pricing doc's two player-facing extras. */
@@ -142,7 +149,7 @@ interface OtherPrices {
   note: string;
 }
 
-export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Props) {
+export default function StringsWeOfferCard({ showEmpty = false, onRestring, mapRacket: heldPick, onMapRacket }: Props) {
   const t = useTranslations('home.stringing.offer');
   const tSetup = useTranslations('stats.gear.setup');
   const catalog = useCatalog('string');
@@ -175,10 +182,23 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
   const [askOpen, setAskOpen] = useState(false);
   const [askMounted, setAskMounted] = useState(false);
   const activeName = useActiveName();
-  /** The racket picked under "Change", for this visit to the tab only: the
-   *  map opens on the racket in play (Grant, 2026-11-19: "My main is default
-   *  selected on the stringing page"). */
-  const mapRacket = useRef<string | null>(null);
+  /** The racket picked under "Change": the map opens on the racket in play
+   *  (Grant, 2026-11-19: "My main is default selected on the stringing
+   *  page"), and a pick lasts until a request is sent or the member has been
+   *  away from the tab ("After the string and racket request submitted, then
+   *  the verdict goes back to the in play configuration"). */
+  const [ownPick, setOwnPick] = useState<string | null>(null);
+  const pick = heldPick !== undefined ? heldPick : ownPick;
+  // Through a ref: the read below hands a dropped pick back up, and must not
+  // run again just because the parent passed a new function.
+  const setPickLatest = useRef(onMapRacket ?? setOwnPick);
+  useEffect(() => {
+    setPickLatest.current = onMapRacket ?? setOwnPick;
+  }, [onMapRacket]);
+  const setPick = useCallback((id: string | null) => setPickLatest.current(id), []);
+  /** What the last read asked for, so a pick this card just applied is not
+   *  read a second time when the tab hands it back as a prop. */
+  const mapRacket = useRef<string | null>(pick);
   /** Bumped to read the match again: back on the tab, or a racket added. */
   const [fitTick, setFitTick] = useState(0);
   const [racketOpen, setRacketOpen] = useState(false);
@@ -259,16 +279,27 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
         setFits(a.fits);
         setAsk(a.ask);
         // A pick the bag no longer holds was not honoured: let it go.
-        if (picked && a.fits?.racketId !== picked) mapRacket.current = null;
+        if (picked && a.fits?.racketId !== picked) {
+          mapRacket.current = null;
+          setPick(null);
+        }
       })
       .catch(() => { if (!cancelled) { setFits(null); setAsk(null); } });
     return () => { cancelled = true; };
-  }, [fitIds, readFits, fitTick]);
+  }, [fitIds, readFits, fitTick, setPick]);
+  // The tab changed the pick from outside (a request was sent: back to the
+  // racket in play): read the match for it.
+  useEffect(() => {
+    if (mapRacket.current === pick) return;
+    mapRacket.current = pick;
+    setFitTick((n) => n + 1);
+  }, [pick]);
   // Back on the tab after a while away: the racket in play may have changed
   // on Stats, and the map is about the racket in play. A pick made under
   // "Change" was for the last visit. What is on screen stays while it reads.
   useTabReturn(() => {
     mapRacket.current = null;
+    setPick(null);
     setFitTick((n) => n + 1);
   });
 
@@ -284,7 +315,9 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
         if (!f || f.racketId !== id) { setRacketFailed(true); return; }
         setFits(f);
         // Back on the racket in play is no pick at all.
-        mapRacket.current = f.rackets.find((r) => r.id === id)?.inPlay ? null : id;
+        const next = f.rackets.find((r) => r.id === id)?.inPlay ? null : id;
+        mapRacket.current = next;
+        setPick(next);
         setRacketOpen(false);
       })
       .catch(() => setRacketFailed(true))
@@ -771,7 +804,9 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
           // switches register and the request sheet rises: switching first
           // unmounted it mid-sheet, a cut instead of a hand-off.
           setOpen(null);
-          window.setTimeout(() => onRestring(label), SHEET_CLOSE_MS);
+          // The racket the verdict on that page was for goes with the string.
+          const racket = fits?.racketId ?? null;
+          window.setTimeout(() => onRestring(label, racket), SHEET_CLOSE_MS);
         } : undefined}
         open={!aside && openEntry?.item != null}
         onClose={() => setOpen(null)}
@@ -790,7 +825,7 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
             fitRacket={fits?.racketId ?? null}
             item={asideEntry.item}
             label={asideEntry.label}
-            onRestring={onRestring}
+            onRestring={onRestring ? (label) => onRestring(label, fits?.racketId ?? null) : undefined}
             open
             onClose={() => setOpen(null)}
             price={shelf ? shelfPrice(shelf, asideEntry.label) : undefined}
