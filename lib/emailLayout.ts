@@ -222,36 +222,57 @@ export function racketCard(opts: {
     ? `<img src="${e(opts.pictureUrl)}" width="88" height="229" alt="${e(job.racketLabel)}" style="display:block;margin:0 auto;width:88px;height:229px;border:0">`
     : '';
 
-  return (
-    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 18px;border-radius:16px;background:${C.tint};border-collapse:separate">` +
-    `<tr>` +
-    (picture ? `<td class="rc-pic" width="42%" align="center" valign="middle" style="padding:20px 8px;border-radius:16px 0 0 16px;background:${C.accentSoft}">${picture}</td>` : '') +
-    `<td class="rc-info" valign="top" style="padding:18px 18px 16px">` +
+  const info =
+    `<div style="padding:18px 18px 16px">` +
     `<div style="margin:0 0 10px">${label('Racket')}<div style="font-family:${DISPLAY};font-size:19px;line-height:1.2;font-weight:700;color:${C.ink}">${e(job.racketLabel)}</div></div>` +
     `<div style="margin:0 0 10px">${label('Strings', tags)}${strings}</div>` +
     factRows +
     costBlock +
-    `</td></tr></table>`
+    `</div>`;
+
+  if (!picture) {
+    return `<div style="margin:0 0 18px;border-radius:16px;background:${C.tint}">${info}</div>`;
+  }
+
+  /* "Fluid hybrid": two inline-block columns that sit side by side when the
+     card is wide enough for both (PIC_W + INFO_MIN) and STACK, racket on top,
+     when it is not. It needs no media query, which Gmail does not always
+     apply (Grant, on a phone, twice: "squished"). Outlook desktop, which
+     ignores max-width, gets the same two columns from a conditional table. */
+  return (
+    `<div style="margin:0 0 18px;border-radius:16px;background:${C.tint};font-size:0;line-height:0;text-align:center">` +
+    `<!--[if mso]><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td width="${PIC_W}" valign="top"><![endif]-->` +
+    `<div style="display:inline-block;vertical-align:top;width:100%;max-width:${PIC_W}px">` +
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding:12px">` +
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" valign="middle" height="${PIC_H}" style="height:${PIC_H}px;border-radius:12px;background:${C.accentSoft}">${picture}</td></tr></table>` +
+    `</td></tr></table>` +
+    `</div>` +
+    `<!--[if mso]></td><td valign="top"><![endif]-->` +
+    `<div style="display:inline-block;vertical-align:top;width:100%;min-width:${INFO_MIN}px;max-width:${INFO_MAX}px;font-size:16px;line-height:1.4;text-align:left">${info}</div>` +
+    `<!--[if mso]></td></tr></table><![endif]-->` +
+    `</div>`
   );
 }
+
+/** The render's column, and the narrowest the spec column may get before the
+ *  card stacks. 200 + 240 = 440: any card narrower than that stacks. */
+const PIC_W = 200;
+const PIC_H = 260;
+const INFO_MIN = 240;
+const INFO_MAX = 312;
 
 // ── The whole message ────────────────────────────────────────────────────────
 
 /**
- * On a phone the racket card's two columns are narrow, and at 42% the render
- * squeezed the spec (Grant, 2026-11-19: "these are squished"). Gmail and Apple
- * Mail apply a <style> block's media query to class names, so a phone gives
- * the render less of the width and the whole frame less padding. A client
- * that ignores it (Outlook desktop) is never that narrow.
+ * A phone gets less padding round the frame and a smaller cost figure, where
+ * the client applies a <style> block's media query (Gmail and Apple Mail
+ * mostly do). Nothing depends on it: the racket card stacks by itself.
  */
 const PHONE_STYLE =
   '<style>@media only screen and (max-width:480px){' +
   '.em-outer{padding:12px 6px !important}' +
   '.em-head{padding:16px !important}' +
   '.em-body{padding:24px 16px 10px !important}' +
-  '.rc-pic{width:32% !important;padding:14px 2px !important}' +
-  '.rc-pic img{width:70px !important;height:auto !important}' +
-  '.rc-info{padding:14px 12px !important}' +
   '.rc-cost{font-size:30px !important}' +
   '.rc-tn{padding-left:6px !important}' +
   '.em-step{height:72px !important}' +
