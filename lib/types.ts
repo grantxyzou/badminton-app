@@ -1503,6 +1503,9 @@ export interface FitRacketChoice {
   id: string;
   /** "Yonex Astrox 88D Pro", from the catalog. */
   name: string;
+  /** The racket's catalog row, for its picture in the sheet. The member's
+   *  own, as their gear read already shows it; never an input to the route. */
+  catalogId?: string;
   /** The racket in play: what the map is matched to with no choice made. */
   inPlay: boolean;
 }

@@ -151,8 +151,8 @@ describe('GET /api/stringing/fit', () => {
       expect(body.racket).toBe('Yonex Astrox Test');
       expect(body.racketId).toBe('g1');
       expect(body.rackets).toEqual([
-        { id: 'g1', name: 'Yonex Astrox Test', inPlay: true },
-        { id: 'g2', name: 'Yonex Nanoflare Test', inPlay: false },
+        { id: 'g1', name: 'Yonex Astrox Test', catalogId: 'frame-hh', inPlay: true },
+        { id: 'g2', name: 'Yonex Nanoflare Test', catalogId: 'frame-tight', inPlay: false },
       ]);
       expect(body.fits['string-test']).not.toBe('not_for_frame');
     });
@@ -186,7 +186,7 @@ describe('GET /api/stringing/fit', () => {
         const body = await (await get(`ids=string-test&racket=${encodeURIComponent(racket)}`)).json();
         expect(body.racket).toBe('Yonex Astrox Test');
         expect(body.racketId).toBe('g1');
-        expect(body.rackets).toEqual([{ id: 'g1', name: 'Yonex Astrox Test', inPlay: true }]);
+        expect(body.rackets).toEqual([{ id: 'g1', name: 'Yonex Astrox Test', catalogId: 'frame-hh', inPlay: true }]);
         const one = await (await get(`id=string-test&racket=${encodeURIComponent(racket)}`)).json();
         expect(one.fit.racket).toBe('Yonex Astrox Test');
       }

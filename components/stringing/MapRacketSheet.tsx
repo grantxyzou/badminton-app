@@ -2,6 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody } from '@/components/BottomSheet';
+import RacketThumb from '@/components/stats/RacketThumb';
 import { useOnline } from '@/lib/useOnline';
 import type { FitRacketChoice } from '@/lib/types';
 
@@ -65,16 +66,19 @@ export default function MapRacketSheet({
                   className={`cc-choice${busy ? ' motion-busy' : ''}`}
                   style={{ alignItems: 'center' }}
                 >
+                  {/* The racket as Equipment draws it: a picture already made
+                      for that model, so it costs a small cached download. */}
+                  <RacketThumb catalogId={r.catalogId} />
+                  <span className="flex flex-col" style={{ flex: 1, minWidth: 0, gap: 'var(--space-05)' }}>
+                    <span className="fs-md" style={{ fontWeight: 600, color: selected ? 'var(--accent)' : 'var(--text-primary)' }}>{r.name}</span>
+                    {r.inPlay && <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{t('racketInPlay')}</span>}
+                  </span>
                   <span
                     className="material-icons icon-md"
                     aria-hidden="true"
                     style={{ flex: 'none', color: selected ? 'var(--accent)' : 'var(--text-muted)' }}
                   >
                     {selected ? 'radio_button_checked' : 'radio_button_unchecked'}
-                  </span>
-                  <span className="flex flex-col" style={{ flex: 1, minWidth: 0, gap: 'var(--space-05)' }}>
-                    <span className="fs-md" style={{ fontWeight: 600, color: selected ? 'var(--accent)' : 'var(--text-primary)' }}>{r.name}</span>
-                    {r.inPlay && <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{t('racketInPlay')}</span>}
                   </span>
                 </button>
               );

@@ -2498,8 +2498,9 @@ html:root .ink-button {
 
 /* ── AI provenance rim ──
    The conic gradient that marks text as model-written. Worn by `<AIBadge>`
-   (`.badge-ai`), and by nothing else since the card-sized `.insight-rim` was
-   removed — see the note further down.
+   (`.badge-ai`) and, since 2026-11-19, by the strings map's recommended dots
+   (`.map-dot-ai`, further down); by nothing card-sized since `.insight-rim`
+   was removed — see the note further down.
 
    Kept as a token rather than inlined in `.badge-ai` so the gradient has one
    definition: any future AI-marked surface must wear THIS rainbow, not a
@@ -2544,6 +2545,28 @@ html:root .ink-button {
      mask-composite to its initial value (`add`). Setting the composite first
      and the shorthand second silently undoes the cut-out and the ring renders
      as a filled pill -- which is exactly what happened here. Composite last. */
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* The same rim round a dot on the strings map that suits the member's racket
+   (`StringMap`), a hair off the dot's edge so the dot keeps its type colour.
+   The strip under the map wears the badge; these are the dots it speaks for. */
+.map-dot-ai {
+  position: absolute;
+  inset: calc(-1 * (var(--space-05) + var(--space-hair)));
+  border-radius: 50%;
+  /* NOT SPACING — the ring's thickness, as on `.badge-ai::before`. */
+  padding: 2px;
+  background: var(--ai-rim);
+  /* Composite last: the `mask` shorthand resets it (see `.badge-ai::before`). */
   -webkit-mask:
     linear-gradient(#000 0 0) content-box,
     linear-gradient(#000 0 0);

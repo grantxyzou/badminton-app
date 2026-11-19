@@ -156,6 +156,7 @@ export async function GET(req: NextRequest) {
       const rackets: FitRacketChoice[] = known.map((k) => ({
         id: k.item.id,
         name: `${k.frame.brand} ${k.frame.model}`,
+        catalogId: k.frame.id,
         inPlay: k.item.id === inPlay?.id,
       }));
       // The same engine and the same rule for the verdict as one string's
