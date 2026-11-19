@@ -21,6 +21,12 @@
  * answered for) and `rackets` (the caller's rackets it can pair), which is
  * what the map's "Change" sheet lists.
  *
+ * When the `ids` form has nothing to say it may add `ask`, the one thing the
+ * map's strip can ask the member for: `'racket'` (the bag holds no racket at
+ * all: "what do you play with?") or `'check_in'` with `racket` (the racket in
+ * play is known, the skills are not). A typed-in racket in play asks for
+ * nothing: the member told us, and the catalog cannot pair it.
+ *
  * The caller only: no `name` parameter and no admin-on-behalf branch. An
  * admin browsing a string page gets their own fit or none.
  *
@@ -38,9 +44,9 @@ import { buildProfile } from '@/lib/racketProfile';
 import { comfortTensionDeltaLb, skillLevel } from '@/lib/racketFit';
 import { effectiveArmComfort } from '@/lib/fitProfile';
 import { readGearOrNull } from '@/lib/racketFitInput';
-import { activeRacket, pairableRackets } from '@/lib/activeRacket';
+import { activeRacket, pairableRackets, rackets as racketsIn } from '@/lib/activeRacket';
 import { pairString } from '@/lib/stringPair';
-import type { CatalogItem, FitRacketChoice, FitVerdict, StringFit } from '@/lib/types';
+import type { CatalogItem, FitRacketChoice, FitVerdict, PlayerGear, StringFit } from '@/lib/types';
 import type { Rating } from '@/lib/assessment';
 
 export const dynamic = 'force-dynamic';
@@ -62,6 +68,16 @@ async function catalogItem(id: string, category: 'string' | 'racket'): Promise<C
   // partition for one known row (audit, 2026-11-05).
   const { resource } = await getContainer('equipmentCatalog').item(id, category).read<CatalogItem>();
   return resource && resource.id === id && resource.category === category ? resource : null;
+}
+
+/** What the map's strip can ask for when there are no verdicts to show.
+ *  A racket first: with none in the bag, skills alone pair nothing. */
+async function askFor(gear: PlayerGear | null, hasRatings: boolean): Promise<{ ask?: 'racket' | 'check_in'; racket?: string }> {
+  if (racketsIn(gear).length === 0) return { ask: 'racket' };
+  if (hasRatings) return {};
+  const inPlay = activeRacket(gear);
+  const frame = inPlay?.catalogId ? await catalogItem(inPlay.catalogId, 'racket') : null;
+  return frame ? { ask: 'check_in', racket: `${frame.brand} ${frame.model}` } : {};
 }
 
 export async function GET(req: NextRequest) {
@@ -103,7 +119,11 @@ export async function GET(req: NextRequest) {
     await ensureContainer('playerGear', '/memberId');
     const gear = await readGearOrNull(member.memberId);
     const profile = buildProfile({ ratings: (latest?.ratings as Rating[]) ?? [], gear });
-    if (!profile) return NextResponse.json(many ? { fits: null, reason: 'needs_check_in' } : { fit: null, reason: 'needs_check_in' });
+    if (!profile) {
+      return NextResponse.json(many
+        ? { fits: null, reason: 'needs_check_in', ...(await askFor(gear, false)) }
+        : { fit: null, reason: 'needs_check_in' });
+    }
 
     // The OWNED frame only. `/api/recommend` falls back to a recommended frame
     // for its card; here the section is titled "your racket", so a frame the
@@ -131,7 +151,7 @@ export async function GET(req: NextRequest) {
             ? await catalogItem(profile.currentRacketId, 'racket').then((f) => (f ? { item: inPlay, frame: f } : null))
             : null);
       const use = picked ?? fallback;
-      if (!use) return NextResponse.json({ fits: null, reason: 'no_frame' });
+      if (!use) return NextResponse.json({ fits: null, reason: 'no_frame', ...(await askFor(gear, true)) });
       const frame = use.frame;
       const rackets: FitRacketChoice[] = known.map((k) => ({
         id: k.item.id,

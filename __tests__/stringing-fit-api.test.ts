@@ -207,6 +207,34 @@ describe('GET /api/stringing/fit', () => {
       }
     });
 
+    /* Grant, 2026-11-19: "If there's no selection ie I didn't add my racket
+       yet, the strip should ask for me what am I using". */
+    it('asks for a racket when the bag holds none, with or without a check-in', async () => {
+      seedLin();
+      expect(await (await get('ids=string-test')).json()).toEqual({ fits: null, reason: 'no_frame', ask: 'racket' });
+      await seedBag([{ id: 's1', catalogId: 'string-test', category: 'string', label: 'BG Test' }]);
+      expect(await (await get('ids=string-test')).json()).toEqual({ fits: null, reason: 'no_frame', ask: 'racket' });
+      // A racket first: with none in the bag, skills alone pair nothing.
+      seedLin(false);
+      expect(await (await get('ids=string-test')).json()).toEqual({ fits: null, reason: 'needs_check_in', ask: 'racket' });
+      // One string's page asks for nothing: it only says what it knows.
+      expect(await (await get('id=string-test')).json()).toEqual({ fit: null, reason: 'needs_check_in' });
+    });
+
+    it('asks for a check-in, naming the racket in play, when the skills are what is missing', async () => {
+      seedLin(false);
+      await seedBag(TWO, 'g2');
+      expect(await (await get('ids=string-test')).json()).toEqual({
+        fits: null, reason: 'needs_check_in', ask: 'check_in', racket: 'Yonex Nanoflare Test',
+      });
+    });
+
+    it('asks for nothing when the racket in play is typed in: the member already said', async () => {
+      seedLin(false);
+      await seedBag([{ id: 'g1', catalogId: null, category: 'racket', label: 'Typed in' }]);
+      expect(await (await get('ids=string-test')).json()).toEqual({ fits: null, reason: 'needs_check_in' });
+    });
+
     it('still says nothing when the racket in play is typed in and nothing was chosen', async () => {
       seedLin();
       await seedBag([{ id: 'g1', catalogId: null, category: 'racket', label: 'Typed in' }, TWO[1]]);

@@ -621,10 +621,11 @@ describe('"Change" on the strip: which of your rackets the map is matched to', (
     expect(fitCalls()[1]).toContain('racket=g2');
     expect(glow(/^Yonex BG66:/)).toBe('true');
     expect(glow(/^Yonex BG80:/)).toBeUndefined();
-    // Remembered on this phone, and the peek names the same racket.
-    expect(localStorage.getItem('bpm:strings-racket')).toBe('g2');
+    // The peek names the same racket, and a string's page reads its fit for it.
     fireEvent.click(screen.getByRole('button', { name: /^Yonex BG66:/ }));
     expect(screen.getByTestId('peek-match').textContent).toContain('Good match for your Yonex Nanoflare 800');
+    fireEvent.click(within(screen.getByTestId('string-peek')).getByRole('button', { name: 'Open Yonex BG66' }));
+    await waitFor(() => expect(fitCalls().some((u) => u.includes('fit?id=s-66&racket=g2'))).toBe(true));
   });
 
   it('shows no Change for a member with one racket, or from a server that lists none', async () => {
@@ -640,26 +641,21 @@ describe('"Change" on the strip: which of your rackets the map is matched to', (
     expect(within(await screen.findByTestId('map-fit-strip')).queryByRole('button')).toBeNull();
   });
 
-  it('asks for the racket this phone remembers, and a string’s page asks for the same one', async () => {
-    localStorage.setItem('bpm:strings-racket', 'g2');
-    mockFit((u) => (u.includes('ids=') ? (u.includes('racket=g2') ? NANOFLARE : ASTROX) : { fit: null }));
-    wrap();
-    expect((await screen.findByTestId('map-fit-strip')).textContent).toContain('For your Yonex Nanoflare 800');
-    expect(fitCalls()[0]).toContain('racket=g2');
-    // Open a string from the map: its page reads the fit for the map's racket.
-    fireEvent.click(screen.getByRole('button', { name: /^Yonex BG66:/ }));
-    fireEvent.click(within(screen.getByTestId('string-peek')).getByRole('button', { name: 'Open Yonex BG66' }));
-    await waitFor(() => expect(fitCalls().some((u) => u.includes('fit?id=s-66&racket=g2'))).toBe(true));
-  });
-
-  it('forgets a remembered racket the bag no longer holds', async () => {
-    localStorage.setItem('bpm:strings-racket', 'gone');
-    // The server answers for the racket in play and says which.
-    mockFit(() => ASTROX);
+  it('opens on the racket in play every time: a pick is for the visit, and nothing is stored', async () => {
+    // Grant, 2026-11-19: "My main is default selected on the stringing page".
+    mockFit((u) => (u.includes('racket=g2') ? NANOFLARE : ASTROX));
+    const first = wrap();
+    fireEvent.click(within(await screen.findByTestId('map-fit-strip')).getByRole('button', { name: /^Change the racket/ }));
+    fireEvent.click(within(await screen.findByRole('dialog', { name: 'Show strings for' })).getAllByRole('radio')[1]);
+    await waitFor(() => expect(screen.getByTestId('map-fit-strip').textContent).toContain('For your Yonex Nanoflare 800'));
+    expect(Object.keys(localStorage)).toEqual([]);
+    // The tab is opened afresh (a reload, the next day).
+    first.unmount();
+    resetCatalogCache();
+    (globalThis.fetch as unknown as { mockClear: () => void }).mockClear();
     wrap();
     expect((await screen.findByTestId('map-fit-strip')).textContent).toContain('For your Yonex Astrox 88D Pro');
-    expect(fitCalls()[0]).toContain('racket=gone');
-    expect(localStorage.getItem('bpm:strings-racket')).toBeNull();
+    expect(fitCalls()[0]).not.toContain('racket=');
   });
 
   it('says so in the sheet when the picked racket’s read fails, and leaves the map as it was', async () => {
@@ -671,8 +667,104 @@ describe('"Change" on the strip: which of your rackets the map is matched to', (
     expect((await within(sheet).findByRole('alert')).textContent).toBe('Couldn’t check that racket. Try again.');
     expect(screen.getByTestId('map-fit-strip').textContent).toContain('For your Yonex Astrox 88D Pro');
     expect(glow(/^Yonex BG80:/)).toBe('true');
-    expect(localStorage.getItem('bpm:strings-racket')).toBeNull();
     expect(within(sheet).getAllByRole('radio').map((o) => o.getAttribute('aria-checked'))).toEqual(['true', 'false']);
+  });
+});
+
+/* Grant, 2026-11-19: "If there's no selection ie I didn't add my racket yet,
+   the strip should ask for me what am I using then it can make a
+   recommendation" (docs/plans/map-racket-choice.md). */
+describe('the strip asks when there is no racket to match', () => {
+  const links: Record<string, string> = { BG80: 's-80', BG66: 's-66', BG65: 's-65', Exbolt: 's-ex' };
+  const RACKET_CATALOG = [
+    { id: 'r-88d', category: 'racket', brand: 'Yonex', model: 'Astrox 88D Pro', attributes: { weight: '4U', balance: 'Head-heavy' } },
+    { id: 'r-nf', category: 'racket', brand: 'Yonex', model: 'Nanoflare 800', attributes: { weight: '4U', balance: 'Head-light' } },
+    { id: 'r-old', category: 'racket', brand: 'Yonex', model: 'Withdrawn 1', attributes: { unlisted: true } },
+  ];
+  const ASTROX = { racket: 'Yonex Astrox 88D Pro', racketId: 'g1', rackets: [{ id: 'g1', name: 'Yonex Astrox 88D Pro', inPlay: true }], fits: { 's-80': 'good_match' } };
+
+  /** `gearPost` answers the add; the fit read answers `before` until an add
+   *  has succeeded, then `after`. */
+  function mockAsk(before: unknown, after: unknown, gearPost: () => { status: number; body: unknown }) {
+    let added = false;
+    const posts: unknown[] = [];
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      const u = String(url);
+      const ok = (body: unknown) => Promise.resolve({ ok: true, status: 200, json: async () => body } as Response);
+      if (u.includes('/catalog')) return ok({ items: u.includes('category=racket') ? RACKET_CATALOG : CATALOG });
+      if (u.includes('/equipment/gear')) {
+        if (init?.method !== 'POST') return ok({ gear: null });
+        posts.push(JSON.parse(String(init.body)));
+        const res = gearPost();
+        if (res.status === 200) added = true;
+        return Promise.resolve({ ok: res.status === 200, status: res.status, json: async () => res.body } as Response);
+      }
+      if (u.includes('/fit?')) return ok(added ? after : before);
+      return ok({ strings: ['BG80', 'BG66', 'BG65', 'Exbolt'], links });
+    }));
+    return posts;
+  }
+  const signInAsLin = () => localStorage.setItem('badminton_identity', JSON.stringify({ name: 'Lin', token: 't', sessionId: 's' }));
+
+  it('asks what racket the member plays with, adds the pick as the racket in play, and then glows for it', async () => {
+    signInAsLin();
+    const posts = mockAsk({ fits: null, reason: 'no_frame', ask: 'racket' }, ASTROX, () => ({
+      status: 200,
+      body: { gear: { id: 'gear-m', memberId: 'm', activeRacketId: 'g1', updatedAt: '2026-11-19T00:00:00Z', items: [{ id: 'g1', catalogId: 'r-88d', category: 'racket', label: 'Yonex Astrox 88D Pro' }] } },
+    }));
+    wrap();
+    const strip = await screen.findByTestId('map-fit-strip');
+    expect(strip.textContent).toBe('sports_tennisWhat racket do you play with? · add it and the strings that suit it will glowAdd racket');
+    expect(screen.getByRole('group', { name: 'Strings by repulsion and durability' }).querySelectorAll('[data-match]')).toHaveLength(0);
+
+    fireEvent.click(within(strip).getByRole('button', { name: 'Add racket' }));
+    const sheet = await screen.findByRole('dialog', { name: 'What racket do you play with?' });
+    // The catalog's rackets, without the withdrawn one; the search narrows them.
+    await within(sheet).findByRole('button', { name: /Yonex Astrox 88D Pro/ });
+    expect(within(sheet).queryByText(/Withdrawn 1/)).toBeNull();
+    fireEvent.change(within(sheet).getByRole('searchbox', { name: 'Search rackets' }), { target: { value: 'nanoflare' } });
+    expect(within(sheet).queryByRole('button', { name: /Astrox 88D Pro/ })).toBeNull();
+    fireEvent.change(within(sheet).getByRole('searchbox', { name: 'Search rackets' }), { target: { value: '88d' } });
+    fireEvent.click(within(sheet).getByRole('button', { name: /Yonex Astrox 88D Pro/ }));
+
+    await waitFor(() => expect(screen.getByTestId('map-fit-strip').textContent).toContain('For your Yonex Astrox 88D Pro · glowing dots suit it best'));
+    // One write: the catalog racket, for Lin, as the racket in play.
+    expect(posts).toEqual([{ name: 'Lin', makeActive: true, item: { catalogId: 'r-88d', category: 'racket', label: 'Yonex Astrox 88D Pro' } }]);
+    expect(within(screen.getByRole('group', { name: 'Strings by repulsion and durability' })).getByRole('button', { name: /^Yonex BG80:/ }).querySelector<HTMLElement>('[data-dot-type]')!.dataset.match).toBe('true');
+  });
+
+  it('says why when the racket could not be added, and keeps asking', async () => {
+    signInAsLin();
+    mockAsk({ fits: null, reason: 'no_frame', ask: 'racket' }, ASTROX, () => ({ status: 401, body: { error: 'unauthorized' } }));
+    wrap();
+    fireEvent.click(within(await screen.findByTestId('map-fit-strip')).getByRole('button', { name: 'Add racket' }));
+    const sheet = await screen.findByRole('dialog', { name: 'What racket do you play with?' });
+    fireEvent.click(await within(sheet).findByRole('button', { name: /Yonex Nanoflare 800/ }));
+    expect((await within(sheet).findByRole('alert')).textContent).toBe(enMessages.valueHub.bagSignInAgain);
+    expect(screen.getByTestId('map-fit-strip').textContent).toContain('What racket do you play with?');
+  });
+
+  it('points at the check-in when the racket is known and the skills are not', async () => {
+    signInAsLin();
+    mockAsk({ fits: null, reason: 'needs_check_in', ask: 'check_in', racket: 'Yonex Astrox 88D Pro' }, ASTROX, () => ({ status: 200, body: { gear: null } }));
+    const seen: unknown[] = [];
+    const onNav = (e: Event) => seen.push((e as CustomEvent).detail);
+    window.addEventListener('bpm:navigate', onNav);
+    wrap();
+    const strip = await screen.findByTestId('map-fit-strip');
+    expect(strip.textContent).toBe('sports_tennisFor your Yonex Astrox 88D Pro · rate your skills on Stats and the strings that suit it will glowGo to Stats');
+    fireEvent.click(within(strip).getByRole('button', { name: 'Go to Stats' }));
+    window.removeEventListener('bpm:navigate', onNav);
+    expect(seen).toEqual([{ tab: 'skills', game: null }]);
+  });
+
+  it('asks for nothing when the server names nothing to ask (a typed-in racket, a refusal)', async () => {
+    signInAsLin();
+    mockAsk({ fits: null, reason: 'no_frame' }, ASTROX, () => ({ status: 200, body: { gear: null } }));
+    wrap();
+    await screen.findByRole('group', { name: 'Strings by repulsion and durability' });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(screen.queryByTestId('map-fit-strip')).toBeNull();
   });
 });
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
@@ -45,10 +45,12 @@ import { ColourDots } from './StringColours';
 import StringPeek from './StringPeek';
 import StringListSheet, { type ListSort } from './StringListSheet';
 import MapRacketSheet from './MapRacketSheet';
-import { useTabActive } from '@/lib/tabActivity';
+import MapRacketAskSheet from './MapRacketAskSheet';
+import { useTabActive, useTabReturn } from '@/lib/tabActivity';
+import { useActiveName } from '@/lib/useActiveName';
+import { routeInApp } from '@/lib/inAppNavigate';
 import { isRefused } from '@/lib/apiFetch';
 import type { FitRacketChoice, FitVerdict } from '@/lib/types';
-import { readMapRacket, writeMapRacket } from '@/lib/mapRacket';
 import { sharedFetch } from '@/lib/sharedRead';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -77,13 +79,24 @@ interface MapFits {
   verdicts: Record<string, FitVerdict>;
 }
 
-function parseFits(d: unknown): MapFits | null {
-  const o = d as { racket?: unknown; racketId?: unknown; rackets?: unknown; fits?: unknown } | null;
-  if (!o || typeof o.racket !== 'string' || !o.fits || typeof o.fits !== 'object') return null;
+/** What the strip asks the member for when the map has no match to show:
+ *  their racket (none in their equipment yet), or a skill check-in (the
+ *  racket is known, the skills are not). */
+type MapAsk = { kind: 'racket' } | { kind: 'check_in'; racket: string };
+
+function parseFits(d: unknown): { fits: MapFits | null; ask: MapAsk | null } {
+  const o = d as { racket?: unknown; racketId?: unknown; rackets?: unknown; fits?: unknown; ask?: unknown } | null;
+  if (!o) return { fits: null, ask: null };
+  if (typeof o.racket !== 'string' || !o.fits || typeof o.fits !== 'object') {
+    const ask: MapAsk | null = o.ask === 'racket' ? { kind: 'racket' }
+      : o.ask === 'check_in' && typeof o.racket === 'string' ? { kind: 'check_in', racket: o.racket }
+        : null;
+    return { fits: null, ask };
+  }
   const rackets = Array.isArray(o.rackets)
     ? o.rackets.filter((r): r is FitRacketChoice => !!r && typeof r.id === 'string' && typeof r.name === 'string').map((r) => ({ id: r.id, name: r.name, inPlay: r.inPlay === true }))
     : [];
-  return { racket: o.racket, racketId: typeof o.racketId === 'string' ? o.racketId : null, rackets, verdicts: o.fits as Record<string, FitVerdict> };
+  return { fits: { racket: o.racket, racketId: typeof o.racketId === 'string' ? o.racketId : null, rackets, verdicts: o.fits as Record<string, FitVerdict> }, ask: null };
 }
 
 /**
@@ -153,6 +166,19 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
   const [fits, setFits] = useState<MapFits | null>(null);
   /** "Change" on the strip: the sheet, the pick being read, and whether the
    *  last pick's read failed (docs/plans/map-racket-choice.md). */
+  /** What the strip asks for in place of a match, if anything. */
+  const [ask, setAsk] = useState<MapAsk | null>(null);
+  /** "What racket do you play with?": mounted on its first opening, so the
+   *  register reads no gear doc for a member who never taps the strip. */
+  const [askOpen, setAskOpen] = useState(false);
+  const [askMounted, setAskMounted] = useState(false);
+  const activeName = useActiveName();
+  /** The racket picked under "Change", for this visit to the tab only: the
+   *  map opens on the racket in play (Grant, 2026-11-19: "My main is default
+   *  selected on the stringing page"). */
+  const mapRacket = useRef<string | null>(null);
+  /** Bumped to read the match again: back on the tab, or a racket added. */
+  const [fitTick, setFitTick] = useState(0);
   const [racketOpen, setRacketOpen] = useState(false);
   const [racketPending, setRacketPending] = useState<string | null>(null);
   const [racketFailed, setRacketFailed] = useState(false);
@@ -212,7 +238,7 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
   // own bag. The server answers for the racket in play when the bag no longer
   // holds it, and names the racket it answered for.
   const readFits = useCallback(
-    (racket: string | null): Promise<MapFits | null> =>
+    (racket: string | null) =>
       fetch(`${BASE}/api/stringing/fit?ids=${encodeURIComponent(fitIds)}${racket ? `&racket=${encodeURIComponent(racket)}` : ''}`, { cache: 'no-store' })
         .then((r) => (isRefused(r) || !r.ok ? null : r.json()))
         .then(parseFits),
@@ -221,31 +247,39 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
   useEffect(() => {
     if (!fitIds) return;
     let cancelled = false;
-    // The pick this phone remembers, if any.
-    const remembered = readMapRacket();
-    readFits(remembered)
-      .then((f) => {
+    const picked = mapRacket.current;
+    readFits(picked)
+      .then((a) => {
         if (cancelled) return;
-        setFits(f);
-        // A pick the bag no longer holds was not honoured: forget it.
-        if (f && remembered && f.racketId !== remembered) writeMapRacket(null);
+        setFits(a.fits);
+        setAsk(a.ask);
+        // A pick the bag no longer holds was not honoured: let it go.
+        if (picked && a.fits?.racketId !== picked) mapRacket.current = null;
       })
-      .catch(() => { if (!cancelled) setFits(null); });
+      .catch(() => { if (!cancelled) { setFits(null); setAsk(null); } });
     return () => { cancelled = true; };
-  }, [fitIds, readFits]);
+  }, [fitIds, readFits, fitTick]);
+  // Back on the tab after a while away: the racket in play may have changed
+  // on Stats, and the map is about the racket in play. A pick made under
+  // "Change" was for the last visit. What is on screen stays while it reads.
+  useTabReturn(() => {
+    mapRacket.current = null;
+    setFitTick((n) => n + 1);
+  });
 
-  /** Match the map to another of the member's rackets. Applied and remembered
-   *  only once that racket's answer is in; a failure says so in the sheet and
-   *  leaves the map as it was. */
+  /** Match the map to another of the member's rackets, for this visit.
+   *  Applied only once that racket's answer is in; a failure says so in the
+   *  sheet and leaves the map as it was. */
   function chooseRacket(id: string) {
     if (racketPending) return;
     setRacketPending(id);
     setRacketFailed(false);
     readFits(id)
-      .then((f) => {
+      .then(({ fits: f }) => {
         if (!f || f.racketId !== id) { setRacketFailed(true); return; }
         setFits(f);
-        writeMapRacket(id);
+        // Back on the racket in play is no pick at all.
+        mapRacket.current = f.rackets.find((r) => r.id === id)?.inPlay ? null : id;
         setRacketOpen(false);
       })
       .catch(() => setRacketFailed(true))
@@ -498,6 +532,38 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
         </button>
       )}
     </div>
+  ) : showMap && ask && status !== 'failed' ? (
+    // Nothing to glow for yet, and the strip says what would change that
+    // (Grant, 2026-11-19: "the strip should ask for me what am I using then
+    // it can make a recommendation"). The same strip, the same place.
+    <div data-testid="map-fit-strip" className="bpm-fit-strip">
+      <span className="material-icons icon-md" aria-hidden="true" style={{ color: 'var(--accent)' }}>sports_tennis</span>
+      <span className="fs-sm" style={{ flex: 1, minWidth: 0, color: 'var(--text-secondary)' }}>
+        <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+          {ask.kind === 'racket' ? t('askRacket') : t('forYourRacket', { racket: ask.racket })}
+        </span>
+        {' · '}
+        {ask.kind === 'racket' ? t('askRacketWhy') : t('askCheckIn')}
+      </span>
+      {ask.kind === 'racket' ? (
+        // Without a name to key the write by, there is nothing to add to.
+        activeName.name && (
+          <button
+            type="button"
+            className="bpm-fit-strip-change fs-sm tap-44"
+            aria-haspopup="dialog"
+            onClick={() => { setAskMounted(true); setAskOpen(true); }}
+          >
+            {t('askRacketAction')}
+          </button>
+        )
+      ) : (
+        // The check-in lives on Stats; the tab switch reloads nothing.
+        <button type="button" className="bpm-fit-strip-change fs-sm tap-44" onClick={() => { routeInApp(`${BASE}/?tab=skills`); }}>
+          {t('askCheckInAction')}
+        </button>
+      )}
+    </div>
   ) : null;
 
   return (
@@ -658,6 +724,19 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
         failed={racketFailed}
         onPick={chooseRacket}
       />
+
+      {askMounted && activeName.name && (
+        <MapRacketAskSheet
+          open={askOpen}
+          onClose={() => setAskOpen(false)}
+          name={activeName.name}
+          onAdded={() => {
+            // In the bag and in play: read the match for it.
+            setAskOpen(false);
+            setFitTick((n) => n + 1);
+          }}
+        />
+      )}
 
       <StringDetailSheet
         fitRacket={fits?.racketId ?? null}

@@ -8,10 +8,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
-## The strings map: change which racket it is matched to (2026-11-18)
+## The strings map: your racket, and "what do you play with?" (2026-11-19)
 
-- **"Change" on the map's "For your Astrox 88D Pro" strip** (Grant, on the canvas: "this should allow user change rackets"). A member with more than one racket in their equipment taps it, picks another, and the glowing dots, the list and each string's "How it suits you" follow that racket. A member with one racket sees the strip as before.
-- It changes the map only. The racket you play with, its string and your racket recommendation stay as they are, and the pick is remembered on that phone. A racket typed in by hand is not offered: there is nothing to match a string against.
+- **The map always opens on the racket you play with**, and the strings that suit it glow (Grant: "My main is default selected on the stringing page").
+- **"Change" on the "For your Astrox 88D Pro" strip** (Grant, on the canvas: "this should allow user change rackets"). A member with more than one racket in their equipment taps it, picks another, and the glowing dots, the list and each string's "How it suits you" follow that racket for that visit. It changes the map only: the racket you play with and its string stay as they are, and the map is back on it next time.
+- **No racket yet? The strip asks "What racket do you play with?"** (Grant: "the strip should ask for me what am I using then it can make a recommendation"). "Add racket" opens a search of the rackets we know; the one you tap goes into your equipment as the racket you play with, and the map glows for it. If your skills are not rated yet, the strip says so and points at Stats.
+- A racket typed in by hand is not offered or asked about: there is nothing to match a string against.
 
 ## Loading frames the size of what they stand in for (2026-11-18)
 
