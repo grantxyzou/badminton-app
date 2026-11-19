@@ -12,6 +12,11 @@ import {
   clusterPoints,
   ringPositions,
   CLUSTER_PX,
+  fitPlotHeight,
+  ringRadiusFor,
+  MAP_PLOT_H,
+  MAP_PLOT_MIN_H,
+  RING_RADIUS,
   type Rect,
 } from '../lib/stringMap';
 
@@ -166,5 +171,56 @@ describe('clusters and the zoom ring (docs/plans/stringing-canvas-redesign.md)',
     expect(out[0]).toBeNull();
     expect(out[1]).not.toBeNull();
     expect(out[1]!.x + out[1]!.w).toBeLessThanOrEqual(160);
+  });
+});
+
+/* Grant, 2026-11-19: "iPhone pro max displays the current height fine, but on
+   iPhone pro or smaller androids it's cutting off and require scrolling. I
+   want to avoid that". The figures are the running app's, measured with each
+   phone's safe areas (docs/plans/map-racket-choice.md). */
+describe('the plot fits the screen it is on', () => {
+  // With the plot at its designed 280: the card and strip end 689px down the
+  // page plus the top safe area; the page adds 128px under them; the tab bar
+  // is 91px plus the home indicator's 34.
+  const at280 = (viewport: number, topInset: number, bottomInset: number, peek = 52) => ({
+    plotNow: MAP_PLOT_H, contentEnd: 689 + topInset, viewport, tail: 128, railTop: viewport - 91 - bottomInset, peek,
+  });
+
+  it('leaves an iPhone Pro Max exactly as designed', () => {
+    expect(fitPlotHeight(at280(932, 59, 34))).toBe(280);
+  });
+
+  it('shortens the plot on an iPhone Pro, an iPhone 15 and a small Android, by what would have scrolled', () => {
+    expect(fitPlotHeight(at280(852, 59, 34))).toBe(204);
+    expect(fitPlotHeight(at280(844, 47, 34))).toBe(208);
+    // 360px wide: the peek's line wraps, so it is 71px tall at rest.
+    expect(fitPlotHeight(at280(780, 0, 0, 71))).toBe(172);
+  });
+
+  it('gives the same answer whatever height the plot is measured at', () => {
+    // The plot gives a pixel for a pixel, so it settles in one pass and a
+    // re-measure after it has shrunk changes nothing.
+    const pro = at280(852, 59, 34);
+    expect(fitPlotHeight({ ...pro, plotNow: 204, contentEnd: pro.contentEnd - 76 })).toBe(204);
+    expect(fitPlotHeight({ ...pro, plotNow: 140, contentEnd: pro.contentEnd - 140 })).toBe(204);
+  });
+
+  it('never grows past the designed height, and never shrinks past the floor', () => {
+    expect(fitPlotHeight(at280(1200, 59, 34))).toBe(MAP_PLOT_H);
+    // An iPhone SE needs less than the floor: it scrolls, as it did before.
+    expect(fitPlotHeight(at280(667, 20, 0, 71))).toBe(MAP_PLOT_MIN_H);
+  });
+
+  it('keeps the strip clear of the peek when the tab bar is taller than the page’s own padding', () => {
+    // A tab bar 160px tall: the page padding (128) no longer clears it.
+    expect(fitPlotHeight({ plotNow: 280, contentEnd: 700, viewport: 900, tail: 128, railTop: 740, peek: 52 })).toBe(268);
+  });
+
+  it('draws the zoom ring smaller under a short plot, and as designed where it fits', () => {
+    expect(ringRadiusFor(MAP_PLOT_H)).toBe(RING_RADIUS);
+    expect(ringRadiusFor(204)).toBe(RING_RADIUS);
+    expect(ringRadiusFor(MAP_PLOT_MIN_H)).toBe(38);
+    // The ring and its chrome fit inside the shortest plot.
+    expect(ringRadiusFor(MAP_PLOT_MIN_H) * 2 + 64).toBeLessThanOrEqual(MAP_PLOT_MIN_H);
   });
 });

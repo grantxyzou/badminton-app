@@ -123,4 +123,122 @@ describe('GET /api/stringing/fit', () => {
     expect((await ask2('ids=../etc')).status).toBe(400);
     expect((await ask2(`ids=${Array.from({ length: 41 }, (_, i) => `s-${i}`).join(',')}`)).status).toBe(400);
   });
+
+  /* "Change" on the map's strip (docs/plans/map-racket-choice.md): the
+     member picks which of THEIR OWN rackets the answer is for. */
+  describe('the racket choice', () => {
+    // A second frame the test string cannot go on at all (its tension window
+    // sits above the string's), so the verdict visibly changes with the pick.
+    const FRAME_2 = { ...FRAME, id: 'frame-tight', model: 'Nanoflare Test', attributes: { ...FRAME.attributes, tensionMinLbs: 30, tensionMaxLbs: 34 } };
+    const lin = { cookie: `member_session=${memberCookieValue('Lin', 'm-lin')}` };
+    const get = (q: string) => GET(makeRequest('GET', `http://localhost:3000/api/stringing/fit?${q}`, undefined, lin));
+
+    async function seedBag(items: Record<string, unknown>[], activeRacketId = 'g1') {
+      await getContainer('equipmentCatalog').items.upsert(FRAME_2);
+      await getContainer('playerGear').items.upsert({
+        id: 'gear-m-lin', memberId: 'm-lin', items, activeRacketId, playFormat: 'doubles', updatedAt: new Date().toISOString(),
+      });
+    }
+    const TWO = [
+      { id: 'g1', catalogId: 'frame-hh', category: 'racket', label: 'Astrox Test' },
+      { id: 'g2', catalogId: 'frame-tight', category: 'racket', label: 'Nanoflare Test' },
+    ];
+
+    it('with no choice answers for the racket in play, and lists the rackets it can pair', async () => {
+      seedLin();
+      await seedBag([...TWO, { id: 'g3', catalogId: null, category: 'racket', label: 'Typed in' }]);
+      const body = await (await get('ids=string-test')).json();
+      expect(body.racket).toBe('Yonex Astrox Test');
+      expect(body.racketId).toBe('g1');
+      expect(body.rackets).toEqual([
+        { id: 'g1', name: 'Yonex Astrox Test', inPlay: true },
+        { id: 'g2', name: 'Yonex Nanoflare Test', inPlay: false },
+      ]);
+      expect(body.fits['string-test']).not.toBe('not_for_frame');
+    });
+
+    it('answers for the chosen racket, and the verdicts change with it', async () => {
+      seedLin();
+      await seedBag(TWO);
+      const body = await (await get('ids=string-test&racket=g2')).json();
+      expect(body.racket).toBe('Yonex Nanoflare Test');
+      expect(body.racketId).toBe('g2');
+      expect(body.fits['string-test']).toBe('not_for_frame');
+      // The racket in play is still marked as such: the choice moves the map only.
+      expect(body.rackets.find((r: { id: string }) => r.id === 'g1').inPlay).toBe(true);
+      // One string's page answers for the same racket.
+      const one = await (await get('id=string-test&racket=g2')).json();
+      expect(one.fit.racket).toBe('Yonex Nanoflare Test');
+      expect(one.fit.verdict).toBe('not_for_frame');
+    });
+
+    it('never pairs a frame that is not in the caller’s own bag', async () => {
+      seedLin();
+      await seedBag([TWO[0]]);
+      // Viktor owns the tight frame; Lin does not.
+      await getContainer('playerGear').items.upsert({
+        id: 'gear-m-viktor', memberId: 'm-viktor', activeRacketId: 'v1', updatedAt: new Date().toISOString(),
+        items: [{ id: 'v1', catalogId: 'frame-tight', category: 'racket', label: 'Nanoflare Test' }],
+      });
+      // Another member's bag row, a catalog id, and nonsense: each answers
+      // for Lin's racket in play, exactly as with no parameter.
+      for (const racket of ['v1', 'frame-tight', '../etc', 'x'.repeat(500)]) {
+        const body = await (await get(`ids=string-test&racket=${encodeURIComponent(racket)}`)).json();
+        expect(body.racket).toBe('Yonex Astrox Test');
+        expect(body.racketId).toBe('g1');
+        expect(body.rackets).toEqual([{ id: 'g1', name: 'Yonex Astrox Test', inPlay: true }]);
+        const one = await (await get(`id=string-test&racket=${encodeURIComponent(racket)}`)).json();
+        expect(one.fit.racket).toBe('Yonex Astrox Test');
+      }
+    });
+
+    it('does not offer a typed-in or retired racket, or one the catalog has lost', async () => {
+      seedLin();
+      await seedBag([
+        TWO[0],
+        { id: 'g3', catalogId: null, category: 'racket', label: 'Typed in' },
+        { id: 'g4', catalogId: 'frame-tight', category: 'racket', label: 'Nanoflare Test', retiredAt: '2026-01-01T00:00:00.000Z' },
+        { id: 'g5', catalogId: 'frame-gone', category: 'racket', label: 'Gone' },
+      ]);
+      for (const racket of ['g3', 'g4', 'g5']) {
+        const body = await (await get(`ids=string-test&racket=${racket}`)).json();
+        expect(body.racketId).toBe('g1');
+        expect(body.rackets.map((r: { id: string }) => r.id)).toEqual(['g1']);
+      }
+    });
+
+    /* Grant, 2026-11-19: "If there's no selection ie I didn't add my racket
+       yet, the strip should ask for me what am I using". */
+    it('asks for a racket when the bag holds none, with or without a check-in', async () => {
+      seedLin();
+      expect(await (await get('ids=string-test')).json()).toEqual({ fits: null, reason: 'no_frame', ask: 'racket' });
+      await seedBag([{ id: 's1', catalogId: 'string-test', category: 'string', label: 'BG Test' }]);
+      expect(await (await get('ids=string-test')).json()).toEqual({ fits: null, reason: 'no_frame', ask: 'racket' });
+      // A racket first: with none in the bag, skills alone pair nothing.
+      seedLin(false);
+      expect(await (await get('ids=string-test')).json()).toEqual({ fits: null, reason: 'needs_check_in', ask: 'racket' });
+      // One string's page asks for nothing: it only says what it knows.
+      expect(await (await get('id=string-test')).json()).toEqual({ fit: null, reason: 'needs_check_in' });
+    });
+
+    it('asks for a check-in, naming the racket in play, when the skills are what is missing', async () => {
+      seedLin(false);
+      await seedBag(TWO, 'g2');
+      expect(await (await get('ids=string-test')).json()).toEqual({
+        fits: null, reason: 'needs_check_in', ask: 'check_in', racket: 'Yonex Nanoflare Test',
+      });
+    });
+
+    it('asks for nothing when the racket in play is typed in: the member already said', async () => {
+      seedLin(false);
+      await seedBag([{ id: 'g1', catalogId: null, category: 'racket', label: 'Typed in' }]);
+      expect(await (await get('ids=string-test')).json()).toEqual({ fits: null, reason: 'needs_check_in' });
+    });
+
+    it('still says nothing when the racket in play is typed in and nothing was chosen', async () => {
+      seedLin();
+      await seedBag([{ id: 'g1', catalogId: null, category: 'racket', label: 'Typed in' }, TWO[1]]);
+      expect(await (await get('ids=string-test')).json()).toEqual({ fits: null, reason: 'no_frame' });
+    });
+  });
 });

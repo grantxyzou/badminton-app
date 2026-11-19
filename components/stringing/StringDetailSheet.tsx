@@ -67,6 +67,7 @@ export default function StringDetailSheet({
   asPage = false,
   colours = [],
   customColours = [],
+  fitRacket = null,
 }: {
   item: CatalogItem | null;
   /** The shelf's own name for it, which is what a request sends. */
@@ -88,6 +89,10 @@ export default function StringDetailSheet({
   /** The stringer's reel colours for this string, and the club's own names. */
   colours?: ReelColourId[];
   customColours?: readonly CustomColour[];
+  /** The racket the strings map is matched to (a bag item id), so this page
+   *  and the map's glow answer for the same racket. Absent: the racket in
+   *  play (docs/plans/map-racket-choice.md). */
+  fitRacket?: string | null;
 }) {
   const t = useTranslations('home.stringing.offer');
   const a = item?.attributes ?? {};
@@ -122,7 +127,7 @@ export default function StringDetailSheet({
     if ((!open && !asPage) || !itemId) return;
     let cancelled = false;
     setFit({ status: 'loading' });
-    fetch(`${BASE}/api/stringing/fit?id=${encodeURIComponent(itemId)}`, { cache: 'no-store' })
+    fetch(`${BASE}/api/stringing/fit?id=${encodeURIComponent(itemId)}${fitRacket ? `&racket=${encodeURIComponent(fitRacket)}` : ''}`, { cache: 'no-store' })
       // Refused (an expired session) is not a failure to retry: the section
       // simply has nothing to say about a member it cannot see.
       .then((r) => (isRefused(r) ? { fit: null } : r.ok ? r.json() : Promise.reject(new Error(`fit ${r.status}`))))
@@ -132,7 +137,7 @@ export default function StringDetailSheet({
       })
       .catch(() => { if (!cancelled) setFit({ status: 'failed' }); });
     return () => { cancelled = true; };
-  }, [open, asPage, itemId, fitAttempt]);
+  }, [open, asPage, itemId, fitAttempt, fitRacket]);
 
   const title = item ? `${item.brand} ${item.model}` : '';
   const canRestring = !!(item && onRestring && label && band !== 'out');

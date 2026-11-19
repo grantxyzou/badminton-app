@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import CardHeader from '@/components/primitives/CardHeader';
 import ErrorState from '@/components/primitives/ErrorState';
@@ -44,9 +44,14 @@ import StockBadge from './StockBadge';
 import { ColourDots } from './StringColours';
 import StringPeek from './StringPeek';
 import StringListSheet, { type ListSort } from './StringListSheet';
-import { useTabActive } from '@/lib/tabActivity';
+import MapRacketSheet from './MapRacketSheet';
+import MapRacketAskSheet from './MapRacketAskSheet';
+import { useMapPlotHeight } from './useMapPlotHeight';
+import { useTabActive, useTabReturn } from '@/lib/tabActivity';
+import { useActiveName } from '@/lib/useActiveName';
+import { routeInApp } from '@/lib/inAppNavigate';
 import { isRefused } from '@/lib/apiFetch';
-import type { FitVerdict } from '@/lib/types';
+import type { FitRacketChoice, FitVerdict } from '@/lib/types';
 import { sharedFetch } from '@/lib/sharedRead';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -62,6 +67,37 @@ function readAxis(): MapAxis {
   } catch {
     return 'power';
   }
+}
+
+/** The map's racket match as the card holds it. */
+interface MapFits {
+  /** "Yonex Astrox 88D Pro": the racket the verdicts are for. */
+  racket: string;
+  /** Its id in the member's bag; null from a server older than the choice. */
+  racketId: string | null;
+  /** The member's rackets the map can be matched to. */
+  rackets: FitRacketChoice[];
+  verdicts: Record<string, FitVerdict>;
+}
+
+/** What the strip asks the member for when the map has no match to show:
+ *  their racket (none in their equipment yet), or a skill check-in (the
+ *  racket is known, the skills are not). */
+type MapAsk = { kind: 'racket' } | { kind: 'check_in'; racket: string };
+
+function parseFits(d: unknown): { fits: MapFits | null; ask: MapAsk | null } {
+  const o = d as { racket?: unknown; racketId?: unknown; rackets?: unknown; fits?: unknown; ask?: unknown } | null;
+  if (!o) return { fits: null, ask: null };
+  if (typeof o.racket !== 'string' || !o.fits || typeof o.fits !== 'object') {
+    const ask: MapAsk | null = o.ask === 'racket' ? { kind: 'racket' }
+      : o.ask === 'check_in' && typeof o.racket === 'string' ? { kind: 'check_in', racket: o.racket }
+        : null;
+    return { fits: null, ask };
+  }
+  const rackets = Array.isArray(o.rackets)
+    ? o.rackets.filter((r): r is FitRacketChoice => !!r && typeof r.id === 'string' && typeof r.name === 'string').map((r) => ({ id: r.id, name: r.name, inPlay: r.inPlay === true }))
+    : [];
+  return { fits: { racket: o.racket, racketId: typeof o.racketId === 'string' ? o.racketId : null, rackets, verdicts: o.fits as Record<string, FitVerdict> }, ask: null };
 }
 
 /**
@@ -128,8 +164,29 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
   /** Which strings suit the member's own racket (`/api/stringing/fit?ids=`),
    *  for the map's glow, the peek and the list. null until it answers or
    *  when it cannot say (no racket, no check-in): then nothing glows. */
-  const [fits, setFits] = useState<{ racket: string; verdicts: Record<string, FitVerdict> } | null>(null);
+  const [fits, setFits] = useState<MapFits | null>(null);
+  /** "Change" on the strip: the sheet, the pick being read, and whether the
+   *  last pick's read failed (docs/plans/map-racket-choice.md). */
+  /** What the strip asks for in place of a match, if anything. */
+  const [ask, setAsk] = useState<MapAsk | null>(null);
+  /** "What racket do you play with?": mounted on its first opening, so the
+   *  register reads no gear doc for a member who never taps the strip. */
+  const [askOpen, setAskOpen] = useState(false);
+  const [askMounted, setAskMounted] = useState(false);
+  const activeName = useActiveName();
+  /** The racket picked under "Change", for this visit to the tab only: the
+   *  map opens on the racket in play (Grant, 2026-11-19: "My main is default
+   *  selected on the stringing page"). */
+  const mapRacket = useRef<string | null>(null);
+  /** Bumped to read the match again: back on the tab, or a racket added. */
+  const [fitTick, setFitTick] = useState(0);
+  const [racketOpen, setRacketOpen] = useState(false);
+  const [racketPending, setRacketPending] = useState<string | null>(null);
+  const [racketFailed, setRacketFailed] = useState(false);
   const [peekH, setPeekH] = useState(0);
+  /** The peek's height with nothing picked: what the map's height budgets
+   *  for, so a tap on a dot (a taller peek) never resizes the map. */
+  const [peekRest, setPeekRest] = useState(0);
   const onScreen = useTabActive();
   // null = not read yet; 'failed' leaves the rows out rather than guess "Ask".
   const [other, setOther] = useState<OtherPrices | 'failed' | null>(null);
@@ -181,21 +238,71 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
   // The racket match for every string the catalog knows, once. A refusal or
   // a failure leaves the map unmarked: the glow is a bonus, never a claim.
   const fitIds = useMemo(() => entries.map((e) => e.item?.id).filter((x): x is string => !!x).slice(0, 40).join(','), [entries]);
+  // With a racket: the one the member picked under "Change", a row in their
+  // own bag. The server answers for the racket in play when the bag no longer
+  // holds it, and names the racket it answered for.
+  const readFits = useCallback(
+    (racket: string | null) =>
+      fetch(`${BASE}/api/stringing/fit?ids=${encodeURIComponent(fitIds)}${racket ? `&racket=${encodeURIComponent(racket)}` : ''}`, { cache: 'no-store' })
+        .then((r) => (isRefused(r) || !r.ok ? null : r.json()))
+        .then(parseFits),
+    [fitIds],
+  );
   useEffect(() => {
     if (!fitIds) return;
     let cancelled = false;
-    fetch(`${BASE}/api/stringing/fit?ids=${encodeURIComponent(fitIds)}`, { cache: 'no-store' })
-      .then((r) => (isRefused(r) || !r.ok ? null : r.json()))
-      .then((d) => {
+    const picked = mapRacket.current;
+    readFits(picked)
+      .then((a) => {
         if (cancelled) return;
-        setFits(d && typeof d.racket === 'string' && d.fits && typeof d.fits === 'object' ? { racket: d.racket, verdicts: d.fits } : null);
+        setFits(a.fits);
+        setAsk(a.ask);
+        // A pick the bag no longer holds was not honoured: let it go.
+        if (picked && a.fits?.racketId !== picked) mapRacket.current = null;
       })
-      .catch(() => { if (!cancelled) setFits(null); });
+      .catch(() => { if (!cancelled) { setFits(null); setAsk(null); } });
     return () => { cancelled = true; };
-  }, [fitIds]);
+  }, [fitIds, readFits, fitTick]);
+  // Back on the tab after a while away: the racket in play may have changed
+  // on Stats, and the map is about the racket in play. A pick made under
+  // "Change" was for the last visit. What is on screen stays while it reads.
+  useTabReturn(() => {
+    mapRacket.current = null;
+    setFitTick((n) => n + 1);
+  });
+
+  /** Match the map to another of the member's rackets, for this visit.
+   *  Applied only once that racket's answer is in; a failure says so in the
+   *  sheet and leaves the map as it was. */
+  function chooseRacket(id: string) {
+    if (racketPending) return;
+    setRacketPending(id);
+    setRacketFailed(false);
+    readFits(id)
+      .then(({ fits: f }) => {
+        if (!f || f.racketId !== id) { setRacketFailed(true); return; }
+        setFits(f);
+        // Back on the racket in play is no pick at all.
+        mapRacket.current = f.rackets.find((r) => r.id === id)?.inPlay ? null : id;
+        setRacketOpen(false);
+      })
+      .catch(() => setRacketFailed(true))
+      .finally(() => setRacketPending(null));
+  }
   const matches = useMemo(
     () => new Set(Object.entries(fits?.verdicts ?? {}).filter(([, v]) => v === 'good_match').map(([k]) => k)),
     [fits],
+  );
+
+  // The map's height is what this screen has room for, so the card, the
+  // strip and the peek fit without scrolling on a shorter phone.
+  const cardRef = useRef<HTMLDivElement>(null);
+  const stripRef = useRef<HTMLDivElement>(null);
+  const plotH = useMapPlotHeight(
+    cardRef,
+    stripRef,
+    peekRest,
+    `${status}|${catalog.loaded}|${other !== null}|${entries.length}|${onScreen}|${axis}|${learnOpen}|${fits ? fits.racket : ask ? ask.kind : ''}`,
   );
 
   // Holds its place until the list, the catalog and the prices have answered,
@@ -417,21 +524,67 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
   // AI personalized analysis. In fact it should be top level visible"; moved
   // out of the card on the canvas, 2026-11-16, so the map has the card): the
   // strings that suit it glow on the map.
+  // "Change" (Grant, on the canvas, 2026-11-18: "this should allow user
+  // change rackets") only for a member with another racket to change to.
+  const canChangeRacket = (fits?.rackets.length ?? 0) > 1;
   const fitBanner = showMap && fits && status !== 'failed' ? (
-    <div data-testid="map-fit-strip" className="bpm-fit-strip">
+    <div ref={stripRef} data-testid="map-fit-strip" className="bpm-fit-strip">
       <span className="material-icons icon-md" aria-hidden="true" style={{ color: 'var(--accent)' }}>sports_tennis</span>
       <span className="fs-sm" style={{ flex: 1, minWidth: 0, color: 'var(--text-secondary)' }}>
         <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{t('forYourRacket', { racket: fits.racket })}</span>
         {' · '}
         {matches.size > 0 ? t('forYourRacketGlow') : t('forYourRacketNone')}
       </span>
+      {canChangeRacket && (
+        <button
+          type="button"
+          className="bpm-fit-strip-change fs-sm tap-44"
+          aria-label={t('changeRacketLabel', { racket: fits.racket })}
+          aria-haspopup="dialog"
+          onClick={() => { setRacketFailed(false); setRacketOpen(true); }}
+        >
+          {t('changeRacket')}
+        </button>
+      )}
+    </div>
+  ) : showMap && ask && status !== 'failed' ? (
+    // Nothing to glow for yet, and the strip says what would change that
+    // (Grant, 2026-11-19: "the strip should ask for me what am I using then
+    // it can make a recommendation"). The same strip, the same place.
+    <div ref={stripRef} data-testid="map-fit-strip" className="bpm-fit-strip">
+      <span className="material-icons icon-md" aria-hidden="true" style={{ color: 'var(--accent)' }}>sports_tennis</span>
+      <span className="fs-sm" style={{ flex: 1, minWidth: 0, color: 'var(--text-secondary)' }}>
+        <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+          {ask.kind === 'racket' ? t('askRacket') : t('forYourRacket', { racket: ask.racket })}
+        </span>
+        {' · '}
+        {ask.kind === 'racket' ? t('askRacketWhy') : t('askCheckIn')}
+      </span>
+      {ask.kind === 'racket' ? (
+        // Without a name to key the write by, there is nothing to add to.
+        activeName.name && (
+          <button
+            type="button"
+            className="bpm-fit-strip-change fs-sm tap-44"
+            aria-haspopup="dialog"
+            onClick={() => { setAskMounted(true); setAskOpen(true); }}
+          >
+            {t('askRacketAction')}
+          </button>
+        )
+      ) : (
+        // The check-in lives on Stats; the tab switch reloads nothing.
+        <button type="button" className="bpm-fit-strip-change fs-sm tap-44" onClick={() => { routeInApp(`${BASE}/?tab=skills`); }}>
+          {t('askCheckInAction')}
+        </button>
+      )}
     </div>
   ) : null;
 
   return (
     // Room under the card and its banner for the peek, so neither is under it.
     <div className="flex flex-col gap-3" style={showPeek ? { marginBottom: peekH } : undefined}>
-    <div className="glass-card p-5 space-y-3">
+    <div ref={cardRef} className="glass-card p-5 space-y-3">
       {/* The card holds only the map and its controls (the Stringing canvas,
           idea B, 2026-11-12; Grant: "What if the map card only contains the
           map and the control?"). The list is the peek's swipe-up now, so the
@@ -456,7 +609,7 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
       />
       {/* The lesson: four short paragraphs a member reads once. */}
       <Collapse open={learnOpen} spaceAbove="var(--space-3)">
-        <div className="flex flex-col gap-3">
+        <div data-map-lesson="" className="flex flex-col gap-3">
           {(['learnGauge', 'learnType', 'learnFeel', 'learnTension'] as const).map((k) => (
             <p key={k} className="fs-md" style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 'var(--lh-normal)' }}>{t(k)}</p>
           ))}
@@ -503,6 +656,9 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
             yLabel={t(`axisUp_${shownAxis}`)}
             mapLabel={t(`mapLabel_${shownAxis}`)}
             axisName={t(`axisName_${shownAxis}`)}
+            // The designed height on one screen with room; a foldable's left
+            // page has no peek to clear and keeps it.
+            height={aside ? undefined : plotH}
           />
           {notOnMap.length > 0 && (
             <button type="button" className="link-quiet link-quiet--flush fs-sm" onClick={() => setListOpen(true)}>
@@ -522,7 +678,10 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
         <StringPeek
           onOpen={() => (selected ? setOpen(selected.label) : setListOpen(true))}
           openLabel={selected ? t('peekOpenString', { name: name(selected) }) : t('peekOpenList')}
-          onHeight={setPeekH}
+          onHeight={(px) => {
+            setPeekH(px);
+            if (!selected) setPeekRest(px);
+          }}
         >
           {selected ? (
             <span aria-live="polite" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
@@ -577,7 +736,31 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
         footer={otherPrices}
       />
 
+      <MapRacketSheet
+        open={racketOpen && canChangeRacket}
+        onClose={() => setRacketOpen(false)}
+        rackets={fits?.rackets ?? []}
+        current={fits?.racketId ?? null}
+        pending={racketPending}
+        failed={racketFailed}
+        onPick={chooseRacket}
+      />
+
+      {askMounted && activeName.name && (
+        <MapRacketAskSheet
+          open={askOpen}
+          onClose={() => setAskOpen(false)}
+          name={activeName.name}
+          onAdded={() => {
+            // In the bag and in play: read the match for it.
+            setAskOpen(false);
+            setFitTick((n) => n + 1);
+          }}
+        />
+      )}
+
       <StringDetailSheet
+        fitRacket={fits?.racketId ?? null}
         item={openEntry?.item ?? null}
         label={openEntry?.label ?? null}
         onRestring={onRestring ? (label) => {
@@ -601,6 +784,7 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
         <StringingAside id={asideEntry.label}>
           <StringDetailSheet
             asPage
+            fitRacket={fits?.racketId ?? null}
             item={asideEntry.item}
             label={asideEntry.label}
             onRestring={onRestring}
