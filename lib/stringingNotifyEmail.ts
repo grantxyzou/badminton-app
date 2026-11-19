@@ -22,6 +22,10 @@
 import type { PlayerNotice } from './stringingNotify';
 import { gmailTransport } from './mailTransport';
 import { APP_NAME } from './brand';
+import { outboundOriginOrNull } from './appOrigin';
+import { emailHtml, heading, para, racketCard, signoff } from './emailLayout';
+import { racketPictureFor } from './emailRacket';
+import { formatReadyBy } from './stringingDue';
 
 export interface MailResult {
   sent: boolean;
@@ -32,7 +36,7 @@ export interface MailResult {
  * exporting that one: this path must never be able to send an auth email, and
  * sharing a transport is how a subject line ends up on the wrong template.
  */
-async function send(to: string, subject: string, text: string): Promise<MailResult> {
+async function send(to: string, subject: string, text: string, html: string): Promise<MailResult> {
   const user = process.env.GMAIL_USER;
   const pass = process.env.GMAIL_APP_PASSWORD;
   // No SMTP configured (local dev, tests) is NOT a failure — the whole feature
@@ -43,42 +47,55 @@ async function send(to: string, subject: string, text: string): Promise<MailResu
   // The SENDER is the product: one mailbox serves every club, and the From
   // name is what a mail client shows in the inbox list. The sign-off inside
   // the body is the CLUB — see `composeEmail`.
-  await transport.sendMail({ from: `${APP_NAME} <${user}>`, to, subject, text });
+  await transport.sendMail({ from: `${APP_NAME} <${user}>`, to, subject, text, html });
   return { sent: true };
 }
 
-/** Subject + body per stage. Only `being_strung` and `ready_for_you` reach
- *  here — `shouldNotify` filters the rest, because telling someone about a
- *  racket they are holding is how an app teaches people to ignore it. */
-export function composeEmail(notice: PlayerNotice, playerName: string, clubName: string = APP_NAME): { subject: string; text: string } | null {
+/** Subject, text and HTML per stage. Only `being_strung` and `ready_for_you`
+ *  reach here — `shouldNotify` filters the rest, because telling someone about
+ *  a racket they are holding is how an app teaches people to ignore it.
+ *  `pictures` says where the logo and the racket render load from (none in a
+ *  test). */
+export function composeEmail(
+  notice: PlayerNotice,
+  playerName: string,
+  clubName: string = APP_NAME,
+  pictures: { origin: string | null; racket: string | null } = { origin: null, racket: null },
+): { subject: string; text: string; html: string } | null {
   const racket = `${notice.racketLabel} (${notice.jobNo})`;
   const price = notice.quote ? `\nQuote: ${notice.quote}` : '';
-
-  if (notice.key === 'ready_for_you') {
-    const when = notice.readyBy ? `\nReady since: ${notice.readyBy}` : '';
-    return {
-      subject: `Your racket is ready — ${notice.jobNo}`,
-      text:
-        `Hi ${playerName},\n\n` +
-        `${racket} is strung and ready to pick up.${when}${price}\n\n` +
-        `See you on the court.\n— ${clubName}`,
-    };
+  const ready = notice.key === 'ready_for_you';
+  if (!ready && notice.key !== 'being_strung') {
+    // A stage that does not justify interrupting anyone. Returning null rather
+    // than throwing keeps the caller's shape simple: no copy means no send.
+    return null;
   }
 
-  if (notice.key === 'being_strung') {
-    const when = notice.readyBy ? `\nExpected ready: ${notice.readyBy}` : '';
-    return {
-      subject: `Your racket is on the bench — ${notice.jobNo}`,
-      text:
-        `Hi ${playerName},\n\n` +
-        `${racket} is being strung now.${when}${price}\n\n` +
-        `We'll let you know when it's ready.\n— ${clubName}`,
-    };
-  }
+  const when = notice.readyBy ? `\n${ready ? 'Ready since' : 'Expected ready'}: ${notice.readyBy}` : '';
+  const subject = ready ? `Your racket is ready — ${notice.jobNo}` : `Your racket is on the bench — ${notice.jobNo}`;
+  const lead = ready ? `${racket} is strung and ready to pick up.` : `${racket} is being strung now.`;
+  const close = ready ? 'See you on the court.' : "We'll let you know when it's ready.";
+  const text = `Hi ${playerName},\n\n${lead}${when}${price}\n\n${close}\n— ${clubName}`;
 
-  // A stage that does not justify interrupting anyone. Returning null rather
-  // than throwing keeps the caller's shape simple: no copy means no send.
-  return null;
+  const html = emailHtml({
+    origin: pictures.origin,
+    tag: 'Stringing',
+    preheader: ready ? `Your ${notice.racketLabel} is strung and ready to pick up.` : `Your ${notice.racketLabel} is being strung now.`,
+    body:
+      heading(ready ? 'Your racket is ready' : 'Your racket is on the bench') +
+      para(`Hi ${playerName},`) +
+      para(ready ? `Your ${notice.racketLabel} is strung and ready to pick up.` : `Your ${notice.racketLabel} is being strung now. We'll let you know when it's ready.`) +
+      racketCard({
+        job: { racketLabel: notice.racketLabel, ...notice.spec },
+        pictureUrl: pictures.racket,
+        refs: { right: { label: 'Job', value: notice.jobNo } },
+        facts: notice.readyBy ? [{ label: ready ? 'Ready since' : 'Expected ready', value: formatReadyBy(notice.readyBy, 'en-US') ?? notice.readyBy }] : [],
+        cost: notice.quote ? { label: 'Quote', value: notice.quote } : { label: 'Price', value: 'Ask', note: 'Your stringer will price it' },
+      }) +
+      signoff('See you on the court.', clubName),
+    footer: ready ? 'This is the last email about this racket.' : "This email is about one racket. You'll get one more when it's ready.",
+  });
+  return { subject, text, html };
 }
 
 /**
@@ -105,10 +122,11 @@ export async function sendStringingNotice(
   clubName?: string,
 ): Promise<MailResult> {
   if (!to || !notice.channels.includes('email')) return { sent: false };
-  const copy = composeEmail(notice, playerName, clubName ?? APP_NAME);
-  if (!copy) return { sent: false };
   try {
-    return await send(to, copy.subject, copy.text);
+    const origin = outboundOriginOrNull();
+    const copy = composeEmail(notice, playerName, clubName ?? APP_NAME, { origin, racket: await racketPictureFor(notice.racketLabel, origin) });
+    if (!copy) return { sent: false };
+    return await send(to, copy.subject, copy.text, copy.html);
   } catch (err) {
     console.error('stringing notice email failed:', err);
     return { sent: false };

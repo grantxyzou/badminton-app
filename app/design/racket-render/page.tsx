@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { RACKET_LOOKS, DEFAULT_LOOK } from '@/lib/racketLook';
+import { RACKET_LOOKS, DEFAULT_LOOK, UNKNOWN_LOOK } from '@/lib/racketLook';
 
 /**
  * Author-time only: the page `scripts/render-racket-images.mjs` drives to
@@ -57,6 +57,21 @@ export default function RacketRenderPage() {
       cleanup = () => stage.dispose();
       window.__racketIds = Object.keys(RACKET_LOOKS);
       const pose = (id: string) => {
+        if (id === '_unknown') {
+          // A racket we have no data for (typed in by hand): the same model,
+          // all black, matte. Shown in emails, so it never pretends to be a
+          // real colourway.
+          const racket = buildRacket({ ...UNKNOWN_LOOK, liveryId: null }, { pattern: 'plain' });
+          racket.traverse((o) => {
+            const m = (o as { material?: { name?: string; roughness?: number; clearcoat?: number; clearcoatRoughness?: number; metalness?: number } }).material;
+            if (!m || !['frame', 'accent', 'collar'].includes(m.name ?? '')) return;
+            m.roughness = 0.62;
+            m.metalness = 0.05;
+            if ('clearcoat' in m) { m.clearcoat = 0.2; m.clearcoatRoughness = 0.55; }
+          });
+          stage.setObject(racket, { direction: [0.3, 0.06, 1], framing: 1.02 });
+          return racket;
+        }
         const look = id === '_default' ? DEFAULT_LOOK : RACKET_LOOKS[id];
         if (!look) throw new Error(`no look for ${id}`);
         const racket = buildRacket({ ...look, liveryId: id === '_default' ? null : id }, { shape: look.shape, pattern: look.pattern });

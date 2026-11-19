@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '@/components/BottomSheet';
 import {
@@ -15,6 +15,12 @@ import { fmtMoney } from '@/lib/fmt';
 import { APP_NAME } from '@/lib/brand';
 import { invoiceNoOf } from '@/lib/stringingInvoiceView';
 import { isWalkUpJob } from '@/lib/stringing';
+import { jobSides } from '@/lib/stringingSides';
+import { stringTags, swatchHex } from '@/lib/emailLayout';
+import { racketShareSrc } from '@/lib/racketLook';
+import { assetsCrossOrigin } from '@/lib/assetUrl';
+import { racketIdForLabel, racketIdsByTallyKey } from '@/lib/gearSetup';
+import { loadCatalog } from '@/components/stats/useCatalog';
 import type { StringingJob } from '@/lib/types';
 
 type T = ReturnType<typeof useTranslations>;
@@ -33,6 +39,8 @@ export function buildStringingReceipt(
   locale: string,
   /** The INVOICE version (docs/plans/stringing-invoice.md): its number and how to pay. */
   asInvoice = false,
+  /** The racket's render, loaded (null: draw the card without one). */
+  racketImage: CanvasImageSource | null = null,
 ): StringingReceiptInput {
   const dropped = job.history.find((h) => h.status === 'received')?.at ?? job.createdAt;
   const droppedOn = (() => {
@@ -47,13 +55,9 @@ export function buildStringingReceipt(
       return dropped.slice(0, 10);
     }
   })();
-  const rows: StringingReceiptInput['rows'] = [
-    { label: t('walkUp.receipt.racket'), value: job.racketLabel },
-    { label: t('walkUp.receipt.string'), value: job.stringColor ? `${job.stringLabel} · ${job.stringColor}` : job.stringLabel },
-    {
-      label: t('walkUp.receipt.tension'),
-      value: t('walkUp.receipt.tensionValue', { mains: job.tensionMains, crosses: job.tensionCrosses }),
-    },
+  const sides = jobSides(job);
+  const tension = (n: number) => t('walkUp.receipt.sideTension', { n });
+  const facts: StringingReceiptInput['facts'] = [
     ...(job.readyBy
       ? [{ label: t('walkUp.receipt.readyBy'), value: formatReadyBy(job.readyBy, locale) ?? job.readyBy }]
       : []),
@@ -61,10 +65,23 @@ export function buildStringingReceipt(
   ];
   return {
     clubName,
-    title: asInvoice ? t('walkUp.receipt.invoiceHeading', { no: job.invoice?.no ?? invoiceNoOf(job.jobNo) }) : t('walkUp.receipt.heading'),
-    jobNo: job.jobNo,
+    title: asInvoice ? t('walkUp.receipt.invoice') : t('walkUp.receipt.heading'),
+    refs: {
+      ...(asInvoice ? { left: { label: t('walkUp.receipt.invoice'), value: job.invoice?.no ?? invoiceNoOf(job.jobNo) } } : {}),
+      right: { label: t('walkUp.receipt.job'), value: job.jobNo },
+    },
     forLine: t('walkUp.receipt.for', { name: job.memberName }),
-    rows,
+    racket: { label: t('walkUp.receipt.racket'), name: job.racketLabel, image: racketImage },
+    strings: {
+      label: t('walkUp.receipt.strings'),
+      // The same rule as the email's tags (`stringTags`), in the stringer's words.
+      tags: stringTags(job).map((tag) => ({ text: t(`walkUp.receipt.tags.${tag}`), warn: tag === 'customTension' })),
+      sides: [
+        { letter: t('bench.mains'), string: sides.mains.string, colour: swatchHex(sides.mains.colour), tension: tension(sides.mains.tension), custom: sides.customTension },
+        { letter: t('bench.crosses'), string: sides.crosses.string, colour: swatchHex(sides.crosses.colour), tension: tension(sides.crosses.tension), custom: sides.customTension },
+      ],
+    },
+    facts,
     totalLabel: t('walkUp.receipt.total'),
     total: typeof job.priceCents === 'number' ? fmtMoney(job.priceCents / 100) : t('walkUp.receipt.ask'),
     note: job.paidAt
@@ -76,6 +93,35 @@ export function buildStringingReceipt(
         : t('walkUp.receipt.payAtPickup'),
   };
 }
+
+/**
+ * The racket render for the picture, found the bench's and the email's way:
+ * the job's label matched against the catalog, then `racketShareSrc` (its own
+ * render, or the matte black one). `undefined` while that is still loading,
+ * so the picture waits for the right racket rather than drawing the black one
+ * first; `null` when the catalog or the image could not be read, and the
+ * picture goes without.
+ */
+function useRacketImage(racketLabel: string, enabled: boolean): HTMLImageElement | null | undefined {
+  const [image, setImage] = useState<HTMLImageElement | null | undefined>(undefined);
+  useEffect(() => {
+    if (!enabled) return;
+    let live = true;
+    loadCatalog('racket')
+      .then((rackets) => {
+        const img = new Image();
+        // Pictures from the storage container need CORS, or the canvas could not export.
+        if (assetsCrossOrigin()) img.crossOrigin = 'anonymous';
+        img.onload = () => { if (live) setImage(img); };
+        img.onerror = () => { if (live) setImage(null); };
+        img.src = racketShareSrc(racketIdForLabel(racketLabel, racketIdsByTallyKey(rackets)));
+      })
+      .catch(() => { if (live) setImage(null); });
+    return () => { live = false; };
+  }, [racketLabel, enabled]);
+  return image;
+}
+
 
 interface Props {
   open: boolean;
@@ -100,7 +146,11 @@ export default function StringingReceiptSheet({ open, onClose, job, asInvoice = 
   const locale = useLocale();
   const { group } = useCurrentGroup();
   const clubName = group?.name?.trim() || APP_NAME;
-  const input = useMemo(() => buildStringingReceipt(job, clubName, t, locale, asInvoice), [job, clubName, t, locale, asInvoice]);
+  const racketImage = useRacketImage(job.racketLabel, open);
+  const input = useMemo(
+    () => buildStringingReceipt(job, clubName, t, locale, asInvoice, racketImage ?? null),
+    [job, clubName, t, locale, asInvoice, racketImage],
+  );
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [imageDataUrl, setImageDataUrl] = useState('');
@@ -120,7 +170,7 @@ export default function StringingReceiptSheet({ open, onClose, job, asInvoice = 
 
   const drawCanvas = useCallback((canvas: HTMLCanvasElement | null) => {
     canvasRef.current = canvas;
-    if (!canvas) return;
+    if (!canvas || racketImage === undefined) return;
     setImageDataUrl(renderStringingReceiptCanvas(input, canvas));
     // Redraw in the design faces once they have landed.
     const fontsReady = (document as Document & { fonts?: { ready: Promise<unknown> } }).fonts?.ready
@@ -128,7 +178,7 @@ export default function StringingReceiptSheet({ open, onClose, job, asInvoice = 
     fontsReady.then(() => {
       if (canvasRef.current === canvas) setImageDataUrl(renderStringingReceiptCanvas(input, canvas));
     }).catch(() => {});
-  }, [input]);
+  }, [input, racketImage]);
 
   async function run(action: (c: HTMLCanvasElement | null, name: string) => Promise<ShareImageOutcome>) {
     if (busy) return;

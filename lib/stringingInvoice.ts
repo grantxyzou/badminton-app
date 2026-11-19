@@ -15,6 +15,8 @@ import { getContainer } from './cosmos';
 import { sendPushToMembers } from './push';
 import { buildInvoicePayload, buildInvoiceReminderPayload } from './pushMessages';
 import { gmailTransport } from './mailTransport';
+import { button, emailHtml, heading, muted, para, racketCard } from './emailLayout';
+import { racketPictureFor } from './emailRacket';
 import { outboundOriginOrNull } from './appOrigin';
 import { readGroup } from './groups';
 import { APP_NAME } from './brand';
@@ -31,18 +33,16 @@ export interface InvoiceDelivery {
   reached: boolean;
 }
 
-function escapeHtml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-}
-
 /**
  * Subject, text and HTML for the invoice email. Pure. A member is sent to the
  * app (Home's Balance has Pay by card and the e-transfer details); a walk-up,
- * who has no account, is told to pay their stringer.
+ * who has no account, is told to pay their stringer. The HTML is the shared
+ * frame (`lib/emailLayout.ts`); `origin` and `racket` say where its pictures
+ * load from (none in a test).
  */
 export function composeInvoiceEmail(
   job: StringingJob,
-  opts: { clubName?: string; appUrl?: string | null; walkUp?: boolean; reminder?: boolean } = {},
+  opts: { clubName?: string; appUrl?: string | null; walkUp?: boolean; reminder?: boolean; origin?: string | null; racket?: string | null } = {},
 ): { subject: string; text: string; html: string } {
   const club = opts.clubName?.trim() || APP_NAME;
   const no = job.invoice?.no ?? invoiceNoOf(job.jobNo);
@@ -68,22 +68,29 @@ export function composeInvoiceEmail(
   const box = rows.map(([k, v]) => `  ${k.padEnd(width)}   ${v}`).join('\n');
   const text = [`Hi ${job.memberName},`, '', lead, '', box, '', how, '', '—', footer].join('\n');
 
-  const e = escapeHtml;
-  const tableRows = rows
-    .map(([k, v]) => `<tr><td style="padding:4px 16px 4px 0;color:#6b7280">${e(k)}</td><td style="padding:4px 0;font-weight:600">${e(v)}</td></tr>`)
-    .join('');
-  const link =
-    !opts.walkUp && opts.appUrl
-      ? `<p><a href="${e(opts.appUrl)}" style="display:inline-block;background:#15803d;color:#fff;padding:10px 18px;border-radius:12px;text-decoration:none;font-weight:600">Pay ${e(amount)}</a></p>`
-      : `<p>${e(how)}</p>`;
-  const html =
-    `<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;font-size:15px;line-height:1.5;color:#111827;max-width:480px">` +
-    `<p>Hi ${e(job.memberName)},</p>` +
-    `<p>${e(lead)}</p>` +
-    `<table style="border-collapse:collapse;background:#f3f4f6;border-radius:12px;padding:12px 16px;display:block;margin:12px 0">${tableRows}</table>` +
-    link +
-    `<p style="font-size:12px;color:#6b7280;margin-top:24px">${e(footer)}</p>` +
-    `</div>`;
+  // The HTML says the amount ONCE, at the bottom of the racket card; the
+  // button does not repeat it.
+  const action = !opts.walkUp && opts.appUrl
+    ? button('Pay now', opts.appUrl) + muted(`Open ${APP_NAME} to pay by card or e-transfer.`)
+    : para(how);
+  const html = emailHtml({
+    origin: opts.origin ?? null,
+    tag: opts.reminder ? 'Reminder' : 'Invoice',
+    preheader: `${amount} for your restring. ${opts.walkUp ? 'Pay your stringer.' : `Pay by card or e-transfer in ${APP_NAME}.`}`,
+    body:
+      heading(opts.reminder ? 'Reminder: invoice still open' : `Invoice from ${club}`) +
+      para(`Hi ${job.memberName},`) +
+      para(lead) +
+      racketCard({
+        job,
+        pictureUrl: opts.racket ?? null,
+        refs: { left: { label: 'Invoice', value: no }, right: { label: 'Job', value: job.jobNo } },
+        facts: [],
+        cost: { label: 'Amount due', value: amount, owed: true },
+      }) +
+      action,
+    footer,
+  });
   return { subject, text, html };
 }
 
@@ -120,9 +127,11 @@ export function invoiceAppUrl(): string | null {
 export async function deliverInvoice(job: StringingJob, opts: { reminder?: boolean; days?: number } = {}): Promise<InvoiceDelivery> {
   try {
     const club = await clubNameOf(job.groupId);
+    const origin = outboundOriginOrNull();
+    const pictures = { origin, racket: await racketPictureFor(job.racketLabel, origin) };
     if (isWalkUpJob(job)) {
       const to = walkUpEmailOf(job);
-      const email = to ? await sendEmail(to, composeInvoiceEmail(job, { clubName: club, walkUp: true, reminder: opts.reminder })) : false;
+      const email = to ? await sendEmail(to, composeInvoiceEmail(job, { clubName: club, walkUp: true, reminder: opts.reminder, ...pictures })) : false;
       return { push: 0, email, reached: email };
     }
 
@@ -141,7 +150,7 @@ export async function deliverInvoice(job: StringingJob, opts: { reminder?: boole
     try {
       const { resource: member } = await getContainer('members').item(job.memberId, job.memberId).read<Member>();
       if (member?.email) {
-        email = await sendEmail(member.email, composeInvoiceEmail(job, { clubName: club, appUrl: invoiceAppUrl(), reminder: opts.reminder }));
+        email = await sendEmail(member.email, composeInvoiceEmail(job, { clubName: club, appUrl: invoiceAppUrl(), reminder: opts.reminder, ...pictures }));
       }
     } catch (err) {
       console.error('[stringing] invoice email lookup failed (the invoice is saved):', err);
