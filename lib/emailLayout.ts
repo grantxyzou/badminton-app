@@ -123,16 +123,35 @@ export function messageBox(text: string): string {
   return `<div style="margin:0 0 16px;padding:16px 18px;border-radius:16px;background:${C.tint};font-family:${SANS};font-size:15px;line-height:1.55;color:${C.ink};white-space:pre-wrap">${e(text)}</div>`;
 }
 
-/** Label and value rows in a tinted box (a report's context). */
-export function detailList(rows: Array<{ label: string; value: string; mono?: boolean }>): string {
+/** A green check in a circle, above a heading that confirms something landed. */
+export function checkMark(): string {
+  return `<div style="width:52px;height:52px;line-height:52px;border-radius:26px;background:${C.accentSoft};color:${C.accent};text-align:center;font-family:${SANS};font-size:28px;font-weight:700;margin:0 0 14px">&#10003;</div>`;
+}
+
+/** Money that came in: green, where money owed is amber. The one place the total is drawn. */
+export function paidBox(label: string, amount: string, sub: string): string {
+  return (
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px"><tr>` +
+    `<td style="padding:18px 20px;border-radius:16px;background:${C.accentSoft}">` +
+    `<div style="font-family:${MONO};font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:${C.accent}">${e(label)}</div>` +
+    `<div style="margin-top:4px;font-family:${DISPLAY};font-size:38px;line-height:1;font-weight:700;color:${C.accent}">${e(amount)}</div>` +
+    `<div style="margin-top:6px;font-family:${SANS};font-size:13px;color:${C.muted}">${e(sub)}</div>` +
+    `</td></tr></table>`
+  );
+}
+
+/** Label and value rows in a tinted box: a report's context, or a receipt's
+ *  lines with `amounts` (the values right-aligned, so the money lines up). */
+export function detailList(rows: Array<{ label: string; value: string; mono?: boolean }>, opts: { amounts?: boolean } = {}): string {
+  const align = opts.amounts ? 'right' : 'left';
   const tr = rows
     .map(
       (r) =>
-        `<tr><td valign="top" style="padding:4px 16px 4px 0;font-family:${SANS};font-size:14px;color:${C.muted};white-space:nowrap">${e(r.label)}</td>` +
-        `<td valign="top" style="padding:4px 0;font-family:${r.mono ? MONO : SANS};font-size:14px;font-weight:600;color:${C.ink};word-break:break-word">${e(r.value)}</td></tr>`,
+        `<tr><td valign="top" style="padding:4px 16px 4px 0;font-family:${SANS};font-size:14px;color:${C.muted}${opts.amounts ? '' : ';white-space:nowrap'}">${e(r.label)}</td>` +
+        `<td valign="top" align="${align}" style="padding:4px 0;text-align:${align};font-family:${r.mono ? MONO : SANS};font-size:14px;font-weight:600;color:${C.ink};${opts.amounts ? 'white-space:nowrap;font-variant-numeric:tabular-nums' : 'word-break:break-word'}">${e(r.value)}</td></tr>`,
     )
     .join('');
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px;border-radius:16px;background:${C.tint};border-collapse:separate"><tr><td style="padding:12px 18px"><table role="presentation" cellpadding="0" cellspacing="0" border="0">${tr}</table></td></tr></table>`;
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px;border-radius:16px;background:${C.tint};border-collapse:separate"><tr><td style="padding:12px 18px"><table role="presentation"${opts.amounts ? ' width="100%"' : ''} cellpadding="0" cellspacing="0" border="0">${tr}</table></td></tr></table>`;
 }
 
 // ── The racket card ──────────────────────────────────────────────────────────
