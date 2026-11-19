@@ -11,7 +11,7 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 ## The strings map: the AI badge, and the dots it recommends (2026-11-19)
 
 - **The "For your Astrox 88D Pro" strip wears the AI badge, and the glowing dots wear its rainbow rim** (Grant, on a screenshot: "AI badge, can you apply the same AI rainbow stroke around the dots recommended that glow?"). The racket is on the strip's first line and "Glowing dots suit it best" on the second.
-- **The "Change" sheet shows each racket's head, close up**, so you can tell two rackets apart by their paint (Grant: "racket is hard to see if we don't zoom in on the frames"). It first showed the small full-length picture, where the frame was a thin line.
+- **The "Change" sheet shows each racket's head, close up**, so you can tell two rackets apart by their paint (Grant: "racket is hard to see if we don't zoom in on the frames"). It first showed the small full-length picture, where the frame was a thin line. The sheet is titled "Select a racket".
 
 ## The strings map: your racket, and "what do you play with?" (2026-11-19)
 
