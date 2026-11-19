@@ -37,6 +37,9 @@ export interface PlayerNotice {
    *  only: a push carries no money, because it renders on a locked phone. */
   quote: string | null;
   readyBy: string | null;
+  /** The racket's spec, for the EMAIL's racket card (strings as M and C,
+   *  `lib/emailLayout.ts`). The push does not read it. */
+  spec: { stringLabel: string; stringColor: string | null; tensionMains: number; tensionCrosses: number; ownString: boolean };
   /** Which stages are worth interrupting someone for — see `shouldNotify`. */
   channels: NotifyChannel[];
 }
@@ -79,6 +82,13 @@ export function buildPlayerNotice(job: StringingJob): PlayerNotice {
     racketLabel: job.racketLabel,
     quote: typeof job.priceCents === 'number' ? fmtMoney(job.priceCents / 100) : null,
     readyBy: job.readyBy,
+    spec: {
+      stringLabel: job.stringLabel,
+      stringColor: job.stringColor ?? null,
+      tensionMains: job.tensionMains,
+      tensionCrosses: job.tensionCrosses,
+      ownString: job.ownString === true,
+    },
     channels: channelsFor(stage),
   };
 }

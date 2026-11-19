@@ -35,6 +35,9 @@
  * the stringer's, and a walk-up has no stored language at all.
  */
 import { gmailTransport } from './mailTransport';
+import { outboundOriginOrNull } from './appOrigin';
+import { emailHtml, heading, para, racketCard, type CardCost } from './emailLayout';
+import { racketPictureFor } from './emailRacket';
 import { APP_NAME } from './brand';
 import { fmtMoney } from './fmt';
 import { formatReadyBy } from './stringingDue';
@@ -64,24 +67,17 @@ export function walkUpEmailRows(job: StringingJob): [string, string][] {
   return rows;
 }
 
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
 /**
- * Subject, plain text and HTML for one of the two emails. Pure. Every value
- * that came from a person (the name, the racket, the club) is escaped in the
- * HTML half; the text half is plain text and needs nothing.
+ * Subject, plain text and HTML for one of the two emails. Pure. The HTML is
+ * the shared frame (`lib/emailLayout.ts`, which escapes every value that came
+ * from a person); the text half is plain text and needs nothing. `pictures`
+ * says where the logo and the racket render load from (none in a test).
  */
 export function composeWalkUpEmail(
   kind: WalkUpEmailKind,
   job: StringingJob,
   clubName: string = APP_NAME,
+  pictures: { origin: string | null; racket: string | null } = { origin: null, racket: null },
 ): { subject: string; text: string; html: string } {
   const rows = walkUpEmailRows(job);
   const width = Math.max(...rows.map(([k]) => k.length));
@@ -107,21 +103,29 @@ export function composeWalkUpEmail(
 
   const text = [`Hi ${job.memberName},`, '', lead, '', box, '', ...after.flatMap((p) => [p, '']), '—', footer].join('\n');
 
-  const e = escapeHtml;
-  const tableRows = rows
-    .map(
-      ([k, v]) =>
-        `<tr><td style="padding:4px 16px 4px 0;color:#6b7280">${e(k)}</td><td style="padding:4px 0;font-weight:600">${e(v)}</td></tr>`,
-    )
-    .join('');
-  const html =
-    `<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;font-size:15px;line-height:1.5;color:#111827;max-width:480px">` +
-    `<p>Hi ${e(job.memberName)},</p>` +
-    `<p>${e(lead)}</p>` +
-    `<table style="border-collapse:collapse;background:#f3f4f6;border-radius:12px;padding:12px 16px;display:block;margin:12px 0">${tableRows}</table>` +
-    after.map((p) => `<p>${e(p)}</p>`).join('') +
-    `<p style="font-size:12px;color:#6b7280;margin-top:24px">${e(footer)}</p>` +
-    `</div>`;
+  // The HTML says the cost ONCE, at the bottom of the racket card.
+  const cost: CardCost = typeof job.priceCents !== 'number'
+    ? { label: 'Price', value: 'Ask', note: 'Your stringer will price it' }
+    : job.paidAt
+      ? { label: 'Paid', value: fmtMoney(job.priceCents / 100) }
+      : { label: 'Pay at pickup', value: fmtMoney(job.priceCents / 100), owed: true };
+  const facts = [
+    ...(job.readyBy ? [{ label: 'Ready by', value: formatReadyBy(job.readyBy, 'en-US') ?? job.readyBy }] : []),
+    { label: 'Job', value: job.jobNo, mono: true },
+  ];
+  const htmlAfter = kind === 'spec' ? after : owes ? ['Bring the amount above, or pay your stringer at pickup.'] : [];
+  const html = emailHtml({
+    origin: pictures.origin,
+    tag: 'Stringing',
+    preheader: lead,
+    body:
+      heading(kind === 'spec' ? 'Your racket is with us' : 'Your racket is ready') +
+      para(`Hi ${job.memberName},`) +
+      para(lead) +
+      racketCard({ job, pictureUrl: pictures.racket, facts, cost }) +
+      htmlAfter.map(para).join(''),
+    footer,
+  });
 
   return { subject, text, html };
 }
@@ -138,7 +142,8 @@ export async function sendWalkUpEmail(kind: WalkUpEmailKind, job: StringingJob, 
   const pass = process.env.GMAIL_APP_PASSWORD;
   if (!user || !pass) return false;
   try {
-    const copy = composeWalkUpEmail(kind, job, clubName ?? APP_NAME);
+    const origin = outboundOriginOrNull();
+    const copy = composeWalkUpEmail(kind, job, clubName ?? APP_NAME, { origin, racket: await racketPictureFor(job.racketLabel, origin) });
     const transport = await gmailTransport(user, pass);
     await transport.sendMail({ from: `${APP_NAME} <${user}>`, to, subject: copy.subject, text: copy.text, html: copy.html });
     return true;
