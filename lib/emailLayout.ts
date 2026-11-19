@@ -7,6 +7,8 @@
  *   racketCard     a job's racket render beside its spec, strings as M and C,
  *                  and the cost ONCE at the bottom
  *   heading / para / muted / button / signoff   the small blocks between
+ *   linkLine / codeBox / clubChip / messageBox / detailList   the account
+ *                  emails' and the problem report's blocks
  *
  * Mail clients are not browsers: no CSS variables, no flexbox or grid in
  * Outlook, and Gmail drops a <style> block's classes. So the layout is tables
@@ -91,6 +93,46 @@ export function button(label: string, url: string): string {
     `<a href="${e(url)}" style="display:block;padding:15px 24px;font-family:${DISPLAY};font-size:17px;font-weight:700;color:#ffffff;text-align:center;text-decoration:none;border-radius:12px">${e(label)}</a>` +
     `</td></tr></table>`
   );
+}
+
+/** The link a button opens, written out under it for a mail app that drops
+ *  the button, and so a careful person can see where it goes. */
+export function linkLine(url: string): string {
+  return `<p style="margin:-4px 0 16px;font-family:${MONO};font-size:12px;line-height:1.5;color:${C.muted};word-break:break-all">${e(url)}</p>`;
+}
+
+/** A one-time code, the loudest thing in its email: it is why it was opened. */
+export function codeBox(code: string): string {
+  return (
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px"><tr>` +
+    `<td align="center" style="padding:20px 12px 20px 22px;border-radius:16px;background:${C.tint};font-family:${MONO};font-size:36px;line-height:1;font-weight:700;letter-spacing:.28em;color:${C.accent}">${e(code)}</td>` +
+    `</tr></table>`
+  );
+}
+
+/** The club an email is about, as a small green chip above the heading. */
+export function clubChip(name: string): string {
+  return (
+    `<div style="margin:0 0 12px"><span style="display:inline-block;padding:6px 14px;border-radius:100px;background:${C.accentSoft};font-family:${SANS};font-size:14px;font-weight:600;color:${C.accent}">` +
+    `<span style="display:inline-block;width:8px;height:8px;border-radius:4px;background:${C.accent};margin-right:8px;vertical-align:middle"></span>${e(name)}</span></div>`
+  );
+}
+
+/** Something a person wrote, quoted as they wrote it: line breaks kept, nothing interpreted. */
+export function messageBox(text: string): string {
+  return `<div style="margin:0 0 16px;padding:16px 18px;border-radius:16px;background:${C.tint};font-family:${SANS};font-size:15px;line-height:1.55;color:${C.ink};white-space:pre-wrap">${e(text)}</div>`;
+}
+
+/** Label and value rows in a tinted box (a report's context). */
+export function detailList(rows: Array<{ label: string; value: string; mono?: boolean }>): string {
+  const tr = rows
+    .map(
+      (r) =>
+        `<tr><td valign="top" style="padding:4px 16px 4px 0;font-family:${SANS};font-size:14px;color:${C.muted};white-space:nowrap">${e(r.label)}</td>` +
+        `<td valign="top" style="padding:4px 0;font-family:${r.mono ? MONO : SANS};font-size:14px;font-weight:600;color:${C.ink};word-break:break-word">${e(r.value)}</td></tr>`,
+    )
+    .join('');
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px;border-radius:16px;background:${C.tint};border-collapse:separate"><tr><td style="padding:12px 18px"><table role="presentation" cellpadding="0" cellspacing="0" border="0">${tr}</table></td></tr></table>`;
 }
 
 // ── The racket card ──────────────────────────────────────────────────────────
