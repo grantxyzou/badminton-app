@@ -46,6 +46,7 @@ import StringPeek from './StringPeek';
 import StringListSheet, { type ListSort } from './StringListSheet';
 import MapRacketSheet from './MapRacketSheet';
 import MapRacketAskSheet from './MapRacketAskSheet';
+import { useMapPlotHeight } from './useMapPlotHeight';
 import { useTabActive, useTabReturn } from '@/lib/tabActivity';
 import { useActiveName } from '@/lib/useActiveName';
 import { routeInApp } from '@/lib/inAppNavigate';
@@ -183,6 +184,9 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
   const [racketPending, setRacketPending] = useState<string | null>(null);
   const [racketFailed, setRacketFailed] = useState(false);
   const [peekH, setPeekH] = useState(0);
+  /** The peek's height with nothing picked: what the map's height budgets
+   *  for, so a tap on a dot (a taller peek) never resizes the map. */
+  const [peekRest, setPeekRest] = useState(0);
   const onScreen = useTabActive();
   // null = not read yet; 'failed' leaves the rows out rather than guess "Ask".
   const [other, setOther] = useState<OtherPrices | 'failed' | null>(null);
@@ -288,6 +292,17 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
   const matches = useMemo(
     () => new Set(Object.entries(fits?.verdicts ?? {}).filter(([, v]) => v === 'good_match').map(([k]) => k)),
     [fits],
+  );
+
+  // The map's height is what this screen has room for, so the card, the
+  // strip and the peek fit without scrolling on a shorter phone.
+  const cardRef = useRef<HTMLDivElement>(null);
+  const stripRef = useRef<HTMLDivElement>(null);
+  const plotH = useMapPlotHeight(
+    cardRef,
+    stripRef,
+    peekRest,
+    `${status}|${catalog.loaded}|${other !== null}|${entries.length}|${onScreen}|${axis}|${learnOpen}|${fits ? fits.racket : ask ? ask.kind : ''}`,
   );
 
   // Holds its place until the list, the catalog and the prices have answered,
@@ -513,7 +528,7 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
   // change rackets") only for a member with another racket to change to.
   const canChangeRacket = (fits?.rackets.length ?? 0) > 1;
   const fitBanner = showMap && fits && status !== 'failed' ? (
-    <div data-testid="map-fit-strip" className="bpm-fit-strip">
+    <div ref={stripRef} data-testid="map-fit-strip" className="bpm-fit-strip">
       <span className="material-icons icon-md" aria-hidden="true" style={{ color: 'var(--accent)' }}>sports_tennis</span>
       <span className="fs-sm" style={{ flex: 1, minWidth: 0, color: 'var(--text-secondary)' }}>
         <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{t('forYourRacket', { racket: fits.racket })}</span>
@@ -536,7 +551,7 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
     // Nothing to glow for yet, and the strip says what would change that
     // (Grant, 2026-11-19: "the strip should ask for me what am I using then
     // it can make a recommendation"). The same strip, the same place.
-    <div data-testid="map-fit-strip" className="bpm-fit-strip">
+    <div ref={stripRef} data-testid="map-fit-strip" className="bpm-fit-strip">
       <span className="material-icons icon-md" aria-hidden="true" style={{ color: 'var(--accent)' }}>sports_tennis</span>
       <span className="fs-sm" style={{ flex: 1, minWidth: 0, color: 'var(--text-secondary)' }}>
         <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
@@ -569,7 +584,7 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
   return (
     // Room under the card and its banner for the peek, so neither is under it.
     <div className="flex flex-col gap-3" style={showPeek ? { marginBottom: peekH } : undefined}>
-    <div className="glass-card p-5 space-y-3">
+    <div ref={cardRef} className="glass-card p-5 space-y-3">
       {/* The card holds only the map and its controls (the Stringing canvas,
           idea B, 2026-11-12; Grant: "What if the map card only contains the
           map and the control?"). The list is the peek's swipe-up now, so the
@@ -594,7 +609,7 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
       />
       {/* The lesson: four short paragraphs a member reads once. */}
       <Collapse open={learnOpen} spaceAbove="var(--space-3)">
-        <div className="flex flex-col gap-3">
+        <div data-map-lesson="" className="flex flex-col gap-3">
           {(['learnGauge', 'learnType', 'learnFeel', 'learnTension'] as const).map((k) => (
             <p key={k} className="fs-md" style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 'var(--lh-normal)' }}>{t(k)}</p>
           ))}
@@ -641,6 +656,9 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
             yLabel={t(`axisUp_${shownAxis}`)}
             mapLabel={t(`mapLabel_${shownAxis}`)}
             axisName={t(`axisName_${shownAxis}`)}
+            // The designed height on one screen with room; a foldable's left
+            // page has no peek to clear and keeps it.
+            height={aside ? undefined : plotH}
           />
           {notOnMap.length > 0 && (
             <button type="button" className="link-quiet link-quiet--flush fs-sm" onClick={() => setListOpen(true)}>
@@ -660,7 +678,10 @@ export default function StringsWeOfferCard({ showEmpty = false, onRestring }: Pr
         <StringPeek
           onOpen={() => (selected ? setOpen(selected.label) : setListOpen(true))}
           openLabel={selected ? t('peekOpenString', { name: name(selected) }) : t('peekOpenList')}
-          onHeight={setPeekH}
+          onHeight={(px) => {
+            setPeekH(px);
+            if (!selected) setPeekRest(px);
+          }}
         >
           {selected ? (
             <span aria-live="polite" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>

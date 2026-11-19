@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { clusterPoints, dotPositions, placeLabels, ringPositions, CLUSTER_PX, DOT_PX, RING_RADIUS, type Rect } from '@/lib/stringMap';
+import { clusterPoints, dotPositions, placeLabels, ringPositions, ringRadiusFor, CLUSTER_PX, DOT_PX, MAP_PLOT_H, type Rect } from '@/lib/stringMap';
 import { TYPE_ORDER, typeDotFill, typeDotInk, type StockBand, type StringTypeKey } from '@/lib/stringShelf';
 
 export interface MapDot {
@@ -22,8 +22,11 @@ export interface MapDot {
 }
 
 // 280, up from 220 (the Stringing canvas, Idea B frame 1, 2026-11-16: the
-// racket banner left the card and the map took its room).
-const PLOT_H = 280;
+// racket banner left the card and the map took its room). The designed
+// height; a shorter screen is handed less through `height`
+// (`useMapPlotHeight`), so the card, its strip and the peek fit without
+// scrolling.
+const PLOT_H = MAP_PLOT_H;
 const HIT = 44;
 // --fs-sm in pixels: the labels are drawn at the token and measured on a
 // canvas, which needs the number. Keep the two in step.
@@ -88,6 +91,7 @@ export default function StringMap({
   yLabel,
   mapLabel,
   axisName,
+  height = PLOT_H,
 }: {
   dots: MapDot[];
   selected: string | null;
@@ -98,6 +102,9 @@ export default function StringMap({
   mapLabel: string;
   /** The side axis's name, for the zoom caption ("Power 8 · Durability 7"). */
   axisName: string;
+  /** The plot's height in px. The card passes what this screen has room for;
+   *  the designed height otherwise. */
+  height?: number;
 }) {
   const t = useTranslations('home.stringing.offer');
   const plotRef = useRef<HTMLDivElement>(null);
@@ -105,6 +112,9 @@ export default function StringMap({
   const captionRef = useRef<HTMLParagraphElement>(null);
   /** Each layer's dot buttons, for focus and the arrow keys. */
   const buttons = useRef<Record<Layer, (HTMLButtonElement | null)[]>>({ all: [], zoom: [] });
+  // The zoom's ring is drawn smaller under a short plot, so its strings stay
+  // clear of the way back (top) and the caption (bottom) inside it.
+  const ringR = ringRadiusFor(height);
   const [measured, setMeasured] = useState(0);
   const width = measured || NOMINAL_W;
   const [font, setFont] = useState<string | null>(null);
@@ -136,9 +146,9 @@ export default function StringMap({
     const cap = captionRef.current;
     const rects: Rect[] = [];
     if (back) rects.push({ x: 0, y: 0, w: back.offsetWidth + HINT_INSET, h: back.offsetHeight });
-    if (cap) rects.push({ x: (width - cap.offsetWidth) / 2, y: PLOT_H - cap.offsetHeight - HINT_INSET, w: cap.offsetWidth, h: cap.offsetHeight + HINT_INSET });
+    if (cap) rects.push({ x: (width - cap.offsetWidth) / 2, y: height - cap.offsetHeight - HINT_INSET, w: cap.offsetWidth, h: cap.offsetHeight + HINT_INSET });
     setZoomChrome(rects);
-  }, [width, font, zoom]);
+  }, [width, height, font, zoom]);
 
   useEffect(() => () => { if (leaveTimer.current) clearTimeout(leaveTimer.current); }, []);
 
@@ -160,16 +170,16 @@ export default function StringMap({
 
   /** The whole map: a mark per cluster. Always drawn, faded out under a zoom. */
   const allMarks = useMemo(() => {
-    const centres = dotPositions(clusters.map((c) => dots[c.members[0]]), width, PLOT_H);
+    const centres = dotPositions(clusters.map((c) => dots[c.members[0]]), width, height);
     return clusters.map((c, k) => ({ key: c.key, members: c.members, point: centres[k] }));
-  }, [clusters, dots, width]);
+  }, [clusters, dots, width, height]);
 
   /** Inside a zoom: one mark per string, round the ring. */
   const zoomMarks = useMemo(() => {
     if (!zoomed) return [];
-    const ring = ringPositions(zoomed.members.length, width, PLOT_H);
+    const ring = ringPositions(zoomed.members.length, width, height, ringR);
     return zoomed.members.map((i, k) => ({ key: dots[i].key, members: [i], point: ring[k] }));
-  }, [zoomed, dots, width]);
+  }, [zoomed, dots, width, height, ringR]);
 
   /** Where the zoom flies out of, and back into: the cluster's own dot. */
   const origin = zoomed ? allMarks.find((m) => m.key === zoomed.key)?.point ?? null : null;
@@ -205,7 +215,7 @@ export default function StringMap({
       widths,
       labelHeight: LABEL_H,
       width,
-      height: PLOT_H,
+      height,
       selected: sel >= 0 ? sel : null,
       // The selected mark wears its ring, so its label starts past the ring,
       // not past the dot: a pill drawn against the dot cut the ring in half.
@@ -216,9 +226,9 @@ export default function StringMap({
   }
 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- placeFor reads font, width and selected, all listed
-  const allLabels = useMemo(() => placeFor(allMarks, []), [allMarks, font, width, selected]);
+  const allLabels = useMemo(() => placeFor(allMarks, []), [allMarks, font, width, height, selected]);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- as above
-  const zoomLabels = useMemo(() => placeFor(zoomMarks, zoomChrome), [zoomMarks, font, width, zoomChrome, selected]);
+  const zoomLabels = useMemo(() => placeFor(zoomMarks, zoomChrome), [zoomMarks, font, width, height, zoomChrome, selected]);
 
   function reducedMotion() {
     return typeof window === 'undefined' || typeof window.matchMedia !== 'function' || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -378,7 +388,7 @@ export default function StringMap({
   return (
     // The plot never changes size: the way back and the caption live INSIDE
     // it while zoomed (Grant: "The chart area should not skip or grow").
-    <div style={{ display: 'grid', gridTemplateColumns: '16px minmax(0, 1fr)', gridTemplateRows: `${PLOT_H}px auto auto`, columnGap: 'var(--space-2)', rowGap: 'var(--space-2)' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '16px minmax(0, 1fr)', gridTemplateRows: `${height}px auto auto`, columnGap: 'var(--space-2)', rowGap: 'var(--space-2)' }}>
       <span
         aria-hidden="true"
         className="fs-xs"
@@ -388,6 +398,7 @@ export default function StringMap({
       </span>
       <div
         ref={plotRef}
+        data-map-plot=""
         // No box: the plot is drawn straight on the card's glass (Grant,
         // 2026-10-28), so the dashed cross is the only frame it has.
         style={{ gridRow: 1, gridColumn: 2, position: 'relative' }}
@@ -417,14 +428,14 @@ export default function StringMap({
                 aria-hidden="true"
                 style={{
                   position: 'absolute',
-                  left: width / 2 - RING_RADIUS,
-                  top: PLOT_H / 2 - RING_RADIUS,
-                  width: RING_RADIUS * 2,
-                  height: RING_RADIUS * 2,
+                  left: width / 2 - ringR,
+                  top: height / 2 - ringR,
+                  width: ringR * 2,
+                  height: ringR * 2,
                   borderRadius: '50%',
                   border: `1px dashed ${GUIDE}`,
                   opacity: open ? 1 : 0,
-                  transform: origin && !open ? `translate(${origin.x - width / 2}px, ${origin.y - PLOT_H / 2}px) scale(0.2)` : 'none',
+                  transform: origin && !open ? `translate(${origin.x - width / 2}px, ${origin.y - height / 2}px) scale(0.2)` : 'none',
                   transition: `transform ${ZOOM_MS}ms var(--ease-out-quart), opacity var(--duration-fast) var(--ease-out-quart)`,
                 }}
               />

@@ -25,6 +25,46 @@ export const RING_RADIUS = 52;
 /** Between a dot and its label. */
 export const LABEL_GAP = 2;
 
+/** The plot's designed height: what a tall phone (an iPhone Pro Max) shows. */
+export const MAP_PLOT_H = 280;
+/** The least the plot shrinks to on a short screen: half the designed
+ *  height. Below this the zoom's ring, its way back and its caption no longer
+ *  fit inside it, so a screen that needs less (an iPhone SE) scrolls. */
+export const MAP_PLOT_MIN_H = 140;
+/** The zoom ring's smallest radius, and the plot height its chrome (the way
+ *  back above it, the caption below) takes. */
+const RING_MIN = 36;
+const RING_CHROME = 64;
+
+/**
+ * How tall the plot can be so the page has nothing to scroll and the strip
+ * under the card is clear of the peek (Grant, 2026-11-19: "iPhone pro max
+ * displays the current height fine, but on iPhone pro or smaller androids
+ * it's cutting off and require scrolling. I want to avoid that").
+ *
+ * All in px, as measured with the page at its top:
+ *  - `plotNow`: the plot's height as drawn;
+ *  - `contentEnd`: where the card and its strip end with the plot at that height;
+ *  - `viewport`: the screen's height;
+ *  - `tail`: what the page adds under the content (the shell's bottom padding);
+ *  - `railTop`: the tab bar's top edge;
+ *  - `peek`: the peek's height, at rest.
+ *
+ * The plot is the only part that gives, a pixel for a pixel, so the answer
+ * is the same whatever height it is measured at: it settles in one pass.
+ * Never above the designed height: a screen with room to spare keeps it.
+ */
+export function fitPlotHeight(m: { plotNow: number; contentEnd: number; viewport: number; tail: number; railTop: number; peek: number }): number {
+  const floor = Math.min(m.viewport - m.tail - m.peek, m.railTop - m.peek);
+  return Math.round(Math.min(MAP_PLOT_H, Math.max(MAP_PLOT_MIN_H, m.plotNow - (m.contentEnd - floor))));
+}
+
+/** The zoom ring's radius under a plot this tall: the designed one where it
+ *  fits, smaller under a short plot so its strings stay inside it. */
+export function ringRadiusFor(plotHeight: number): number {
+  return Math.min(RING_RADIUS, Math.max(RING_MIN, Math.floor((plotHeight - RING_CHROME) / 2)));
+}
+
 export interface Domain {
   min: number;
   max: number;

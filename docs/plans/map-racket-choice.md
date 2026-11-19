@@ -14,6 +14,8 @@ Grant, reading the first cut (2026-11-19), asked "Remember on the phone?" and th
 
 Until then a member with no racket saw no strip at all: the map said nothing about them and nothing about why.
 
+And on the map's size (Grant, 2026-11-19): "Can you also make the total chart area width and height to be device screen aware? Ie: iPhone pro max displays the current height fine, but on iPhone pro or smaller androids it's cutting off and require scrolling. I want to avoid that". The plot was a fixed 280px tall on every phone; an iPhone Pro Max fits it by 4px and an iPhone Pro is 76px short.
+
 ## Kill criterion
 
 The map, the peek, the list or a string's own page says "your &lt;racket&gt;" about two different rackets on one screen; or the route pairs a string with a frame that is not in the caller's own bag.
@@ -26,6 +28,8 @@ The map, the peek, the list or a string's own page says "your &lt;racket&gt;" ab
 - A member with one racket: nothing new on their screen.
 - A member whose racket in play is typed in by name. They told us what they play, so the strip does not ask again, and the catalog cannot pair it, so there is no strip (Grant, 2026-11-19: "If we don't have data on the racket for the strining page just don't show. Until we have data base"). The strip appears on its own once the racket is in the catalog and the member's bag row points at it.
 - Opening the check-in from the strip. It points at Stats, where the check-in is.
+- No scrolling on an iPhone SE (375×667) or a 360×640 Android: the card's text and controls alone leave the plot less than its floor. They scroll, as before, with a shorter map.
+- Keeping the strip clear of the peek while a string is PICKED. The peek is a line taller then and covers part of the strip on a phone where the fit is exact, as it already did on an iPhone Pro Max.
 
 <!--
 Everything above is written BEFORE the work and is the gate for starting it.
@@ -42,6 +46,9 @@ Everything above is written BEFORE the work and is the gate for starting it.
 7. **With no racket in their equipment, the strip asks "What racket do you play with?"** and "Add racket" opens a search of the catalog's rackets. A tap ADDS the racket to the member's equipment as the racket in play, through the same `useGear().add` Stats uses, and the map is read again. It beat a link to Stats → Equipment (the member leaves the map to answer a question the map asked) and a pick kept only for the map (two answers to "which racket is mine" again). Catalog rackets only: a typed name cannot be paired, and Equipment is where one is typed.
 8. **The server says what to ask** (`ask` on the `ids` answer), a racket before a check-in. A new member usually has neither, and the route used to answer `needs_check_in` before it looked at the bag, so asking for the racket had to come first or the people the ask is for would never see it. With the racket known and no skills rated, the strip names the racket and points at Stats ("Go to Stats", an in-app tab switch): without that, adding a racket would be followed by silence.
 9. **The ask sheet owns the Strings register's one `useGear`, and is mounted on its first opening**, so the register reads no gear doc for a member who never taps the strip.
+10. **The plot's height is what the screen has room for, between 140 and 280px; its width already followed the card.** `fitPlotHeight` takes where the card and strip end against where they must end for the page not to scroll (the screen, less the shell's bottom padding and the peek) and gives the plot the difference. Everything is measured off the page (the top inset, the tab bar with its home-indicator padding, the text size), never from a table of phones, and the answer does not depend on the plot's current height, so it settles in one pass. It beat a CSS `clamp()` on viewport height, which would have had to restate the height of every other row on the screen and gone wrong the first time one wrapped.
+11. **The map does not resize for things the member does.** The peek is budgeted at REST (a tap on a dot makes it taller), the strip's room is reserved before it arrives, and the map holds still while "How to choose a string" is open. Grant's earlier rule for the zoom was "The chart area should not skip or grow", and it holds here too.
+12. **The floor is 140px, with the zoom's ring drawn smaller under a short plot** (`ringRadiusFor`). 180 was the first floor and left a 360×740 Android scrolling by 48px; at 140 it scrolls by 8.
 
 ## Shape
 
@@ -55,4 +62,5 @@ Everything above is written BEFORE the work and is the gate for starting it.
 | "What racket do you play with?" | `components/stringing/MapRacketAskSheet.tsx` |
 | What the strip should ask for (`ask`) | `app/api/stringing/fit/route.ts` (`askFor`) |
 | The string page's read follows the map | `components/stringing/StringDetailSheet.tsx` (`fitRacket`) |
-| Tests | `__tests__/stringing-fit-api.test.ts`, `__tests__/components/StringsWeOfferCard.test.tsx`, `__tests__/active-racket.test.ts` |
+| The plot's height for this screen, and the ring's radius under it | `lib/stringMap.ts` (`fitPlotHeight`, `ringRadiusFor`), `components/stringing/useMapPlotHeight.ts`, `components/stringing/StringMap.tsx` (`height`) |
+| Tests | `__tests__/stringing-fit-api.test.ts`, `__tests__/components/StringsWeOfferCard.test.tsx`, `__tests__/active-racket.test.ts`, `__tests__/string-map.test.ts` |

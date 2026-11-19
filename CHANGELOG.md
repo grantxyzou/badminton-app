@@ -14,6 +14,7 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 - **"Change" on the "For your Astrox 88D Pro" strip** (Grant, on the canvas: "this should allow user change rackets"). A member with more than one racket in their equipment taps it, picks another, and the glowing dots, the list and each string's "How it suits you" follow that racket for that visit. It changes the map only: the racket you play with and its string stay as they are, and the map is back on it next time.
 - **No racket yet? The strip asks "What racket do you play with?"** (Grant: "the strip should ask for me what am I using then it can make a recommendation"). "Add racket" opens a search of the rackets we know; the one you tap goes into your equipment as the racket you play with, and the map glows for it. If your skills are not rated yet, the strip says so and points at Stats.
 - A racket typed in by hand is not offered or asked about: there is nothing to match a string against.
+- **The map fits the phone it is on.** It was the same height on every screen, so an iPhone Pro or a smaller Android had to scroll to reach the strip under it (Grant: "it's cutting off and require scrolling. I want to avoid that"). The map is now as tall as the screen has room for: unchanged on an iPhone Pro Max, shorter on an iPhone Pro, an iPhone 15, a mini and most Androids, with nothing to scroll. An iPhone SE still scrolls, with a shorter map.
 
 ## Loading frames the size of what they stand in for (2026-11-18)
 
