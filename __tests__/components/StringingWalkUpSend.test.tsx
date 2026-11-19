@@ -190,21 +190,31 @@ describe('the receipt sheet', () => {
   const sheet = (extra: Partial<StringingJob> = {}) =>
     wrap(<StringingReceiptSheet open onClose={() => {}} job={{ ...walkUp, ...extra }} />);
 
-  it('draws the club, job, person, spec rows, total and how to pay — never the contact', async () => {
+  it('draws the club, job, person, the racket card, total and how to pay — never the contact', async () => {
     sheet();
     const img = (await screen.findByRole('img')) as HTMLImageElement;
     const alt = img.alt;
     expect(alt).toContain('Stringing receipt');
-    expect(alt).toContain('J-0042');
+    // The job number top right; a receipt has no invoice number.
+    expect(alt).toContain('Job: J-0042');
+    expect(alt).not.toContain('Invoice:');
     expect(alt).toContain('For Lee');
     expect(alt).toContain('Racket: Astrox 88D Pro');
-    expect(alt).toContain('String: BG80 · Yellow');
-    expect(alt).toContain('Tension: 26 / 28 lb');
+    // The strings as M and C, like the bench and the email; 26 / 28 is the usual pair, so no tag.
+    expect(alt).toContain('Strings: M BG80 26 lb, C BG80 28 lb');
+    expect(alt).not.toContain('Custom tension');
     expect(alt).toContain('Ready by: Sat, Nov 14');
     expect(alt).toContain('Dropped off: Thu, Nov 12');
     expect(alt).toContain('Total: $34');
     expect(alt).toContain('Pay at pickup, to your stringer. Bring this receipt or the job number.');
     expect(alt).not.toContain('lee@example.com');
+  });
+
+  it('the invoice puts its number top left, and a custom pair is tagged', async () => {
+    wrap(<StringingReceiptSheet open asInvoice onClose={() => {}} job={{ ...walkUp, tensionMains: 28, tensionCrosses: 26 }} />);
+    const alt = ((await screen.findByRole('img')) as HTMLImageElement).alt;
+    expect(alt).toContain('Invoice: INV-0042 · Job: J-0042');
+    expect(alt).toContain('(Custom tension)');
   });
 
   it('an unpriced job totals "Ask"; a paid one says "Paid"', async () => {

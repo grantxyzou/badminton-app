@@ -20,7 +20,7 @@ import { jobSides } from './stringingSides';
 import { reelColourFill } from './stringShelf';
 import { isStringColourId, isCustomColourId, comboParts, colourIdOf, type CustomColour } from './stringPalette';
 import { assetUrl } from './assetUrl';
-import { RACKET_LOOKS } from './racketLook';
+import { racketShareSrc } from './racketLook';
 import { APP_NAME } from './brand';
 
 /* eslint-disable no-restricted-syntax -- an email cannot read the app's CSS
@@ -52,21 +52,15 @@ export function escapeHtml(s: string): string {
 }
 const e = escapeHtml;
 
-/** A picture's absolute URL, or null when there is no origin to load it from. */
-function pictureUrl(origin: string | null, path: string): string | null {
-  const u = assetUrl(path);
+/** An asset URL made absolute, or null when there is no origin to load it from. */
+function absolute(origin: string | null, u: string): string | null {
   if (/^https?:\/\//.test(u)) return u;
   return origin ? `${origin}${u.startsWith('/') ? '' : '/'}${u}` : null;
 }
 
-/**
- * The racket render a job's email shows: the catalog racket's own, or the
- * matte black `_unknown` for one we have no paint for. Never `_default`, whose
- * green band is BPM's colourway, not the player's.
- */
+/** The racket render a job's email shows (`racketShareSrc`: its own, or the matte black one). */
 export function racketPictureUrl(origin: string | null, catalogId: string | null): string | null {
-  const id = catalogId && RACKET_LOOKS[catalogId] ? catalogId : '_unknown';
-  return pictureUrl(origin, `rackets/${id}.webp`);
+  return absolute(origin, racketShareSrc(catalogId));
 }
 
 // ── Small blocks ─────────────────────────────────────────────────────────────
@@ -119,8 +113,9 @@ export interface CardCost {
   note?: string;
 }
 
-/** A side's colour as a hex dot, or null for none (or one we cannot draw). */
-function dotColour(id: string | null): string | null {
+/** A side's colour as a hex dot, or null for none (or one we cannot draw).
+ *  Shared with the receipt picture, which draws the same dots. */
+export function swatchHex(id: string | null): string | null {
   if (!id || !(isStringColourId(id) || isCustomColourId(id))) return null;
   const fill = reelColourFill(id);
   return /^#[0-9a-f]{6}$/i.test(fill) ? fill : null;
@@ -148,20 +143,26 @@ function tag(text: string, warn: boolean): string {
   return `<span style="display:inline-block;margin:2px 6px 0 0;padding:2px 8px;border-radius:100px;background:${warn ? C.amberSoft : C.card};color:${warn ? C.amber : C.muted};font-family:${SANS};font-size:11px;font-weight:600;letter-spacing:0;text-transform:none;vertical-align:middle">${e(text)}</span>`;
 }
 
+export type StringTag = 'customTension' | 'twoColour' | 'ownString';
+
 /**
  * The tags beside "Strings": what makes this job unlike a plain restring.
- * Each is a fact the stringer wrote, never a guess.
+ * Each is a fact the stringer wrote, never a guess. Returned as CODES so the
+ * email (English) and the receipt picture (the stringer's language) word them
+ * each their own way from one rule. A custom tension is the one warning.
  */
-export function stringTags(job: CardJob, customs: readonly CustomColour[] = []): Array<{ text: string; warn: boolean }> {
+export function stringTags(job: CardJob, customs: readonly CustomColour[] = []): StringTag[] {
   const sides = jobSides(job, customs);
-  const out: Array<{ text: string; warn: boolean }> = [];
-  if (sides.customTension) out.push({ text: 'Custom tension', warn: true });
+  const out: StringTag[] = [];
+  if (sides.customTension) out.push('customTension');
   // Two different strings get no tag: the M and C lines already name both
   // (Grant, 2026-11-19, struck it out on the design).
-  if (!sides.customStrings && comboParts(colourIdOf(job.stringColor ?? null, customs))) out.push({ text: 'Two-colour set', warn: false });
-  if (job.ownString) out.push({ text: 'Your own string', warn: false });
+  if (!sides.customStrings && comboParts(colourIdOf(job.stringColor ?? null, customs))) out.push('twoColour');
+  if (job.ownString) out.push('ownString');
   return out;
 }
+
+const TAG_EN: Record<StringTag, string> = { customTension: 'Custom tension', twoColour: 'Two-colour set', ownString: 'Your own string' };
 
 /**
  * The racket card: the job's reference numbers across the top (the invoice
@@ -181,12 +182,12 @@ export function racketCard(opts: {
   const { job, facts, cost } = opts;
   const customs = opts.customs ?? [];
   const sides = jobSides(job, customs);
-  const tags = stringTags(job, customs).map((t) => tag(t.text, t.warn)).join('');
+  const tags = stringTags(job, customs).map((t) => tag(TAG_EN[t], t === 'customTension')).join('');
 
   const strings =
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">` +
-    sideRow('M', sides.mains.string, dotColour(sides.mains.colour), sides.mains.tension, sides.customTension) +
-    sideRow('C', sides.crosses.string, dotColour(sides.crosses.colour), sides.crosses.tension, sides.customTension) +
+    sideRow('M', sides.mains.string, swatchHex(sides.mains.colour), sides.mains.tension, sides.customTension) +
+    sideRow('C', sides.crosses.string, swatchHex(sides.crosses.colour), sides.crosses.tension, sides.customTension) +
     `</table>`;
 
   const factRows = facts
@@ -277,7 +278,7 @@ const PHONE_STYLE =
  * the person got it.
  */
 export function emailHtml(opts: { origin: string | null; tag: string; preheader: string; body: string; footer: string }): string {
-  const mark = pictureUrl(opts.origin, 'brand/email/bpm-mark.png');
+  const mark = absolute(opts.origin, assetUrl('brand/email/bpm-mark.png'));
   const logo =
     (mark ? `<td width="52" valign="middle" style="padding-right:12px"><img src="${e(mark)}" width="52" height="40" alt="" style="display:block;width:52px;height:40px;border:0"></td>` : '') +
     `<td valign="middle"><div style="font-family:${DISPLAY};font-size:24px;line-height:1;font-weight:700;color:${C.headInk}">${e(APP_NAME)}</div>` +

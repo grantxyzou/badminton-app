@@ -257,6 +257,17 @@ export function racketSrc(catalogId: string | null | undefined): string {
 }
 
 /**
+ * The racket on something that LEAVES the app (an email, the receipt and
+ * invoice picture): the catalog racket's own render, or the matte black
+ * `_unknown` for a racket the table does not know. Never `_default`, whose
+ * green band is BPM's colourway: on a receipt it would read as the player's.
+ */
+export function racketShareSrc(catalogId: string | null | undefined): string {
+  const key = catalogId && RACKET_LOOKS[catalogId] ? catalogId : '_unknown';
+  return assetUrl(`rackets/${key}.webp`);
+}
+
+/**
  * A roster avatar's picture: the top of the list picture (the head, which is
  * all `.member-avatar__racket` shows), 128 px wide, ~6 KB where the list
  * picture is ~18 KB (`scripts/make-racket-avatars.mjs`). For circles up to

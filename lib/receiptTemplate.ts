@@ -411,16 +411,36 @@ export function renderGroupCanvas(
 /* canvas `fillStyle` takes a colour string, and var() means nothing there.  */
 /* ------------------------------------------------------------------------ */
 
+/** One side of the string bed, drawn like the bench row and the email: M or C,
+ *  a colour dot (null: none given), the string and its tension. */
+export interface ReceiptSide {
+  letter: string;
+  string: string;
+  /** A hex fill, or null for a hollow dot. */
+  colour: string | null;
+  /** "26 lb", in the stringer's language. */
+  tension: string;
+  /** A custom tension pair: amber, as the app draws it. */
+  custom: boolean;
+}
+
 /** What the image says, in the stringer's language (the sheet passes `t()`
- *  words in), so the drawing knows nothing about i18n or about jobs. */
+ *  words in), so the drawing knows nothing about i18n or about jobs. It is
+ *  the email's racket card on paper (docs/plans/branded-emails.md): the
+ *  reference numbers across the top, the render beside the racket's spec,
+ *  and the total once. */
 export interface StringingReceiptInput {
   clubName: string;
-  /** "Stringing receipt". */
+  /** "Stringing receipt" or "Invoice". */
   title: string;
-  jobNo: string;
+  /** The invoice number top left (an invoice only), the job number top right. */
+  refs: { left?: { label: string; value: string }; right: { label: string; value: string } };
   /** "For Sam". */
   forLine: string;
-  rows: { label: string; value: string }[];
+  racket: { label: string; name: string; image: CanvasImageSource | null };
+  strings: { label: string; tags: { text: string; warn: boolean }[]; sides: [ReceiptSide, ReceiptSide] };
+  /** Dates: "Ready by", "Dropped off". */
+  facts: { label: string; value: string }[];
   totalLabel: string;
   /** "$34", or the word for an unpriced job ("Ask"). */
   total: string;
@@ -430,16 +450,21 @@ export interface StringingReceiptInput {
 
 /** The same words as one sentence, for the preview's alt text and a test. */
 export function stringingReceiptText(input: StringingReceiptInput): string {
+  const { refs, strings } = input;
   return [
-    `${input.clubName} · ${input.title} · ${input.jobNo}`,
+    `${input.clubName} · ${input.title}`,
+    [refs.left && `${refs.left.label}: ${refs.left.value}`, `${refs.right.label}: ${refs.right.value}`].filter(Boolean).join(' · '),
     input.forLine,
-    ...input.rows.map((r) => `${r.label}: ${r.value}`),
+    `${input.racket.label}: ${input.racket.name}`,
+    `${strings.label}: ${strings.sides.map((x) => `${x.letter} ${x.string} ${x.tension}`).join(', ')}${strings.tags.length ? ` (${strings.tags.map((x) => x.text).join(', ')})` : ''}`,
+    ...input.facts.map((r) => `${r.label}: ${r.value}`),
     `${input.totalLabel}: ${input.total}`,
     input.note,
   ].join('\n');
 }
 
-/** Paper and ink. A receipt reads as paper whatever the app's theme. */
+/** Paper and ink. A receipt reads as paper whatever the app's theme; the
+ *  racket card takes the email's tints, so the two read as one design. */
 const PAPER = {
   table: '#e7e5e0',
   paper: '#fbfaf7',
@@ -448,12 +473,21 @@ const PAPER = {
   muted: '#78716c',
   rule: '#d6d3d1',
   accent: '#15803d',
+  card: '#f1f5ef',
+  tile: '#dcfce7',
+  chip: '#ffffff',
+  amber: '#b45309',
+  amberSoft: '#fef3c7',
+  hollow: '#a8a29e',
 };
 
 export const STRINGING_RECEIPT_W = 390;
 const SR_MARGIN = 18;
 const SR_PAD = 24;
 const SR_TOOTH = 8;
+/** The racket render's tile, and the render inside it (240 × 624 source). */
+const TILE_W = 96;
+const RENDER_H = 196;
 
 /** Break `text` into lines no wider than `width` at the current font. */
 function wrapLines(ctx: CanvasRenderingContext2D, text: string, width: number): string[] {
@@ -474,11 +508,12 @@ function wrapLines(ctx: CanvasRenderingContext2D, text: string, width: number): 
 }
 
 /**
- * Draw the stringing receipt (job page canvas frame, 2026-11-12): a sheet of
- * paper with a torn bottom edge — club and "Stringing receipt" with the job
- * number top right, "For {name}", the spec rows, a Total, and how to pay.
- * 390 wide, as tall as its words. Returns a PNG data URL ('' with no 2D
- * context, so the caller keeps its placeholder rather than a blank image).
+ * Draw the stringing receipt or invoice: a sheet of paper with a torn bottom
+ * edge. The club and title, the reference numbers (invoice left, job right),
+ * "For {name}", the racket card (the render in its green tile beside the
+ * racket's name, the strings as M and C with their tags, and the dates), the
+ * total once, and how to pay. 390 wide, as tall as its words. Returns a PNG
+ * data URL ('' with no 2D context, so the caller keeps its placeholder).
  */
 export function renderStringingReceiptCanvas(input: StringingReceiptInput, canvas: HTMLCanvasElement): string {
   const ctx = canvas.getContext('2d');
@@ -491,12 +526,41 @@ export function renderStringingReceiptCanvas(input: StringingReceiptInput, canva
   const left = paperX + SR_PAD;
   const right = paperX + paperW - SR_PAD;
 
-  // Measure the note first: the image is as tall as its words.
+  // The card's right column: measured before anything is drawn, because the
+  // image is as tall as its words.
+  const CARD_PAD = 12;
+  const colX = left + CARD_PAD + TILE_W + 12;
+  const colW = right - CARD_PAD - colX;
+  ctx.font = `700 16px ${f.display}`;
+  const nameLines = wrapLines(ctx, input.racket.name, colW);
+  ctx.font = `600 11px ${f.sans}`;
+  const tagRows: { text: string; warn: boolean; x: number; w: number }[][] = [];
+  {
+    // Tags sit on the "Strings" label's line and wrap below it.
+    ctx.font = `500 10px ${f.mono}`;
+    let x = ctx.measureText(input.strings.label.toUpperCase()).width + 8;
+    let row: { text: string; warn: boolean; x: number; w: number }[] = [];
+    ctx.font = `600 11px ${f.sans}`;
+    for (const t of input.strings.tags) {
+      const w = ctx.measureText(t.text).width + 14;
+      if (row.length && x + w > colW) { tagRows.push(row); row = []; x = 0; }
+      if (!row.length && tagRows.length && x + w > colW) x = 0;
+      row.push({ ...t, x, w });
+      x += w + 5;
+    }
+    if (row.length) tagRows.push(row);
+  }
+  const LABEL_H = 14;
+  const SIDE_H = 24;
+  const FACT_H = LABEL_H + 18;
+  const stringsH = LABEL_H + Math.max(0, tagRows.length - 1) * 20 + 4 + SIDE_H * 2;
+  const colH = LABEL_H + nameLines.length * 20 + 10 + stringsH + 8 + input.facts.length * (FACT_H + 8);
+  const cardH = Math.max(colH, RENDER_H + 8) + CARD_PAD * 2;
+
   ctx.font = `400 13px ${f.sans}`;
   const noteLines = wrapLines(ctx, input.note, inner);
-  const ROW_H = 28;
   const height =
-    SR_MARGIN + SR_PAD + 22 + 20 + 22 + 24 + 14 + input.rows.length * ROW_H + 18 + 34 + 16 + noteLines.length * 19 + SR_PAD + SR_TOOTH + SR_MARGIN;
+    SR_MARGIN + SR_PAD + 22 + 20 + 12 + 34 + 12 + 26 + 10 + cardH + 18 + 14 + 40 + 10 + noteLines.length * 19 + SR_PAD + SR_TOOTH + SR_MARGIN;
 
   const dpr = (typeof window !== 'undefined' && window.devicePixelRatio) || 1;
   canvas.width = W * dpr;
@@ -534,23 +598,13 @@ export function renderStringingReceiptCanvas(input: StringingReceiptInput, canva
   ctx.fill();
   ctx.restore();
 
-  let y = SR_MARGIN + SR_PAD;
-
-  // Club and title on the left, the job number on the right.
-  ctx.font = `700 15px ${f.mono}`;
-  const jobW = ctx.measureText(input.jobNo).width;
-  ctx.fillStyle = PAPER.ink;
-  ctx.textAlign = 'right';
-  ctx.fillText(input.jobNo, right, y + 16);
-  ctx.textAlign = 'left';
-  fitFont(ctx, input.clubName, 700, 19, 13, f.display, inner - jobW - 12);
-  ctx.fillText(input.clubName, left, y + 16);
-  y += 22;
-  ctx.fillStyle = PAPER.muted;
-  ctx.font = `500 13px ${f.sans}`;
-  ctx.fillText(input.title, left, y + 14);
-  y += 20;
-
+  const label = (text: string, x: number, atY: number, align: CanvasTextAlign = 'left', colour = PAPER.muted) => {
+    ctx.font = `500 10px ${f.mono}`;
+    ctx.fillStyle = colour;
+    ctx.textAlign = align;
+    ctx.fillText(text.toUpperCase(), x, atY);
+    ctx.textAlign = 'left';
+  };
   const dashed = (atY: number) => {
     ctx.save();
     ctx.strokeStyle = PAPER.rule;
@@ -562,46 +616,133 @@ export function renderStringingReceiptCanvas(input: StringingReceiptInput, canva
     ctx.stroke();
     ctx.restore();
   };
-  y += 10;
+
+  let y = SR_MARGIN + SR_PAD;
+
+  // Club and title.
+  ctx.fillStyle = PAPER.ink;
+  fitFont(ctx, input.clubName, 700, 19, 13, f.display, inner);
+  ctx.fillText(input.clubName, left, y + 16);
+  y += 22;
+  ctx.fillStyle = PAPER.muted;
+  ctx.font = `500 13px ${f.sans}`;
+  ctx.fillText(input.title, left, y + 14);
+  y += 20 + 12;
+
+  // The reference numbers: the invoice top left, the job top right.
+  const ref = (r: { label: string; value: string }, x: number, align: CanvasTextAlign) => {
+    label(r.label, x, y + 10, align);
+    ctx.font = `600 15px ${f.mono}`;
+    ctx.fillStyle = PAPER.ink;
+    ctx.textAlign = align;
+    ctx.fillText(r.value, x, y + 29);
+    ctx.textAlign = 'left';
+  };
+  if (input.refs.left) ref(input.refs.left, left, 'left');
+  ref(input.refs.right, right, 'right');
+  y += 34 + 12;
   dashed(y);
-  y += 12;
+  y += 10;
 
   // Who it is for.
   ctx.fillStyle = PAPER.ink;
   fitFont(ctx, input.forLine, 600, 16, 12, f.sans, inner);
   ctx.fillText(input.forLine, left, y + 16);
-  y += 24 + 14;
+  y += 26 + 10;
 
-  // The spec rows: label left, value right, the value shrinking to fit.
-  for (const row of input.rows) {
-    const base = y + 15;
-    ctx.font = `400 14px ${f.sans}`;
-    ctx.fillStyle = PAPER.muted;
-    ctx.textAlign = 'left';
-    ctx.fillText(row.label, left, base);
-    const labelW = ctx.measureText(row.label).width;
-    ctx.fillStyle = PAPER.ink;
-    ctx.textAlign = 'right';
-    fitFont(ctx, row.value, 600, 14, 9, f.sans, inner - labelW - 16);
-    ctx.fillText(row.value, right, base);
-    ctx.textAlign = 'left';
-    y += ROW_H;
+  // The racket card.
+  ctx.fillStyle = PAPER.card;
+  roundRect(ctx, left, y, inner, cardH, 14);
+  ctx.fill();
+  const tileH = cardH - CARD_PAD * 2;
+  ctx.fillStyle = PAPER.tile;
+  roundRect(ctx, left + CARD_PAD, y + CARD_PAD, TILE_W, tileH, 10);
+  ctx.fill();
+  if (input.racket.image) {
+    const rw = RENDER_H * (240 / 624);
+    ctx.drawImage(input.racket.image, left + CARD_PAD + (TILE_W - rw) / 2, y + CARD_PAD + (tileH - RENDER_H) / 2, rw, RENDER_H);
   }
 
-  y += 4;
+  let cy = y + CARD_PAD + 2;
+  label(input.racket.label, colX, cy + 9);
+  cy += LABEL_H;
+  ctx.fillStyle = PAPER.ink;
+  ctx.font = `700 16px ${f.display}`;
+  for (const line of nameLines) {
+    ctx.fillText(line, colX, cy + 15);
+    cy += 20;
+  }
+  cy += 10;
+
+  // Strings: the label, its tags beside it (wrapping below), then M and C.
+  label(input.strings.label, colX, cy + 9);
+  tagRows.forEach((row, i) => {
+    for (const t of row) {
+      const ty = cy + i * 20 - 4;
+      ctx.fillStyle = t.warn ? PAPER.amberSoft : PAPER.chip;
+      roundRect(ctx, colX + t.x, ty, t.w, 17, 8.5);
+      ctx.fill();
+      ctx.fillStyle = t.warn ? PAPER.amber : PAPER.muted;
+      ctx.font = `600 11px ${f.sans}`;
+      ctx.fillText(t.text, colX + t.x + 7, ty + 12.5);
+    }
+  });
+  cy += LABEL_H + Math.max(0, tagRows.length - 1) * 20 + 4;
+  for (const side of input.strings.sides) {
+    const mid = cy + SIDE_H / 2;
+    ctx.fillStyle = PAPER.chip;
+    roundRect(ctx, colX, mid - 9, 18, 18, 5);
+    ctx.fill();
+    ctx.fillStyle = PAPER.muted;
+    ctx.font = `700 10px ${f.mono}`;
+    ctx.textAlign = 'center';
+    ctx.fillText(side.letter, colX + 9, mid + 3.5);
+    ctx.textAlign = 'left';
+    ctx.beginPath();
+    ctx.arc(colX + 30, mid, 5, 0, Math.PI * 2);
+    if (side.colour) {
+      ctx.fillStyle = side.colour;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    } else {
+      ctx.strokeStyle = PAPER.hollow;
+    }
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.font = `${side.custom ? 700 : 500} 12px ${f.mono}`;
+    const tw = ctx.measureText(side.tension).width;
+    ctx.fillStyle = side.custom ? PAPER.amber : PAPER.ink;
+    ctx.textAlign = 'right';
+    ctx.fillText(side.tension, colX + colW, mid + 4);
+    ctx.textAlign = 'left';
+    ctx.fillStyle = PAPER.ink;
+    fitFont(ctx, side.string, 600, 13, 9, f.sans, colW - 40 - tw - 8);
+    ctx.fillText(side.string, colX + 40, mid + 4.5);
+    cy += SIDE_H;
+  }
+  cy += 8;
+
+  for (const fact of input.facts) {
+    label(fact.label, colX, cy + 9);
+    ctx.fillStyle = PAPER.ink;
+    fitFont(ctx, fact.value, 600, 14, 10, f.sans, colW);
+    ctx.fillText(fact.value, colX, cy + LABEL_H + 14);
+    cy += FACT_H + 8;
+  }
+
+  y += cardH + 18;
   dashed(y);
   y += 14;
 
-  // Total.
+  // The total, once.
   ctx.fillStyle = PAPER.ink;
   ctx.font = `700 16px ${f.sans}`;
-  ctx.textAlign = 'left';
-  ctx.fillText(input.totalLabel, left, y + 24);
+  ctx.fillText(input.totalLabel, left, y + 26);
   ctx.textAlign = 'right';
-  ctx.font = `700 26px ${f.mono}`;
-  ctx.fillText(input.total, right, y + 26);
+  ctx.font = `700 28px ${f.display}`;
+  ctx.fillText(input.total, right, y + 28);
   ctx.textAlign = 'left';
-  y += 34 + 16;
+  y += 40 + 10;
 
   // How to pay (or "Paid").
   ctx.font = `400 13px ${f.sans}`;

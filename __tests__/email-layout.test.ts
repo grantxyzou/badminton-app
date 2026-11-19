@@ -71,11 +71,11 @@ describe('the strings, as the bench reads them', () => {
   });
 
   it('tags a custom tension, a two-colour set and the player’s own string; two strings need no tag', () => {
-    expect(stringTags(job({ tensionMains: 28, tensionCrosses: 26 })).map((t) => t.text)).toEqual(['Custom tension']);
+    expect(stringTags(job({ tensionMains: 28, tensionCrosses: 26 }))).toEqual(['customTension']);
     // The M and C lines already name both strings.
     expect(stringTags(job({ stringLabel: 'Exbolt 63 / BG80 Power' }))).toEqual([]);
-    expect(stringTags(job({ stringColor: 'Red/White' })).map((t) => t.text)).toEqual(['Two-colour set']);
-    expect(stringTags(job({ ownString: true })).map((t) => t.text)).toEqual(['Your own string']);
+    expect(stringTags(job({ stringColor: 'Red/White' }))).toEqual(['twoColour']);
+    expect(stringTags(job({ ownString: true }))).toEqual(['ownString']);
     expect(stringTags(job())).toEqual([]);
   });
 
