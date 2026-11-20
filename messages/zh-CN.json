@@ -674,7 +674,6 @@
       "count": "{count, plural, =0 {还没有人报名} one {# 人已报名} other {# 人已报名}}"
     },
     "payment": {
-      "etransfer": "转账至 {email}",
       "sentIt": "我已转账",
       "sentItDone": "谢谢！收到转账后会自动标记为已付。",
       "card": "刷卡支付",
@@ -1153,9 +1152,6 @@
       "etransfer": {
         "title": "通过 e-transfer 支付",
         "close": "关闭",
-        "body": "请通过 Interac e-transfer 发送 {amount} 至：",
-        "copy": "复制邮箱",
-        "copied": "已复制",
         "sent": "我已发送",
         "sentDone": "谢谢。收到 e-transfer 后会标记为已付。",
         "sentError": "暂时无法保存，请重试。"
@@ -4027,5 +4023,17 @@
       "bodyMany": "你有几次活动还没结账。",
       "bodyOne": "你有一次活动还没结账。"
     }
+  },
+  "etransferCopy": {
+    "howTo": "在你的银行 App 里选择 Interac 转账，然后粘贴以下内容。",
+    "to": "收款邮箱",
+    "amount": "金额",
+    "copy": "复制",
+    "copied": "已复制",
+    "copyEmail": "复制邮箱地址 {email}",
+    "copyAmount": "复制金额 {amount}",
+    "copiedEmail": "邮箱地址已复制",
+    "copiedAmount": "金额已复制",
+    "copyFailed": "复制失败。请长按文字手动复制。"
   }
 }

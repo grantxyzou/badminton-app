@@ -3063,15 +3063,45 @@ button.edit-profile-row { cursor: pointer; }
   color: var(--text-secondary);
 }
 .balance-line__icon .material-icons { font-size: var(--icon-md); }
-.balance-payto {
+/* E-TRANSFER COPY ROWS (docs/plans/etransfer-copy.md): the club's address and
+   the amount, each a whole-row button that copies it. Fill-only like every
+   inner row; the text stays selectable so press-and-hold still works when the
+   clipboard refuses. */
+.copy-row {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-05);
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  width: 100%;
+  min-height: 44px;
   padding: var(--space-4);
+  border: 1px solid transparent;
   border-radius: var(--radius-lg);
   background: var(--inner-card-bg);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--duration-press) ease-out, transform var(--duration-press) ease-out;
 }
-.balance-payto__email { font-family: var(--font-mono); font-size: var(--fs-md); color: var(--text-primary); overflow-wrap: anywhere; }
+.copy-row:active { background: var(--press-bg); transform: scale(0.98); }
+.copy-row__text { display: flex; flex-direction: column; gap: var(--space-05); min-width: 0; user-select: text; -webkit-user-select: text; }
+.copy-row__label { font-size: var(--fs-xs); color: var(--text-muted); }
+.copy-row__value { font-family: var(--font-mono); font-size: var(--fs-md); color: var(--text-primary); overflow-wrap: anywhere; }
+.copy-row__sub { font-size: var(--fs-sm); color: var(--text-secondary); }
+.copy-row__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  /* Neutral at rest: green on Home marks only the main button, the one link
+     and the active tab (.claude/rules/home.md). The moment of "Copied" is the
+     only green here. */
+  color: var(--text-secondary);
+}
+.copy-row__tag .material-icons { font-size: var(--icon-sm); }
+.copy-row__tag--done { color: var(--accent); }
 /* WHAT YOU'VE PAID. Inline SVG (no chart library, as Stats): fills come from
    classes so `var()` resolves, and the column buttons lie over the drawing so
    a tap anywhere in a month's column picks it. */

@@ -30,6 +30,7 @@ export const ICON_NAMES = [
   'chevron_right',
   'close',
   'cloud_off',
+  'content_copy',
   'dark_mode',
   'delete',
   'delete_forever',
