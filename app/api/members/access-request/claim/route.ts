@@ -15,6 +15,7 @@ import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { findBySecret } from '@/lib/accessRequest';
 import { updateAccessRequests } from '@/lib/accessRequestStore';
 import { setMemberCookie } from '@/lib/auth';
+import { clearPendingSignup } from '@/lib/pendingSignup';
 import type { Member } from '@/lib/types';
 import { groupIdWithHint } from '@/lib/groupContext';
 import { openAskSecret } from '@/lib/askSecret';
@@ -140,6 +141,9 @@ export async function POST(req: NextRequest) {
       // Signed in to the club the ASK was for. A request from before the field
       // existed carries none and gets the club this claim resolved, which is
       // what every claim did until then.
+      // A new sign-in approved through "Is that you?" was linked at approval;
+      // its pending cookie has nothing left to finish (sign-in redesign, step 3).
+      if (mine.link) clearPendingSignup(res);
       setMemberCookie(res, member.id, member.name, mine.groupId ?? groupId);
       return res;
     }

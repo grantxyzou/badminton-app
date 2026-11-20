@@ -143,12 +143,12 @@ describe('DoorJoinPage', () => {
     expect(identities).toEqual([{ name: 'Lin Dan', sessionId: '' }]);
   });
 
-  it('"Is that you?" takes an organiser\'s code instead, and a wrong one says so', async () => {
+  async function toIsThatYou(routes: Record<string, () => Response>) {
     const calls = stub({
       '/email-code/start': () => json({ ok: true }),
       '/email-code/verify': () => json({ signup: true }),
       '/auth/complete-signup': () => json({ error: 'name_taken' }, 409),
-      '/auth/claim-name': () => json({ error: 'Invalid credentials' }, 401),
+      ...routes,
     });
     renderPage();
     await screen.findByText('Join Six Feathers');
@@ -157,14 +157,69 @@ describe('DoorJoinPage', () => {
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Ask to join' }));
     });
-    fireEvent.click(screen.getByRole('button', { name: "Enter an organizer's code" }));
-    fireEvent.change(screen.getByLabelText('6-digit code from an organizer'), { target: { value: '123456' } });
+    return calls;
+  }
+
+  it('"Is that you?" offers the PIN and the other phone, an organizer as the quiet way, and no typed code (step 3)', async () => {
+    await toIsThatYou({});
+    expect(screen.getByRole('button', { name: 'Enter my PIN' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Approve on my other phone' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Ask an organizer' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: /organizer's code/ })).toBeNull();
+  });
+
+  it('the other phone: shows the number to tap there, and signs in once that phone says yes', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let approved = false;
+    const calls = await toIsThatYou({
+      '/auth/claim-ask': () => json({ ok: true, secret: 'sealed', match: 47, club: 'club-x' }),
+      '/access-request/claim': () => json(approved ? { status: 'approved', name: 'Lin Dan' } : { status: 'pending' }),
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Approve on my other phone' }));
+    });
+    expect(calls.find((c) => c.url.includes('/auth/claim-ask'))!.body).toEqual({ name: 'Lin Dan', inviteToken: TOKEN });
+    expect(screen.getByRole('heading', { name: 'Check your other phone' })).toBeDefined();
+    expect(screen.getByRole('img', { name: 'Your number is 47' }).textContent).toBe('47');
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3100);
+    });
+    expect(identities).toHaveLength(0);
+    approved = true;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3100);
+    });
+    expect(calls.find((c) => c.url.includes('/access-request/claim'))!.body).toEqual({ name: 'Lin Dan', secret: 'sealed', club: 'club-x' });
+    expect(identities).toEqual([{ name: 'Lin Dan', sessionId: '' }]);
+    vi.useRealTimers();
+  });
+
+  it('asking an organizer instead moves the same ask', async () => {
+    const calls = await toIsThatYou({
+      '/auth/claim-ask': () => json({ ok: true, secret: 'sealed', match: 47, club: 'club-x' }),
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Approve on my other phone' }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Ask an organizer instead' }));
+    });
+    const asks = calls.filter((c) => c.url.includes('/auth/claim-ask'));
+    expect(asks[1].body).toEqual({ name: 'Lin Dan', inviteToken: TOKEN, secret: 'sealed' });
+    expect(screen.getByRole('heading', { name: 'Request sent' })).toBeDefined();
+    expect(screen.getByText('Requests stay open for an hour.')).toBeDefined();
+  });
+
+  it('too many PIN tries counts down on "Is that you?" too', async () => {
+    await toIsThatYou({ '/auth/claim-name': () => json({ error: 'pin_paused', retryAfter: 60 }, 429) });
+    fireEvent.click(screen.getByRole('button', { name: 'Enter my PIN' }));
+    fireEvent.change(screen.getByLabelText('PIN'), { target: { value: '0000' } });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
     });
-    expect(calls.find((c) => c.url.includes('/auth/claim-name'))!.body).toMatchObject({ code: '123456' });
-    expect((await screen.findByRole('alert')).textContent).toMatch(/didn't match/);
-    expect(identities).toHaveLength(0);
+    expect((await screen.findByRole('alert')).textContent).toMatch(/try again in 1:00/);
+    expect((screen.getByLabelText('PIN') as HTMLInputElement).disabled).toBe(true);
   });
 
   it('a one-word name is a hint first, then goes', async () => {

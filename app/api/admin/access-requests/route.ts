@@ -23,6 +23,7 @@
  * must not read as a fresh single request.
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { linkSignInTo } from '@/lib/linkSignIn';
 import { getContainer } from '@/lib/cosmos';
 import { isAdminAuthed, isAdminAuthedWithMember } from '@/lib/auth';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
@@ -108,6 +109,12 @@ export async function GET(req: NextRequest) {
         requestId: open.length === 1 ? pending[0].id : null,
         // What the card says beside the name: nobody has ever signed in under it.
         neverSignedIn: isUnclaimed(m),
+        // "Is that you?" asked an organizer (docs/plans/sign-in-redesign.md,
+        // step 3): how the new phone signed in, so they can check it is them.
+        newSignIn:
+          open.length === 1 && pending[0].link
+            ? { provider: pending[0].link.provider, email: typeof pending[0].link.email === 'string' ? pending[0].link.email : null }
+            : null,
       }))
       .sort((a, b) => a.at - b.at);
 
@@ -223,6 +230,25 @@ export async function POST(req: NextRequest) {
     }
     let refusal: 'not_found' | 'several_requests' | null = null;
 
+    // A new sign-in asking "Is that you?" (step 3): approving it LINKS that
+    // sign-in to this person first (lib/linkSignIn.ts), so their next sign-in
+    // that way lands on the account even if the waiting page is gone. Checked
+    // on a fresh read, with the same rules the write below re-checks.
+    if (decision === 'approve') {
+      const { resource: holder } = await getContainer('members').item(memberId, memberId).read<Member>();
+      const open = openRequests(holder);
+      const asked = open.find((r) => r.id === requestId && r.approvedAt === undefined && askedIn(r, admin.groupId));
+      // One still waiting on the person's own phone is not on the card, and
+      // not an organizer's to approve until they ask for one.
+      if (asked?.link && asked.organizer !== true) return NextResponse.json({ error: 'not_found' }, { status: 404 });
+      if (asked?.link && open.length === 1) {
+        const linked = await linkSignInTo(memberId, asked.link);
+        if (!linked.ok) {
+          return NextResponse.json({ error: linked.reason === 'already_linked' ? 'already_linked' : 'not_found' }, { status: 409 });
+        }
+      }
+    }
+
     const result = await updateAccessRequests(memberId, (open) => {
       if (decision === 'decline') {
         // Declining clears every open request for the person IN THIS CLUB
@@ -236,7 +262,9 @@ export async function POST(req: NextRequest) {
       }
       // An ask for ANOTHER club is not this organiser's to approve, even for a
       // person on both rosters: it signs the device in to the club it names.
-      const target = open.find((r) => r.id === requestId && r.approvedAt === undefined && askedIn(r, admin.groupId));
+      const target = open.find(
+        (r) => r.id === requestId && r.approvedAt === undefined && askedIn(r, admin.groupId) && (!r.link || r.organizer === true),
+      );
       if (!target) { refusal = 'not_found'; return null; }
       // Re-checked at write time, not trusted from the list the admin saw: a
       // second ask may have landed since.

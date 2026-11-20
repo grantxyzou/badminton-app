@@ -2913,6 +2913,22 @@
       "close": "关闭"
     }
   },
+  "newPhone": {
+    "title": "是你吗？",
+    "body": "有人正在一部新手机上以你的身份登录。",
+    "viaGoogle": "用 Google 登录",
+    "viaApple": "用 Apple 登录",
+    "viaEmail": "用邮箱验证码登录",
+    "pick": "如果是你，点那部手机上显示的数字。",
+    "pickNumber": "点 {number}",
+    "notMe": "不是我",
+    "later": "稍后再答",
+    "failed": "没能发送。检查网络后再试一次。",
+    "approvedTitle": "你的新手机已登录",
+    "approvedBody": "它现在以你的身份登录了。",
+    "stoppedTitle": "已阻止这次登录",
+    "stoppedBody": "那部新手机没有获准登录。如果是你，请在那部手机上再试一次。"
+  },
   "keepAccount": {
     "title": "保住你的账号",
     "body": "选好下次怎么登录，以后就不用再找人帮忙了。",
@@ -3084,14 +3100,23 @@
       "title": "是你吗？",
       "heading": "{name} 已经在 {club} 打球",
       "headingNoClub": "{name} 已经在这里打球",
-      "body": "如果是你，用下面一种方式证明，这次登录就会加到你的账号上。",
+      "body": "如果是你，用下面任一方式确认，这次登录就会加到你的账号里。",
       "enterPin": "输入我的 PIN",
-      "enterCode": "输入组织者给的码",
+      "otherPhone": "在我的另一部手机上确认",
+      "askOrganizer": "请组织者确认",
+      "askOrganizerInstead": "改为请组织者确认",
+      "usePin": "改用我的 PIN",
       "notMe": "不是 {name}？换一个名字",
       "pinLabel": "PIN",
-      "codeLabel": "组织者给的 6 位码",
       "continue": "继续",
-      "checking": "检查中…"
+      "checking": "正在验证…",
+      "phoneHeading": "看看你的另一部手机",
+      "phoneBody": "在以 {name} 登录的手机上打开 %APP_SHORT%，点这个数字。",
+      "numberLabel": "你的数字是 {number}",
+      "phoneWaiting": "正在等你的另一部手机…",
+      "organizerHeading": "申请已发出",
+      "organizerBody": "认识你的组织者会确认是你本人。请保持此页面打开，或者在他们确认后，用同样的方式重新登录。",
+      "lasts": "申请会保留一小时。"
     },
     "join": {
       "title": "加入俱乐部",
@@ -4009,6 +4034,8 @@
     "languageOffline": "联网后才能切换语言"
   },
   "push": {
+    "newPhone": {"title": "是你吗？", "body": "有人正在一部新手机上以你的身份登录。打开 %APP_SHORT% 确认是不是你。"},
+    "newPhoneOrganizer": {"title": "是 {name} 吗？", "body": "{name} 正在新手机上登录，请组织者确认是本人。"},
     "signupOpen": {
       "title": "报名开始了",
       "bodyWhenWhere": "{when}，在{where}。点一下抢个位置。",

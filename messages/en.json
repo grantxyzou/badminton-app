@@ -2925,6 +2925,22 @@
       "close": "Close"
     }
   },
+  "newPhone": {
+    "title": "Is this you?",
+    "body": "Someone is signing in as you on a new phone.",
+    "viaGoogle": "Signed in with Google",
+    "viaApple": "Signed in with Apple",
+    "viaEmail": "Signed in with an email code",
+    "pick": "If it's you, tap the number that phone shows.",
+    "pickNumber": "Tap {number}",
+    "notMe": "No, it's not me",
+    "later": "Answer later",
+    "failed": "Couldn't send that. Check your connection and try again.",
+    "approvedTitle": "Your new phone is signed in",
+    "approvedBody": "It's signed in as you now.",
+    "stoppedTitle": "That sign-in was stopped",
+    "stoppedBody": "The new phone wasn't let in. If it was you, try again from that phone."
+  },
   "keepAccount": {
     "title": "Keep your account",
     "body": "Pick how you'll sign in next time, so you never have to ask again.",
@@ -3098,12 +3114,21 @@
       "headingNoClub": "{name} already plays here",
       "body": "If that's you, show it one of these ways and this sign-in is added to your account.",
       "enterPin": "Enter my PIN",
-      "enterCode": "Enter an organizer's code",
+      "otherPhone": "Approve on my other phone",
+      "askOrganizer": "Ask an organizer",
+      "askOrganizerInstead": "Ask an organizer instead",
+      "usePin": "Use my PIN instead",
       "notMe": "Not {name}? Use a different name",
       "pinLabel": "PIN",
-      "codeLabel": "6-digit code from an organizer",
       "continue": "Continue",
-      "checking": "Checking…"
+      "checking": "Checking…",
+      "phoneHeading": "Check your other phone",
+      "phoneBody": "On a phone where you're signed in as {name}, open %APP_SHORT% and tap this number.",
+      "numberLabel": "Your number is {number}",
+      "phoneWaiting": "Waiting for your other phone…",
+      "organizerHeading": "Request sent",
+      "organizerBody": "An organizer who knows you will confirm it's you. Keep this page open, or once they have, sign in again the same way.",
+      "lasts": "Requests stay open for an hour."
     },
     "join": {
       "title": "Join a club",
@@ -4021,6 +4046,8 @@
     "languageOffline": "Language switches when you’re back online"
   },
   "push": {
+    "newPhone": {"title": "Is this you?", "body": "Someone is signing in as you on a new phone. Open %APP_SHORT% to say if it’s you."},
+    "newPhoneOrganizer": {"title": "Is this {name}?", "body": "{name} is signing in on a new phone and asked an organizer to confirm it’s them."},
     "signupOpen": {
       "title": "Sign-ups are open",
       "bodyWhenWhere": "{when} at {where}. Tap to grab a spot.",

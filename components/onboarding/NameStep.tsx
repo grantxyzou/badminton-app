@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { setIdentity } from '@/lib/identity';
 import { isFullName } from '@/lib/fullName';
 import { useOnline } from '@/lib/useOnline';
+import { usePinPause, pinPausedSeconds } from '@/lib/usePinPause';
 import AuthStage, { type AuthStep } from './AuthStage';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -29,6 +30,13 @@ interface Props {
 }
 
 type Stage = 'name' | 'claim' | 'expired';
+/** How "Is that you?" is being answered: the PIN, another phone, an organizer. */
+type Proof = null | 'pin' | 'phone' | 'organizer';
+/** An ask filed with `claim-ask`: the page's own secret, and the number to tap. */
+type Ask = { secret: string; match: number; club: string | null };
+
+/** How often a waiting page asks whether the other phone or an organizer said yes. */
+const POLL_MS = 3000;
 
 /**
  * ONE NAME STEP (docs/plans/sign-in-redesign.md, merge 4): after an email code
@@ -41,20 +49,26 @@ type Stage = 'name' | 'claim' | 'expired';
  * there, so all that is posted from here is a name and a credential.
  *
  * "IS THAT YOU?": a name a signed-in member of the club already holds answers
- * `name_taken`. Prove it is yours — the PIN, or a 6-digit code from an
- * organizer — and this sign-in joins your account (`claim-name`). It never
- * accepts a name alone: names are enumerable.
+ * `name_taken`. Prove it is yours, in this order (sign-in redesign, step 3):
+ * your PIN (`claim-name`); else a phone where you are still signed in, which
+ * asks "Someone is signing in as you on a new phone. Is this you?" and wants
+ * the number shown here; else an organizer who knows you (`claim-ask`). Any
+ * of them joins this sign-in to your account, and the waiting page signs in
+ * by itself. It never accepts a name alone: names are enumerable.
  */
 export default function NameStep({ title, onBack, step, inviteToken, noGroup, club, prefill, onMade, onReturnCode }: Props) {
   const t = useTranslations('signedOut');
   const tn = useTranslations('signedOut.name');
   const tc = useTranslations('signedOut.claim');
+  const tPin = useTranslations('pin');
   const tAuth = useTranslations('profile.auth');
   const online = useOnline();
   const [stage, setStage] = useState<Stage>('name');
   const [name, setName] = useState('');
   const [hinted, setHinted] = useState<string | null>(null);
-  const [proof, setProof] = useState<null | 'pin' | 'code'>(null);
+  const [proof, setProof] = useState<Proof>(null);
+  const [ask, setAsk] = useState<Ask | null>(null);
+  const pause = usePinPause();
   const [secret, setSecret] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,6 +93,67 @@ export default function NameStep({ title, onBack, step, inviteToken, noGroup, cl
       live = false;
     };
   }, [prefill]);
+
+  // Waiting on the other phone or an organizer: ask whether they said yes.
+  // Approval links this sign-in to the account, so the claim signs in.
+  useEffect(() => {
+    if (!ask || (proof !== 'phone' && proof !== 'organizer')) return;
+    let live = true;
+    const who = name.trim();
+    const check = async () => {
+      try {
+        const res = await fetch(`${BASE}/api/members/access-request/claim`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: who, secret: ask.secret, ...(ask.club ? { club: ask.club } : {}) }),
+        });
+        const data = (await res.json().catch(() => ({}))) as { status?: string; name?: string };
+        if (live && data.status === 'approved') setIdentity({ name: data.name ?? who, sessionId: '' });
+      } catch {
+        /* the next tick tries again */
+      }
+    };
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void check();
+    }, POLL_MS);
+    return () => {
+      live = false;
+      window.clearInterval(timer);
+    };
+  }, [ask, proof, name]);
+
+  /** File the ask, or move the one already filed to an organizer. */
+  async function askFor(target: 'phone' | 'organizer') {
+    if (busy || !online) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`${BASE}/api/auth/claim-ask`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          ...(sentInvite ? { inviteToken } : {}),
+          ...(target === 'organizer' ? (ask ? { secret: ask.secret } : { organizer: true }) : {}),
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string; secret?: string; match?: number; club?: string | null };
+      if (!res.ok) {
+        if (data.error === 'no_pending_signup') setStage('expired');
+        else if (res.status === 429) setError(tAuth('claimRateLimited'));
+        else setError(tn('failed'));
+        return;
+      }
+      if (typeof data.secret === 'string' && typeof data.match === 'number') {
+        setAsk({ secret: data.secret, match: data.match, club: data.club ?? null });
+      }
+      setProof(target);
+    } catch {
+      setError(tn('failed'));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function submitName() {
     const trimmed = name.trim();
@@ -105,6 +180,7 @@ export default function NameStep({ title, onBack, step, inviteToken, noGroup, cl
       if (!res.ok) {
         if (data.error === 'name_taken') {
           setProof(null);
+          setAsk(null);
           setSecret('');
           setStage('claim');
         } else if (data.error === 'no_pending_signup') setStage('expired');
@@ -128,7 +204,7 @@ export default function NameStep({ title, onBack, step, inviteToken, noGroup, cl
 
   async function submitClaim() {
     const typed = secret.trim();
-    if (!typed || busy || !online || !proof) return;
+    if (!typed || busy || !online || proof !== 'pin' || pause.paused) return;
     setBusy(true);
     setError(null);
     try {
@@ -138,9 +214,10 @@ export default function NameStep({ title, onBack, step, inviteToken, noGroup, cl
         body: JSON.stringify({
           name: name.trim(),
           ...(sentInvite ? { inviteToken } : {}),
-          ...(proof === 'code' ? { code: typed } : { pin: typed }),
+          pin: typed,
         }),
       });
+      const paused = await pinPausedSeconds(res);
       const data = (await res.json().catch(() => ({}))) as { error?: string; name?: string };
       if (res.ok) {
         // Joined to the account they already have, in the club they are
@@ -148,7 +225,10 @@ export default function NameStep({ title, onBack, step, inviteToken, noGroup, cl
         setIdentity({ name: data.name ?? name.trim(), sessionId: '' });
         return;
       }
-      if (res.status === 429) setError(tAuth('claimRateLimited'));
+      if (paused) {
+        pause.pauseFor(paused);
+        setSecret('');
+      } else if (res.status === 429) setError(tAuth('claimRateLimited'));
       else if (data.error === 'already_linked') setError(tAuth('claimAlreadyLinked'));
       else if (data.error === 'no_pending_signup') setStage('expired');
       else if (res.status === 401) setError(tAuth('claimWrong'));
@@ -186,59 +266,107 @@ export default function NameStep({ title, onBack, step, inviteToken, noGroup, cl
   }
 
   if (stage === 'claim') {
-    const digits = proof === 'code' ? 6 : 4;
     const who = name.trim();
-    return (
-      <AuthStage
-        data-page="is-that-you"
-        title={tc('title')}
-        onBack={() => {
-          if (proof) setProof(null);
-          else setStage('name');
-          setError(null);
-        }}
-        backLabel={t('back')}
-        heading={club ? tc('heading', { name: who, club }) : tc('headingNoClub', { name: who })}
-        copy={<p className="auth-copy">{tc('body')}</p>}
-        actions={
-          proof ? (
+    const heading = club ? tc('heading', { name: who, club }) : tc('headingNoClub', { name: who });
+    const back = () => {
+      if (proof) setProof(null);
+      else setStage('name');
+      setError(null);
+    };
+    const usePinLink = (
+      <button type="button" className="link-quiet" onClick={() => setProof('pin')}>
+        {tc('usePin')}
+      </button>
+    );
+
+    if (proof === 'phone' && ask) {
+      return (
+        <AuthStage
+          data-page="check-other-phone"
+          title={tc('title')}
+          onBack={back}
+          backLabel={t('back')}
+          heading={tc('phoneHeading')}
+          copy={
             <>
-              {errorLine}
+              <p className="auth-copy">{tc('phoneBody', { name: who })}</p>
+              <p className="auth-match" role="img" aria-label={tc('numberLabel', { number: String(ask.match) })}>
+                {ask.match}
+              </p>
+              <p className="auth-note" role="status">
+                {tc('phoneWaiting')}
+              </p>
+            </>
+          }
+          actions={errorLine}
+          links={
+            <>
+              <button type="button" className="link-quiet" disabled={busy || !online} onClick={() => void askFor('organizer')}>
+                {tc('askOrganizerInstead')}
+              </button>
+              {usePinLink}
+            </>
+          }
+        />
+      );
+    }
+
+    if (proof === 'organizer') {
+      return (
+        <AuthStage
+          data-page="organizer-asked"
+          title={tc('title')}
+          onBack={back}
+          backLabel={t('back')}
+          heading={tc('organizerHeading')}
+          copy={
+            <>
+              <p className="auth-copy" role="status">
+                {tc('organizerBody')}
+              </p>
+              <p className="auth-note">{tc('lasts')}</p>
+            </>
+          }
+          actions={errorLine}
+          links={usePinLink}
+        />
+      );
+    }
+
+    if (proof === 'pin') {
+      return (
+        <AuthStage
+          data-page="is-that-you-pin"
+          title={tc('title')}
+          onBack={back}
+          backLabel={t('back')}
+          heading={heading}
+          copy={<p className="auth-copy">{tc('body')}</p>}
+          actions={
+            <>
+              {pause.paused ? (
+                <p className="field-warn" role="alert">
+                  {tPin('paused', { time: pause.label })}
+                </p>
+              ) : (
+                errorLine
+              )}
               <button
                 type="button"
                 className="auth-btn auth-btn--primary"
-                disabled={busy || !online || secret.length !== digits}
+                disabled={busy || !online || pause.paused || secret.length !== 4}
                 onClick={() => void submitClaim()}
               >
                 {busy ? tc('checking') : tc('continue')}
               </button>
             </>
-          ) : (
-            <>
-              <button type="button" className="auth-btn auth-btn--neutral" onClick={() => setProof('pin')}>
-                {tc('enterPin')}
-              </button>
-              <button type="button" className="auth-btn auth-btn--neutral" onClick={() => setProof('code')}>
-                {tc('enterCode')}
-              </button>
-            </>
-          )
-        }
-        links={
-          <button
-            type="button"
-            className="link-quiet"
-            onClick={() => {
-              setStage('name');
-              setProof(null);
-              setError(null);
-            }}
-          >
-            {tc('notMe', { name: who })}
-          </button>
-        }
-      >
-        {proof && (
+          }
+          links={
+            <button type="button" className="link-quiet" disabled={busy || !online} onClick={() => void askFor('phone')}>
+              {tc('otherPhone')}
+            </button>
+          }
+        >
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -246,24 +374,65 @@ export default function NameStep({ title, onBack, step, inviteToken, noGroup, cl
             }}
           >
             <input
-              key={proof}
               className="auth-field"
               type="password"
               inputMode="numeric"
               autoComplete="one-time-code"
               value={secret}
               onChange={(e) => {
-                setSecret(e.target.value.replace(/\D/g, '').slice(0, digits));
+                setSecret(e.target.value.replace(/\D/g, '').slice(0, 4));
                 setError(null);
               }}
-              maxLength={digits}
-              placeholder={proof === 'code' ? tc('codeLabel') : tc('pinLabel')}
-              aria-label={proof === 'code' ? tc('codeLabel') : tc('pinLabel')}
+              maxLength={4}
+              placeholder={tc('pinLabel')}
+              aria-label={tc('pinLabel')}
+              disabled={pause.paused}
               autoFocus
             />
           </form>
-        )}
-      </AuthStage>
+        </AuthStage>
+      );
+    }
+
+    return (
+      <AuthStage
+        data-page="is-that-you"
+        title={tc('title')}
+        onBack={back}
+        backLabel={t('back')}
+        heading={heading}
+        copy={<p className="auth-copy">{tc('body')}</p>}
+        actions={
+          <>
+            {errorLine}
+            <button type="button" className="auth-btn auth-btn--neutral" onClick={() => setProof('pin')}>
+              {tc('enterPin')}
+            </button>
+            <button type="button" className="auth-btn auth-btn--neutral" disabled={busy || !online} onClick={() => void askFor('phone')}>
+              {tc('otherPhone')}
+            </button>
+          </>
+        }
+        links={
+          <>
+            <button type="button" className="link-quiet" disabled={busy || !online} onClick={() => void askFor('organizer')}>
+              {tc('askOrganizer')}
+            </button>
+            <button
+              type="button"
+              className="link-quiet"
+              onClick={() => {
+                setStage('name');
+                setProof(null);
+                setAsk(null);
+                setError(null);
+              }}
+            >
+              {tc('notMe', { name: who })}
+            </button>
+          </>
+        }
+      />
     );
   }
 

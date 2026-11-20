@@ -6729,6 +6729,42 @@ input[type="range"].reel-hue:focus-visible {
   line-height: 1.5;
   color: var(--text-muted);
 }
+/* "Is this you?" on the signed-in phone: three numbers, one of them the new
+   phone's (sign-in redesign, step 3). Fill-only tiles, the data face. */
+.new-phone-choices {
+  display: flex;
+  gap: var(--space-4);
+}
+.new-phone-choice {
+  flex: 1;
+  min-height: calc(64rem / 16);
+  border: 1px solid transparent;
+  border-radius: var(--radius-xl);
+  background: var(--auth-field-bg);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-stat-lg);
+  font-weight: 700;
+  transition: transform var(--duration-press) ease-out;
+}
+.new-phone-choice:active {
+  transform: scale(0.97);
+}
+.new-phone-choice:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+/* "Check your other phone": the number to tap there (sign-in redesign, step 3).
+   The member screen's one headline number, in the data face. */
+.auth-match {
+  margin: var(--space-3) 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-count);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  color: var(--text-primary);
+}
 /* The launch lockup at one height, the same picture as Welcome's. Its canvas
    is 360 wide; only the band holding the arc, `bpm` and the tagline is shown. */
 .auth-logo {

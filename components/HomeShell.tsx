@@ -21,6 +21,7 @@ type NotificationsPageComponent = typeof import('@/components/NotificationsPage'
 import { usePush } from '@/lib/usePush';
 import { isNative } from '@/lib/native';
 import TopToast from '@/components/primitives/TopToast';
+import NewPhonePrompt from '@/components/auth/NewPhonePrompt';
 import AdminErrorBoundary from '@/components/AdminErrorBoundary';
 import PullToRefresh from '@/components/PullToRefresh';
 import { StringingFallback, StatsFallback, ProfileFallback, AdminFallback, NotificationsFallback } from '@/components/TabFallbacks';
@@ -1049,6 +1050,10 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
             }
             onClose={online && authNotice ? () => setAuthNotice(null) : online && appToast ? dismissAppToast : undefined}
           />
+          {/* "Someone is signing in as you on a new phone. Is this you?" — any
+              signed-in phone answers "Is that you?" from a new sign-in
+              (docs/plans/sign-in-redesign.md, step 3). A sheet, so it portals. */}
+          {hasIdentity === true && !inOnboarding && <NewPhonePrompt />}
           {/* No "sign in to see your stats" banner (removed 2026-09-14). Each
               Stats card a device may not fill now locks itself with its own
               Sign in button (components/stats/LockedCard.tsx), and Profile
