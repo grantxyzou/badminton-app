@@ -89,6 +89,28 @@ describe('<UnpaidSessionsCard />', () => {
     });
   });
 
+  it('shows the club address and the amount as rows that copy (docs/plans/etransfer-copy.md)', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          totalOwed: 22.5,
+          sessionCount: 1,
+          mostRecent: { sessionId: 's1', date: '2026-06-08T19:00:00-04:00', owedAmount: 22.5 },
+          sessions: [{ sessionId: 's1', date: '2026-06-08T19:00:00-04:00', owedAmount: 22.5 }],
+          payTo: { name: 'Club Treasurer', email: 'pay@example.com' },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    wrap(<UnpaidSessionsCard name="Lin" />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Copy the email address pay@example.com' })).toBeTruthy();
+    });
+    expect(screen.getByRole('button', { name: 'Copy the amount $22.50' })).toBeTruthy();
+  });
+
   it('home variant shows the balance title and owed amount', async () => {
     vi.spyOn(global, 'fetch').mockResolvedValue(
       new Response(

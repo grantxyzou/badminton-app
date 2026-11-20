@@ -16,7 +16,7 @@ const CANARY_KEYS = [
   'home.session.when',
   'home.roster.count',
   'home.balance.title',
-  'home.payment.etransfer',
+  'etransferCopy.howTo',
   'pages.signup.title',
   'pages.learn.title',
   'pages.admin.title',

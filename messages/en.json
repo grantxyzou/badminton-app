@@ -674,7 +674,6 @@
       "count": "{count, plural, =0 {No players yet} one {# player signed up} other {# players signed up}}"
     },
     "payment": {
-      "etransfer": "E-transfer to {email}",
       "sentIt": "I\u2019ve sent it",
       "sentItDone": "Thanks \u2014 it\u2019ll be marked paid when the e-transfer arrives.",
       "card": "Pay by card",
@@ -1153,9 +1152,6 @@
       "etransfer": {
         "title": "Pay by e-transfer",
         "close": "Close",
-        "body": "Send {amount} by Interac e-transfer to:",
-        "copy": "Copy email",
-        "copied": "Copied",
         "sent": "I’ve sent it",
         "sentDone": "Thanks. It’ll be marked paid when the e-transfer arrives.",
         "sentError": "Couldn’t save that. Try again."
@@ -4106,5 +4102,17 @@
       "bodyMany": "You’ve got a couple of sessions to settle up.",
       "bodyOne": "You’ve got a session to settle up."
     }
+  },
+  "etransferCopy": {
+    "howTo": "In your bank’s app, choose Interac e-Transfer and paste these.",
+    "to": "Send to",
+    "amount": "Amount",
+    "copy": "Copy",
+    "copied": "Copied",
+    "copyEmail": "Copy the email address {email}",
+    "copyAmount": "Copy the amount {amount}",
+    "copiedEmail": "Email address copied",
+    "copiedAmount": "Amount copied",
+    "copyFailed": "Couldn’t copy. Press and hold the text to copy it."
   }
 }

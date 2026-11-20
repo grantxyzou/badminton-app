@@ -1,0 +1,85 @@
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+import { useTranslations } from 'next-intl';
+
+type Field = 'email' | 'amount';
+type CopyState = { field: Field; ok: boolean } | null;
+
+/** How long "Copied" stays before the row reads "Copy" again. */
+const COPIED_MS = 2000;
+
+/**
+ * Paying by Interac e-transfer, as two rows a member taps: the club's address
+ * and the amount, each copied with one tap to paste into their bank's app
+ * (docs/plans/etransfer-copy.md). No bank's send screen can be opened from
+ * here, so this is the shortest way between the app and the bank.
+ *
+ * The amount is copied as a plain number with two decimals (`27.00`): banks'
+ * amount fields refuse a `$`. If the clipboard refuses, the row says so; the
+ * text stays selectable, so press-and-hold still works.
+ */
+export default function EtransferCopy({ email, name, amountCents }: { email: string; name?: string | null; amountCents: number }) {
+  const t = useTranslations('etransferCopy');
+  const [state, setState] = useState<CopyState>(null);
+  const timer = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (timer.current !== null) window.clearTimeout(timer.current);
+  }, []);
+
+  const amount = (amountCents / 100).toFixed(2);
+
+  async function copy(field: Field, text: string) {
+    let ok = false;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        ok = true;
+      }
+    } catch {
+      ok = false;
+    }
+    setState({ field, ok });
+    if (timer.current !== null) window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => setState(null), COPIED_MS);
+  }
+
+  const tag = (field: Field) => {
+    const done = state?.field === field && state.ok;
+    return (
+      <span className={done ? 'copy-row__tag copy-row__tag--done' : 'copy-row__tag'} aria-hidden="true">
+        <span className="material-icons">{done ? 'check' : 'content_copy'}</span>
+        {done ? t('copied') : t('copy')}
+      </span>
+    );
+  };
+
+  return (
+    <div className="flex flex-col gap-2" data-testid="etransfer-copy">
+      <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)' }}>{t('howTo')}</p>
+      <button type="button" className="copy-row" onClick={() => void copy('email', email)} aria-label={t('copyEmail', { email })}>
+        <span className="copy-row__text">
+          <span className="copy-row__label">{t('to')}</span>
+          <span className="copy-row__value">{email}</span>
+          {name ? <span className="copy-row__sub">{name}</span> : null}
+        </span>
+        {tag('email')}
+      </button>
+      <button type="button" className="copy-row" onClick={() => void copy('amount', amount)} aria-label={t('copyAmount', { amount: `$${amount}` })}>
+        <span className="copy-row__text">
+          <span className="copy-row__label">{t('amount')}</span>
+          <span className="copy-row__value">${amount}</span>
+        </span>
+        {tag('amount')}
+      </button>
+      {/* The row's own tag shows "Copied"; this says it to a screen reader. */}
+      <p className="sr-only" role="status">
+        {state?.ok ? t(state.field === 'email' ? 'copiedEmail' : 'copiedAmount') : ''}
+      </p>
+      {state && !state.ok && (
+        <p className="field-warn" role="alert" style={{ margin: '0' }}>{t('copyFailed')}</p>
+      )}
+    </div>
+  );
+}

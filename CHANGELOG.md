@@ -23,6 +23,12 @@ The sign-in pages, redrawn on the canvas and built (`docs/plans/sign-in-redesign
 - **"Is that you?" needs no organizer first.** A new sign-in that picks a name someone already plays under proves it with their PIN, or by approving on any phone where they're still signed in ("Someone is signing in as you on a new phone. Is this you?", then tap the number the new phone shows), or, only if neither works, by asking an organizer, who sees how the new phone signed in. The typed organizer code is gone.
 - **Signing out goes back to Welcome**, instead of leaving an empty app with a second set of doors. `bpm.grantzou.com` with nothing after it opens the app instead of a "not found" page.
 
+## Paying by e-transfer: tap to copy the address and the amount (2026-11-20)
+
+- **Home's balance card shows the club's e-transfer address and the amount as two rows; tap one to copy it**, then paste it into your bank's app (`docs/plans/etransfer-copy.md`). The amount copies as a plain number (`27.00`), which banks accept. The address used to be a line of text you had to type out.
+- The Balance page's "Pay by e-transfer" sheet shows the same two rows.
+- If your phone won't let the app copy, it says so, and you can still press and hold the text to copy it.
+
 ## The strings map: the racket you picked goes with your request (2026-11-19)
 
 - **Pick a racket on the map, choose a string, and "Restring with this string" opens the request on that racket and that string.** Before, the request opened with no racket chosen (Grant: "when racket is selected the verdict in the string sheet should updated to the racket").
