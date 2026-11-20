@@ -24,6 +24,12 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { linkSignInTo } from '@/lib/linkSignIn';
+import { sendPushToMembers } from '@/lib/push';
+import { buildNewSignInAddedPayload } from '@/lib/pushMessages';
+
+/** On the organizer's card: everything but a new sign-in still waiting on the
+ *  person's OWN phone, which is theirs to answer until they ask an organizer. */
+const onCard = (r: StoredAccessRequest) => !r.link || r.organizer === true;
 import { getContainer } from '@/lib/cosmos';
 import { isAdminAuthed, isAdminAuthedWithMember } from '@/lib/auth';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
@@ -97,7 +103,9 @@ export async function GET(req: NextRequest) {
       // person on two rosters may ask in either; one club's organiser never
       // sees, or approves, the other's. A request from before the field has
       // no club and is seen by the roster's (the rule before).
-      .map((m) => ({ m, open: openRequests(m), pending: pendingRequests(m).filter((r) => askedIn(r, groupId)) }))
+      // `open` is what the card can see: an ask still waiting on the person's
+      // own phone is neither shown nor counted (sign-in redesign, step 3).
+      .map((m) => ({ m, open: openRequests(m).filter(onCard), pending: pendingRequests(m).filter((r) => askedIn(r, groupId)) }))
       .filter(({ pending }) => pending.length > 0)
       .map(({ m, open, pending }) => ({
         memberId: m.id,
@@ -228,28 +236,11 @@ export async function POST(req: NextRequest) {
       const onBehalf = await onBehalfRefusal(admin, memberId);
       if (onBehalf) return onBehalfRefused(onBehalf);
     }
-    let refusal: 'not_found' | 'several_requests' | null = null;
+    let refusal: 'not_found' | 'several_requests' | 'organiser_only' | null = null;
+    let approved: (StoredAccessRequest & { id: string }) | null = null;
 
-    // A new sign-in asking "Is that you?" (step 3): approving it LINKS that
-    // sign-in to this person first (lib/linkSignIn.ts), so their next sign-in
-    // that way lands on the account even if the waiting page is gone. Checked
-    // on a fresh read, with the same rules the write below re-checks.
-    if (decision === 'approve') {
-      const { resource: holder } = await getContainer('members').item(memberId, memberId).read<Member>();
-      const open = openRequests(holder);
-      const asked = open.find((r) => r.id === requestId && r.approvedAt === undefined && askedIn(r, admin.groupId));
-      // One still waiting on the person's own phone is not on the card, and
-      // not an organizer's to approve until they ask for one.
-      if (asked?.link && asked.organizer !== true) return NextResponse.json({ error: 'not_found' }, { status: 404 });
-      if (asked?.link && open.length === 1) {
-        const linked = await linkSignInTo(memberId, asked.link);
-        if (!linked.ok) {
-          return NextResponse.json({ error: linked.reason === 'already_linked' ? 'already_linked' : 'not_found' }, { status: 409 });
-        }
-      }
-    }
-
-    const result = await updateAccessRequests(memberId, (open) => {
+    const result = await updateAccessRequests(memberId, (all) => {
+      const open = all.filter(onCard);
       if (decision === 'decline') {
         // Declining clears every open request for the person IN THIS CLUB
         // (another club's asks stand). The asking devices then poll into
@@ -258,25 +249,46 @@ export async function POST(req: NextRequest) {
         // useful to do with one.
         const mine = open.filter((r) => askedIn(r, admin.groupId));
         if (mine.length === 0) { refusal = 'not_found'; return null; }
-        return open.filter((r) => !askedIn(r, admin.groupId));
+        return all.filter((r) => !(onCard(r) && askedIn(r, admin.groupId)));
       }
       // An ask for ANOTHER club is not this organiser's to approve, even for a
       // person on both rosters: it signs the device in to the club it names.
-      const target = open.find(
-        (r) => r.id === requestId && r.approvedAt === undefined && askedIn(r, admin.groupId) && (!r.link || r.organizer === true),
-      );
+      // One still waiting on the person's own phone is not on the card at all.
+      const target = open.find((r) => r.id === requestId && r.approvedAt === undefined && askedIn(r, admin.groupId));
       if (!target) { refusal = 'not_found'; return null; }
+      // A new sign-in ("Is that you?", step 3) is joined to the person for
+      // good, so it is an ORGANISER's call, like letting someone join.
+      if (target.link && !admin.organiser) { refusal = 'organiser_only'; return null; }
       // Re-checked at write time, not trusted from the list the admin saw: a
       // second ask may have landed since.
       if (open.length > 1) { refusal = 'several_requests'; return null; }
+      approved = target;
       return [{ ...target, approvedAt: Date.now() }];
     });
 
+    if (refusal === 'organiser_only') {
+      return NextResponse.json({ error: 'organiser_only' }, { status: 403 });
+    }
     if (refusal === 'several_requests') {
       return NextResponse.json({ error: 'several_requests' }, { status: 409 });
     }
     if (!result) {
       return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    }
+    // A new sign-in approved: LINK it now (lib/linkSignIn.ts), after the
+    // write-time re-check above, so a second ask landing in between can never
+    // leave a sign-in linked under a refusal. If the link cannot be made, the
+    // approval is taken back. The person hears that a way in was added.
+    const linkAsk = approved as (StoredAccessRequest & { id: string }) | null;
+    if (linkAsk?.link) {
+      const linked = await linkSignInTo(memberId, linkAsk.link);
+      if (!linked.ok) {
+        await updateAccessRequests(memberId, (all) => all.filter((r) => r.id !== linkAsk.id));
+        return NextResponse.json({ error: linked.reason === 'already_linked' ? 'already_linked' : 'not_found' }, { status: 409 });
+      }
+      void Promise.resolve()
+        .then(() => sendPushToMembers([memberId], (locale) => buildNewSignInAddedPayload(locale)))
+        .catch((err) => console.error('access-requests: new sign-in push failed:', err));
     }
     return NextResponse.json({ ok: true });
   } catch (err) {

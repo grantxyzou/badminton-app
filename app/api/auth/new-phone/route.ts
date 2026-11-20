@@ -21,6 +21,7 @@ import { getContainer } from '@/lib/cosmos';
 import { openRequests, type StoredAccessRequest } from '@/lib/accessRequest';
 import { updateAccessRequests } from '@/lib/accessRequestStore';
 import { linkSignInTo } from '@/lib/linkSignIn';
+import { noteStopped } from '@/lib/newPhoneGuard';
 import type { Member } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -76,13 +77,14 @@ export async function POST(req: NextRequest) {
     // Read the ask; a wrong number or "not me" ends it in the same write.
     let target: Waiting | null = null;
     let stopped = false;
-    await updateAccessRequests(caller.memberId, (open) => {
+    await updateAccessRequests(caller.memberId, (open, member) => {
       const found = open.find((r) => r.id === id);
       if (!found || !waiting(found)) return null;
       target = found;
       if (notMe || pick !== found.match) {
+        // Ended, and no new ask for a day (lib/newPhoneGuard.ts).
         stopped = true;
-        return open.filter((r) => r.id !== id);
+        return { requests: open.filter((r) => r.id !== id), patch: { newPhoneLog: noteStopped(member.newPhoneLog) } };
       }
       return null; // the right number: link first, approve below
     });

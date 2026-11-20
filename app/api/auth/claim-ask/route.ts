@@ -20,6 +20,11 @@
  * so the waiting page signs straight in through the access-request claim, and
  * if it gave up, signing in again the same way lands on the account.
  *
+ * HOW OFTEN (lib/newPhoneGuard.ts): one waiting ask per person, three a day,
+ * none for a day after "No, it's not me" or a wrong number. A refusal stores
+ * and sends nothing and answers like any other ask, so a stranger cannot keep
+ * the prompt coming until it is tapped without reading.
+ *
  * ONE ANSWER FOR EVERY NAME. A name nobody holds, or a link that no longer
  * works, gets the same `{ ok, secret, match, club }` and nothing is stored or
  * sent: the poll then reads `pending` until the seal runs out, as for anyone
@@ -39,6 +44,8 @@ import { sealAskSecret, openAskSecret } from '@/lib/askSecret';
 import { sendPushToMembers } from '@/lib/push';
 import { buildNewPhonePayload, buildNewPhoneOrganizerPayload } from '@/lib/pushMessages';
 import { rosterMembers } from '@/lib/roster';
+import { mayAskNewPhone, noteAsked } from '@/lib/newPhoneGuard';
+import { padMissingAccount } from '@/lib/accountPad';
 
 export const dynamic = 'force-dynamic';
 
@@ -87,7 +94,7 @@ export async function POST(req: NextRequest) {
           moved = true;
           return open.map((r) => (r.id === mine.id ? { ...r, organizer: true } : r));
         });
-        if (moved) await tellOrganizers(groupId, memberId, name);
+        if (moved) void tellOrganizers(groupId, memberId, name);
       }
       return NextResponse.json({ ok: true });
     }
@@ -96,22 +103,27 @@ export async function POST(req: NextRequest) {
     const issued = issueAccessRequest({ ...(groupId ? { groupId } : {}), link, organizer });
 
     if (memberId && groupId) {
-      const result = await updateAccessRequests(memberId, (open) => {
+      const now = Date.now();
+      const result = await updateAccessRequests(memberId, (open, member) => {
+        if (!mayAskNewPhone(member.newPhoneLog, open, link, now)) return null;
         // One ask per new sign-in: asking again replaces the last one, so a
         // second tap cannot leave two asks that block each other.
         const others = open.filter((r) => !(r.link && r.link.provider === link.provider && r.link.sub === link.sub));
-        return others.length >= MAX_OPEN_REQUESTS ? null : [...others, issued.stored];
+        if (others.length >= MAX_OPEN_REQUESTS) return null;
+        return { requests: [...others, issued.stored], patch: { newPhoneLog: noteAsked(member.newPhoneLog, now) } };
       });
+      // Not awaited: how long a push fan-out takes would say how many phones
+      // the person has (security review, 2026-11-20).
       if (result) {
-        if (organizer) await tellOrganizers(groupId, memberId, name);
-        else {
-          try {
-            await sendPushToMembers([memberId], (locale) => buildNewPhonePayload(locale));
-          } catch (err) {
-            console.error('claim-ask push failed:', err);
-          }
-        }
+        if (organizer) void tellOrganizers(groupId, memberId, name);
+        else
+          void Promise.resolve()
+            .then(() => sendPushToMembers([memberId], (locale) => buildNewPhonePayload(locale)))
+            .catch((err) => console.error('claim-ask push failed:', err));
       }
+    } else {
+      // The reads and the write a real person's ask does (gap 3).
+      await padMissingAccount();
     }
 
     return NextResponse.json({
@@ -126,11 +138,12 @@ export async function POST(req: NextRequest) {
   }
 }
 
-/** The club's admins hear it; the card is where an organizer or admin answers. */
+/** The club's ORGANIZERS hear it: only an organizer may approve a new sign-in
+ *  onto someone (with groups off, every admin is one). */
 async function tellOrganizers(groupId: string, memberId: string, name: string): Promise<void> {
   try {
     const adminIds = (await rosterMembers(groupId))
-      .filter(({ member: m }) => m.role === 'admin' && m.id !== memberId)
+      .filter(({ member: m, membership }) => (membership ? membership.role === 'owner' : m.role === 'admin') && m.id !== memberId)
       .map(({ member: m }) => m.id);
     if (adminIds.length > 0) {
       await sendPushToMembers(adminIds, (locale) => buildNewPhoneOrganizerPayload(name, memberId, locale));

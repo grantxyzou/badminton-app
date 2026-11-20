@@ -269,7 +269,7 @@ export default function AccessRequestsCard({ refreshKey = 0 }: { refreshKey?: nu
                      say how it signed in, so the person can be asked. */
                   <span className="fs-sm" style={{ display: 'block', color: 'var(--text-muted)' }}>
                     New phone, signed in with {PROVIDER_WORDS[r.newSignIn.provider]}
-                    {r.newSignIn.email ? ` (${r.newSignIn.email})` : ''}. Check it&apos;s them before you let it in.
+                    {r.newSignIn.email ? ` (${r.newSignIn.email})` : ''}.{organiser ? ' Check it\'s them before you let it in.' : ' Waiting for an organiser.'}
                   </span>
                 ) : r.neverSignedIn && (
                   /* A name nobody has signed in under: let in someone you know asked. */
@@ -307,6 +307,8 @@ export default function AccessRequestsCard({ refreshKey = 0 }: { refreshKey?: nu
                   >
                     Ignore
                   </button>
+                  {/* A new sign-in is joined to them for good: an organiser's call. */}
+                  {(!r.newSignIn || organiser) && (
                   <button
                     type="button"
                     className="cc-btn cc-btn-primary"
@@ -315,6 +317,7 @@ export default function AccessRequestsCard({ refreshKey = 0 }: { refreshKey?: nu
                   >
                     {busy === r.memberId ? 'Letting in…' : 'Let them in'}
                   </button>
+                  )}
                 </>
               )}
             </div>

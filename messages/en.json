@@ -4042,6 +4042,7 @@
     "languageOffline": "Language switches when you’re back online"
   },
   "push": {
+    "newSignInAdded": {"title": "A new way in was added", "body": "An organizer added a new sign-in to your account. If it wasn’t you, tell them, and check How you sign in on your Profile."},
     "newPhone": {"title": "Is this you?", "body": "Someone is signing in as you on a new phone. Open %APP_SHORT% to say if it’s you."},
     "newPhoneOrganizer": {"title": "Is this {name}?", "body": "{name} is signing in on a new phone and asked an organizer to confirm it’s them."},
     "signupOpen": {

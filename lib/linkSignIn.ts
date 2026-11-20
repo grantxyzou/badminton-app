@@ -1,5 +1,5 @@
 import { getContainer } from '@/lib/cosmos';
-import { reserveIdentity, releaseIdentity, normalizeEmail } from '@/lib/authIdentity';
+import { reserveIdentity, normalizeEmail } from '@/lib/authIdentity';
 import type { Member } from '@/lib/types';
 import type { PendingLink } from '@/lib/accessRequest';
 
@@ -11,38 +11,42 @@ export type LinkOutcome = { ok: true; member: Member } | { ok: false; reason: 'a
  * The one place it is done: `auth/claim-name` after a PIN, and an approval
  * from the person's own phone or an organizer (step 3).
  *
- * The provider identity is reserved for THIS member first; a 409 means it
- * already belongs to someone else, and it is never stolen. The address is
- * claimed best-effort: if another member already holds it the link still
- * stands (the provider identity is what signs them in) and the address stays
- * with whoever reserved it first. A previous address is released, or the old
- * one would keep resolving to this account for password sign-in and the OAuth
- * linker, and stay blocked for whoever really owns it.
+ * The member is read first (nothing is reserved for an account that is gone),
+ * then the provider identity is reserved for THEM; a 409 means it already
+ * belongs to someone else, and it is never stolen.
+ *
+ * THE PERSON'S OWN ADDRESS IS NEVER TOUCHED (security review, 2026-11-20).
+ * The new sign-in's address becomes the account's only when the account has
+ * none, and an address it has is never released. An approval comes from a
+ * tap on a phone or an organizer's card, and a mistaken one used to swap the
+ * account's address for a stranger's: every email sign-in (code, password,
+ * reset) then reached the stranger, and the real address no longer reached
+ * the account. If another member holds the new address, it stays theirs.
  *
  * The member is re-read and written under `IfMatch`, so an access request or
  * a PIN count landing at the same moment is not overwritten.
  */
 export async function linkSignInTo(memberId: string, link: PendingLink): Promise<LinkOutcome> {
+  const container = getContainer('members');
+  const { resource: first } = await container.item(memberId, memberId).read<Member>();
+  if (!first) return { ok: false, reason: 'gone' };
+
   const reserved = await reserveIdentity(link.provider, link.sub, memberId);
   if (!reserved.ok) return { ok: false, reason: 'already_linked' };
 
-  const container = getContainer('members');
   let emailDone = false;
   let claimedEmail: string | null = null;
   for (let attempt = 0; attempt < 5; attempt++) {
     const { resource } = await container.item(memberId, memberId).read<Member & { _etag?: string }>();
     if (!resource) return { ok: false, reason: 'gone' };
 
-    if (!emailDone && link.email && link.emailVerified) {
+    const hasAddress = typeof resource.email === 'string' && resource.email.trim().length > 0;
+    if (!emailDone && !hasAddress && link.email && link.emailVerified) {
       emailDone = true;
       const email = normalizeEmail(link.email);
       // An email-code sign-in IS this address, reserved just above.
       const emailReserved = link.provider === 'email' ? { ok: true } : await reserveIdentity('email', email, memberId);
-      if (emailReserved.ok) {
-        claimedEmail = email;
-        const previous = typeof resource.email === 'string' ? normalizeEmail(resource.email) : null;
-        if (previous && previous !== email) await releaseIdentity('email', previous);
-      }
+      if (emailReserved.ok) claimedEmail = email;
     }
 
     // An email-proven identity is the address itself; only Google and Apple

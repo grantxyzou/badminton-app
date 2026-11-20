@@ -236,3 +236,81 @@ describe('asking an organizer', () => {
     expect(listed.requests).toEqual([]);
   });
 });
+
+/**
+ * The security review of step 3 (2026-11-20): the number alone made a blind
+ * tap one in three, and nothing limited how often a stranger could prompt.
+ * The limit is per PERSON (lib/newPhoneGuard.ts); an approval on the card is
+ * an organizer's; and an approval never touches the person's own address.
+ */
+describe('how often, and who may say yes', () => {
+  const other = (sub: string) => pendingCookie({ sub, email: `${sub}@example.com` });
+  const asOrganizer = () => {
+    seedMembership(X, ADMIN_MEMBER_ID, { name: 'Organizer X', role: 'owner' });
+    return `admin_session=${adminCookieValue({ groupId: X })}`;
+  };
+
+  it('after "No, it\'s not me", no new ask for a day, from any phone, with the same answer', async () => {
+    await ask({});
+    const id = openOn(linX)[0].id as string;
+    await ANSWER(post('http://x/api/auth/new-phone', { id, notMe: true }, asLinX()));
+    sendPushToMembers.mockReset();
+    const again = await ask({}, other('google-someone-else'));
+    expect(Object.keys(again).sort()).toEqual(['club', 'match', 'ok', 'secret']);
+    expect(openOn(linX)).toEqual([]);
+    expect(sendPushToMembers).not.toHaveBeenCalled();
+  });
+
+  it('one waiting ask at a time: a second new phone stores nothing', async () => {
+    await ask({});
+    sendPushToMembers.mockReset();
+    await ask({}, other('google-second'));
+    expect(openOn(linX)).toHaveLength(1);
+    expect((openOn(linX)[0].link as { sub: string }).sub).toBe('google-new-phone');
+    expect(sendPushToMembers).not.toHaveBeenCalled();
+  });
+
+  it('at most three asks a day, each a prompt', async () => {
+    for (let i = 0; i < 3; i++) await ask({});
+    sendPushToMembers.mockReset();
+    await ask({});
+    expect(sendPushToMembers).not.toHaveBeenCalled();
+  });
+
+  it('a club admin who is not an organizer cannot approve a new sign-in', async () => {
+    await ask({ organizer: true });
+    seedMembership(X, ADMIN_MEMBER_ID, { name: 'Admin X', role: 'admin' });
+    const cookie = `admin_session=${adminCookieValue({ groupId: X })}`;
+    const id = openOn(linX)[0].id as string;
+    const res = await DECIDE(post('http://x/api/admin/access-requests', { memberId: linX, requestId: id, decision: 'approve' }, cookie));
+    expect(res.status).toBe(403);
+    expect(await lookupIdentity('google', 'google-new-phone')).toBeNull();
+  });
+
+  it("an approval never touches the person's own address, and tells them a way in was added", async () => {
+    const lin = (getStore().members as Array<{ id: string; email?: string }>).find((m) => m.id === linX)!;
+    lin.email = 'lin@own.example';
+    const { reserveIdentity } = await import('@/lib/authIdentity');
+    await reserveIdentity('email', 'lin@own.example', linX);
+    await ask({ organizer: true });
+    sendPushToMembers.mockReset();
+    const id = openOn(linX)[0].id as string;
+    await DECIDE(post('http://x/api/admin/access-requests', { memberId: linX, requestId: id, decision: 'approve' }, asOrganizer()));
+    expect((await lookupIdentity('google', 'google-new-phone'))?.memberId).toBe(linX);
+    expect(lin.email).toBe('lin@own.example');
+    expect((await lookupIdentity('email', 'lin@own.example'))?.memberId).toBe(linX);
+    expect(await lookupIdentity('email', 'lin.new@example.com')).toBeNull();
+    expect(sendPushToMembers.mock.calls.map((c) => c[0])).toContainEqual([linX]);
+  });
+
+  it("a new sign-in waiting on her own phone neither shows on the card nor blocks her let-me-in ask", async () => {
+    await ask({});
+    const { issueAccessRequest } = await import('@/lib/accessRequest');
+    const lin = (getStore().members as Array<{ id: string; accessRequests: unknown[] }>).find((m) => m.id === linX)!;
+    lin.accessRequests.push(issueAccessRequest({ groupId: X }).stored);
+    const listed = await (await LIST(get('http://x/api/admin/access-requests', asOrganizer()))).json();
+    expect(listed.requests).toHaveLength(1);
+    expect(listed.requests[0].count).toBe(1);
+    expect(listed.requests[0].requestId).not.toBeNull();
+  });
+});

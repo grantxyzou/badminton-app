@@ -412,3 +412,10 @@ export function buildNewPhoneOrganizerPayload(name: string, memberId: string, lo
     tag: safeTag(`access-${memberId}`),
   };
 }
+
+/** "A new way in was added" — to the person, when an organizer approved a new
+ *  sign-in onto their account, so a mistake is seen (sign-in redesign, step 3). */
+export function buildNewSignInAddedPayload(locale: PushLocale = 'en'): PushPayload {
+  const t = pushT(locale);
+  return { title: t('newSignInAdded.title'), body: t('newSignInAdded.body'), url: `${BASE}/?tab=profile`, tag: 'new-sign-in-added' };
+}
