@@ -3032,7 +3032,9 @@
       "otherWays": "Other ways",
       "joinClub": "Join a club",
       "forgotPin": "Forgot your PIN?",
-      "useEmail": "Use email instead"
+      "useEmail": "Use email instead",
+      "usePassword": "Use a password",
+      "usePin": "Use a PIN"
     },
     "waiting": {
       "pageTitle": "Almost in",

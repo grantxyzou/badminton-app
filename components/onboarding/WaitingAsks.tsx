@@ -121,6 +121,14 @@ export default function WaitingAsks({ asks: initial, onIn, onJoin, onSignOut }: 
       {tw('joinAnother')}
     </button>
   );
+  // On every state: someone in no club has no Profile tab, so this page is
+  // the only way to end the session (a shared phone, the wrong Apple or
+  // Google account).
+  const signOut = (
+    <button type="button" className="link-quiet" onClick={onSignOut}>
+      {tw('otherAccount')}
+    </button>
+  );
   const alsoLines = others.map((a) => (
     <p key={a.groupId} className="auth-note">
       {a.state === 'waiting' ? tw('alsoWaiting', { club: a.club }) : tw('alsoClosed', { club: a.club })}
@@ -143,6 +151,7 @@ export default function WaitingAsks({ asks: initial, onIn, onJoin, onSignOut }: 
           </>
         }
         actions={joinAnother}
+        links={signOut}
       />
     );
   }
@@ -175,13 +184,7 @@ export default function WaitingAsks({ asks: initial, onIn, onJoin, onSignOut }: 
           )}
         </>
       }
-      links={
-        sent ? (
-          <button type="button" className="link-quiet" onClick={onSignOut}>
-            {tw('otherAccount')}
-          </button>
-        ) : undefined
-      }
+      links={signOut}
     />
   );
 }

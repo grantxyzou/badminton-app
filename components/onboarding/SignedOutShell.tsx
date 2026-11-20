@@ -15,6 +15,7 @@ import type { Provider } from '@/components/auth/ProviderButtons';
 import ForgotPasswordSheet from '@/components/auth/ForgotPasswordSheet';
 import { useEmailCode } from '@/components/auth/useEmailCode';
 import { usePinSignIn } from '@/components/auth/usePinSignIn';
+import { usePasswordSignIn } from '@/components/auth/usePasswordSignIn';
 import DoorJoinPage from '@/components/onboarding/DoorJoinPage';
 import WaitingAsks, { type Ask } from '@/components/onboarding/WaitingAsks';
 import AuthStage from '@/components/onboarding/AuthStage';
@@ -443,6 +444,7 @@ export default function SignedOutShell({ authProviders = [], noClub: noClubProp 
             onBack={() => setView('welcome')}
             onJoin={() => setView('signup')}
             onCantSignIn={() => setView('cantSignIn')}
+            onForgotPassword={() => setForgotOpen(true)}
           />
         ) : view === 'signup' ? (
           <ClubLinkPage
@@ -670,20 +672,25 @@ function LogInView({
   onBack,
   onJoin,
   onCantSignIn,
+  onForgotPassword,
 }: {
   authProviders: Provider[];
   onBack: () => void;
   onJoin: () => void;
   onCantSignIn: () => void;
+  onForgotPassword: () => void;
 }) {
   const t = useTranslations('signedOut');
   const tl = useTranslations('signedOut.login');
   const tRec = useTranslations('recovery');
-  const [mode, setMode] = useState<'email' | 'pin'>('email');
+  const tAuth = useTranslations('profile.auth');
+  const [mode, setMode] = useState<'email' | 'pin' | 'password'>('email');
   /** Signed in with a PIN that is their only way in: "Keep your account" first. */
   const [keepFor, setKeepFor] = useState<string | null>(null);
 
-  const code = useEmailCode({ onSuccess: ({ name }) => setIdentity({ name, sessionId: '' }) });
+  const signedIn = ({ name }: { name: string }) => setIdentity({ name, sessionId: '' });
+  const code = useEmailCode({ onSuccess: signedIn });
+  const pw = usePasswordSignIn({ onSuccess: signedIn });
   const pin = usePinSignIn({
     sessionId: '',
     onSuccess: ({ name, token }) => {
@@ -692,8 +699,13 @@ function LogInView({
         // Unknown (a failed read) goes straight in: the prompt is a nicety.
         try {
           const res = await fetch(`${BASE}/api/auth/methods`, { cache: 'no-store' });
-          const m = res.ok ? ((await res.json()) as { linked?: string[] | null; hasPassword?: boolean; hasEmailCode?: boolean }) : null;
-          const pinOnly = !!m && Array.isArray(m.linked) && m.linked.length === 0 && m.hasPassword === false && m.hasEmailCode !== true;
+          const m = res.ok
+            ? ((await res.json()) as { linked?: string[] | null; hasPassword?: boolean; hasEmailCode?: boolean; hasPin?: boolean })
+            : null;
+          // `hasPin` tells "a PIN is all they have" from the anonymous answer
+          // (every field false), which a cookie that did not stick would give.
+          const pinOnly =
+            !!m && m.hasPin === true && Array.isArray(m.linked) && m.linked.length === 0 && m.hasPassword === false && m.hasEmailCode !== true;
           if (pinOnly) {
             setKeepFor(name);
             return;
@@ -732,6 +744,9 @@ function LogInView({
           <>
             <button type="button" className="link-quiet" onClick={onCantSignIn}>
               {tl('forgotPin')}
+            </button>
+            <button type="button" className="link-quiet" onClick={() => setMode('password')}>
+              {tl('usePassword')}
             </button>
             <button type="button" className="link-quiet" onClick={() => setMode('email')}>
               {tl('useEmail')}
@@ -790,6 +805,82 @@ function LogInView({
           )}
           <button type="submit" className="auth-btn auth-btn--primary" disabled={!pin.canSubmit}>
             {pin.submitting ? tRec('submitting') : tRec('submitPin')}
+          </button>
+        </form>
+      </AuthStage>
+    );
+  }
+
+  if (mode === 'password') {
+    return (
+      <AuthStage
+        data-page="login-password"
+        title={tl('title')}
+        onBack={onBack}
+        backLabel={t('back')}
+        logoTagline={t('tagline')}
+        links={
+          <>
+            <button type="button" className="link-quiet" onClick={onForgotPassword}>
+              {tAuth('forgotPasswordLink')}
+            </button>
+            <button type="button" className="link-quiet" onClick={() => setMode('pin')}>
+              {tl('usePin')}
+            </button>
+            <button type="button" className="link-quiet" onClick={() => setMode('email')}>
+              {tl('useEmail')}
+            </button>
+          </>
+        }
+      >
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void pw.submit();
+          }}
+          style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}
+        >
+          <input
+            className="auth-field"
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            autoCapitalize="none"
+            spellCheck={false}
+            value={pw.email}
+            onChange={(e) => pw.setEmail(e.target.value)}
+            placeholder={tAuth('emailLabel')}
+            aria-label={tAuth('emailLabel')}
+            maxLength={254}
+          />
+          <input
+            className="auth-field"
+            type="password"
+            autoComplete="current-password"
+            value={pw.password}
+            onChange={(e) => pw.setPassword(e.target.value)}
+            placeholder={tAuth('passwordLabel')}
+            aria-label={tAuth('passwordLabel')}
+            aria-invalid={pw.error === 'invalid' || undefined}
+            maxLength={200}
+          />
+          {pw.error === 'invalid' && (
+            <p role="alert" className="field-error">
+              {tAuth('signInInvalid')}
+            </p>
+          )}
+          {pw.error === 'rate_limited' && (
+            <p role="alert" className="field-warn">
+              {tAuth('signInRateLimited')}
+            </p>
+          )}
+          {pw.error === 'service' && (
+            <p role="alert" className="field-warn">
+              {tAuth('signInService')}
+            </p>
+          )}
+          <button type="submit" className="auth-btn auth-btn--primary" disabled={!pw.canSubmit}>
+            {pw.busy ? tAuth('emailSignInChecking') : tAuth('emailSignInCta')}
           </button>
         </form>
       </AuthStage>

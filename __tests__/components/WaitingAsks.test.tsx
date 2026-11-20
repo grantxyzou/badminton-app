@@ -41,7 +41,8 @@ describe('WaitingAsks', () => {
     expect(screen.getByText('Requests stay open for 3 days.')).toBeDefined();
     expect(screen.getByRole('button', { name: 'Join another club' })).toBeDefined();
     // Drawn greyed out (the canvas, 2026-11-19).
-    expect((screen.getByRole('button', { name: 'Start your own club' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: 'Start your own club' }) as HTMLButtonElement).disabled).toBe(true);    // No Profile tab in no club: this page is the only way to sign out.
+    expect(screen.getByRole('button', { name: 'Use a different account' })).toBeDefined();
   });
 
   it('once let in, moves the cookie to the club and goes in', async () => {
@@ -66,6 +67,7 @@ describe('WaitingAsks', () => {
     expect(screen.getByRole('heading', { name: 'Not this time' })).toBeDefined();
     expect(screen.getByText(/couldn't let you in this time/)).toBeDefined();
     expect(screen.getByRole('button', { name: 'Join another club' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Use a different account' })).toBeDefined();
   });
 
   it('says "Request sent", step 3 of 3, straight after asking', async () => {

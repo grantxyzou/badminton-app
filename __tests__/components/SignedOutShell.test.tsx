@@ -137,7 +137,7 @@ describe('Log in', () => {
     expect(screen.getByText('Continue with Google')).toBeDefined();
     expect(screen.getByRole('button', { name: 'Email me a code' })).toBeDefined();
     expect(screen.queryByPlaceholderText('PIN')).toBeNull();
-    // No card and no password route: a clean screen (docs/plans/sign-in-redesign.md).
+    // No card, and no password on the first page: a clean screen (docs/plans/sign-in-redesign.md).
     expect(screen.queryByRole('button', { name: 'Use my password instead' })).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Other ways' }));
@@ -151,6 +151,43 @@ describe('Log in', () => {
     expect(captured.ForgotPasswordSheet?.open).toBe(true);
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
     expect(screen.getByRole('button', { name: 'Email me a code' })).toBeDefined();
+  });
+
+  it('keeps a password: Other ways → Use a password signs in with it, and "Forgot your password?" opens the reset', async () => {
+    fetchMock.mockImplementation((input: RequestInfo | URL) =>
+      String(input).includes('/api/auth/signin') ? json({ name: 'Lin' }) : json({}),
+    );
+    renderShell();
+    fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Other ways' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Use a password' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Forgot your password?' }));
+    expect(captured.ForgotPasswordSheet?.open).toBe(true);
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'lin@example.com' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'correct horse' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    });
+    const call = fetchMock.mock.calls.find(([u]) => String(u).includes('/api/auth/signin'))!;
+    expect(JSON.parse(String((call[1] as RequestInit).body))).toEqual({ email: 'lin@example.com', password: 'correct horse' });
+    await waitFor(() => expect(sessionStorage.getItem(RELOAD_MARK)).not.toBeNull());
+  });
+
+  it('a wrong password says so and does not sign in', async () => {
+    fetchMock.mockImplementation((input: RequestInfo | URL) =>
+      String(input).includes('/api/auth/signin') ? json({ error: 'invalid_credentials' }, 401) : json({}),
+    );
+    renderShell();
+    fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Other ways' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Use a password' }));
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'lin@example.com' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'nope' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    });
+    expect((await screen.findByRole('alert')).textContent).toMatch(/don't match/);
+    expect(sessionStorage.getItem(RELOAD_MARK)).toBeNull();
   });
 
   it('"Forgot your PIN?" goes to Can\'t sign in?', () => {
@@ -206,6 +243,12 @@ describe('a PIN log-in', () => {
     expect(sessionStorage.getItem(RELOAD_MARK)).toBeNull();
     act(() => (captured.KeepAccountPage!.onDone as () => void)());
     await waitFor(() => expect(sessionStorage.getItem(RELOAD_MARK)).not.toBeNull());
+  });
+
+  it('an anonymous answer (the cookie did not stick) is not "PIN only"', async () => {
+    await pinSignIn({ available: ['google'], linked: [], hasPassword: false, hasPin: false });
+    await waitFor(() => expect(sessionStorage.getItem(RELOAD_MARK)).not.toBeNull());
+    expect(captured.KeepAccountPage).toBeUndefined();
   });
 
   it('goes straight in when the account has another way in', async () => {

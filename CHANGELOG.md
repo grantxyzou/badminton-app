@@ -13,7 +13,7 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 The sign-in pages, redrawn on the canvas and built (`docs/plans/sign-in-redesign.md`; Grant: "A log in screen should be clean and easy", "The title should always be on the same height ... CTA button should not jump around").
 
 - **Every sign-in page has the same shape.** The title sits at the same height on every page, the buttons sit at the bottom where the thumb is, and the small links sit under them. No card around anything.
-- **Log in** is the logo, then Apple, Google and "Email me a code". The PIN is behind "Other ways". An iPhone shows Apple first, an Android phone Google first. Both buttons follow Apple's and Google's own designs.
+- **Log in** is the logo, then Apple, Google and "Email me a code". A PIN or a password is behind "Other ways". An iPhone shows Apple first, an Android phone Google first. Both buttons follow Apple's and Google's own designs.
 - **Join a club scans the club's QR code** (the poster at the hall), with "Paste a link" as the other way. Scanning a club's code opens the club's page.
 - **The club's link is three steps**, marked "Step 1 of 3": sign in ("Check your email", a six-box code that says it is valid for 10 minutes and can be sent again), "What's your name?", and "Request sent".
 - **A request stays open for 3 days**, not 14, and every waiting page says so. A request that was declined or ran out says "Not this time".

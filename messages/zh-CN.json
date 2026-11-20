@@ -3020,7 +3020,9 @@
       "otherWays": "其他方式",
       "joinClub": "加入俱乐部",
       "forgotPin": "忘记 PIN？",
-      "useEmail": "改用邮箱"
+      "useEmail": "改用邮箱",
+      "usePassword": "改用密码",
+      "usePin": "改用 PIN"
     },
     "waiting": {
       "pageTitle": "快好了",

@@ -443,12 +443,9 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
     // the first tab is about to come back for.
     const resume = armed ? consumeOnboardingResume() : (pruneStaleOnboardingResume(), null);
     if (resume && groupsEnabled) {
-      // APPLIED NOW, not when identity arrives. Deferring would mount
-      // ChooseNameSheet while `joinToken` is still null, so the name submit
-      // would fire WITHOUT the invite, land the account on BPM, and only then
-      // join the real club — the two-roster defect, reintroduced by the
-      // mechanism meant to prevent it. `sentInvite` is computed per render, so
-      // a late token is a guaranteed loss rather than a race.
+      // APPLIED NOW, not when identity arrives: the join page reads
+      // `joinToken` on its first render, so a late token would open it empty
+      // and the person would be asked for a link they already followed.
       if (resume.token) setJoinToken(resume.token);
       // `signedIn=1` means a member already resolved, so the account step is
       // behind us and starting there would flash a screen we are leaving.
@@ -598,8 +595,8 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
    * `resolveStaleIdentity` short-circuits on an empty `sessionId`
    * (`if (!stored || !stored.sessionId) return {action:'keep'}`), so a blank one
    * is never treated as stale — and it is the honest value for a returning
-   * member who has not signed up for this week yet. `ChooseNameSheet.finish()`
-   * already writes exactly this shape.
+   * member who has not signed up for this week yet. The sign-in pages
+   * (`NameStep`, Log in) write exactly this shape.
    *
    * The instinct on review is to "fix" this by awaiting /api/session first.
    * Do not: a hung or failing session fetch would mean identity never lands,
