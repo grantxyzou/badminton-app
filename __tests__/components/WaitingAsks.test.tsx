@@ -6,12 +6,15 @@ import enMessages from '@/messages/en.json';
 import WaitingAsks, { type Ask } from '@/components/onboarding/WaitingAsks';
 
 /**
- * "Waiting for {club}" (docs/plans/one-way-in.md, step 4a): checks back while
- * open and moves into the club once an organiser lets them in.
+ * The one waiting page (docs/plans/one-way-in.md, step 4a;
+ * docs/plans/sign-in-redesign.md): "Request sent" straight after asking,
+ * "still pending" after, "Not this time" once closed. Checks back while open
+ * and moves into the club once an organizer lets them in.
  */
 
 afterEach(() => {
   cleanup();
+  sessionStorage.clear();
   vi.useRealTimers();
   vi.unstubAllGlobals();
 });
@@ -21,21 +24,24 @@ const json = (body: unknown, status = 200) =>
 
 const WAITING: Ask = { groupId: 'club-x', club: 'Six Feathers', name: 'Kento Momota', state: 'waiting' };
 
-function renderAsks(asks: Ask[], onIn = vi.fn()) {
+function renderAsks(asks: Ask[], onIn = vi.fn(), onJoin = vi.fn(), onSignOut = vi.fn()) {
   render(
     <NextIntlClientProvider locale="en" messages={enMessages}>
-      <WaitingAsks asks={asks} onIn={onIn} />
+      <WaitingAsks asks={asks} onIn={onIn} onJoin={onJoin} onSignOut={onSignOut} />
     </NextIntlClientProvider>,
   );
   return onIn;
 }
 
 describe('WaitingAsks', () => {
-  it('says who is waiting for which club', () => {
+  it('says the request is still pending, for how long, and offers another club', () => {
     vi.stubGlobal('fetch', vi.fn(async () => json({ asks: [WAITING] })));
     renderAsks([WAITING]);
-    expect(screen.getByText('Waiting for Six Feathers')).toBeDefined();
-    expect(screen.getByText(/You asked to join as Kento Momota/)).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Your request is still pending' })).toBeDefined();
+    expect(screen.getByText('Requests stay open for 3 days.')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Join another club' })).toBeDefined();
+    // Drawn greyed out (the canvas, 2026-11-19).
+    expect((screen.getByRole('button', { name: 'Start your own club' }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('once let in, moves the cookie to the club and goes in', async () => {
@@ -55,8 +61,28 @@ describe('WaitingAsks', () => {
     expect(onIn).toHaveBeenCalled();
   });
 
-  it('says plainly when an ask was not let in', () => {
+  it('says plainly when an ask was not let in, and offers another club', () => {
     renderAsks([{ ...WAITING, state: 'closed' }]);
-    expect(screen.getByText("Six Feathers didn't let you in this time")).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Not this time' })).toBeDefined();
+    expect(screen.getByText(/couldn't let you in this time/)).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Join another club' })).toBeDefined();
+  });
+
+  it('says "Request sent", step 3 of 3, straight after asking', async () => {
+    vi.resetModules();
+    const { markJustAsked } = await import('@/lib/justAsked');
+    markJustAsked('Six Feathers');
+    const { default: Fresh } = await import('@/components/onboarding/WaitingAsks');
+    vi.stubGlobal('fetch', vi.fn(async () => json({ asks: [WAITING] })));
+    const onSignOut = vi.fn();
+    render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <Fresh asks={[WAITING]} onIn={vi.fn()} onJoin={vi.fn()} onSignOut={onSignOut} />
+      </NextIntlClientProvider>,
+    );
+    expect(screen.getByRole('heading', { name: 'Request sent' })).toBeDefined();
+    expect(screen.getByRole('img', { name: 'Step 3 of 3' })).toBeDefined();
+    screen.getByRole('button', { name: 'Use a different account' }).click();
+    expect(onSignOut).toHaveBeenCalled();
   });
 });

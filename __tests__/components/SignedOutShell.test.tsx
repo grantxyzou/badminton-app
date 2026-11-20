@@ -40,30 +40,16 @@ vi.mock('@/components/auth/ProviderButtons', () => ({
     );
   },
 }));
-vi.mock('@/components/SignInForm', () => ({
-  default: (props: { onSuccess: (r: { name: string }) => void }) => (
-    <button type="button" onClick={() => props.onSuccess({ name: 'Lin' })}>
-      stub: PIN sign-in
-    </button>
-  ),
-}));
-vi.mock('@/components/auth/EmailSignInForm', () => ({
-  default: (props: Record<string, unknown>) => {
-    captured.EmailSignInForm = props;
-    return <p>stub: email sign-in</p>;
-  },
-}));
 vi.mock('@/components/auth/EmailSignUpForm', () => ({
   default: (props: Record<string, unknown>) => {
     captured.EmailSignUpForm = props;
     return <p>stub: email sign-up</p>;
   },
 }));
-vi.mock('@/components/auth/AskAccessForm', () => ({ default: capture('AskAccessForm') }));
 vi.mock('@/components/onboarding/DoorJoinPage', () => ({ default: capture('DoorJoinPage') }));
+vi.mock('@/components/onboarding/NameStep', () => ({ default: capture('NameStep') }));
 vi.mock('@/components/auth/KeepAccountPage', () => ({ default: capture('KeepAccountPage') }));
 vi.mock('@/components/auth/ForgotPasswordSheet', () => ({ default: capture('ForgotPasswordSheet') }));
-vi.mock('@/components/auth/ChooseNameSheet', () => ({ default: capture('ChooseNameSheet') }));
 vi.mock('@/components/auth/ResetPasswordSheet', () => ({ default: capture('ResetPasswordSheet') }));
 // The multi-group doors, loaded lazily by the shell. Captured by contract too.
 vi.mock('@/components/onboarding/CreateGroupPage', () => ({ default: capture('CreateGroupPage') }));
@@ -145,66 +131,108 @@ describe('Welcome', () => {
 });
 
 describe('Log in', () => {
-  it('offers Google and an email code first, name-and-PIN behind "Other ways", and "I play here already"', () => {
+  it('leads with Google and an email code; the PIN is behind "Other ways"; "Can\'t sign in?" is a page', () => {
     renderShell();
     fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
     expect(screen.getByText('Continue with Google')).toBeDefined();
-    // The email code first (docs/plans/one-way-in.md, step 6); the PIN a tap away.
     expect(screen.getByRole('button', { name: 'Email me a code' })).toBeDefined();
-    expect(screen.queryByText('stub: PIN sign-in')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Other ways to log in' }));
-    expect(screen.getByText('stub: PIN sign-in')).toBeDefined();
-    fireEvent.click(screen.getByRole('button', { name: 'I play here already' }));
-    // A page, not a sheet (Grant, 2026-11-08): a real person approves it.
-    expect(screen.getByText('Can\'t sign in?')).toBeDefined();
-    // No club link with it: the link signs in first (one-way-in step 4d).
-    expect(captured.AskAccessForm).not.toHaveProperty('claim');
-    // Back goes to Log in, where they came from.
+    expect(screen.queryByPlaceholderText('PIN')).toBeNull();
+    // No card and no password route: a clean screen (docs/plans/sign-in-redesign.md).
+    expect(screen.queryByRole('button', { name: 'Use my password instead' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Other ways' }));
+    expect(screen.getByPlaceholderText('PIN')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Use email instead' }));
+    expect(screen.getByRole('button', { name: 'Email me a code' })).toBeDefined();
+
+    fireEvent.click(screen.getByRole('button', { name: "Can't sign in?" }));
+    expect(screen.getByRole('heading', { name: "Get back in with your club's QR code" })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Reset my password' }));
+    expect(captured.ForgotPasswordSheet?.open).toBe(true);
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
     expect(screen.getByRole('button', { name: 'Email me a code' })).toBeDefined();
   });
 
-  it('prefills "I play here already" with a stale local name', () => {
-    localStorage.setItem('badminton_identity', JSON.stringify({ name: 'Viktor', sessionId: 'old' }));
+  it('"Forgot your PIN?" goes to Can\'t sign in?', () => {
     renderShell();
     fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
-    fireEvent.click(screen.getByRole('button', { name: 'I play here already' }));
-    expect(captured.AskAccessForm?.initialName).toBe('Viktor');
+    fireEvent.click(screen.getByRole('button', { name: 'Other ways' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Forgot your PIN?' }));
+    expect(screen.getByRole('heading', { name: "Get back in with your club's QR code" })).toBeDefined();
   });
 
-  it('the email form offers a code first and the password a tap away, and comes back from the PIN', () => {
+  it('an emailed code on Log in says IF the address has an account', async () => {
+    fetchMock.mockImplementation(() => json({ ok: true }));
     renderShell();
     fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Other ways to log in' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Use email instead' }));
-    // A code first (docs/plans/one-way-in.md, step 3).
-    expect(screen.getByRole('button', { name: 'Email me a code' })).toBeDefined();
-    expect(screen.queryByText('stub: email sign-in')).toBeNull();
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'lin@example.com' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Email me a code' }));
+    });
+    expect(screen.getByRole('heading', { name: 'Check your email' })).toBeDefined();
+    expect(screen.getByRole('status').textContent).toBe('If lin@example.com has an account, a code is on its way.');
+    // No step marker: this is not the three-step join.
+    expect(screen.queryByRole('img', { name: /Step/ })).toBeNull();
+  });
+});
 
-    fireEvent.click(screen.getByRole('button', { name: 'Use my password instead' }));
-    expect(screen.getByText('stub: email sign-in')).toBeDefined();
+async function pinSignIn(methods: Record<string, unknown>) {
+  fetchMock.mockImplementation((input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes('/api/players/recover')) return json({ deleteToken: null });
+    if (url.includes('/api/auth/methods')) return json(methods);
+    return json({});
+  });
+  renderShell();
+  fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Other ways' }));
+  fireEvent.change(screen.getByPlaceholderText('Your name'), { target: { value: 'Lin' } });
+  fireEvent.change(screen.getByPlaceholderText('PIN'), { target: { value: '2468' } });
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+  });
+}
+
+/**
+ * docs/plans/sign-in-redesign.md, "Ask PIN-only members sooner": straight
+ * after a PIN log-in, someone whose PIN is their only way in gets "Keep your
+ * account" once, before the app opens.
+ */
+describe('a PIN log-in', () => {
+  it('offers to keep the account when the PIN is the only way in, then goes in', async () => {
+    await pinSignIn({ available: ['google'], linked: [], hasPassword: false, hasEmailCode: false, hasPin: true });
+    await waitFor(() => expect(captured.KeepAccountPage?.reason).toBe('pinOnly'));
+    expect(captured.KeepAccountPage?.name).toBe('Lin');
+    expect(sessionStorage.getItem(RELOAD_MARK)).toBeNull();
+    act(() => (captured.KeepAccountPage!.onDone as () => void)());
+    await waitFor(() => expect(sessionStorage.getItem(RELOAD_MARK)).not.toBeNull());
   });
 
-  it('routes "forgot" on the password route to the password sheet', () => {
-    renderShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Use my password instead' }));
-    act(() => (captured.EmailSignInForm?.onForgotPassword as () => void)());
-    expect(captured.ForgotPasswordSheet?.open).toBe(true);
+  it('goes straight in when the account has another way in', async () => {
+    await pinSignIn({ available: ['google'], linked: ['google'], hasPassword: false, hasPin: true });
+    await waitFor(() => expect(sessionStorage.getItem(RELOAD_MARK)).not.toBeNull());
+    expect(captured.KeepAccountPage).toBeUndefined();
   });
 });
 
 describe('Join a club needs the club link (one-way-in step 5)', () => {
-  it('asks for the link when they did not come by it, and offers no account form', () => {
+  function toPaste() {
     renderShell();
     fireEvent.click(screen.getByRole('button', { name: 'Join a club' }));
+    // Scan first (docs/plans/sign-in-redesign.md); the link is the quiet way.
+    expect(screen.getByRole('heading', { name: "Scan your club's QR code" })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Scan QR code' })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Paste a link' }));
+  }
+
+  it('scans first, pastes as the quiet way, and offers no account form', () => {
+    toPaste();
     expect(screen.getByLabelText("Your club's link")).toBeDefined();
     expect(screen.queryByText('stub: email sign-up')).toBeNull();
   });
 
   it('a pasted link opens the club\'s page (sign in first, then ask)', async () => {
-    renderShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Join a club' }));
+    toPaste();
     const token = 'a1'.repeat(16);
     fireEvent.change(screen.getByLabelText("Your club's link"), {
       target: { value: `https://bpm.grantzou.com/bpm/j/${token}` },
@@ -215,8 +243,7 @@ describe('Join a club needs the club link (one-way-in step 5)', () => {
   });
 
   it('an old invite code asks for the link, and checks nothing', async () => {
-    renderShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Join a club' }));
+    toPaste();
     fireEvent.change(screen.getByLabelText("Your club's link"), { target: { value: 'ABCD2345' } });
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
     expect((await screen.findByRole('alert')).textContent).toMatch(/Paste the whole link/);
@@ -226,8 +253,7 @@ describe('Join a club needs the club link (one-way-in step 5)', () => {
 
   it('a link that does not resolve says so and goes no further', async () => {
     fetchMock.mockImplementation(() => json({ error: 'invite_not_found' }, 404));
-    renderShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Join a club' }));
+    toPaste();
     fireEvent.change(screen.getByLabelText("Your club's link"), { target: { value: 'f'.repeat(32) } });
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
     expect((await screen.findByRole('alert')).textContent).toMatch(/That link no longer works/);
@@ -252,7 +278,6 @@ describe('landings', () => {
     at(`?claim=${token}`);
     renderShell();
     await waitFor(() => expect(captured.DoorJoinPage?.token).toBe(token));
-    expect(captured.AskAccessForm).toBeUndefined();
     expect(window.location.search).not.toContain('claim');
   });
 
@@ -278,27 +303,14 @@ describe('landings', () => {
     expect(window.location.search).not.toContain('join');
   });
 
-  it('a person let in from "I play here already" with nothing to sign in with gets "Keep your account", and goes in when they leave it', async () => {
-    renderShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
-    fireEvent.click(screen.getByRole('button', { name: 'I play here already' }));
-    (captured.AskAccessForm!.onApproved as (r: { name: string; hasPin: boolean }) => void)({ name: 'Akane Yamaguchi', hasPin: false });
-    // The account step first, and not signed in yet: writing the identity
-    // would reload this screen out from under it.
-    await waitFor(() => expect(captured.KeepAccountPage?.name).toBe('Akane Yamaguchi'));
-    expect(sessionStorage.getItem(RELOAD_MARK)).toBeNull();
-    (captured.KeepAccountPage!.onDone as () => void)();
-    await waitFor(() => expect(sessionStorage.getItem(RELOAD_MARK)).not.toBeNull());
-    expect(JSON.parse(localStorage.getItem('badminton_identity') ?? '{}').name).toBe('Akane Yamaguchi');
-  });
-
-  it('a new Google identity gets the name sheet, carrying the club link that rode the excursion', () => {
+  it('a new Google identity opens the club\'s page at its name step, with the link that rode the excursion', () => {
     localStorage.setItem(RESUME_KEY, JSON.stringify({ intent: 'join', token: 'c4'.repeat(16), at: Date.now() }));
     at('?authFlow=name');
     renderShell();
-    expect(captured.ChooseNameSheet?.open).toBe(true);
-    expect(captured.ChooseNameSheet?.inviteToken).toBe('c4'.repeat(16));
-    expect(captured.ChooseNameSheet).not.toHaveProperty('inviteCode');
+    // One name step for every way in (docs/plans/sign-in-redesign.md, merge 4).
+    expect(captured.DoorJoinPage?.token).toBe('c4'.repeat(16));
+    expect(captured.DoorJoinPage?.startAtName).toBe(true);
+    expect(window.location.search).not.toContain('authFlow');
   });
 
   it('leaves ?tab and ?intent in the URL for the app to act on after signing in', () => {
@@ -319,9 +331,7 @@ describe('landings', () => {
 describe('signing in hands control to the server', () => {
   it('reloads once an identity is written — any way in', async () => {
     renderShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Other ways to log in' }));
-    fireEvent.click(screen.getByText('stub: PIN sign-in'));
+    setIdentity({ name: 'Lin', sessionId: '' });
     // jsdom cannot navigate; the reload guard's mark is the observable proof
     // that a reload was attempted.
     await waitFor(() => expect(sessionStorage.getItem(RELOAD_MARK)).not.toBeNull());
@@ -338,40 +348,14 @@ describe('signing in hands control to the server', () => {
 });
 
 /**
- * 2026-09-13 flow audit, finding 1: an admin approval signs someone in with no
- * credential. Since 2026-11-08 the ask page itself offers "Keep your account"
- * before going in, instead of leaving Home a marker.
- */
-describe('after an admin lets someone in', () => {
-  function approve(result: { name: string; hasPin: boolean }) {
-    renderShell();
-    fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
-    fireEvent.click(screen.getByRole('button', { name: 'I play here already' }));
-    (captured.AskAccessForm!.onApproved as (r: { name: string; hasPin: boolean }) => void)(result);
-  }
-
-  it('offers to keep the account when they have nothing to sign in with', async () => {
-    approve({ name: 'Kento', hasPin: false });
-    await waitFor(() => expect(captured.KeepAccountPage?.name).toBe('Kento'));
-    expect(sessionStorage.getItem(RELOAD_MARK)).toBeNull();
-  });
-
-  it('goes straight in when they already have a PIN', async () => {
-    approve({ name: 'Lin', hasPin: true });
-    await waitFor(() => expect(sessionStorage.getItem(RELOAD_MARK)).not.toBeNull());
-    expect(captured.KeepAccountPage).toBeUndefined();
-  });
-});
-
-/**
  * MULTI-GROUP (docs/plans/multi-group.md, 2026-10-07): the doors a stranger
  * from the store walks through, and the mode a signed-in member in no club gets.
  */
 describe('multi-group OFF: nothing of this exists', () => {
-  it('Sign up explains, and offers no "Start your own club"', () => {
+  it('Join a club offers no "Start your own club"', () => {
     renderShell();
     fireEvent.click(screen.getByRole('button', { name: 'Join a club' }));
-    expect(screen.getByText(/No link\? Ask someone/)).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Log in' })).toBeDefined();
     expect(screen.queryByRole('button', { name: /Start your own club/ })).toBeNull();
   });
 
@@ -418,22 +402,22 @@ describe('multi-group ON — a stranger', () => {
     expect(sessionStorage.getItem(RELOAD_MARK)).toBeNull();
   });
 
-  it('a new Google identity from the create flow gets the name sheet with noGroup, and the resume re-marked', () => {
+  it('a new Google identity from the create flow gets the name step with noGroup, and the resume re-marked', () => {
     localStorage.setItem(RESUME_KEY, JSON.stringify({ intent: 'create', at: Date.now() }));
     at('?authFlow=name');
     renderShell();
-    expect(captured.ChooseNameSheet?.open).toBe(true);
-    expect(captured.ChooseNameSheet?.noGroup).toBe(true);
-    expect(captured.ChooseNameSheet?.inviteToken).toBeUndefined();
+    expect(captured.NameStep?.noGroup).toBe(true);
+    expect(captured.NameStep?.inviteToken).toBeUndefined();
+    expect(captured.DoorJoinPage).toBeUndefined();
     expect(JSON.parse(localStorage.getItem(RESUME_KEY) ?? '{}')).toMatchObject({ intent: 'create' });
   });
 
-  it('a join resume still gets the name sheet WITHOUT noGroup', () => {
+  it('a join resume gets the club\'s name step, never noGroup', () => {
     localStorage.setItem(RESUME_KEY, JSON.stringify({ intent: 'join', token: 'c4'.repeat(16), at: Date.now() }));
     at('?authFlow=name');
     renderShell();
-    expect(captured.ChooseNameSheet?.noGroup).toBe(false);
-    expect(captured.ChooseNameSheet?.inviteToken).toBe('c4'.repeat(16));
+    expect(captured.NameStep).toBeUndefined();
+    expect(captured.DoorJoinPage?.token).toBe('c4'.repeat(16));
   });
 });
 

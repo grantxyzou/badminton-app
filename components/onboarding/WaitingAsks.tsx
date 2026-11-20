@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { useClientValue } from '@/lib/useClientValue';
+import { consumeJustAsked } from '@/lib/justAsked';
+import AuthStage from './AuthStage';
+import { useDoorStep } from './SignInPieces';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const POLL_MS = 20_000;
@@ -17,22 +21,44 @@ interface Props {
   asks: Ask[];
   /** Let in: the cookie is moved to the club and the page reloads into it. */
   onIn: () => void;
+  /** "Join another club". */
+  onJoin: () => void;
+  /** "Use a different account". */
+  onSignOut: () => void;
 }
 
+/* Read once per page load, then remembered, so a re-render does not lose it
+   and the server's render (which cannot know) is what hydration matches. */
+let justAsked: string | null | undefined;
+const readJustAsked = () => {
+  if (justAsked === undefined) justAsked = consumeJustAsked();
+  return justAsked;
+};
+
 /**
- * "Waiting for {club}" (docs/plans/one-way-in.md, step 4): an account that
- * asked to join through a club's link and is in no club yet. The organiser's
- * yes arrives by email, so nothing here has to stay open; while it IS open it
- * checks back every twenty seconds and when the app comes back to the front,
- * and moves straight into the club once let in.
+ * ONE WAITING PAGE (docs/plans/sign-in-redesign.md, merge 3): an account that
+ * asked to join through a club's link and is in no club yet. Three states of
+ * the same page, so the title and the button never move between them:
  *
- * Only the person's own asks (`GET /api/groups/ask`), so "not let in this
- * time" is said plainly: it tells them nothing about anyone else.
+ *   - "Request sent", step 3 of 3 — the first time, straight after asking;
+ *   - "Your request is still pending" — every time after;
+ *   - "Not this time" — declined, or no answer before it closed. The app
+ *     treats both as `closed`, and so does the page.
+ *
+ * A request stays open for three days (`ACCOUNT_ASK_TTL_MS`; Grant: "Request
+ * shouldn't be a long wait time"), and the page says so. The yes arrives by
+ * email, so nothing here has to stay open; while it IS open it checks back
+ * every twenty seconds and when the app comes to the front, and moves straight
+ * into the club once let in. Only the person's own asks, so saying "not this
+ * time" tells them nothing about anyone else.
  */
-export default function WaitingAsks({ asks: initial, onIn }: Props) {
-  const t = useTranslations('signedOut.waiting');
+export default function WaitingAsks({ asks: initial, onIn, onJoin, onSignOut }: Props) {
+  const t = useTranslations('signedOut');
+  const tw = useTranslations('signedOut.waiting');
+  const doorStep = useDoorStep();
   const [asks, setAsks] = useState<Ask[]>(initial);
   const moving = useRef(false);
+  const justAskedClub = useClientValue(readJustAsked, null);
 
   const enter = useCallback(
     async (groupId: string) => {
@@ -83,24 +109,79 @@ export default function WaitingAsks({ asks: initial, onIn }: Props) {
     };
   }, [waiting, check]);
 
-  if (asks.length === 0) return null;
+  // The page speaks for one request: the one still waiting, else the latest
+  // answer. Any others are named under it.
+  const main = asks.find((a) => a.state === 'waiting') ?? asks[0];
+  if (!main) return null;
+  const others = asks.filter((a) => a !== main);
+  const sent = main.state === 'waiting' && justAskedClub !== null;
+
+  const joinAnother = (
+    <button type="button" className="auth-btn auth-btn--neutral" onClick={onJoin}>
+      {tw('joinAnother')}
+    </button>
+  );
+  const alsoLines = others.map((a) => (
+    <p key={a.groupId} className="auth-note">
+      {a.state === 'waiting' ? tw('alsoWaiting', { club: a.club }) : tw('alsoClosed', { club: a.club })}
+    </p>
+  ));
+
+  if (main.state === 'closed') {
+    return (
+      <AuthStage
+        data-page="not-this-time"
+        title={tw('pageTitle')}
+        backLabel={t('back')}
+        heading={tw('closedHeading')}
+        copy={
+          <>
+            <p className="auth-copy" role="status">
+              {tw('closedBody')}
+            </p>
+            {alsoLines}
+          </>
+        }
+        actions={joinAnother}
+      />
+    );
+  }
 
   return (
-    <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
-      {asks.map((a) => (
-        <div key={a.groupId} className="glass-card" style={{ display: 'grid', gap: 'var(--space-2)', padding: 'var(--space-5)' }}>
-          <p className="bpm-h3" style={{ margin: 0 }} role="status">
-            {a.state === 'waiting' ? t('waitingTitle', { club: a.club }) : t('closedTitle', { club: a.club })}
+    <AuthStage
+      data-page={sent ? 'request-sent' : 'still-pending'}
+      title={tw('pageTitle')}
+      backLabel={t('back')}
+      step={sent ? doorStep(3) : undefined}
+      heading={sent ? tw('sentHeading') : tw('pendingHeading')}
+      copy={
+        <>
+          <p className="auth-copy" role="status">
+            {sent ? tw('sentBody') : tw('pendingBody')}
           </p>
-          <p style={{ margin: 0, fontSize: 'var(--fs-md)', color: 'var(--text-secondary)' }}>
-            {a.state === 'waiting'
-              ? a.name
-                ? t('waitingBody', { name: a.name })
-                : t('waitingBodyNoName')
-              : t('closedBody')}
-          </p>
-        </div>
-      ))}
-    </div>
+          <p className="auth-note">{tw('lasts')}</p>
+          {alsoLines}
+        </>
+      }
+      actions={
+        <>
+          {joinAnother}
+          {!sent && (
+            /* Drawn greyed out on the canvas (Grant, 2026-11-19: "Create a club
+               below join another. Disable it"). */
+            <button type="button" className="auth-btn auth-btn--neutral" disabled>
+              {tw('startClub')}
+            </button>
+          )}
+        </>
+      }
+      links={
+        sent ? (
+          <button type="button" className="link-quiet" onClick={onSignOut}>
+            {tw('otherAccount')}
+          </button>
+        ) : undefined
+      }
+    />
   );
 }

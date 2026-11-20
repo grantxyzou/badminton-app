@@ -8,6 +8,19 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Signing in: one layout, buttons where the thumb is (2026-11-20)
+
+The sign-in pages, redrawn on the canvas and built (`docs/plans/sign-in-redesign.md`; Grant: "A log in screen should be clean and easy", "The title should always be on the same height ... CTA button should not jump around").
+
+- **Every sign-in page has the same shape.** The title sits at the same height on every page, the buttons sit at the bottom where the thumb is, and the small links sit under them. No card around anything.
+- **Log in** is the logo, then Apple, Google and "Email me a code". The PIN is behind "Other ways". An iPhone shows Apple first, an Android phone Google first. Both buttons follow Apple's and Google's own designs.
+- **Join a club scans the club's QR code** (the poster at the hall), with "Paste a link" as the other way. Scanning a club's code opens the club's page.
+- **The club's link is three steps**, marked "Step 1 of 3": sign in ("Check your email", a six-box code that says it is valid for 10 minutes and can be sent again), "What's your name?", and "Request sent".
+- **A request stays open for 3 days**, not 14, and every waiting page says so. A request that was declined or ran out says "Not this time".
+- **Can't sign in?** replaces "I play here already": scan the club's code, sign in a new way, and "Is that you?" adds it to your account.
+- **Signing in with a PIN that is your only way in** shows "Add a way back in" straight away, once, before the app opens.
+- **Signing out goes back to Welcome**, instead of leaving an empty app with a second set of doors. `bpm.grantzou.com` with nothing after it opens the app instead of a "not found" page.
+
 ## The strings map: the racket you picked goes with your request (2026-11-19)
 
 - **Pick a racket on the map, choose a string, and "Restring with this string" opens the request on that racket and that string.** Before, the request opened with no racket chosen (Grant: "when racket is selected the verdict in the string sheet should updated to the racket").

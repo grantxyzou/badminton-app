@@ -774,6 +774,10 @@ body {
   --radius-lg: calc(12rem / 16);
   --radius-xl: calc(16rem / 16);
   --radius-pill: 100px;
+  /* Sign-in pages (docs/plans/sign-in-redesign.md): a field is a plain fill. */
+  --auth-field-bg: rgba(255, 255, 255, 0.08);
+  --auth-field-active-bg: rgba(74, 222, 128, 0.24);
+  --auth-step-off: rgba(255, 255, 255, 0.2);
   /* Off the ladder on purpose, for a MARK smaller than its first rung: the
      Roster's 7px attendance dots and the Birds timeline's 3px "now" line.
      At --radius-xs (6px) both would be circles. Never for a surface. */
@@ -1042,6 +1046,9 @@ body {
    already overrides) and --ink-button / --ink-button-fg (constant by design).
    ══════════════════════════════════════════════════════════════════════════ */
 [data-theme="light"] {
+  --auth-field-bg: rgba(0, 0, 0, 0.05);
+  --auth-field-active-bg: rgba(22, 163, 74, 0.16);
+  --auth-step-off: rgba(0, 0, 0, 0.14);
   /* ── Fields — one hue per tab ── */
   /* Half the dark mode's share. On a light page a hue at .30 is not a ground,
      it is a wash: Sign-Ups read amber-flooded and every card over it went
@@ -4826,7 +4833,8 @@ html:root .glass-card.notice-list { padding: var(--space-2); }
 }
 .launch-btn {
   width: 100%;
-  border-radius: var(--radius-md);
+  /* A pill, as every button on the sign-in pages is (docs/plans/sign-in-redesign.md). */
+  border-radius: var(--radius-pill);
   padding: 18px;
   font-size: 17px;
   animation: launch-rise var(--duration-flourish) var(--ease-glass) backwards;
@@ -5616,6 +5624,13 @@ button.sheet-row { cursor: pointer; }
   border: 2px dashed var(--accent);
   border-radius: var(--radius-md);
   pointer-events: none;
+}
+/* The same viewfinder for a club's QR poster: square, with a square to aim at. */
+.qr-camera {
+  aspect-ratio: 1;
+}
+.qr-camera::after {
+  inset: 14%;
 }
 .stocktake-camera-hint {
   position: absolute;
@@ -6570,22 +6585,16 @@ input[type="range"].reel-hue:focus-visible {
   font-size: var(--fs-md);
   font-weight: 500;
   text-decoration: none;
-  background: #131314;
-  color: #e3e3e3;
-  border: 1px solid #8e918f;
+  /* Google's LIGHT button in both themes (the canvas, 2026-11-19: "Follow
+     google style guide"): white, a #747775 edge, #1F1F1F text, the four-colour
+     G on white. Google allows its dark button too; one look beside Apple's
+     white button on a dark ground reads as a pair, two would not. */
+  background: #ffffff;
+  color: #1f1f1f;
+  border: 1px solid #747775;
 }
 
 .btn-google:hover {
-  background: #1e1f20;
-}
-
-[data-theme='light'] .btn-google {
-  background: #ffffff;
-  color: #1f1f1f;
-  border-color: #747775;
-}
-
-[data-theme='light'] .btn-google:hover {
   background: #f2f2f2;
 }
 
@@ -6623,6 +6632,269 @@ input[type="range"].reel-hue:focus-visible {
 
 [data-theme='light'] .btn-apple:hover {
   background: #1f1f1f;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SIGN-IN PAGES  —  one layout for every way in (docs/plans/sign-in-redesign.md)
+   ══════════════════════════════════════════════════════════════════════════
+   Grant, on the canvas (2026-11-20): "The title should always be on the same
+   height. Same spacing btw texts. CTA button should not jump around too."
+   So every sign-in page is the same three slots, like a slide master:
+
+   - the TEXT starts at one height (`--auth-text-top`), with a line kept for
+     the "Step N of 3" marker whether or not the page has one, so a page
+     without it does not pull its title up;
+   - a LOGO page puts the launch lockup at one height (`--auth-logo-top`);
+   - the BUTTONS sit at the bottom (`margin-top: auto`), with the quiet-links
+     line under them kept even when empty, so the lowest button never moves.
+
+   No card around any of it (2026-11-19: "Take out the card ... bring the
+   entire thing down to the bottom of the phone"). Fields are plain filled
+   boxes; glass is for buttons you press. */
+.auth-stage {
+  --auth-text-top: max(var(--space-7), calc(31svh - 1.5rem));
+  --auth-logo-top: max(var(--space-5), calc(18svh - 1.5rem));
+  --auth-text-gap: calc(10rem / 16);
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100svh - var(--space-7) - env(safe-area-inset-top, 0px));
+  padding-bottom: calc(var(--space-7) + env(safe-area-inset-bottom, 0px));
+}
+.auth-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.auth-text {
+  margin-top: var(--auth-text-top);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+.auth-copy-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--auth-text-gap);
+  padding-inline: var(--space-2);
+}
+/* The step marker's line, kept on every page (see the header). */
+.auth-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  height: 1rem;
+}
+.auth-steps {
+  display: inline-flex;
+  gap: var(--space-1);
+}
+.auth-steps > span {
+  width: 1.5rem;
+  height: var(--space-1);
+  border-radius: var(--radius-hair);
+  background: var(--auth-step-off);
+}
+.auth-steps > span[data-on] {
+  background: var(--accent);
+}
+.auth-eyebrow-label {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.auth-heading {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: calc(26rem / 16);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+.auth-copy {
+  margin: 0;
+  font-size: calc(15rem / 16);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.auth-copy b {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.auth-note {
+  margin: 0;
+  font-size: var(--fs-base);
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+/* The launch lockup at one height, the same picture as Welcome's. Its canvas
+   is 360 wide; only the band holding the arc, `bpm` and the tagline is shown. */
+.auth-logo {
+  position: relative;
+  flex: none;
+  height: 12.5rem;
+  margin-top: var(--auth-logo-top);
+}
+.auth-logo .launch-canvas {
+  top: 0;
+  transform: translate(-50%, -15.25rem);
+}
+.auth-actions {
+  margin-top: auto;
+  padding-top: var(--space-7);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.auth-links {
+  min-height: 2.75rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  white-space: nowrap;
+}
+.auth-or {
+  margin: 0;
+  text-align: center;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+/* Buttons you press: a pill of tinted glass. Apple's and Google's keep their
+   own colours (.btn-apple / .btn-google) and take only this size. */
+.auth-btn {
+  width: 100%;
+  min-height: calc(54rem / 16);
+  border-radius: var(--radius-pill);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  text-decoration: none;
+}
+.auth-btn--primary,
+.auth-btn--neutral {
+  color: #ffffff;
+  border: 1px solid transparent;
+  -webkit-backdrop-filter: blur(10px) saturate(1.8);
+  backdrop-filter: blur(10px) saturate(1.8);
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.55),
+    inset -1px -1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 0 14px rgba(255, 255, 255, 0.1),
+    0 4px 14px rgba(0, 0, 0, 0.14);
+}
+.auth-btn--primary {
+  background: rgba(74, 222, 128, 0.3);
+}
+.auth-btn--neutral {
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.12);
+}
+[data-theme='light'] .auth-btn--primary {
+  background: linear-gradient(160deg, #22c55e 0%, #16a34a 100%);
+  box-shadow: 0 4px 14px rgba(22, 163, 74, 0.22);
+}
+[data-theme='light'] .auth-btn--neutral {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+.auth-btn:disabled,
+.auth-btn[aria-disabled='true'] {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.btn-apple.auth-btn,
+.btn-google.auth-btn {
+  min-height: calc(54rem / 16);
+  font-size: var(--fs-lg);
+}
+/* A plain filled box, no glass and no edge (2026-11-19: "not liquid glass"). */
+html:root .auth-field,
+html:root .auth-field:focus {
+  min-height: 3.5rem;
+  padding: 0 var(--space-6);
+  border-radius: var(--radius-xl);
+  border: 1px solid transparent;
+  background: var(--auth-field-bg);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
+  font-size: max(16px, calc(17rem / 16));
+  color: var(--text-primary);
+}
+html:root .auth-field:focus {
+  border-color: var(--input-focus-border);
+}
+/* The six boxes of an emailed code. One real input lies over them (so paste,
+   the keyboard's one-time-code suggestion and a screen reader all see one
+   field); the boxes only draw what it holds. */
+.auth-code {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--space-3);
+}
+.auth-code-box {
+  height: 3.75rem;
+  border-radius: var(--radius-xl);
+  background: var(--auth-field-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: calc(28rem / 16);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.auth-code-box[data-active] {
+  background: var(--auth-field-active-bg);
+}
+html:root .auth-code-input,
+html:root .auth-code-input:focus {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  color: transparent;
+  caret-color: transparent;
+  /* Never under 16px: iOS zooms into a smaller field on focus. */
+  font-size: max(16px, 1rem);
+}
+.auth-code-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4);
+  padding-inline: var(--space-2);
+}
+/* Too many PIN tries: the fields give way to one panel with the countdown. */
+.auth-paused {
+  min-height: calc(124rem / 16);
+  border-radius: var(--radius-xl);
+  background: var(--auth-field-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  text-align: center;
+}
+.auth-paused-time {
+  font-family: var(--font-display);
+  font-size: calc(34rem / 16);
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--sev-warn);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════

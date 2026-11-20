@@ -80,6 +80,7 @@ export const ICON_NAMES = [
   'person',
   'person_add',
   'person_remove',
+  'qr_code_scanner',
   'radio_button_checked',
   'radio_button_unchecked',
   'receipt_long',

@@ -6,8 +6,10 @@ import enMessages from '@/messages/en.json';
 
 /**
  * Joining a club through its link, signed out (docs/plans/one-way-in.md,
- * step 4a): sign in first, then the name, then the ask. Three ways through,
- * and the identity is written only when they leave the "asked" screen.
+ * step 4a; drawn in docs/plans/sign-in-redesign.md): sign in first ("Check
+ * your email", step 1 of 3), then "What's your name?" (step 2), then the ask.
+ * Asking signs the phone in, which reloads into the waiting page, so the
+ * identity is written the moment the ask lands, with "Request sent" marked.
  */
 const identities: Array<{ name: string }> = [];
 vi.mock('@/lib/identity', () => ({ setIdentity: (v: { name: string }) => identities.push(v) }));
@@ -29,6 +31,7 @@ const TOKEN = 'd4'.repeat(16);
 
 afterEach(() => {
   cleanup();
+  sessionStorage.clear();
   vi.unstubAllGlobals();
   identities.length = 0;
   resumes.length = 0;
@@ -62,11 +65,17 @@ async function proveEmail(email: string) {
   await act(async () => {
     fireEvent.click(screen.getByRole('button', { name: 'Email me a code' }));
   });
+  // A club's link sends every address a code, so the page says so plainly.
+  expect(screen.getByRole('heading', { name: 'Check your email' })).toBeDefined();
+  expect(screen.getByRole('img', { name: 'Step 1 of 3' })).toBeDefined();
+  expect(screen.getByRole('status').textContent).toBe(`We emailed a verification code to ${email}.`);
   fireEvent.change(screen.getByLabelText('6-digit code'), { target: { value: '123456' } });
   await act(async () => {
-    fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
   });
 }
+
+const justAsked = () => sessionStorage.getItem('badminton_just_asked');
 
 describe('DoorJoinPage', () => {
   it('names the club, offers Google and an email code, and no password', async () => {
@@ -84,7 +93,7 @@ describe('DoorJoinPage', () => {
     expect(resumes).toEqual([['join', TOKEN]]);
   });
 
-  it('a NEW address: code, then the name, then the account asks; Done signs in', async () => {
+  it('a NEW address: code, then the name, then the account asks and signs in', async () => {
     const calls = stub({
       '/email-code/start': () => json({ ok: true }),
       '/email-code/verify': () => json({ signup: true }),
@@ -95,16 +104,16 @@ describe('DoorJoinPage', () => {
     await proveEmail('kento@example.com');
     expect(calls.find((c) => c.url.includes('/email-code/start'))!.body).toEqual({ email: 'kento@example.com', doorToken: TOKEN });
 
-    fireEvent.change(screen.getByLabelText('Your name on the list'), { target: { value: 'Kento Momota' } });
+    expect(screen.getByRole('heading', { name: "What's your name?" })).toBeDefined();
+    expect(screen.getByRole('img', { name: 'Step 2 of 3' })).toBeDefined();
+    fireEvent.change(screen.getByLabelText('Your name'), { target: { value: 'Kento Momota' } });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Ask to join' }));
     });
     expect(calls.find((c) => c.url.includes('/auth/complete-signup'))!.body).toEqual({ name: 'Kento Momota', inviteToken: TOKEN });
-    expect(screen.getByText('Asked to join Six Feathers')).toBeDefined();
-    expect(identities).toHaveLength(0);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    // Signed in, which reloads into the waiting page, told to say "Request sent".
     expect(identities).toEqual([{ name: 'Kento Momota', sessionId: '' }]);
+    expect(JSON.parse(justAsked()!).club).toBe('Six Feathers');
   });
 
   it('a name someone signs in under asks "Is that you?", and the PIN signs straight in (step 6)', async () => {
@@ -117,16 +126,17 @@ describe('DoorJoinPage', () => {
     renderPage();
     await screen.findByText('Join Six Feathers');
     await proveEmail('lin@example.com');
-    fireEvent.change(screen.getByLabelText('Your name on the list'), { target: { value: 'Lin Dan' } });
+    fireEvent.change(screen.getByLabelText('Your name'), { target: { value: 'Lin Dan' } });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Ask to join' }));
     });
     expect(screen.getByText('Is that you?')).toBeDefined();
-    expect(screen.getByText(/Someone already plays as Lin Dan/)).toBeDefined();
+    expect(screen.getByRole('heading', { name: 'Lin Dan already plays at Six Feathers' })).toBeDefined();
 
-    fireEvent.change(screen.getByLabelText('Your 4-digit PIN'), { target: { value: '2468' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Enter my PIN' }));
+    fireEvent.change(screen.getByLabelText('PIN'), { target: { value: '2468' } });
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: "Yes, that's me" }));
+      fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
     });
     expect(calls.find((c) => c.url.includes('/auth/claim-name'))!.body).toEqual({ name: 'Lin Dan', inviteToken: TOKEN, pin: '2468' });
     // Already in the club: no ask, straight in.
@@ -143,14 +153,14 @@ describe('DoorJoinPage', () => {
     renderPage();
     await screen.findByText('Join Six Feathers');
     await proveEmail('lin@example.com');
-    fireEvent.change(screen.getByLabelText('Your name on the list'), { target: { value: 'Lin Dan' } });
+    fireEvent.change(screen.getByLabelText('Your name'), { target: { value: 'Lin Dan' } });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Ask to join' }));
     });
-    fireEvent.click(screen.getByRole('button', { name: 'No PIN? Ask your admin for a code' }));
-    fireEvent.change(screen.getByLabelText('6-digit code from your admin'), { target: { value: '123456' } });
+    fireEvent.click(screen.getByRole('button', { name: "Enter an organizer's code" }));
+    fireEvent.change(screen.getByLabelText('6-digit code from an organizer'), { target: { value: '123456' } });
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: "Yes, that's me" }));
+      fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
     });
     expect(calls.find((c) => c.url.includes('/auth/claim-name'))!.body).toMatchObject({ code: '123456' });
     expect((await screen.findByRole('alert')).textContent).toMatch(/didn't match/);
@@ -166,7 +176,7 @@ describe('DoorJoinPage', () => {
     renderPage();
     await screen.findByText('Join Six Feathers');
     await proveEmail('kento@example.com');
-    fireEvent.change(screen.getByLabelText('Your name on the list'), { target: { value: 'Kento' } });
+    fireEvent.change(screen.getByLabelText('Your name'), { target: { value: 'Kento' } });
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Ask to join' }));
     });
@@ -188,7 +198,31 @@ describe('DoorJoinPage', () => {
     await screen.findByText('Join Six Feathers');
     await proveEmail('lin@example.com');
     expect(calls.find((c) => c.url.includes('/api/groups/ask'))!.body).toEqual({ doorToken: TOKEN, name: 'Lin' });
-    expect(screen.getByText('Asked to join Six Feathers')).toBeDefined();
+    expect(identities).toEqual([{ name: 'Lin', sessionId: '' }]);
+    expect(justAsked()).not.toBeNull();
+  });
+
+  it('an account already in the club goes straight in, with no "Request sent"', async () => {
+    stub({
+      '/email-code/start': () => json({ ok: true }),
+      '/email-code/verify': () => json({ name: 'Lin' }),
+      '/api/groups/ask': () => json({ ok: true, alreadyIn: true }),
+    });
+    renderPage();
+    await screen.findByText('Join Six Feathers');
+    await proveEmail('lin@example.com');
+    expect(identities).toEqual([{ name: 'Lin', sessionId: '' }]);
+    expect(justAsked()).toBeNull();
+  });
+
+  it('back from Google or Apple, it opens on the name step', async () => {
+    stub({ '/auth/complete-signup': () => json({ pending: true }) });
+    render(
+      <NextIntlClientProvider locale="en" messages={enMessages}>
+        <DoorJoinPage token={TOKEN} authProviders={['google']} onBack={vi.fn()} startAtName />
+      </NextIntlClientProvider>,
+    );
+    expect(await screen.findByRole('heading', { name: "What's your name?" })).toBeDefined();
   });
 
   it('offers no name-only claim: an imported name signs in like everyone (one-way-in step 4d)', async () => {
@@ -201,6 +235,7 @@ describe('DoorJoinPage', () => {
   it('a dead link says so', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => json({ error: 'invite_not_found' }, 404)));
     renderPage();
-    expect((await screen.findByRole('alert')).textContent).toMatch(/That link no longer works/);
+    expect(await screen.findByRole('heading', { name: 'This link no longer works' })).toBeDefined();
+    expect(screen.getByText("Ask your club's organizer for the current link.")).toBeDefined();
   });
 });
