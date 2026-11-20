@@ -113,7 +113,9 @@ export function issueAccessRequest(
   context: { groupId?: string; link?: PendingLink; organizer?: boolean } = {},
 ): { secret: string; stored: StoredAccessRequest } {
   const secret = randomBytes(32).toString('hex');
-  const numbers = context.link ? matchNumbers() : null;
+  // Numbers only for an ask the person's own phone answers: an organizer ask
+  // must never put a tappable prompt on that phone (third review, 2026-11-20).
+  const numbers = context.link && !context.organizer ? matchNumbers() : null;
   return {
     secret,
     stored: {

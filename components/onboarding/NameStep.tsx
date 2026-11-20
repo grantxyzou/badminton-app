@@ -33,7 +33,8 @@ type Stage = 'name' | 'claim' | 'expired';
 /** How "Is that you?" is being answered: the PIN, another phone, an organizer. */
 type Proof = null | 'pin' | 'phone' | 'organizer';
 /** An ask filed with `claim-ask`: the page's own secret, and the number to tap. */
-type Ask = { secret: string; match: number; club: string | null };
+/** `match` only for an ask the other phone answers; an organizer ask has none. */
+type Ask = { secret: string; match: number | null; club: string | null };
 
 /** How often a waiting page asks whether the other phone or an organizer said yes. */
 const POLL_MS = 3000;
@@ -99,8 +100,12 @@ export default function NameStep({ title, onBack, step, inviteToken, noGroup, cl
   useEffect(() => {
     if (!ask || (proof !== 'phone' && proof !== 'organizer')) return;
     let live = true;
+    let inFlight = false;
     const who = name.trim();
     const check = async () => {
+      // One at a time: a slow answer must not race the next one.
+      if (inFlight) return;
+      inFlight = true;
       try {
         const res = await fetch(`${BASE}/api/members/access-request/claim`, {
           method: 'POST',
@@ -110,7 +115,7 @@ export default function NameStep({ title, onBack, step, inviteToken, noGroup, cl
         const data = (await res.json().catch(() => ({}))) as { status?: string; name?: string };
         if (!live) return;
         if (data.status === 'approved') setIdentity({ name: data.name ?? who, sessionId: '' });
-        // Ran out (an hour), or stopped by a "no": say so rather than wait.
+        // Ran out (the ask's hour is over): say so rather than wait.
         else if (data.status === 'none') {
           setAsk(null);
           setProof(null);
@@ -118,6 +123,8 @@ export default function NameStep({ title, onBack, step, inviteToken, noGroup, cl
         }
       } catch {
         /* the next tick tries again */
+      } finally {
+        inFlight = false;
       }
     };
     const timer = window.setInterval(() => {
@@ -152,8 +159,8 @@ export default function NameStep({ title, onBack, step, inviteToken, noGroup, cl
         else setError(tn('failed'));
         return;
       }
-      if (typeof data.secret === 'string' && typeof data.match === 'number') {
-        setAsk({ secret: data.secret, match: data.match, club: data.club ?? null });
+      if (typeof data.secret === 'string') {
+        setAsk({ secret: data.secret, match: typeof data.match === 'number' ? data.match : null, club: data.club ?? null });
       }
       setProof(target);
     } catch {
@@ -287,7 +294,7 @@ export default function NameStep({ title, onBack, step, inviteToken, noGroup, cl
       </button>
     );
 
-    if (proof === 'phone' && ask) {
+    if (proof === 'phone' && ask && ask.match !== null) {
       return (
         <AuthStage
           data-page="check-other-phone"

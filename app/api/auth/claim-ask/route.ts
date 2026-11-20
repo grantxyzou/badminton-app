@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
       // Not awaited: how long a push fan-out takes would say how many phones
       // the person has (security review, 2026-11-20).
       if (!result) {
-        // A refusal pays the write a stored ask does, so it reads like one.
+        // A refusal pays one more round trip, as a stored ask's write costs.
         await padMissingAccount(1);
       } else {
         if (organizer) {

@@ -31,7 +31,7 @@ const HOUR_MS = 60 * 60 * 1000;
 type Waiting = StoredAccessRequest & { id: string; link: NonNullable<StoredAccessRequest['link']>; choices: number[]; match: number };
 
 function waiting(r: StoredAccessRequest & { id: string }): r is Waiting {
-  return !!r.link && r.approvedAt === undefined && Array.isArray(r.choices) && typeof r.match === 'number';
+  return !!r.link && r.organizer !== true && r.approvedAt === undefined && Array.isArray(r.choices) && typeof r.match === 'number';
 }
 
 export async function GET(req: NextRequest) {

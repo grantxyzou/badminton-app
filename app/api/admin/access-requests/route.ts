@@ -23,7 +23,7 @@
  * must not read as a fresh single request.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { linkSignInTo } from '@/lib/linkSignIn';
+import { linkSignInTo, unlinkSignIn } from '@/lib/linkSignIn';
 import { sendPushToMembers } from '@/lib/push';
 import { buildNewSignInAddedPayload } from '@/lib/pushMessages';
 
@@ -287,12 +287,19 @@ export async function POST(req: NextRequest) {
         await updateAccessRequests(memberId, (all) => all.filter((r) => r.id !== linkAsk.id));
         return NextResponse.json({ error: linked.reason === 'already_linked' ? 'already_linked' : 'not_found' }, { status: 409 });
       }
-      // Remember an address it added, so "No, it's not me" can take it back.
-      if (linked.addedEmail) {
-        const added = linked.addedEmail;
-        await updateAccessRequests(memberId, (all) =>
-          all.some((r) => r.id === linkAsk.id) ? all.map((r) => (r.id === linkAsk.id ? { ...r, addedEmail: added } : r)) : null,
-        );
+      // Remember an address it added, so "No, it's not me" can take it back —
+      // and confirm the ask is still there. A "not me" can land between the
+      // approval and the link (third review, 2026-11-20); then the person
+      // already said no, so the link is taken back here and the approval fails.
+      const added = linked.addedEmail;
+      const still = await updateAccessRequests(memberId, (all) =>
+        all.some((r) => r.id === linkAsk.id)
+          ? all.map((r) => (r.id === linkAsk.id && added ? { ...r, addedEmail: added } : r))
+          : null,
+      );
+      if (!still) {
+        await unlinkSignIn(memberId, linkAsk.link, added);
+        return NextResponse.json({ error: 'not_found' }, { status: 409 });
       }
       void Promise.resolve()
         .then(() => sendPushToMembers([memberId], (locale) => buildNewSignInAddedPayload(locale)))

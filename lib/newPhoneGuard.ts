@@ -18,7 +18,8 @@ import type { Member } from '@/lib/types';
  * A refusal stores and sends nothing, and answers like any other ask.
  *
  * AN ORGANIZER ASK IS NOT LIMITED BY ANY OF THAT (second review, 2026-11-20):
- * it prompts nobody's phone, and counting it let one stranger spend a
+ * it carries no numbers, so it puts nothing tappable on the person's phone
+ * (`issueAccessRequest`), and counting it let one stranger spend a
  * person's three asks every day and shut them out of the organizer too. It is
  * stored like any ask (two on one person cannot be approved; the organizer
  * clears them), and its PUSH to the organizers goes at most once a day per
@@ -43,9 +44,12 @@ export function mayAskNewPhone(
   const day = recent(log, now).filter((e) => !e.organizer);
   if (day.some((e) => e.stopped)) return false;
   if (day.length >= MAX_ASKS_PER_DAY) return false;
-  // One at a time: another new phone's ask still waiting blocks this one.
+  // One at a time: another new phone's PHONE ask still waiting blocks this
+  // one. An organizer ask never does, or a stranger re-asking an organizer
+  // hourly would close this rung to the real person (third review).
   return !open.some(
-    (r) => r.link && r.approvedAt === undefined && !(r.link.provider === link.provider && r.link.sub === link.sub),
+    (r) =>
+      r.link && !r.organizer && r.approvedAt === undefined && !(r.link.provider === link.provider && r.link.sub === link.sub),
   );
 }
 

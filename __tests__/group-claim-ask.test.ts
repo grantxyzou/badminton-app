@@ -363,3 +363,34 @@ describe('how often, and who may say yes', () => {
     expect(openOn(linX)).toEqual([]);
   });
 });
+
+/** Third review (2026-11-20): an organizer ask must put nothing tappable on
+ *  the person's phone, nor hold the phone rung's one waiting slot. */
+describe('an organizer ask stays off her phone', () => {
+  it('carries no numbers, is not listed on her phone, and cannot be answered by one', async () => {
+    const asked = await ask({ organizer: true });
+    expect(asked.match).toBeUndefined();
+    const [stored] = openOn(linX);
+    expect(stored.choices).toBeUndefined();
+    const mine = await (await PROMPTS(get('http://x/api/auth/new-phone', asLinX()))).json();
+    expect(mine.asks).toEqual([]);
+    const res = await ANSWER(post('http://x/api/auth/new-phone', { id: stored.id, pick: 10 }, asLinX()));
+    expect(res.status).toBe(404);
+  });
+
+  it("a stranger's organizer ask does not block her own phone ask", async () => {
+    await ask({ organizer: true }, pendingCookie({ sub: 'google-stranger', email: 'x@example.com' }));
+    sendPushToMembers.mockReset();
+    await ask({});
+    await vi.waitFor(() => expect(sendPushToMembers.mock.calls.map((c) => c[0])).toContainEqual([linX]));
+    expect(openOn(linX)).toHaveLength(2);
+  });
+
+  it('an address that was already hers is never recorded as added', async () => {
+    const { linkSignInTo } = await import('@/lib/linkSignIn');
+    const { reserveIdentity } = await import('@/lib/authIdentity');
+    await reserveIdentity('email', 'lin.new@example.com', linX); // hers already, no email field
+    const linked = await linkSignInTo(linX, { provider: 'google', sub: 'g-2', email: 'lin.new@example.com', emailVerified: true });
+    expect(linked.ok && linked.addedEmail).toBeNull();
+  });
+});

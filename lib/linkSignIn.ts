@@ -36,17 +36,30 @@ export async function linkSignInTo(memberId: string, link: PendingLink): Promise
 
   let emailDone = false;
   let claimedEmail: string | null = null;
+  // Only an address this link RESERVED is recorded as added, so an undo can
+  // never release one that was already the person's (third review).
+  let addedByUs = false;
   for (let attempt = 0; attempt < 5; attempt++) {
     const { resource } = await container.item(memberId, memberId).read<Member & { _etag?: string }>();
     if (!resource) return { ok: false, reason: 'gone' };
 
+    // Decided on EVERY attempt: an address set between two attempts wins.
     const hasAddress = typeof resource.email === 'string' && resource.email.trim().length > 0;
-    if (!emailDone && !hasAddress && link.email && link.emailVerified) {
+    if (hasAddress) claimedEmail = null;
+    else if (!emailDone && link.email && link.emailVerified) {
       emailDone = true;
       const email = normalizeEmail(link.email);
       // An email-code sign-in IS this address, reserved just above.
-      const emailReserved = link.provider === 'email' ? { ok: true } : await reserveIdentity('email', email, memberId);
-      if (emailReserved.ok) claimedEmail = email;
+      if (link.provider === 'email') {
+        claimedEmail = email;
+        addedByUs = reserved.created;
+      } else {
+        const emailReserved = await reserveIdentity('email', email, memberId);
+        if (emailReserved.ok) {
+          claimedEmail = email;
+          addedByUs = emailReserved.created;
+        }
+      }
     }
 
     // An email-proven identity is the address itself; only Google and Apple
@@ -63,7 +76,7 @@ export async function linkSignInTo(memberId: string, link: PendingLink): Promise
       } else {
         await container.items.upsert(updated);
       }
-      return { ok: true, member: updated, addedEmail: claimedEmail };
+      return { ok: true, member: updated, addedEmail: claimedEmail && addedByUs ? claimedEmail : null };
     } catch (err) {
       if ((err as { code?: number }).code === 412) continue;
       throw err;
