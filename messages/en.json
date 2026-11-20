@@ -1467,6 +1467,7 @@
     }
   },
   "pin": {
+    "paused": "Let's pause a moment — try again in {time}.",
     "newLabel": "New PIN",
     "currentLabel": "Current PIN",
     "confirmLabel": "Confirm PIN",

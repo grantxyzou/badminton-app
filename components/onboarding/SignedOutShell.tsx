@@ -684,6 +684,7 @@ function LogInView({
   const tl = useTranslations('signedOut.login');
   const tRec = useTranslations('recovery');
   const tAuth = useTranslations('profile.auth');
+  const tPinCopy = useTranslations('pin');
   const [mode, setMode] = useState<'email' | 'pin' | 'password'>('email');
   /** Signed in with a PIN that is their only way in: "Keep your account" first. */
   const [keepFor, setKeepFor] = useState<string | null>(null);
@@ -782,10 +783,16 @@ function LogInView({
             aria-label={tRec('pinLabel')}
             aria-invalid={pin.error === 'invalid' || undefined}
             maxLength={4}
+            disabled={pin.paused}
           />
           {pin.error === 'invalid' && (
             <p role="alert" className="field-error">
               {tRec('errorInvalid')}
+            </p>
+          )}
+          {pin.error === 'paused' && pin.paused && (
+            <p role="alert" className="field-warn">
+              {tPinCopy('paused', { time: pin.pauseLabel })}
             </p>
           )}
           {pin.error === 'rate_limited' && (

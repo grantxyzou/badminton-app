@@ -245,6 +245,26 @@ describe('a PIN log-in', () => {
     await waitFor(() => expect(sessionStorage.getItem(RELOAD_MARK)).not.toBeNull());
   });
 
+  it('too many tries: the PIN field counts down, and the other ways in stay on the screen (step 2)', async () => {
+    fetchMock.mockImplementation((input: RequestInfo | URL) =>
+      String(input).includes('/api/players/recover')
+        ? json({ error: 'pin_paused', retryAfter: 222 }, 429)
+        : json({}),
+    );
+    renderShell();
+    fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Other ways' }));
+    fireEvent.change(screen.getByPlaceholderText('Your name'), { target: { value: 'Lin' } });
+    fireEvent.change(screen.getByPlaceholderText('PIN'), { target: { value: '0000' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    });
+    expect(screen.getByRole('alert').textContent).toMatch(/^Let's pause a moment — try again in 3:4\d\.$/);
+    expect((screen.getByPlaceholderText('PIN') as HTMLInputElement).disabled).toBe(true);
+    expect(screen.getByRole('button', { name: 'Use email instead' })).toBeDefined();
+    expect(sessionStorage.getItem(RELOAD_MARK)).toBeNull();
+  });
+
   it('an anonymous answer (the cookie did not stick) is not "PIN only"', async () => {
     await pinSignIn({ available: ['google'], linked: [], hasPassword: false, hasPin: false });
     await waitFor(() => expect(sessionStorage.getItem(RELOAD_MARK)).not.toBeNull());

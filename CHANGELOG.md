@@ -19,6 +19,7 @@ The sign-in pages, redrawn on the canvas and built (`docs/plans/sign-in-redesign
 - **A request stays open for 3 days**, not 14, and every waiting page says so. A request that was declined or ran out says "Not this time".
 - **Can't sign in?** replaces "I play here already": scan the club's code, sign in a new way, and "Is that you?" adds it to your account.
 - **Signing in with a PIN that is your only way in** shows "Add a way back in" straight away, once, before the app opens.
+- **Too many wrong PINs now says so, with a countdown**: "Let's pause a moment — try again in 3:42", and the PIN field waits it out while Apple, Google and the email code stay on the screen. It reads the same for every name, real or not, so it never tells anyone which names have an account. On Log in, the console sign-in and Update PIN.
 - **Signing out goes back to Welcome**, instead of leaving an empty app with a second set of doors. `bpm.grantzou.com` with nothing after it opens the app instead of a "not found" page.
 
 ## The strings map: the racket you picked goes with your request (2026-11-19)

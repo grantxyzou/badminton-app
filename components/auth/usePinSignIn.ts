@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { usePinPause, pinPausedSeconds } from '@/lib/usePinPause';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
-export type PinSignInError = 'invalid' | 'rate_limited' | 'admin_logged_in' | 'network';
+export type PinSignInError = 'invalid' | 'paused' | 'rate_limited' | 'admin_logged_in' | 'network';
 
 /**
  * Name and PIN sign-in (`POST /api/players/recover`), as state a form draws:
@@ -29,16 +30,22 @@ export function usePinSignIn({
   const [error, setError] = useState<PinSignInError | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // "Let's pause a moment — try again in 3:42": the field waits it out (step 2).
+  const pause = usePinPause();
+  useEffect(() => {
+    if (!pause.paused) setError((e) => (e === 'paused' ? null : e));
+  }, [pause.paused]);
+
   const trimmed = name.trim();
-  const canSubmit = trimmed.length > 0 && pin.length === 4 && !submitting;
+  const canSubmit = trimmed.length > 0 && pin.length === 4 && !submitting && !pause.paused;
 
   const setName = (v: string) => {
     setNameRaw(v);
-    setError(null);
+    setError((e) => (e === 'paused' ? e : null));
   };
   const setPin = (v: string) => {
     setPinRaw(v);
-    setError(null);
+    setError((e) => (e === 'paused' ? e : null));
   };
 
   async function submit() {
@@ -51,6 +58,13 @@ export function usePinSignIn({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: trimmed, sessionId, pin }),
       });
+      const paused = await pinPausedSeconds(res);
+      if (paused) {
+        pause.pauseFor(paused);
+        setPinRaw('');
+        setError('paused');
+        return;
+      }
       if (res.status === 429) { setError('rate_limited'); return; }
       // Admin cookie set: /api/players/recover refuses (admins use
       // /reset-access instead), so say that rather than "wrong PIN".
@@ -71,5 +85,18 @@ export function usePinSignIn({
     }
   }
 
-  return { name, setName, pin, setPin, error, submitting, canSubmit, submit };
+  return {
+    name,
+    setName,
+    pin,
+    setPin,
+    error,
+    submitting,
+    canSubmit,
+    submit,
+    /** The PIN field is disabled while this is true. */
+    paused: pause.paused,
+    /** "3:42" */
+    pauseLabel: pause.label,
+  };
 }

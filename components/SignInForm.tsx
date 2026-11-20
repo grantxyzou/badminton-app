@@ -44,7 +44,8 @@ interface SignInFormProps {
  */
 export default function SignInForm({ sessionId, onSuccess, onForgotPin, probeName = true, initialName = '' }: SignInFormProps) {
   const t = useTranslations('recovery');
-  const { name, setName, pin, setPin, error, submitting, canSubmit, submit } = usePinSignIn({ sessionId, initialName, onSuccess });
+  const tPin = useTranslations('pin');
+  const { name, setName, pin, setPin, error, submitting, canSubmit, submit, paused, pauseLabel } = usePinSignIn({ sessionId, initialName, onSuccess });
   /**
    * The probe already knows whether this name has a PIN, and this form used to
    * ignore it — so a member who never set one typed four digits, got a
@@ -82,6 +83,7 @@ export default function SignInForm({ sessionId, onSuccess, onForgotPin, probeNam
         digits={4}
         label={t('pinLabel')}
         ariaInvalid={error === 'invalid'}
+        disabled={paused}
       />
       <button
         type="submit"
@@ -107,6 +109,11 @@ export default function SignInForm({ sessionId, onSuccess, onForgotPin, probeNam
       {error === 'invalid' && !knownNoPin && (
         <p role="alert" className="field-error" style={{ margin: '0' }}>
           {t('errorInvalid')}
+        </p>
+      )}
+      {error === 'paused' && paused && (
+        <p role="alert" className="field-warn" style={{ margin: '0' }}>
+          {tPin('paused', { time: pauseLabel })}
         </p>
       )}
       {error === 'rate_limited' && (

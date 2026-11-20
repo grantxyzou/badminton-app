@@ -1467,6 +1467,7 @@
     }
   },
   "pin": {
+    "paused": "先歇一下，{time} 后再试。",
     "newLabel": "新 PIN",
     "currentLabel": "当前 PIN",
     "confirmLabel": "确认 PIN",

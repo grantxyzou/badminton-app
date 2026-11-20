@@ -6,7 +6,7 @@ import {
 import { hashPin } from '../lib/recoveryHash';
 import {
   isPinLocked, recordPinFailure, FREE_ATTEMPTS, BASE_LOCK_MS, MAX_LOCK_MS, DECAY_MS,
-} from '../lib/pinLockout';
+} from '../lib/pinLockPolicy';
 import { POST as adminLogin } from '@/app/api/admin/route';
 import { POST as recover } from '@/app/api/players/recover/route';
 
@@ -82,13 +82,16 @@ describe('POST /api/admin — the account locks after repeated wrong PINs', () =
     expect(admin().pinLock?.failures).toBe(FREE_ATTEMPTS);
     expect(admin().pinLock?.lockedUntil).toBeUndefined();
 
-    // One more wrong guess locks it...
-    expect((await adminLogin(makeRequest('POST', URL, { name: getTestAdminName(), pin: '9999' }))).status).toBe(401);
+    // One more wrong guess locks it, and says so with the seconds left
+    // (docs/plans/sign-in-redesign.md, step 2: the same countdown for every name)...
+    const sixth = await adminLogin(makeRequest('POST', URL, { name: getTestAdminName(), pin: '9999' }));
+    expect(sixth.status).toBe(429);
+    expect(await sixth.json()).toEqual({ error: 'pin_paused', retryAfter: 60 });
     expect(admin().pinLock?.lockedUntil).toBeDefined();
-    // ...and the correct PIN is refused with the SAME answer while it holds.
+    // ...and the correct PIN is refused while it holds.
     const locked = await adminLogin(makeRequest('POST', URL, { name: getTestAdminName(), pin: getTestPin() }));
-    expect(locked.status).toBe(401);
-    expect(await locked.json()).toEqual({ error: 'Incorrect name or PIN' });
+    expect(locked.status).toBe(429);
+    expect((await locked.json()).error).toBe('pin_paused');
 
     // Lapse the lock (the store is the test seam), then the right PIN clears it.
     admin().pinLock!.lockedUntil = new Date(Date.now() - 1000).toISOString();
@@ -110,7 +113,7 @@ describe('POST /api/admin — the account locks after repeated wrong PINs', () =
   });
 });
 
-describe('POST /api/players/recover — same lock, same generic answer', () => {
+describe('POST /api/players/recover — same lock, a countdown', () => {
   const URL = 'http://localhost:3000/api/players/recover';
   beforeEach(async () => {
     resetMockStore();
@@ -120,11 +123,14 @@ describe('POST /api/players/recover — same lock, same generic answer', () => {
   it('locks the account and refuses the right PIN while locked', async () => {
     const lin = seedMember('Lin', { pinHash: await hashPin('2468') });
     const doc = () => (getStore()['members'] as Array<{ id: string; pinLock?: { lockedUntil?: string } }>).find((m) => m.id === lin.id)!;
-    for (let i = 0; i <= FREE_ATTEMPTS; i++) {
+    for (let i = 0; i < FREE_ATTEMPTS; i++) {
       expect((await recover(makeRequest('POST', URL, { name: 'Lin', pin: '0000' }))).status).toBe(401);
     }
+    expect((await recover(makeRequest('POST', URL, { name: 'Lin', pin: '0000' }))).status).toBe(429);
     expect(doc().pinLock?.lockedUntil).toBeDefined();
-    expect((await recover(makeRequest('POST', URL, { name: 'Lin', pin: '2468' }))).status).toBe(401);
+    const locked = await recover(makeRequest('POST', URL, { name: 'Lin', pin: '2468' }));
+    expect(locked.status).toBe(429);
+    expect((await locked.json()).error).toBe('pin_paused');
 
     doc().pinLock!.lockedUntil = new Date(Date.now() - 1000).toISOString();
     const ok = await recover(makeRequest('POST', URL, { name: 'Lin', pin: '2468' }));

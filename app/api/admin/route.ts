@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isOperatorAdmin } from '@/lib/operator';
 import { claimPinAttempt, notePinSuccess } from '@/lib/pinLockout';
+import { claimNameAttempt, nameLockSeconds, pausedSeconds } from '@/lib/pinLockPolicy';
+import { pinPaused } from '@/lib/pinPaused';
 import { randomBytes } from 'crypto';
 import {
   setAdminCookie,
@@ -9,7 +11,7 @@ import {
   isAdminAuthedWithMember,
   isNameInAdminBootstrap,
 } from '@/lib/auth';
-import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
+import { checkRateLimit, getClientIp, retryAfterSeconds } from '@/lib/rateLimit';
 import { getContainer } from '@/lib/cosmos';
 import { verifyPin, FAKE_HASH } from '@/lib/recoveryHash';
 import type { Member } from '@/lib/types';
@@ -59,7 +61,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req);
   if (!checkRateLimit(`admin:${ip}`, 5, 15 * 60 * 1000)) {
-    return NextResponse.json({ error: 'Too many attempts. Try again later.' }, { status: 429 });
+    // Keyed on the caller alone, so the countdown says nothing about a name.
+    return pinPaused(retryAfterSeconds(`admin:${ip}`));
   }
 
   let body: { name?: unknown; pin?: unknown };
@@ -129,10 +132,14 @@ export async function POST(req: NextRequest) {
       ? (await readGroupAdmin(groupId, member.id)) !== undefined
       : member.role === 'admin';
   if (!member || !(adminHere || bootstrap) || !member.pinHash) {
+    // Nobody who can sign in here: counted in memory on the account lock's
+    // own schedule, so the countdown comes after the same guess (step 2).
+    claimNameAttempt(name);
     await verifyPin(pin, FAKE_HASH);
     // A name nobody holds also pays the database work a real one's guess does (gap 3).
     if (!member) await padMissingAccount();
-    return NextResponse.json({ error: 'Incorrect name or PIN' }, { status: 401 });
+    const paused = nameLockSeconds(name);
+    return paused > 0 ? pinPaused(paused) : NextResponse.json({ error: 'Incorrect name or PIN' }, { status: 401 });
   }
 
   // Per-ACCOUNT lock (lib/pinLockout.ts): the IP limiter above is per caller,
@@ -140,14 +147,17 @@ export async function POST(req: NextRequest) {
   // as a plain wrong PIN, and still pays the scrypt.
   // The guess is COUNTED before it is compared (claimPinAttempt), so a burst
   // cannot all be compared before the lock forms (Claude Security F8).
+  // Paused, it says so with the seconds left (the same for every name).
+  const wrong = () => {
+    const paused = pausedSeconds(member!.pinLock);
+    return paused > 0 ? pinPaused(paused) : NextResponse.json({ error: 'Incorrect name or PIN' }, { status: 401 });
+  };
   if (!(await claimPinAttempt(member))) {
     await verifyPin(pin, FAKE_HASH);
-    return NextResponse.json({ error: 'Incorrect name or PIN' }, { status: 401 });
+    return wrong();
   }
   const ok = await verifyPin(pin, member.pinHash);
-  if (!ok) {
-    return NextResponse.json({ error: 'Incorrect name or PIN' }, { status: 401 });
-  }
+  if (!ok) return wrong();
   await notePinSuccess(member);
 
   if (bootstrap && !adminHere) {

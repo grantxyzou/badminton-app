@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { claimPinAttempt, notePinSuccess } from '@/lib/pinLockout';
+import { claimNameAttempt, nameLockSeconds, pausedSeconds } from '@/lib/pinLockPolicy';
+import { pinPaused } from '@/lib/pinPaused';
 import { randomBytes } from 'crypto';
 import { completeSignIn } from '@/lib/authSession';
-import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
+import { checkRateLimit, getClientIp, retryAfterSeconds } from '@/lib/rateLimit';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId, explicitGroupId } from '@/lib/groupContext';
@@ -74,7 +76,11 @@ async function handlePost(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
 
-  if (!checkRateLimit(`recover:${name.toLowerCase()}:${ip}`, 5, 60 * 60 * 1000)) {
+  const nameIpKey = `recover:${name.toLowerCase()}:${ip}`;
+  if (!checkRateLimit(nameIpKey, 5, 60 * 60 * 1000)) {
+    // Keyed on the NAME for every name, so a PIN guess past it gets the same
+    // countdown whether or not the name has an account (sign-in redesign, step 2).
+    if (pin) return pinPaused(retryAfterSeconds(nameIpKey));
     return NextResponse.json({ error: 'rate_limited', retryAfter: 60 * 60 }, { status: 429 });
   }
 
@@ -145,6 +151,11 @@ async function handlePost(req: NextRequest) {
     // unclaimed accounts the `PATCH /api/members/me` first-set guard exists to
     // protect. The same padding hides HOW MANY same-named accounts have a PIN:
     // without it the latency is proportional to that count.
+    // A name with no PIN behind it — nobody, or only accounts without one —
+    // is counted in memory on the account lock's own schedule, so it pauses
+    // after the same guess for the same time (lib/pinLockout.ts).
+    const pinned = candidates.filter((c) => typeof c.member.pinHash === 'string' && c.member.pinHash);
+    if (pinned.length === 0) claimNameAttempt(name);
     const matches: SignInCandidate[] = [];
     for (const c of candidates) {
       const hash = typeof c.member.pinHash === 'string' && c.member.pinHash ? c.member.pinHash : null;
@@ -174,7 +185,10 @@ async function handlePost(req: NextRequest) {
         });
         await scope.upsert('players', { ...player, recoveryEvents: updatedEvents });
       }
-      return FAIL();
+      // Paused: say so, with the seconds left — the same answer for every name.
+      const paused =
+        pinned.length === 0 ? nameLockSeconds(name) : Math.max(0, ...pinned.map((c) => pausedSeconds(c.member.pinLock)));
+      return paused > 0 ? pinPaused(paused) : FAIL();
     }
     const member = matches[0].member;
     const signInGroupId = matches[0].groupId;
