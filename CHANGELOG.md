@@ -8,6 +8,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## The card fee goes on Visa and Mastercard credit cards only (2026-11-20)
+
+- **When the organiser turns the card fee on, only Visa and Mastercard credit cards pay it** (`docs/plans/card-surcharge.md`). American Express and other card brands pay no fee, like debit cards, until the club has checked those brands' own rules.
+- The note under "Pay by card" and the card form now say "Visa and Mastercard credit cards", and the organiser's switch explains the same.
+
 ## Paying by e-transfer: tap to copy the address and the amount (2026-11-20)
 
 - **Home's balance card shows the club's e-transfer address and the amount as two rows; tap one to copy it**, then paste it into your bank's app (`docs/plans/etransfer-copy.md`). The amount copies as a plain number (`27.00`), which banks accept. The address used to be a line of text you had to type out.

@@ -97,7 +97,7 @@ describe('Pay by card', () => {
       new Response(JSON.stringify({ ...OWED, cardFee: { bps: 240 } }), { status: 200 }),
     );
     wrap(<UnpaidSessionsCard name="Lin" />);
-    expect((await screen.findByTestId('card-fee-note')).textContent).toBe('Credit cards add 2.4%. Debit cards pay no fee.');
+    expect((await screen.findByTestId('card-fee-note')).textContent).toBe('Visa and Mastercard credit cards add 2.4%. Debit and other cards pay no fee.');
     fireEvent.click(screen.getByRole('button', { name: /Pay by card/ }));
     expect(await screen.findByTestId('card-pay-sheet')).toBeTruthy();
     expect(fetchSpy.mock.calls.some(([, i]) => (i as RequestInit | undefined)?.method === 'POST')).toBe(false);

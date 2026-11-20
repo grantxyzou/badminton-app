@@ -26,7 +26,7 @@ import type Stripe from 'stripe';
 import { createHash } from 'crypto';
 import { groupScope } from './groupScope';
 import { CardPayError, CURRENCY, must, payableLines, readCardPay, type CardPaySettingsDoc, type CardSurchargeSetting } from './cardPay';
-import { SURCHARGE_DEFAULT_BPS, surchargeCents, validSurchargeBps } from './surchargeMath';
+import { SURCHARGE_DEFAULT_BPS, surchargeableCard, surchargeCents, validSurchargeBps } from './surchargeMath';
 
 /** Stripe's surcharge fields exist only on this API version (public preview). */
 export const SURCHARGE_API_VERSION = '2026-03-25.preview';
@@ -134,7 +134,8 @@ type SurchargeDetails = { surcharge?: { status?: string; maximum_amount?: number
 
 /**
  * Step 3: the fee for THIS card, written onto a PaymentIntent. Debit,
- * prepaid, unknown, or a card Stripe says cannot be surcharged: no fee.
+ * prepaid, unknown, a brand other than Visa or Mastercard, or a card Stripe
+ * says cannot be surcharged: no fee.
  */
 export async function quoteCardPayment(groupId: string, memberId: string, paymentMethodId: string, now = Date.now()): Promise<CardQuote> {
   const settings = await readyClub(groupId);
@@ -166,7 +167,8 @@ export async function quoteCardPayment(groupId: string, memberId: string, paymen
 
   const detail = intent.amount_details?.surcharge;
   const funding = pm.card.funding ?? 'unknown';
-  const allowed = funding === 'credit' && detail?.status === 'available';
+  // Visa or Mastercard credit only (SURCHARGE_BRANDS), and only when Stripe says this card can carry it.
+  const allowed = surchargeableCard(funding, pm.card.brand) && detail?.status === 'available';
   const feeCents = allowed ? surchargeCents(amountCents, settings.surcharge.bps, detail?.maximum_amount ?? null) : 0;
 
   if (Number(intent.metadata?.bpm_surcharge ?? 0) !== feeCents || intent.amount !== amountCents + feeCents) {

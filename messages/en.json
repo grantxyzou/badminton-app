@@ -687,10 +687,10 @@
         "cancelledBody": "Nothing was charged.",
         "back": "Back to the %APP_SHORT% app"
       },
-      "cardFeeNote": "Credit cards add {pct}. Debit cards pay no fee.",
+      "cardFeeNote": "Visa and Mastercard credit cards add {pct}. Debit and other cards pay no fee.",
       "cardForm": {
         "title": "Pay by card",
-        "feeNote": "A credit card adds a {pct} card fee. A debit card adds nothing. You see the fee before you pay.",
+        "feeNote": "A Visa or Mastercard credit card adds a {pct} card fee. Debit and other cards add nothing. You see the fee before you pay.",
         "owe": "What you owe",
         "fee": "Card fee ({pct}, credit card)",
         "noFee": "No card fee",

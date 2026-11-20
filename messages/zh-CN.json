@@ -687,10 +687,10 @@
         "cancelledBody": "没有扣款。",
         "back": "返回 %APP_SHORT% App"
       },
-      "cardFeeNote": "信用卡另收 {pct}。借记卡不收手续费。",
+      "cardFeeNote": "Visa 和 Mastercard 信用卡另收 {pct}。借记卡和其他卡不收手续费。",
       "cardForm": {
         "title": "刷卡支付",
-        "feeNote": "信用卡另收 {pct} 的刷卡手续费，借记卡不收。付款前会先显示手续费。",
+        "feeNote": "Visa 或 Mastercard 信用卡另收 {pct} 的刷卡手续费，借记卡和其他卡不收。付款前会先显示手续费。",
         "owe": "应付金额",
         "fee": "刷卡手续费（{pct}，信用卡）",
         "noFee": "无刷卡手续费",
