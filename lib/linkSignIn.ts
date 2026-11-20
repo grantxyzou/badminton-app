@@ -92,9 +92,10 @@ export async function linkSignInTo(memberId: string, link: PendingLink): Promise
 }
 
 /**
- * Take back a sign-in an approval joined to someone: "No, it's not me" on the
- * person's own phone after an organizer had already said yes (second review,
- * 2026-11-20). Releases the provider identity (only if it is still theirs),
+ * Take back a sign-in an approval joined to someone: the organizer approve
+ * route calls it when the ask vanished while it was linking (a decline by
+ * another admin, the asker re-asking, expiry), so nothing stays linked under
+ * an approval that did not stand. Releases the provider identity (only if it is still theirs),
  * the address the approval added (`addedEmail`, only if the account had
  * none), and drops the provider from `linkedProviders` when no other sign-in
  * of that kind is left. Never touches anything that was theirs before.
