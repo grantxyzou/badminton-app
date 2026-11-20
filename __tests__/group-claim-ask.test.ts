@@ -347,20 +347,19 @@ describe('how often, and who may say yes', () => {
     expect(claim.headers.getSetCookie().join('\n')).not.toMatch(/member_session=/);
   });
 
-  it('"No, it\'s not me" after an organizer\'s yes takes the sign-in and its address back', async () => {
+  it("an approval that has to be taken back takes the sign-in and the address it added, nothing else", async () => {
     await ask({ organizer: true });
     const id = openOn(linX)[0].id as string;
     await DECIDE(post('http://x/api/admin/access-requests', { memberId: linX, requestId: id, decision: 'approve' }, asOrganizer()));
     expect((await lookupIdentity('google', 'google-new-phone'))?.memberId).toBe(linX);
     expect(openOn(linX)[0].addedEmail).toBe('lin.new@example.com');
-    const res = await ANSWER(post('http://x/api/auth/new-phone', { id, notMe: true }, asLinX()));
-    expect((await res.json()).outcome).toBe('undone');
+    const { unlinkSignIn } = await import('@/lib/linkSignIn');
+    await unlinkSignIn(linX, { provider: 'google', sub: 'google-new-phone', email: 'lin.new@example.com', emailVerified: true }, 'lin.new@example.com');
     expect(await lookupIdentity('google', 'google-new-phone')).toBeNull();
     expect(await lookupIdentity('email', 'lin.new@example.com')).toBeNull();
     const lin = (getStore().members as Array<{ id: string; email?: string; linkedProviders?: string[] }>).find((m) => m.id === linX)!;
     expect(lin.email).toBeUndefined();
     expect(lin.linkedProviders ?? []).not.toContain('google');
-    expect(openOn(linX)).toEqual([]);
   });
 });
 

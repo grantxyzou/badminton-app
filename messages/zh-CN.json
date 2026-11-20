@@ -2923,9 +2923,7 @@
     "approvedTitle": "你的新手机已登录",
     "approvedBody": "它现在以你的身份登录了。",
     "stoppedTitle": "已阻止这次登录",
-    "stoppedBody": "那部新手机没有获准登录。如果是你，请在那部手机上再试一次。",
-    "undoneTitle": "已收回那次登录",
-    "undoneBody": "组织者之前已经允许了它。它现在不能再以你的身份登录。"
+    "stoppedBody": "那部新手机没有获准登录。如果是你，请在那部手机上再试一次。"
   },
   "keepAccount": {
     "title": "保住你的账号",

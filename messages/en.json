@@ -2935,9 +2935,7 @@
     "approvedTitle": "Your new phone is signed in",
     "approvedBody": "It's signed in as you now.",
     "stoppedTitle": "That sign-in was stopped",
-    "stoppedBody": "The new phone wasn't let in. If it was you, try again from that phone.",
-    "undoneTitle": "That sign-in was taken back",
-    "undoneBody": "An organizer had let it in. It can no longer sign in as you."
+    "stoppedBody": "The new phone wasn't let in. If it was you, try again from that phone."
   },
   "keepAccount": {
     "title": "Keep your account",

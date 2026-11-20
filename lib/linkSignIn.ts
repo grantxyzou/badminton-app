@@ -45,7 +45,13 @@ export async function linkSignInTo(memberId: string, link: PendingLink): Promise
 
     // Decided on EVERY attempt: an address set between two attempts wins.
     const hasAddress = typeof resource.email === 'string' && resource.email.trim().length > 0;
-    if (hasAddress) claimedEmail = null;
+    if (hasAddress) {
+      // An address set since the last attempt wins; one this link reserved
+      // on that attempt is released, so nothing unrecorded stays theirs.
+      if (claimedEmail && addedByUs && link.provider !== 'email') await releaseIdentity('email', claimedEmail);
+      claimedEmail = null;
+      addedByUs = false;
+    }
     else if (!emailDone && link.email && link.emailVerified) {
       emailDone = true;
       const email = normalizeEmail(link.email);
