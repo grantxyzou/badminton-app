@@ -5,6 +5,7 @@ import { noteOwedForShortcuts } from '@/lib/appShortcuts';
 import { BALANCE_EVENT, announceBalanceChanged } from '@/lib/balanceRefresh';
 import { hasNativePlugin, isNative } from '@/lib/native';
 import CardPaySheet from './payments/CardPaySheet';
+import EtransferCopy from './payments/EtransferCopy';
 import { useTranslations, useFormatter } from 'next-intl';
 import ErrorState from './primitives/ErrorState';
 import EmptyState from './primitives/EmptyState';
@@ -508,10 +509,8 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
             // The server's answer first; the build-time env only for a
             // response from before `payTo` existed.
             const email = data.payTo?.email ?? (data.payTo === undefined ? process.env.NEXT_PUBLIC_ETRANSFER_EMAIL || null : null);
-            return email ? (
-              <p style={{ margin: '0', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
-                {tPay('etransfer', { email })}
-              </p>
+            return email && data.totalOwed > 0 ? (
+              <EtransferCopy email={email} name={data.payTo?.name} amountCents={Math.round(data.totalOwed * 100)} />
             ) : null;
           })()}
           {hasCredit && data.totalOwed > 0 && (

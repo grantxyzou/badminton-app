@@ -14,6 +14,7 @@ import { showTopToast } from '@/lib/topToast';
 import { useOnline } from '@/lib/useOnline';
 import { fmtCents } from './GiftCardsPage';
 import PaymentsChart from './PaymentsChart';
+import EtransferCopy from '@/components/payments/EtransferCopy';
 import { creditWouldPay, type OwedSessionLine, type OwedStringingLine, type UseBalance } from './useBalance';
 import type { UseCredit } from './useCredit';
 
@@ -49,7 +50,6 @@ export default function AccountBalancePage({ balance, credit, onBack }: Props) {
   const online = useOnline();
   const [spend, setSpend] = useState<'idle' | 'busy' | 'error'>('idle');
   const [payOpen, setPayOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [sent, setSent] = useState<'idle' | 'busy' | 'done' | 'error'>('idle');
   // "N days ago" counts from when the page opened, read once (render stays pure).
   const [now] = useState(() => Date.now());
@@ -197,38 +197,20 @@ export default function AccountBalancePage({ balance, credit, onBack }: Props) {
         </BottomSheetHeader>
         <BottomSheetBody>
           {payTo && (
-            <div className="flex flex-col gap-4">
-              <p className="fs-md" style={{ margin: '0', color: 'var(--text-secondary)' }}>
-                {t('etransfer.body', { amount: fmtCents(totalCents) })}
-              </p>
-              <div className="balance-payto">
-                <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{payTo.name}</span>
-                <span className="balance-payto__email">{payTo.email}</span>
-              </div>
-            </div>
+            <EtransferCopy email={payTo.email} name={payTo.name} amountCents={totalCents} />
           )}
         </BottomSheetBody>
-        {payTo && (
+        {payTo && canSayPaid && (
           <BottomSheetFooter>
             <div className="flex flex-col gap-4">
               {sent === 'error' && <p className="field-error" role="alert" style={{ margin: '0' }}>{t('etransfer.sentError')}</p>}
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={() => {
-                  void navigator.clipboard?.writeText(payTo.email).then(() => setCopied(true)).catch(() => {});
-                }}
-              >
-                {copied ? t('etransfer.copied') : t('etransfer.copy')}
-              </button>
-              {canSayPaid &&
-                (sent === 'done' ? (
-                  <p className="fs-sm motion-fade" role="status" style={{ margin: '0', color: 'var(--text-secondary)' }}>{t('etransfer.sentDone')}</p>
-                ) : (
-                  <button type="button" className="btn-ghost" disabled={!online || sent === 'busy'} onClick={() => void sayPaid()}>
-                    {t('etransfer.sent')}
-                  </button>
-                ))}
+              {sent === 'done' ? (
+                <p className="fs-sm motion-fade" role="status" style={{ margin: '0', color: 'var(--text-secondary)' }}>{t('etransfer.sentDone')}</p>
+              ) : (
+                <button type="button" className="btn-primary" disabled={!online || sent === 'busy'} onClick={() => void sayPaid()}>
+                  {t('etransfer.sent')}
+                </button>
+              )}
             </div>
           </BottomSheetFooter>
         )}
