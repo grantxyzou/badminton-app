@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { claimPinAttempt, notePinSuccess } from '@/lib/pinLockout';
-import { claimNameAttempt, nameLockSeconds, pausedSeconds } from '@/lib/pinLockPolicy';
+import { claimNameAttempt, nameLockSeconds } from '@/lib/pinLockPolicy';
 import { pinPaused } from '@/lib/pinPaused';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
@@ -486,6 +486,15 @@ async function handlePatch(req: NextRequest) {
     return pinPaused(retryAfterSeconds(pinNameKey));
   }
 
+  // A current PIN is a guess: THE COUNTDOWN A PERSON SEES comes from the
+  // name alone, counted before anything is looked up, the same at every PIN
+  // check (lib/pinLockPolicy.ts).
+  if (currentPin && !claimNameAttempt(name)) return pinPaused(nameLockSeconds(name));
+  const wrongPin = () => {
+    const paused = nameLockSeconds(name);
+    return paused > 0 ? pinPaused(paused) : NextResponse.json({ error: 'invalid_credentials' }, { status: 401 });
+  };
+
   if (pendingPin !== null) {
     nextPinHash = await hashPin(pendingPin);
   }
@@ -514,20 +523,21 @@ async function handlePatch(req: NextRequest) {
   const admin = isSelf ? null : await isAdminAuthedWithMember(req);
   const known = isSelf || !!admin?.authed;
   if (!known && !(hadPin && currentPin)) {
-    // A current PIN for a name with no PIN behind it is counted in memory on
-    // the account lock's own schedule, so it pauses after the same guess.
-    if (currentPin) claimNameAttempt(name);
     await verifyPin(currentPin ?? '0000', FAKE_HASH);
     // A current PIN against a real account with one is counted in the
     // database first (claimPinAttempt); every other miss pays the same (gap 3).
-    if (currentPin) await padMissingAccount();
-    const paused = currentPin ? nameLockSeconds(name) : 0;
-    if (paused > 0) return pinPaused(paused);
-    return NextResponse.json({ error: currentPin ? 'invalid_credentials' : 'auth_required' }, { status: 401 });
+    if (currentPin) {
+      await padMissingAccount();
+      return wrongPin();
+    }
+    return NextResponse.json({ error: 'auth_required' }, { status: 401 });
   }
 
   if (!member) {
-    if (currentPin) await verifyPin(currentPin, FAKE_HASH);
+    if (currentPin) {
+      await verifyPin(currentPin, FAKE_HASH);
+      return wrongPin();
+    }
     return NextResponse.json({ error: 'invalid_credentials' }, { status: 401 });
   }
 
@@ -540,17 +550,12 @@ async function handlePatch(req: NextRequest) {
     }
     // Per-account lock (lib/pinLockout.ts): the guess is counted BEFORE it
     // is compared, and locked reads as a wrong PIN (Claude Security F8).
-    // Paused, it says so with the seconds left (the same for every name).
-    const wrong = () => {
-      const paused = pausedSeconds(member.pinLock);
-      return paused > 0 ? pinPaused(paused) : NextResponse.json({ error: 'invalid_credentials' }, { status: 401 });
-    };
     if (!(await claimPinAttempt(member))) {
       await verifyPin('0000', FAKE_HASH);
-      return wrong();
+      return wrongPin();
     }
     const ok = await verifyPin(currentPin, member.pinHash);
-    if (!ok) return wrong();
+    if (!ok) return wrongPin();
     await notePinSuccess(member);
   }
   // No prior pinHash → first-set / claim flow. There's no currentPin to require,

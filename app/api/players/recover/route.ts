@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { claimPinAttempt, notePinSuccess } from '@/lib/pinLockout';
-import { claimNameAttempt, nameLockSeconds, pausedSeconds } from '@/lib/pinLockPolicy';
+import { claimNameAttempt, nameLockSeconds } from '@/lib/pinLockPolicy';
 import { pinPaused } from '@/lib/pinPaused';
 import { randomBytes } from 'crypto';
 import { completeSignIn } from '@/lib/authSession';
@@ -130,6 +130,16 @@ async function handlePost(req: NextRequest) {
   // hash-less when signup doesn't include a PIN field. By making the
   // member record the source of truth, the PIN persists across sessions.
   if (pin) {
+    // THE COUNTDOWN A PERSON SEES comes from the name alone, counted before
+    // anything is looked up, the same at every PIN check in the app — never
+    // from the account's own lock, or it would list who holds a PIN
+    // (lib/pinLockPolicy.ts). Paused: refuse without comparing.
+    if (!claimNameAttempt(name)) return pinPaused(nameLockSeconds(name));
+    const wrongPin = () => {
+      const paused = nameLockSeconds(name);
+      return paused > 0 ? pinPaused(paused) : FAIL();
+    };
+
     // WHO COULD THIS BE? With one club a name was a person. With groups on and
     // no group context — a fresh device, a link from outside the app — the same
     // name can be two people in two clubs, and the PIN is the only thing that
@@ -151,11 +161,6 @@ async function handlePost(req: NextRequest) {
     // unclaimed accounts the `PATCH /api/members/me` first-set guard exists to
     // protect. The same padding hides HOW MANY same-named accounts have a PIN:
     // without it the latency is proportional to that count.
-    // A name with no PIN behind it — nobody, or only accounts without one —
-    // is counted in memory on the account lock's own schedule, so it pauses
-    // after the same guess for the same time (lib/pinLockout.ts).
-    const pinned = candidates.filter((c) => typeof c.member.pinHash === 'string' && c.member.pinHash);
-    if (pinned.length === 0) claimNameAttempt(name);
     const matches: SignInCandidate[] = [];
     for (const c of candidates) {
       const hash = typeof c.member.pinHash === 'string' && c.member.pinHash ? c.member.pinHash : null;
@@ -185,10 +190,7 @@ async function handlePost(req: NextRequest) {
         });
         await scope.upsert('players', { ...player, recoveryEvents: updatedEvents });
       }
-      // Paused: say so, with the seconds left — the same answer for every name.
-      const paused =
-        pinned.length === 0 ? nameLockSeconds(name) : Math.max(0, ...pinned.map((c) => pausedSeconds(c.member.pinLock)));
-      return paused > 0 ? pinPaused(paused) : FAIL();
+      return wrongPin();
     }
     const member = matches[0].member;
     const signInGroupId = matches[0].groupId;

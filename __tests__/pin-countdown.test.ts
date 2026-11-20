@@ -130,3 +130,74 @@ describe('PATCH /api/members/me — a signed-out current-PIN guess counts down a
     expect(await sevenGuesses(send('Nobody'))).toEqual(EXPECTED);
   });
 });
+
+/**
+ * The first cut showed an account's own lock where there was one and an
+ * in-memory count elsewhere; which one a guess landed on depended on the
+ * route, so a few guesses split across routes told a PIN holder from a
+ * nobody, and an admin from a player (security review, 2026-11-20). The
+ * countdown now comes from ONE count per name at every route. These run the
+ * reviewer's sequences against an admin, a player with a PIN, a player
+ * without one and a name nobody holds, and need every answer to match.
+ */
+describe('mixing routes and spellings tells nobody apart', () => {
+  const recoverAt = (name: string) => () => recover(makeRequest('POST', 'http://x/api/players/recover', { name, pin: '0000' }));
+  const adminAt = (name: string) => () => adminLogin(makeRequest('POST', 'http://x/api/admin', { name, pin: '0000' }));
+  const meAt = (name: string) => () =>
+    patchMe(makeRequest('PATCH', 'http://x/api/members/me', { name, currentPin: '0000', newPin: '5937' }));
+
+  async function run(steps: Array<() => Promise<Response>>): Promise<string[]> {
+    const out: string[] = [];
+    for (const step of steps) {
+      const a = await read(await step());
+      out.push(a.status === 429 ? `paused ${Math.round((a.retryAfter ?? 0) / 10) * 10}` : String(a.status));
+    }
+    return out;
+  }
+
+  async function seedAll() {
+    resetMockStore();
+    setupAdminPin();
+    await seedTestAdminMember();
+    seedMember('Kento', { pinHash: await hashPin('2468') });
+    seedMember('Akane');
+  }
+
+  const sequences: Array<[string, (n: string) => Array<() => Promise<Response>>]> = [
+    ['five at the console, then one at sign-in', (n) => [...Array(5).fill(adminAt(n)), recoverAt(n)]],
+    ['five at sign-in, then one at the console', (n) => [...Array(5).fill(recoverAt(n)), adminAt(n)]],
+    ['five at Update PIN, then one at sign-in', (n) => [...Array(5).fill(meAt(n)), recoverAt(n)]],
+    ['five at a spaced-out spelling, then one at the name', (n) => [...Array(5).fill(recoverAt(n.replace(/^(.)/, '$1 ').replace(' ', '  '))), recoverAt(n)]],
+  ];
+
+  for (const [label, steps] of sequences) {
+    it(label, async () => {
+      const answers: Record<string, string[]> = {};
+      for (const who of ['admin', 'Kento', 'Akane', 'Nobody']) {
+        await seedAll();
+        const name = who === 'admin' ? getTestAdminName() : who;
+        answers[who] = await run(steps(name));
+      }
+      expect(answers.Kento).toEqual(answers.Nobody);
+      expect(answers.Akane).toEqual(answers.Nobody);
+      expect(answers.admin).toEqual(answers.Nobody);
+    });
+  }
+
+  it('a correct PIN does not clear the count a nobody could never clear', async () => {
+    await seedAll();
+    for (let i = 0; i < 4; i++) await recoverAt('Kento')();
+    const ok = await recover(makeRequest('POST', 'http://x/api/players/recover', { name: 'Kento', pin: '2468' }));
+    expect(ok.status).toBe(200);
+    expect((await read(await recoverAt('Kento')())).status).toBe(429);
+  });
+});
+
+describe('the count stays bounded and keeps a paused name', () => {
+  it('a long name is counted by its first 64 characters', () => {
+    const now = Date.now();
+    const long = 'x'.repeat(5000);
+    for (let i = 0; i < FREE_ATTEMPTS + 1; i++) claimNameAttempt(long + i, now);
+    expect(nameLockSeconds('x'.repeat(64), now)).toBeGreaterThan(0);
+  });
+});

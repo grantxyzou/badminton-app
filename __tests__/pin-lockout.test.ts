@@ -5,6 +5,7 @@ import {
 } from './helpers';
 import { hashPin } from '../lib/recoveryHash';
 import {
+  resetNameLocks,
   isPinLocked, recordPinFailure, FREE_ATTEMPTS, BASE_LOCK_MS, MAX_LOCK_MS, DECAY_MS,
 } from '../lib/pinLockPolicy';
 import { POST as adminLogin } from '@/app/api/admin/route';
@@ -95,6 +96,7 @@ describe('POST /api/admin — the account locks after repeated wrong PINs', () =
 
     // Lapse the lock (the store is the test seam), then the right PIN clears it.
     admin().pinLock!.lockedUntil = new Date(Date.now() - 1000).toISOString();
+    resetNameLocks(); // the name's own count lapses with it (lib/pinLockPolicy.ts)
     const ok = await adminLogin(makeRequest('POST', URL, { name: getTestAdminName(), pin: getTestPin() }));
     expect(ok.status).toBe(200);
     expect(admin().pinLock).toBeUndefined();
@@ -133,6 +135,7 @@ describe('POST /api/players/recover — same lock, a countdown', () => {
     expect((await locked.json()).error).toBe('pin_paused');
 
     doc().pinLock!.lockedUntil = new Date(Date.now() - 1000).toISOString();
+    resetNameLocks();
     const ok = await recover(makeRequest('POST', URL, { name: 'Lin', pin: '2468' }));
     expect(ok.status).toBe(200);
     expect(doc().pinLock).toBeUndefined();

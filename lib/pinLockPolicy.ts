@@ -48,48 +48,65 @@ export function pausedSeconds(value: unknown, now: number = Date.now()): number 
 }
 
 /*
- * THE SAME COUNTDOWN FOR A NAME WITH NO PIN BEHIND IT
+ * THE COUNTDOWN A PERSON SEES: ONE COUNT PER NAME, FOR EVERY NAME
  * (docs/plans/pin-retirement.md, Decision 6; docs/plans/sign-in-redesign.md,
- * step 2). A locked account now SAYS so — "Let's pause a moment — try again in 3:42"
- * — instead of answering like a wrong PIN. Said for real accounts only, that
- * would list which names hold a PIN. So a name that resolves to nobody, or to
- * an account with no PIN, is counted here on the identical schedule
- * (`recordPinFailure`), and pauses after the same guess for the same time.
+ * step 2). A paused PIN check now SAYS so — "Let's pause a moment — try again
+ * in 3:42" — instead of answering like a wrong PIN.
  *
- * In memory, on purpose: there is no account to write it on, and a stranger's
- * name must cost no database write. The difference that leaves is a restart
- * (a deploy forgets these counts; an account's lock survives it), which needs
- * the same name watched across a deploy, inside one lock — the per-name rate
- * limit already caps that to a handful of guesses an hour.
+ * What it shows must not depend on whether the name has an account, a PIN or
+ * a rank, or the countdown lists them. So the VISIBLE answer comes from this
+ * count alone: every PIN check at every route (sign-in, console, Update PIN,
+ * "Is that you?") counts the guess against the name as typed, before looking
+ * anything up, and pauses only from here. The account's own lock
+ * (`lib/pinLockout.ts`, `Member.pinLock`) still decides whether a guess is
+ * COMPARED — it is the real guard, across addresses and restarts — but when
+ * it refuses and the name is not paused, the answer is the plain wrong-PIN
+ * 401 it always was. A first cut showed the account's lock where there was
+ * one and this count elsewhere; a few guesses split across two routes then
+ * told a PIN holder from a nobody (security review, 2026-11-20).
+ *
+ * A correct PIN does NOT clear it: a nobody's count can never be cleared, so
+ * a cleared one would say someone signed in under the name. It forgets a
+ * miss a day old, as the account lock does.
+ *
+ * In memory, on purpose: a stranger's name must cost no database write. A
+ * deploy forgets it, for every name alike. Bounded: a key is the first 64
+ * characters of the tidied name, and a full map drops only entries that are
+ * neither paused nor counting toward a pause; while it is full of those, a
+ * new name is not counted (and so never shows a countdown, for every name
+ * alike) rather than evicting a paused one, which would let a flood of new
+ * names unpause a name on demand.
  */
 const nameLocks = new Map<string, PinLock>();
-const NAME_LOCK_CAP = 5000;
+const NAME_LOCK_CAP = 10_000;
+const NAME_KEY_MAX = 64;
+let lastPrune = 0;
 
 function nameKey(name: string): string {
-  return name.trim().toLowerCase().replace(/\s+/g, ' ');
+  return name.trim().toLowerCase().replace(/\s+/g, ' ').slice(0, NAME_KEY_MAX);
 }
 
+/** Free room by dropping entries that can no longer matter: not paused, and
+ *  their last miss old enough to be forgotten. At most once a minute. */
 function pruneNameLocks(now: number): void {
-  if (nameLocks.size < NAME_LOCK_CAP) return;
+  if (nameLocks.size < NAME_LOCK_CAP || now - lastPrune < 60_000) return;
+  lastPrune = now;
   for (const [k, lock] of nameLocks) {
     if (!isPinLocked(lock, now) && now - Date.parse(lock.lastFailedAt) > DECAY_MS) nameLocks.delete(k);
   }
-  // Still full: drop the oldest (a Map iterates in insertion order).
-  for (const k of nameLocks.keys()) {
-    if (nameLocks.size < NAME_LOCK_CAP) break;
-    nameLocks.delete(k);
-  }
 }
 
-/** `claimPinAttempt` for a name with no PIN behind it: `false` while the
- *  name is paused (nothing counted), else the guess is counted and `true`. */
+/** Count a PIN guess at a name. `false` while the name is paused (nothing
+ *  counted): refuse without comparing. Call it at every PIN check, BEFORE
+ *  the name is looked up. */
 export function claimNameAttempt(name: string, now: number = Date.now()): boolean {
-  pruneNameLocks(now);
   const key = nameKey(name);
   const lock = nameLocks.get(key);
   if (isPinLocked(lock, now)) return false;
-  // Re-insert so the Map's order stays oldest-first for the prune above.
-  nameLocks.delete(key);
+  if (!lock) {
+    pruneNameLocks(now);
+    if (nameLocks.size >= NAME_LOCK_CAP) return true; // full: not counted, for every name alike
+  }
   nameLocks.set(key, recordPinFailure(lock, now));
   return true;
 }
@@ -102,5 +119,6 @@ export function nameLockSeconds(name: string, now: number = Date.now()): number 
 /** Tests only. */
 export function resetNameLocks(): void {
   nameLocks.clear();
+  lastPrune = 0;
 }
 
