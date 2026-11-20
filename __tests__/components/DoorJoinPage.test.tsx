@@ -195,7 +195,7 @@ describe('DoorJoinPage', () => {
     vi.useRealTimers();
   });
 
-  it('asking an organizer instead moves the same ask', async () => {
+  it('asking an organizer instead files a fresh ask in its place', async () => {
     const calls = await toIsThatYou({
       '/auth/claim-ask': () => json({ ok: true, secret: 'sealed', match: 47, club: 'club-x' }),
     });
@@ -206,9 +206,26 @@ describe('DoorJoinPage', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Ask an organizer instead' }));
     });
     const asks = calls.filter((c) => c.url.includes('/auth/claim-ask'));
-    expect(asks[1].body).toEqual({ name: 'Lin Dan', inviteToken: TOKEN, secret: 'sealed' });
+    expect(asks[1].body).toEqual({ name: 'Lin Dan', inviteToken: TOKEN, organizer: true });
     expect(screen.getByRole('heading', { name: 'Request sent' })).toBeDefined();
     expect(screen.getByText('Requests stay open for an hour.')).toBeDefined();
+  });
+
+  it('a request that ran out says so, instead of waiting forever', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    await toIsThatYou({
+      '/auth/claim-ask': () => json({ ok: true, secret: 'sealed', match: 47, club: 'club-x' }),
+      '/access-request/claim': () => json({ status: 'none' }),
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Approve on my other phone' }));
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3100);
+    });
+    expect((await screen.findByRole('alert')).textContent).toMatch(/ran out/);
+    expect(screen.getByRole('button', { name: 'Approve on my other phone' })).toBeDefined();
+    vi.useRealTimers();
   });
 
   it('too many PIN tries counts down on "Is that you?" too', async () => {

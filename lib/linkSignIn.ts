@@ -1,9 +1,9 @@
 import { getContainer } from '@/lib/cosmos';
-import { reserveIdentity, normalizeEmail } from '@/lib/authIdentity';
+import { reserveIdentity, releaseIdentity, lookupIdentity, listIdentitiesForMember, normalizeEmail } from '@/lib/authIdentity';
 import type { Member } from '@/lib/types';
 import type { PendingLink } from '@/lib/accessRequest';
 
-export type LinkOutcome = { ok: true; member: Member } | { ok: false; reason: 'already_linked' | 'gone' };
+export type LinkOutcome = { ok: true; member: Member; addedEmail: string | null } | { ok: false; reason: 'already_linked' | 'gone' };
 
 /**
  * Join a new sign-in — Apple, Google or an email code — to an EXISTING member
@@ -63,11 +63,55 @@ export async function linkSignInTo(memberId: string, link: PendingLink): Promise
       } else {
         await container.items.upsert(updated);
       }
-      return { ok: true, member: updated };
+      return { ok: true, member: updated, addedEmail: claimedEmail };
     } catch (err) {
       if ((err as { code?: number }).code === 412) continue;
       throw err;
     }
   }
   throw new Error('linking a sign-in kept conflicting');
+}
+
+/**
+ * Take back a sign-in an approval joined to someone: "No, it's not me" on the
+ * person's own phone after an organizer had already said yes (second review,
+ * 2026-11-20). Releases the provider identity (only if it is still theirs),
+ * the address the approval added (`addedEmail`, only if the account had
+ * none), and drops the provider from `linkedProviders` when no other sign-in
+ * of that kind is left. Never touches anything that was theirs before.
+ */
+export async function unlinkSignIn(memberId: string, link: PendingLink, addedEmail?: string | null): Promise<void> {
+  if ((await lookupIdentity(link.provider, link.sub))?.memberId === memberId) {
+    await releaseIdentity(link.provider, link.sub);
+  }
+  const added = addedEmail ? normalizeEmail(addedEmail) : null;
+  if (added && link.provider !== 'email' && (await lookupIdentity('email', added))?.memberId === memberId) {
+    await releaseIdentity('email', added);
+  }
+  const left = await listIdentitiesForMember(memberId);
+  const container = getContainer('members');
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const { resource } = await container.item(memberId, memberId).read<Member & { _etag?: string }>();
+    if (!resource) return;
+    const next: Member = { ...resource };
+    if (link.provider !== 'email' && !left.some((i) => i.provider === link.provider)) {
+      next.linkedProviders = (resource.linkedProviders ?? []).filter((p) => p !== link.provider);
+    }
+    if (added && typeof resource.email === 'string' && normalizeEmail(resource.email) === added) {
+      delete next.email;
+      delete next.emailVerified;
+      delete next.mailboxProven;
+    }
+    try {
+      if (typeof resource._etag === 'string') {
+        await container.item(memberId, memberId).replace(next, { accessCondition: { type: 'IfMatch', condition: resource._etag } });
+      } else {
+        await container.items.upsert(next);
+      }
+      return;
+    } catch (err) {
+      if ((err as { code?: number }).code === 412) continue;
+      throw err;
+    }
+  }
 }

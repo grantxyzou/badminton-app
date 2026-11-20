@@ -39,6 +39,7 @@ const FLAG = 'NEXT_PUBLIC_FLAG_MULTI_GROUP';
 const X = 'club-x';
 const Y = 'club-y';
 let ip = 0;
+const flush = () => new Promise((r) => setTimeout(r, 20));
 let link = '';
 
 function pendingCookie(over: Partial<PendingSignup> = {}): string {
@@ -122,6 +123,7 @@ describe('asking the other phone', () => {
     const res = await ASK(post('http://x/api/auth/claim-ask', { name: 'Nobody', inviteToken: link }, pendingCookie()));
     const body = await res.json();
     expect(Object.keys(body).sort()).toEqual(['club', 'match', 'ok', 'secret']);
+    await flush(); // pushes go out in the background: give one time to land
     expect(sendPushToMembers).not.toHaveBeenCalled();
   });
 
@@ -207,9 +209,10 @@ describe('asking an organizer', () => {
     expect(await lookupIdentity('google', 'google-new-phone')).toBeNull();
   });
 
-  it('moving the ask to an organizer puts it on the card with how the phone signed in', async () => {
-    const asked = await ask({});
-    await ASK(post('http://x/api/auth/claim-ask', { name: 'Lin', inviteToken: link, secret: asked.secret }, pendingCookie()));
+  it('asking an organizer instead replaces the phone ask, and puts it on the card with how the phone signed in', async () => {
+    await ask({});
+    await ask({ organizer: true });
+    expect(openOn(linX)).toHaveLength(1);
     expect(openOn(linX)[0].organizer).toBe(true);
     const cookie = asOrganizer();
     const listed = await (await LIST(get('http://x/api/admin/access-requests', cookie))).json();
@@ -258,6 +261,7 @@ describe('how often, and who may say yes', () => {
     const again = await ask({}, other('google-someone-else'));
     expect(Object.keys(again).sort()).toEqual(['club', 'match', 'ok', 'secret']);
     expect(openOn(linX)).toEqual([]);
+    await flush(); // pushes go out in the background: give one time to land
     expect(sendPushToMembers).not.toHaveBeenCalled();
   });
 
@@ -267,6 +271,7 @@ describe('how often, and who may say yes', () => {
     await ask({}, other('google-second'));
     expect(openOn(linX)).toHaveLength(1);
     expect((openOn(linX)[0].link as { sub: string }).sub).toBe('google-new-phone');
+    await flush(); // pushes go out in the background: give one time to land
     expect(sendPushToMembers).not.toHaveBeenCalled();
   });
 
@@ -274,6 +279,7 @@ describe('how often, and who may say yes', () => {
     for (let i = 0; i < 3; i++) await ask({});
     sendPushToMembers.mockReset();
     await ask({});
+    await flush(); // pushes go out in the background: give one time to land
     expect(sendPushToMembers).not.toHaveBeenCalled();
   });
 
@@ -303,14 +309,57 @@ describe('how often, and who may say yes', () => {
     expect(sendPushToMembers.mock.calls.map((c) => c[0])).toContainEqual([linX]);
   });
 
-  it("a new sign-in waiting on her own phone neither shows on the card nor blocks her let-me-in ask", async () => {
+  it("a new phone asking her own phone still counts: two devices at once are never approvable (F2)", async () => {
     await ask({});
     const { issueAccessRequest } = await import('@/lib/accessRequest');
     const lin = (getStore().members as Array<{ id: string; accessRequests: unknown[] }>).find((m) => m.id === linX)!;
     lin.accessRequests.push(issueAccessRequest({ groupId: X }).stored);
     const listed = await (await LIST(get('http://x/api/admin/access-requests', asOrganizer()))).json();
     expect(listed.requests).toHaveLength(1);
-    expect(listed.requests[0].count).toBe(1);
-    expect(listed.requests[0].requestId).not.toBeNull();
+    expect(listed.requests[0].count).toBe(2);
+    expect(listed.requests[0].requestId).toBeNull();
+  });
+
+  it("a stranger spending her three phone asks does not shut her out of the organizer", async () => {
+    asOrganizer(); // the club has an organizer to hear it
+    for (let i = 0; i < 3; i++) await ask({}, other('google-stranger'));
+    // Her own new phone, a different sign-in: the phone rung is spent...
+    sendPushToMembers.mockReset();
+    await ask({}, other('google-real-lin'));
+    await flush(); // pushes go out in the background: give one time to land
+    expect(sendPushToMembers).not.toHaveBeenCalled();
+    // ...but an organizer ask is stored, and the organizers hear it once a day.
+    await ask({ organizer: true }, other('google-real-lin'));
+    expect(openOn(linX).some((r) => (r.link as { sub: string }).sub === 'google-real-lin' && r.organizer === true)).toBe(true);
+    // The push is not awaited by the route (timing): wait for it to go out.
+    await vi.waitFor(() => expect(sendPushToMembers).toHaveBeenCalledTimes(1));
+    await ask({ organizer: true }, other('google-real-lin'));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(sendPushToMembers).toHaveBeenCalledTimes(1);
+  });
+
+  it('an approved ask whose sign-in is not linked yet does not sign the phone in', async () => {
+    const asked = await ask({ organizer: true });
+    const lin = (getStore().members as Array<{ id: string; accessRequests: Array<Record<string, unknown>> }>).find((m) => m.id === linX)!;
+    lin.accessRequests[0].approvedAt = Date.now(); // approved, the link not yet written
+    const claim = await CLAIM(post('http://x/api/members/access-request/claim', { name: 'Lin', secret: asked.secret, club: asked.club }));
+    expect((await claim.json()).status).toBe('pending');
+    expect(claim.headers.getSetCookie().join('\n')).not.toMatch(/member_session=/);
+  });
+
+  it('"No, it\'s not me" after an organizer\'s yes takes the sign-in and its address back', async () => {
+    await ask({ organizer: true });
+    const id = openOn(linX)[0].id as string;
+    await DECIDE(post('http://x/api/admin/access-requests', { memberId: linX, requestId: id, decision: 'approve' }, asOrganizer()));
+    expect((await lookupIdentity('google', 'google-new-phone'))?.memberId).toBe(linX);
+    expect(openOn(linX)[0].addedEmail).toBe('lin.new@example.com');
+    const res = await ANSWER(post('http://x/api/auth/new-phone', { id, notMe: true }, asLinX()));
+    expect((await res.json()).outcome).toBe('undone');
+    expect(await lookupIdentity('google', 'google-new-phone')).toBeNull();
+    expect(await lookupIdentity('email', 'lin.new@example.com')).toBeNull();
+    const lin = (getStore().members as Array<{ id: string; email?: string; linkedProviders?: string[] }>).find((m) => m.id === linX)!;
+    expect(lin.email).toBeUndefined();
+    expect(lin.linkedProviders ?? []).not.toContain('google');
+    expect(openOn(linX)).toEqual([]);
   });
 });

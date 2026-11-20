@@ -88,6 +88,9 @@ export interface StoredAccessRequest {
   /** Asked of an organizer too ("Ask an organizer"): shown on the club's
    *  card. A `link` ask without it waits on the person's own phones only. */
   organizer?: boolean;
+  /** The address the approval added to an account that had none, so a "No,
+   *  it's not me" after an organizer's yes can take it back too. */
+  addedEmail?: string;
 }
 
 /** A provider identity that has proved itself and has no account yet. */

@@ -20,7 +20,7 @@ import { verifyLiveMemberAuth } from '@/lib/auth';
 import { getContainer } from '@/lib/cosmos';
 import { openRequests, type StoredAccessRequest } from '@/lib/accessRequest';
 import { updateAccessRequests } from '@/lib/accessRequestStore';
-import { linkSignInTo } from '@/lib/linkSignIn';
+import { linkSignInTo, unlinkSignIn } from '@/lib/linkSignIn';
 import { noteStopped } from '@/lib/newPhoneGuard';
 import type { Member } from '@/lib/types';
 
@@ -74,6 +74,24 @@ export async function POST(req: NextRequest) {
   if (!id || (!notMe && pick === null)) return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
 
   try {
+    // Already approved by an organizer while this prompt was open, and "No,
+    // it's not me": take the sign-in back, so it cannot be used (second
+    // review, 2026-11-20). The ask goes, so the new phone cannot sign in.
+    let undo: (StoredAccessRequest & { id: string }) | null = null;
+    if (notMe) {
+      await updateAccessRequests(caller.memberId, (open, member) => {
+        const found = open.find((r) => r.id === id);
+        if (!found?.link || found.approvedAt === undefined) return null;
+        undo = found;
+        return { requests: open.filter((r) => r.id !== id), patch: { newPhoneLog: noteStopped(member.newPhoneLog) } };
+      });
+    }
+    const undone = undo as (StoredAccessRequest & { id: string }) | null;
+    if (undone?.link) {
+      await unlinkSignIn(caller.memberId, undone.link, undone.addedEmail);
+      return NextResponse.json({ ok: true, outcome: 'undone' });
+    }
+
     // Read the ask; a wrong number or "not me" ends it in the same write.
     let target: Waiting | null = null;
     let stopped = false;
@@ -99,7 +117,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, outcome: 'already_linked' });
     }
     await updateAccessRequests(caller.memberId, (open) =>
-      open.some((r) => r.id === id) ? open.map((r) => (r.id === id ? { ...r, approvedAt: Date.now() } : r)) : null,
+      open.some((r) => r.id === id)
+        ? open.map((r) =>
+            r.id === id ? { ...r, approvedAt: Date.now(), ...(linked.addedEmail ? { addedEmail: linked.addedEmail } : {}) } : r,
+          )
+        : null,
     );
     return NextResponse.json({ ok: true, outcome: 'approved' });
   } catch (err) {

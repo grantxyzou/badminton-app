@@ -103,9 +103,11 @@ export async function GET(req: NextRequest) {
       // person on two rosters may ask in either; one club's organiser never
       // sees, or approves, the other's. A request from before the field has
       // no club and is seen by the roster's (the rule before).
-      // `open` is what the card can see: an ask still waiting on the person's
-      // own phone is neither shown nor counted (sign-in redesign, step 3).
-      .map((m) => ({ m, open: openRequests(m).filter(onCard), pending: pendingRequests(m).filter((r) => askedIn(r, groupId)) }))
+      // `pending` is what the card shows (an ask still waiting on the person's
+      // own phone is theirs to answer); `open` COUNTS everything, so two
+      // devices asking at once are never approvable, whichever way they asked
+      // (F2; second review of sign-in redesign step 3).
+      .map((m) => ({ m, open: openRequests(m), pending: pendingRequests(m).filter((r) => askedIn(r, groupId)) }))
       .filter(({ pending }) => pending.length > 0)
       .map(({ m, open, pending }) => ({
         memberId: m.id,
@@ -239,8 +241,7 @@ export async function POST(req: NextRequest) {
     let refusal: 'not_found' | 'several_requests' | 'organiser_only' | null = null;
     let approved: (StoredAccessRequest & { id: string }) | null = null;
 
-    const result = await updateAccessRequests(memberId, (all) => {
-      const open = all.filter(onCard);
+    const result = await updateAccessRequests(memberId, (open) => {
       if (decision === 'decline') {
         // Declining clears every open request for the person IN THIS CLUB
         // (another club's asks stand). The asking devices then poll into
@@ -249,12 +250,12 @@ export async function POST(req: NextRequest) {
         // useful to do with one.
         const mine = open.filter((r) => askedIn(r, admin.groupId));
         if (mine.length === 0) { refusal = 'not_found'; return null; }
-        return all.filter((r) => !(onCard(r) && askedIn(r, admin.groupId)));
+        return open.filter((r) => !askedIn(r, admin.groupId));
       }
       // An ask for ANOTHER club is not this organiser's to approve, even for a
       // person on both rosters: it signs the device in to the club it names.
       // One still waiting on the person's own phone is not on the card at all.
-      const target = open.find((r) => r.id === requestId && r.approvedAt === undefined && askedIn(r, admin.groupId));
+      const target = open.find((r) => r.id === requestId && r.approvedAt === undefined && askedIn(r, admin.groupId) && onCard(r));
       if (!target) { refusal = 'not_found'; return null; }
       // A new sign-in ("Is that you?", step 3) is joined to the person for
       // good, so it is an ORGANISER's call, like letting someone join.
@@ -285,6 +286,13 @@ export async function POST(req: NextRequest) {
       if (!linked.ok) {
         await updateAccessRequests(memberId, (all) => all.filter((r) => r.id !== linkAsk.id));
         return NextResponse.json({ error: linked.reason === 'already_linked' ? 'already_linked' : 'not_found' }, { status: 409 });
+      }
+      // Remember an address it added, so "No, it's not me" can take it back.
+      if (linked.addedEmail) {
+        const added = linked.addedEmail;
+        await updateAccessRequests(memberId, (all) =>
+          all.some((r) => r.id === linkAsk.id) ? all.map((r) => (r.id === linkAsk.id ? { ...r, addedEmail: added } : r)) : null,
+        );
       }
       void Promise.resolve()
         .then(() => sendPushToMembers([memberId], (locale) => buildNewSignInAddedPayload(locale)))

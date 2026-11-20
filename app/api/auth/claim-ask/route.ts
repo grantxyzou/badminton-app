@@ -12,9 +12,9 @@
  *      phone. Is this you?" with three numbers; tapping the one the new phone
  *      shows approves (`/api/auth/new-phone`). The number is Google's and
  *      WhatsApp's guard against a reflex yes.
- *   2. AN ORGANIZER, only when they ask for one (`organizer: true`, or
- *      `secret` to move an ask already made): the same request goes on the
- *      club's card, where an approval links it the same way.
+ *   2. AN ORGANIZER, only when they ask for one (`organizer: true`, which
+ *      replaces this new phone's own waiting ask): it goes on the club's
+ *      card, where an organizer's approval links it the same way.
  *
  * Either approval links the new sign-in to the account (`lib/linkSignIn.ts`),
  * so the waiting page signs straight in through the access-request claim, and
@@ -38,13 +38,13 @@ import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { resolveGroupId } from '@/lib/groupContext';
 import { resolveClaimLink } from '@/lib/claimLinks';
 import { isFlagOn } from '@/lib/flags';
-import { issueAccessRequest, findBySecret, MAX_OPEN_REQUESTS } from '@/lib/accessRequest';
+import { issueAccessRequest, MAX_OPEN_REQUESTS } from '@/lib/accessRequest';
 import { updateAccessRequests } from '@/lib/accessRequestStore';
-import { sealAskSecret, openAskSecret } from '@/lib/askSecret';
+import { sealAskSecret } from '@/lib/askSecret';
 import { sendPushToMembers } from '@/lib/push';
 import { buildNewPhonePayload, buildNewPhoneOrganizerPayload } from '@/lib/pushMessages';
 import { rosterMembers } from '@/lib/roster';
-import { mayAskNewPhone, noteAsked } from '@/lib/newPhoneGuard';
+import { mayAskNewPhone, noteAsked, mayPushOrganizers, noteOrganizersPushed } from '@/lib/newPhoneGuard';
 import { padMissingAccount } from '@/lib/accountPad';
 
 export const dynamic = 'force-dynamic';
@@ -61,7 +61,6 @@ export async function POST(req: NextRequest) {
   const name = body && typeof body.name === 'string' ? body.name.trim().slice(0, 50) : '';
   if (!name) return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
   const organizer = body?.organizer === true;
-  const secret = typeof body?.secret === 'string' ? body.secret : '';
   const inviteToken = typeof body?.inviteToken === 'string' && body.inviteToken.trim() ? body.inviteToken.trim().slice(0, 128) : null;
 
   if (!checkRateLimit(`claim-ask:${name.toLowerCase()}:${ip}`, 5, HOUR_MS)) {
@@ -82,41 +81,36 @@ export async function POST(req: NextRequest) {
     }
     const memberId = groupId ? await resolveActiveMemberId(groupId, name) : null;
 
-    // Moving an ask already made to an organizer: found by its secret, which
-    // only the asking page holds. Nothing new is answered either way.
-    if (secret) {
-      const opened = openAskSecret(secret);
-      if (memberId && groupId && opened.kind !== 'dead') {
-        let moved = false;
-        await updateAccessRequests(memberId, (open, member) => {
-          const mine = findBySecret(member, opened.raw);
-          if (!mine || !mine.link || mine.approvedAt !== undefined || mine.organizer) return null;
-          moved = true;
-          return open.map((r) => (r.id === mine.id ? { ...r, organizer: true } : r));
-        });
-        if (moved) void tellOrganizers(groupId, memberId, name);
-      }
-      return NextResponse.json({ ok: true });
-    }
-
     const link = { provider: pending.provider, sub: pending.sub, email: pending.email, emailVerified: pending.emailVerified };
     const issued = issueAccessRequest({ ...(groupId ? { groupId } : {}), link, organizer });
 
     if (memberId && groupId) {
       const now = Date.now();
+      let pushOrganizers = false;
       const result = await updateAccessRequests(memberId, (open, member) => {
-        if (!mayAskNewPhone(member.newPhoneLog, open, link, now)) return null;
-        // One ask per new sign-in: asking again replaces the last one, so a
-        // second tap cannot leave two asks that block each other.
+        // The phone's limits bind a phone ask only (lib/newPhoneGuard.ts).
+        if (!organizer && !mayAskNewPhone(member.newPhoneLog, open, link, now)) return null;
+        // One ask per new sign-in: asking again (or asking an organizer
+        // instead) replaces the last one, so it cannot block itself.
         const others = open.filter((r) => !(r.link && r.link.provider === link.provider && r.link.sub === link.sub));
         if (others.length >= MAX_OPEN_REQUESTS) return null;
-        return { requests: [...others, issued.stored], patch: { newPhoneLog: noteAsked(member.newPhoneLog, now) } };
+        pushOrganizers = organizer && mayPushOrganizers(member.newPhoneLog, now);
+        const newPhoneLog = organizer
+          ? pushOrganizers
+            ? noteOrganizersPushed(member.newPhoneLog, now)
+            : member.newPhoneLog ?? []
+          : noteAsked(member.newPhoneLog, now);
+        return { requests: [...others, issued.stored], patch: { newPhoneLog } };
       });
       // Not awaited: how long a push fan-out takes would say how many phones
       // the person has (security review, 2026-11-20).
-      if (result) {
-        if (organizer) void tellOrganizers(groupId, memberId, name);
-        else
+      if (!result) {
+        // A refusal pays the write a stored ask does, so it reads like one.
+        await padMissingAccount(1);
+      } else {
+        if (organizer) {
+          if (pushOrganizers) void tellOrganizers(groupId, memberId, name);
+        } else
           void Promise.resolve()
             .then(() => sendPushToMembers([memberId], (locale) => buildNewPhonePayload(locale)))
             .catch((err) => console.error('claim-ask push failed:', err));

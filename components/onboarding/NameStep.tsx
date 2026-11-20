@@ -108,7 +108,14 @@ export default function NameStep({ title, onBack, step, inviteToken, noGroup, cl
           body: JSON.stringify({ name: who, secret: ask.secret, ...(ask.club ? { club: ask.club } : {}) }),
         });
         const data = (await res.json().catch(() => ({}))) as { status?: string; name?: string };
-        if (live && data.status === 'approved') setIdentity({ name: data.name ?? who, sessionId: '' });
+        if (!live) return;
+        if (data.status === 'approved') setIdentity({ name: data.name ?? who, sessionId: '' });
+        // Ran out (an hour), or stopped by a "no": say so rather than wait.
+        else if (data.status === 'none') {
+          setAsk(null);
+          setProof(null);
+          setError(tc('ranOut'));
+        }
       } catch {
         /* the next tick tries again */
       }
@@ -120,9 +127,10 @@ export default function NameStep({ title, onBack, step, inviteToken, noGroup, cl
       live = false;
       window.clearInterval(timer);
     };
-  }, [ask, proof, name]);
+  }, [ask, proof, name, tc]);
 
-  /** File the ask, or move the one already filed to an organizer. */
+  /** File the ask. Asking an organizer files a fresh one, which replaces this
+   *  phone's own waiting ask (so it works even after that one ran out). */
   async function askFor(target: 'phone' | 'organizer') {
     if (busy || !online) return;
     setBusy(true);
@@ -134,7 +142,7 @@ export default function NameStep({ title, onBack, step, inviteToken, noGroup, cl
         body: JSON.stringify({
           name: name.trim(),
           ...(sentInvite ? { inviteToken } : {}),
-          ...(target === 'organizer' ? (ask ? { secret: ask.secret } : { organizer: true }) : {}),
+          ...(target === 'organizer' ? { organizer: true } : {}),
         }),
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string; secret?: string; match?: number; club?: string | null };

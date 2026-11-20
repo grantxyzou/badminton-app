@@ -2923,7 +2923,9 @@
     "approvedTitle": "你的新手机已登录",
     "approvedBody": "它现在以你的身份登录了。",
     "stoppedTitle": "已阻止这次登录",
-    "stoppedBody": "那部新手机没有获准登录。如果是你，请在那部手机上再试一次。"
+    "stoppedBody": "那部新手机没有获准登录。如果是你，请在那部手机上再试一次。",
+    "undoneTitle": "已收回那次登录",
+    "undoneBody": "组织者之前已经允许了它。它现在不能再以你的身份登录。"
   },
   "keepAccount": {
     "title": "保住你的账号",
@@ -3112,7 +3114,8 @@
       "phoneWaiting": "正在等你的另一部手机…",
       "organizerHeading": "申请已发出",
       "organizerBody": "认识你的组织者会确认是你本人。请保持此页面打开，或者在他们确认后，用同样的方式重新登录。",
-      "lasts": "申请会保留一小时。"
+      "lasts": "申请会保留一小时。",
+      "ranOut": "那次申请已失效。请再试一次，或者请组织者确认。"
     },
     "join": {
       "title": "加入俱乐部",

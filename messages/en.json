@@ -2935,7 +2935,9 @@
     "approvedTitle": "Your new phone is signed in",
     "approvedBody": "It's signed in as you now.",
     "stoppedTitle": "That sign-in was stopped",
-    "stoppedBody": "The new phone wasn't let in. If it was you, try again from that phone."
+    "stoppedBody": "The new phone wasn't let in. If it was you, try again from that phone.",
+    "undoneTitle": "That sign-in was taken back",
+    "undoneBody": "An organizer had let it in. It can no longer sign in as you."
   },
   "keepAccount": {
     "title": "Keep your account",
@@ -3124,7 +3126,8 @@
       "phoneWaiting": "Waiting for your other phone…",
       "organizerHeading": "Request sent",
       "organizerBody": "An organizer who knows you will confirm it's you. Keep this page open, or once they have, sign in again the same way.",
-      "lasts": "Requests stay open for an hour."
+      "lasts": "Requests stay open for an hour.",
+      "ranOut": "That request ran out. Ask again, or ask an organizer."
     },
     "join": {
       "title": "Join a club",

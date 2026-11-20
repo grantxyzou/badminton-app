@@ -16,6 +16,13 @@ import type { Member } from '@/lib/types';
  *
  * Asking again from the SAME new phone replaces its waiting ask (and counts).
  * A refusal stores and sends nothing, and answers like any other ask.
+ *
+ * AN ORGANIZER ASK IS NOT LIMITED BY ANY OF THAT (second review, 2026-11-20):
+ * it prompts nobody's phone, and counting it let one stranger spend a
+ * person's three asks every day and shut them out of the organizer too. It is
+ * stored like any ask (two on one person cannot be approved; the organizer
+ * clears them), and its PUSH to the organizers goes at most once a day per
+ * person (`mayPushOrganizers`).
  */
 export const MAX_ASKS_PER_DAY = 3;
 export const NEW_PHONE_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -33,7 +40,7 @@ export function mayAskNewPhone(
   link: { provider: string; sub: string },
   now: number = Date.now(),
 ): boolean {
-  const day = recent(log, now);
+  const day = recent(log, now).filter((e) => !e.organizer);
   if (day.some((e) => e.stopped)) return false;
   if (day.length >= MAX_ASKS_PER_DAY) return false;
   // One at a time: another new phone's ask still waiting blocks this one.
@@ -45,6 +52,16 @@ export function mayAskNewPhone(
 /** The log with this ask counted. */
 export function noteAsked(log: Member['newPhoneLog'], now: number = Date.now()): Log {
   return [...recent(log, now), { at: now }];
+}
+
+/** May the organizers be pushed about an ask for this person? Once a day. */
+export function mayPushOrganizers(log: Member['newPhoneLog'], now: number = Date.now()): boolean {
+  return !recent(log, now).some((e) => e.organizer);
+}
+
+/** The log with an organizer push counted. */
+export function noteOrganizersPushed(log: Member['newPhoneLog'], now: number = Date.now()): Log {
+  return [...recent(log, now), { at: now, organizer: true }];
 }
 
 /** The log after "No, it's not me" or a wrong number: no new ask for a day. */

@@ -633,7 +633,7 @@ export interface Member {
    * stranger who knows the name can prompt them (lib/newPhoneGuard.ts,
    * docs/plans/sign-in-redesign.md step 3). Epoch ms.
    */
-  newPhoneLog?: Array<{ at: number; stopped?: boolean }>;
+  newPhoneLog?: Array<{ at: number; stopped?: boolean; organizer?: boolean }>;
   /**
    * This person strings rackets. Deliberately NOT tied to `role`.
    *

@@ -16,6 +16,7 @@ import { findBySecret } from '@/lib/accessRequest';
 import { updateAccessRequests } from '@/lib/accessRequestStore';
 import { setMemberCookie } from '@/lib/auth';
 import { clearPendingSignup } from '@/lib/pendingSignup';
+import { lookupIdentity } from '@/lib/authIdentity';
 import type { Member } from '@/lib/types';
 import { groupIdWithHint } from '@/lib/groupContext';
 import { openAskSecret } from '@/lib/askSecret';
@@ -112,6 +113,14 @@ export async function POST(req: NextRequest) {
     // The entry THIS secret created. Another device's request for the same
     // name is invisible from here: its approval, or its mere existence.
     const mine = findBySecret(member, raw);
+
+    // An approved "Is that you?" signs in only once its new sign-in is really
+    // linked to this person: approval and link are two writes, and a poll
+    // between them must not get a session the link then never backs (second
+    // review, 2026-11-20). Until then it reads `pending`.
+    if (mine && typeof mine.approvedAt === 'number' && mine.link) {
+      if ((await lookupIdentity(mine.link.provider, mine.link.sub))?.memberId !== member.id) return miss();
+    }
 
     if (mine && typeof mine.approvedAt === 'number') {
       /**

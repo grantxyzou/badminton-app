@@ -84,9 +84,13 @@ export default function NewPhonePrompt() {
       setAsk(null);
       if (data.outcome === 'approved') {
         showTopToast({ tone: 'success', icon: 'check_circle', title: t('approvedTitle'), body: t('approvedBody') });
-      } else if ('notMe' in body || data.outcome === 'stopped') {
+      } else if (data.outcome === 'stopped') {
         showTopToast({ tone: 'warn', icon: 'shield', title: t('stoppedTitle'), body: t('stoppedBody') });
+      } else if (data.outcome === 'undone') {
+        // An organizer had already let it in; "not me" took it back.
+        showTopToast({ tone: 'warn', icon: 'shield', title: t('undoneTitle'), body: t('undoneBody') });
       }
+      // A 404: already answered elsewhere. Nothing to say; the next look shows what is left.
       void look();
     } catch {
       setError(true);
