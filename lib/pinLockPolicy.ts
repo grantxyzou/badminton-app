@@ -65,9 +65,13 @@ export function pausedSeconds(value: unknown, now: number = Date.now()): number 
  * one and this count elsewhere; a few guesses split across two routes then
  * told a PIN holder from a nobody (security review, 2026-11-20).
  *
- * A correct PIN does NOT clear it: a nobody's count can never be cleared, so
- * a cleared one would say someone signed in under the name. It forgets a
- * miss a day old, as the account lock does.
+ * A correct PIN takes back ITS OWN guess (`undo`), never the rest: the count
+ * then stands exactly where it would if that check had never happened, which
+ * is what a nobody's looks like with no traffic. Clearing it would say someone
+ * signed in under the name; leaving the +1 paused a member after six good
+ * sign-ins in a day and let a few guesses keep every later sign-in paused
+ * (security review, 2026-11-20). It forgets a miss a day old, as the account
+ * lock does.
  *
  * In memory, on purpose: a stranger's name must cost no database write. A
  * deploy forgets it, for every name alike. Bounded: a key is the first 64
@@ -75,7 +79,10 @@ export function pausedSeconds(value: unknown, now: number = Date.now()): number 
  * neither paused nor counting toward a pause; while it is full of those, a
  * new name is not counted (and so never shows a countdown, for every name
  * alike) rather than evicting a paused one, which would let a flood of new
- * names unpause a name on demand.
+ * names unpause a name on demand. (While it is full, an entry made before the
+ * flood still counts and a new one does not, so filling it would say whether
+ * anyone typed at a name in the last day: ~10,000 names past the per-address
+ * limits, for a fact the countdown already half-tells. Left.)
  */
 const nameLocks = new Map<string, PinLock>();
 const NAME_LOCK_CAP = 10_000;
@@ -96,19 +103,44 @@ function pruneNameLocks(now: number): void {
   }
 }
 
-/** Count a PIN guess at a name. `false` while the name is paused (nothing
+/** A counted guess; `undo` takes it back when the PIN turns out right. */
+export interface NameAttempt {
+  undo(): void;
+}
+
+const NOTHING_TO_UNDO: NameAttempt = { undo() {} };
+
+/** Count a PIN guess at a name. `null` while the name is paused (nothing
  *  counted): refuse without comparing. Call it at every PIN check, BEFORE
- *  the name is looked up. */
-export function claimNameAttempt(name: string, now: number = Date.now()): boolean {
+ *  the name is looked up, and `undo()` it on a correct PIN. */
+export function claimNameAttempt(name: string, now: number = Date.now()): NameAttempt | null {
   const key = nameKey(name);
-  const lock = nameLocks.get(key);
-  if (isPinLocked(lock, now)) return false;
-  if (!lock) {
+  const before = nameLocks.get(key);
+  if (isPinLocked(before, now)) return null;
+  if (!before) {
     pruneNameLocks(now);
-    if (nameLocks.size >= NAME_LOCK_CAP) return true; // full: not counted, for every name alike
+    if (nameLocks.size >= NAME_LOCK_CAP) return NOTHING_TO_UNDO; // full: not counted, for every name alike
   }
-  nameLocks.set(key, recordPinFailure(lock, now));
-  return true;
+  const after = recordPinFailure(before, now);
+  nameLocks.set(key, after);
+  return {
+    undo() {
+      const current = nameLocks.get(key);
+      if (!current) return;
+      // Nothing else counted since: back to exactly where it was.
+      if (current === after) {
+        if (before) nameLocks.set(key, before);
+        else nameLocks.delete(key);
+        return;
+      }
+      // Others counted in between: take back one, and the pause only if the
+      // count no longer reaches one.
+      const failures = Math.max(0, current.failures - 1);
+      const next: PinLock = { failures, lastFailedAt: current.lastFailedAt };
+      if (current.lockedUntil && failures > FREE_ATTEMPTS) next.lockedUntil = current.lockedUntil;
+      nameLocks.set(key, next);
+    },
+  };
 }
 
 /** Seconds left on a name's pause (0 = none). */

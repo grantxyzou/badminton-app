@@ -61,7 +61,7 @@ describe('the in-memory count for a name with no PIN', () => {
     for (let i = 0; i < FREE_ATTEMPTS + 3; i++) {
       // Paused or not, both sides agree on every guess.
       const accountPaused = pausedSeconds(lock, now + i);
-      expect(claimNameAttempt('Nobody Here', now + i)).toBe(accountPaused === 0);
+      expect(claimNameAttempt('Nobody Here', now + i) !== null).toBe(accountPaused === 0);
       if (accountPaused === 0) lock = recordPinFailure(lock, now + i);
       expect(nameLockSeconds('nobody  here', now + i)).toBe(pausedSeconds(lock, now + i));
     }
@@ -184,16 +184,37 @@ describe('mixing routes and spellings tells nobody apart', () => {
     });
   }
 
-  it('a correct PIN does not clear the count a nobody could never clear', async () => {
+  it('a correct PIN takes back only its own guess: the misses before it still count', async () => {
     await seedAll();
     for (let i = 0; i < 4; i++) await recoverAt('Kento')();
     const ok = await recover(makeRequest('POST', 'http://x/api/players/recover', { name: 'Kento', pin: '2468' }));
     expect(ok.status).toBe(200);
+    // Four misses stand, as they would at a name nobody holds: the fifth is
+    // free, the sixth pauses.
+    expect((await read(await recoverAt('Kento')())).status).toBe(401);
     expect((await read(await recoverAt('Kento')())).status).toBe(429);
+  });
+
+  it('good sign-ins, however many, never pause anyone', async () => {
+    await seedAll();
+    for (let i = 0; i < 10; i++) {
+      const ok = await recover(makeRequest('POST', 'http://x/api/players/recover', { name: 'Kento', pin: '2468' }));
+      expect(ok.status).toBe(200);
+    }
+    expect((await read(await recoverAt('Kento')())).status).toBe(401);
   });
 });
 
 describe('the count stays bounded and keeps a paused name', () => {
+  it('undo after other guesses landed takes back one, and the pause only below the line', () => {
+    const now = Date.now();
+    const mine = claimNameAttempt('Rin', now)!;
+    for (let i = 0; i < FREE_ATTEMPTS; i++) claimNameAttempt('Rin', now);
+    expect(nameLockSeconds('Rin', now)).toBeGreaterThan(0);
+    mine.undo();
+    expect(nameLockSeconds('Rin', now)).toBe(0);
+  });
+
   it('a long name is counted by its first 64 characters', () => {
     const now = Date.now();
     const long = 'x'.repeat(5000);

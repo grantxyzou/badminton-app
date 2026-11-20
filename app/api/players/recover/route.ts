@@ -134,7 +134,8 @@ async function handlePost(req: NextRequest) {
     // anything is looked up, the same at every PIN check in the app — never
     // from the account's own lock, or it would list who holds a PIN
     // (lib/pinLockPolicy.ts). Paused: refuse without comparing.
-    if (!claimNameAttempt(name)) return pinPaused(nameLockSeconds(name));
+    const attempt = claimNameAttempt(name);
+    if (!attempt) return pinPaused(nameLockSeconds(name));
     const wrongPin = () => {
       const paused = nameLockSeconds(name);
       return paused > 0 ? pinPaused(paused) : FAIL();
@@ -195,6 +196,7 @@ async function handlePost(req: NextRequest) {
     const member = matches[0].member;
     const signInGroupId = matches[0].groupId;
     await notePinSuccess(member);
+    attempt.undo();
 
     // PIN verified. If a session player exists IN THE GROUP WE SIGNED THEM
     // INTO, mint a fresh deleteToken on that row.

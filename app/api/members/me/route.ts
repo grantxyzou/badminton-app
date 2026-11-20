@@ -489,7 +489,8 @@ async function handlePatch(req: NextRequest) {
   // A current PIN is a guess: THE COUNTDOWN A PERSON SEES comes from the
   // name alone, counted before anything is looked up, the same at every PIN
   // check (lib/pinLockPolicy.ts).
-  if (currentPin && !claimNameAttempt(name)) return pinPaused(nameLockSeconds(name));
+  const attempt = currentPin ? claimNameAttempt(name) : null;
+  if (currentPin && !attempt) return pinPaused(nameLockSeconds(name));
   const wrongPin = () => {
     const paused = nameLockSeconds(name);
     return paused > 0 ? pinPaused(paused) : NextResponse.json({ error: 'invalid_credentials' }, { status: 401 });
@@ -557,6 +558,7 @@ async function handlePatch(req: NextRequest) {
     const ok = await verifyPin(currentPin, member.pinHash);
     if (!ok) return wrongPin();
     await notePinSuccess(member);
+    attempt?.undo();
   }
   // No prior pinHash → first-set / claim flow. There's no currentPin to require,
   // but identity must still be proven: a member_session cookie for THIS name

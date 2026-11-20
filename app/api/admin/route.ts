@@ -84,7 +84,8 @@ export async function POST(req: NextRequest) {
   // THE COUNTDOWN A PERSON SEES comes from the name alone, counted before
   // anything is looked up, the same at every PIN check — never from whether
   // the name is an admin, a member or nobody (lib/pinLockPolicy.ts).
-  if (!claimNameAttempt(name)) return pinPaused(nameLockSeconds(name));
+  const attempt = claimNameAttempt(name);
+  if (!attempt) return pinPaused(nameLockSeconds(name));
   const wrongPin = () => {
     const paused = nameLockSeconds(name);
     return paused > 0 ? pinPaused(paused) : NextResponse.json({ error: 'Incorrect name or PIN' }, { status: 401 });
@@ -159,6 +160,7 @@ export async function POST(req: NextRequest) {
   const ok = await verifyPin(pin, member.pinHash);
   if (!ok) return wrongPin();
   await notePinSuccess(member);
+  attempt.undo();
 
   if (bootstrap && !adminHere) {
     if (member.role !== 'admin') {
