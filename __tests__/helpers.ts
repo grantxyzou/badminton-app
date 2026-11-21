@@ -1,12 +1,16 @@
 import { createHmac } from 'crypto';
 import { NextRequest } from 'next/server';
 import { hashPin } from '../lib/recoveryHash';
+import { resetNameLocks } from '../lib/pinLockPolicy';
 
 /* ── Mock store management ── */
 
 const g = global as typeof globalThis & { _mockStore?: Record<string, unknown[]> };
 
 export function resetMockStore() {
+  // The per-name PIN count (lib/pinLockout.ts) is in memory beside the store:
+  // a fresh store with an old count would pause a name the test never tried.
+  resetNameLocks();
   if (g._mockStore) {
     for (const key of Object.keys(g._mockStore)) {
       delete g._mockStore[key];

@@ -52,6 +52,15 @@ function logRefusal(key: string, maxRequests: number, windowMs: number, refused:
   console.warn('[rate-limit] refused', { bucket, keyHash, maxRequests, windowMs, refusedThisWindow: refused });
 }
 
+/** Seconds until a key's window lets a request through again (0 = it would
+ *  now). For a refusal that shows a countdown instead of "try later". */
+export function retryAfterSeconds(key: string): number {
+  const entry = store.get(key);
+  if (!entry) return 0;
+  const ms = entry.resetAt - Date.now();
+  return ms > 0 ? Math.ceil(ms / 1000) : 0;
+}
+
 /** Returns true if the request is allowed, false if rate-limited. */
 export function checkRateLimit(key: string, maxRequests: number, windowMs: number): boolean {
   const now = Date.now();

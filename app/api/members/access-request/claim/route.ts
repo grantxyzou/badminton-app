@@ -15,6 +15,8 @@ import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { findBySecret } from '@/lib/accessRequest';
 import { updateAccessRequests } from '@/lib/accessRequestStore';
 import { setMemberCookie } from '@/lib/auth';
+import { clearPendingSignup } from '@/lib/pendingSignup';
+import { lookupIdentity } from '@/lib/authIdentity';
 import type { Member } from '@/lib/types';
 import { groupIdWithHint } from '@/lib/groupContext';
 import { openAskSecret } from '@/lib/askSecret';
@@ -112,6 +114,14 @@ export async function POST(req: NextRequest) {
     // name is invisible from here: its approval, or its mere existence.
     const mine = findBySecret(member, raw);
 
+    // An approved "Is that you?" signs in only once its new sign-in is really
+    // linked to this person: approval and link are two writes, and a poll
+    // between them must not get a session the link then never backs (second
+    // review, 2026-11-20). Until then it reads `pending`.
+    if (mine && typeof mine.approvedAt === 'number' && mine.link) {
+      if ((await lookupIdentity(mine.link.provider, mine.link.sub))?.memberId !== member.id) return miss();
+    }
+
     if (mine && typeof mine.approvedAt === 'number') {
       /**
        * Burn it BEFORE signing anyone in, so a replay finds nothing even if the
@@ -140,6 +150,9 @@ export async function POST(req: NextRequest) {
       // Signed in to the club the ASK was for. A request from before the field
       // existed carries none and gets the club this claim resolved, which is
       // what every claim did until then.
+      // A new sign-in approved through "Is that you?" was linked at approval;
+      // its pending cookie has nothing left to finish (sign-in redesign, step 3).
+      if (mine.link) clearPendingSignup(res);
       setMemberCookie(res, member.id, member.name, mine.groupId ?? groupId);
       return res;
     }

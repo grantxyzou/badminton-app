@@ -152,11 +152,15 @@ describe('signed in with nothing to sign in with next time', () => {
     renderHome('Kento');
     fireEvent.click(await screen.findByRole('button', { name: 'Choose how to sign in' }));
     // A page, not a sheet (Grant, 2026-11-08), and never a PIN.
+    expect(await screen.findByRole('heading', { name: 'Add a way back in' })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Use an email' }));
     await waitFor(() => expect(screen.getByLabelText('Password')).toBeDefined());
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.queryByRole('button', { name: /Sign up for this week/i })).toBeNull();
     expect(screen.queryByLabelText(/PIN/)).toBeNull();
+    // Back steps out of the email form first, then off the page.
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Back' }));
     expect(await screen.findByRole('button', { name: /Sign up for this week/i })).toBeDefined();
   });
 

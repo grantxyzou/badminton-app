@@ -18,6 +18,13 @@ const nextConfig = {
       'firebase/messaging': './lib/stubs/firebase-messaging.js',
     },
   },
+  async redirects() {
+    // THE BARE ADDRESS OPENS THE APP (docs/plans/sign-in-redesign.md): the
+    // report found `bpm.grantzou.com` with no path answered a 404, because
+    // the app lives at /bpm. A temporary redirect, so a browser does not keep
+    // it forever if the root is ever given a page of its own.
+    return [{ source: '/', destination: '/bpm', basePath: false, permanent: false }];
+  },
   async rewrites() {
     // Apple and Google fetch their association files from the DOMAIN ROOT,
     // which basePath '/bpm' otherwise 404s. A relative destination is rejected

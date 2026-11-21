@@ -44,7 +44,9 @@ const API = APP.filter((f) => f.path.startsWith('app/api/'));
 describe('PIN checks count before they compare (F8, F9)', () => {
   it('the racy lock API (read, then count after) is used nowhere but its definition', () => {
     const users = [...APP, ...LIB]
-      .filter((f) => f.path !== 'lib/pinLockout.ts')
+      // The lock and its rules (the rules moved out so tests can reset the
+      // per-name count without loading Cosmos; sign-in redesign, step 2).
+      .filter((f) => f.path !== 'lib/pinLockout.ts' && f.path !== 'lib/pinLockPolicy.ts')
       .filter((f) => /\b(isPinLocked|notePinFailure)\(/.test(f.src))
       .map((f) => f.path);
     expect(users, 'Use claimPinAttempt before verifyPin and notePinSuccess after (lib/pinLockout.ts).').toEqual([]);

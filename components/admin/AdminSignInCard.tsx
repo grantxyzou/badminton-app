@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { getIdentity } from '@/lib/identity';
 import PinInput from '@/components/PinInput';
+import { usePinPause, pinPausedSeconds } from '@/lib/usePinPause';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -25,6 +26,9 @@ export default function AdminSignInCard({ onSignedIn, help }: {
   help?: string;
 }) {
   const pageT = useTranslations('pages.admin');
+  const tPin = useTranslations('pin');
+  // "Let's pause a moment — try again in 3:42" (sign-in redesign, step 2).
+  const pause = usePinPause();
   /* Guarded: `getIdentity()` reads localStorage, which the server lacks. */
   const [name, setName] = useState(() =>
     typeof window === 'undefined' ? '' : (getIdentity()?.name ?? ''),
@@ -43,8 +47,12 @@ export default function AdminSignInCard({ onSignedIn, help }: {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name.trim(), pin }),
       });
+      const paused = await pinPausedSeconds(res);
       if (res.ok) {
         onSignedIn();
+      } else if (paused) {
+        pause.pauseFor(paused);
+        setPin('');
       } else if (res.status === 429) {
         setError(pageT('signInErrorRateLimited'));
       } else {
@@ -87,11 +95,16 @@ export default function AdminSignInCard({ onSignedIn, help }: {
           label={pageT('pinLabel')}
           ariaInvalid={!!error}
           autoFocus={!!name}
+          disabled={pause.paused}
         />
-        {error && <p id="admin-error" role="alert" className="field-error">{error}</p>}
+        {pause.paused ? (
+          <p id="admin-error" role="alert" className="field-warn">{tPin('paused', { time: pause.label })}</p>
+        ) : (
+          error && <p id="admin-error" role="alert" className="field-error">{error}</p>
+        )}
         <button
           type="submit"
-          disabled={checking || !name.trim() || pin.length !== 4}
+          disabled={checking || pause.paused || !name.trim() || pin.length !== 4}
           className="cc-btn cc-btn-primary cc-btn-lg"
         >
           {checking ? pageT('signInChecking') : pageT('signInButton')}
