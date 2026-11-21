@@ -55,7 +55,6 @@ vi.mock('@/lib/recoveryHash', async (orig) => {
 
 const GROUPS = 'NEXT_PUBLIC_FLAG_MULTI_GROUP';
 const STRINGING = 'NEXT_PUBLIC_FLAG_STRINGING';
-const RECOMMENDER = 'NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER';
 const BPM = 'bpm';
 
 const asMember = (name: string, id: string) => ({ Cookie: `member_session=${memberCookieValue(name, id)}` });
@@ -68,7 +67,6 @@ beforeEach(() => {
 afterEach(() => {
   delete process.env[GROUPS];
   delete process.env[STRINGING];
-  delete process.env[RECOMMENDER];
   delete process.env.OPERATOR_MEMBER_IDS;
 });
 
@@ -319,7 +317,6 @@ describe('F29: a recommendation asked on a member’s behalf ignores their arm a
     __resetCatalogSeedForTests();
     _resetCalibrationCache();
     setupAdminPin();
-    process.env[RECOMMENDER] = 'true';
     seedMember('Lin', { id: 'member-lin' });
     seedAdminMember();
     await ensureContainer('playerGear', '/memberId');
