@@ -14,6 +14,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 - The note under "Pay by card" and the card form now say "Visa and Mastercard credit cards", and the organiser's switch explains the same.
 - **While the fee is on, the Pay by card button itself shows "+2.4% fee"**, with the note below it saying which cards pay it.
 
+## Unreleased
+
+- **The gear recommender's feature flag is retired** (`NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER`, on in production since it shipped). Nothing changes for members: the skill-scored racket and string picks were already what everyone saw. The old stage-derived "all-rounder" pick, which only a deployment with the flag off ever served, is gone.
+
 ## Paying by e-transfer: tap to copy the address and the amount (2026-11-20)
 
 - **Home's balance card shows the club's e-transfer address and the amount as two rows; tap one to copy it**, then paste it into your bank's app (`docs/plans/etransfer-copy.md`). The amount copies as a plain number (`27.00`), which banks accept. The address used to be a line of text you had to type out.

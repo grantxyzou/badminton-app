@@ -1,95 +1,15 @@
 // @vitest-environment node
-import { describe, it, expect, beforeEach, afterAll, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { GET } from '@/app/api/recommend/route';
 import { NextRequest } from 'next/server';
 import * as cosmos from '@/lib/cosmos';
-import { getContainer, ensureContainer } from '@/lib/cosmos';
-import { _resetCalibrationCache } from '@/lib/levelStore';
 import { __resetCatalogSeedForTests } from '@/lib/catalogSeed';
 import { resetMockStore, getStore, seedMember, setupAdminPin, makeRequest, memberCookieValue } from './helpers';
 
-// Unique IP per request — recommend is rate-limited 30/min; convention per helpers.ts.
-// Signed in as the member asked about: every club-data read needs an active
-// member (members-only is permanent).
-function get(url: string, memberId: string, name: string): NextRequest {
-  return new NextRequest(new URL(url, 'http://localhost/bpm'), {
-    headers: {
-      'x-client-ip': `rec-${Math.random()}`,
-      cookie: `member_session=${memberCookieValue(name, memberId)}`,
-    },
-  });
-}
-
-async function seedAssessment(memberId: string, name: string, overall: number) {
-  await ensureContainer('assessments', '/memberId');
-  await getContainer('assessments').items.upsert({
-    id: `a-${memberId}`,
-    memberId,
-    name,
-    takenAt: '2026-06-01T00:00:00Z',
-    overall,
-    ratings: [],
-  });
-}
-
-describe('GET /api/recommend (flag-off / legacy stage-derived pick)', () => {
-  beforeEach(async () => {
+describe('GET /api/recommend rate limit', () => {
+  beforeEach(() => {
     resetMockStore();
-    setupAdminPin(); // SESSION_SECRET, so the member cookies verify
-    // Deliberately NOT resetting the catalog-seed cache here: after the first
-    // test in this describe seeds it once, later tests rely on subsequent
-    // calls being a no-op so the store (reset to just the 3 manually-upserted
-    // fixture rackets below) stays uncontaminated by the full curated catalog.
-    _resetCalibrationCache();
-    delete process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER;
-    const catalog = getContainer('equipmentCatalog');
-    await catalog.items.upsert({ id: 'wide', category: 'racket', brand: 'Y', model: 'All-Round', skillRange: [1, 6], msrp: 120 });
-    await catalog.items.upsert({ id: 'beg', category: 'racket', brand: 'Y', model: 'Starter', skillRange: [1, 2], msrp: 80 });
-    await catalog.items.upsert({ id: 'adv', category: 'racket', brand: 'Y', model: 'Pro', skillRange: [5, 6], msrp: 220 });
-  });
-
-  it('returns an all-rounder for a member with no level signal at all', async () => {
-    await getContainer('members').items.upsert({ id: 'm-anon', name: 'Anon', active: true });
-    const res = await GET(get('/api/recommend?name=Anon', 'm-anon', 'Anon'));
-    const body = await res.json();
-    expect(res.status).toBe(200);
-    expect(body.item.id).toBe('wide');
-    expect(typeof body.reason).toBe('string');
-  });
-
-  it('still honors a legacy Member.stage when there are no check-ins (back-compat)', async () => {
-    await getContainer('members').items.upsert({ id: 'm-beg', name: 'Newbie', active: true, stage: 2 });
-    const res = await GET(get('/api/recommend?name=Newbie', 'm-beg', 'Newbie'));
-    const body = await res.json();
-    expect(body.item.id).toBe('beg');
-  });
-
-  it('derives stage from self check-ins even when Member.stage is unset', async () => {
-    // No stage on the member — only an assessment. Proves the rec no longer
-    // depends on the legacy field: a 4.5 self-rating → stage ~5 → the Pro.
-    await getContainer('members').items.upsert({ id: 'm-rated', name: 'Rated', active: true });
-    await seedAssessment('m-rated', 'Rated', 4.5);
-    const res = await GET(get('/api/recommend?name=Rated', 'm-rated', 'Rated'));
-    const body = await res.json();
-    expect(body.item.id).toBe('adv');
-  });
-
-  it('lets game calibration lift the recommended stage', async () => {
-    await getContainer('members').items.upsert({ id: 'm-climb', name: 'Climber', active: true });
-    await seedAssessment('m-climb', 'Climber', 2.0); // self-only → stage 2 → the Starter
-    await ensureContainer('gameResults', '/sessionId');
-    const games = getContainer('gameResults');
-    for (let i = 0; i < 12; i++) {
-      await games.items.upsert({
-        id: `g-${i}`, sessionId: 's', teamA: ['Climber'], teamB: ['Punching Bag'],
-        scoreA: 21, scoreB: 5, loggedBy: 'Climber', loggedAt: `2026-06-${String(10 + i).padStart(2, '0')}T00:00:00Z`,
-      });
-    }
-
-    // Decisive wins lift the observed level → stage 3 → no longer the Starter.
-    _resetCalibrationCache();
-    const on = await (await GET(get('/api/recommend?name=Climber', 'm-climb', 'Climber'))).json();
-    expect(on.item.id).not.toBe('beg');
+    setupAdminPin();
   });
 
   it('allows 30 calls a minute from one IP, then throttles', async () => {
@@ -122,7 +42,7 @@ function seedRatedAssessment(memberId: string, name: string, ratings: { skillKey
   });
 }
 
-describe('/api/recommend with the engine flag on', () => {
+describe('/api/recommend', () => {
   beforeEach(() => {
     resetMockStore();
     // resetMockStore() wipes the store, but ensureCatalogSeeded caches its
@@ -130,10 +50,6 @@ describe('/api/recommend with the engine flag on', () => {
     // after the first would skip reseeding into the now-empty store.
     __resetCatalogSeedForTests();
     setupAdminPin();
-    process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER = 'true';
-  });
-  afterAll(() => {
-    delete process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER;
   });
   afterEach(() => {
     vi.restoreAllMocks();
@@ -172,18 +88,6 @@ describe('/api/recommend with the engine flag on', () => {
     expect(body.item).toBeTruthy();
     expect(Array.isArray(body.reasons)).toBe(true);
     expect(body.reasons.length).toBeGreaterThan(0);
-  });
-
-  // The legacy branch carries no ownership check (it quotes no ratings), so any
-  // signed-in member — not only Lin — gets the old shape.
-  it('keeps the old un-owned behaviour when the engine flag is off', async () => {
-    process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER = 'false';
-    seedMember('Lin');
-    seedMember('Viktor');
-    const res = await GET(getAs('Lin', 'Viktor'));
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.reasons).toBeUndefined();
   });
 
   // Controller override on the brief's sketch: a 404 gear read means "no gear

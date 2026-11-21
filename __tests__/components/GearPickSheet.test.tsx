@@ -99,14 +99,12 @@ function renderSheet(props: { pick?: boolean } = {}) {
 
 describe('GearPickSheet — the relocated format and budget controls', () => {
   beforeEach(() => {
-    process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER = 'true';
   });
 
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
-    delete process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER;
   });
 
   it('shows the saved format and budget as the active segment', async () => {
@@ -168,25 +166,8 @@ describe('GearPickSheet — the relocated format and budget controls', () => {
     });
   });
 
-  // Only the two preference controls gate on this flag. The recommendation
-  // itself and the Add action are VALUE_HUB_SLICE behaviour and must render
-  // either way — bpm-stable runs this flag OFF (deploy-stable.yml:82).
-  describe('preference-control gating (NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER)', () => {    it('hides the controls when the flag is off, but keeps the pick and the Add action', async () => {
-      process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER = 'false';
-      mockGear(gearDoc());
-      renderSheet();
-
-      expect(await screen.findByText('Add to my equipment')).toBeTruthy();
-      expect(screen.getByText('Astrox 99 Pro')).toBeTruthy();
-
-      expect(screen.queryByRole('tab', { name: 'Both' })).toBeNull();
-      expect(screen.queryByRole('tab', { name: 'Singles' })).toBeNull();
-      expect(screen.queryByRole('tab', { name: 'Doubles' })).toBeNull();
-      expect(screen.queryByRole('tab', { name: 'No limit' })).toBeNull();
-      expect(screen.queryByRole('tab', { name: '$100–200' })).toBeNull();
-    });
-
-    it('shows the controls when the flag is on', async () => {
+  describe('preference controls', () => {
+    it('shows the controls on a racket pick', async () => {
       mockGear(gearDoc());
       renderSheet();
       await openPrefs();
@@ -333,13 +314,11 @@ describe('GearPickSheet — the spec sheet has to be readable', () => {
  */
 describe('GearPickSheet — preferences are unknown when the gear read fails', () => {
   beforeEach(() => {
-    process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER = 'true';
   });
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
-    delete process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER;
   });
 
   function mockGearFailure() {
@@ -380,8 +359,7 @@ describe('GearPickSheet — preferences are unknown when the gear read fails', (
 });
 
 describe('GearPickSheet — the fit goal joins the summary line', () => {
-  beforeEach(() => { process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER = 'true'; });
-  afterEach(() => { cleanup(); vi.unstubAllGlobals(); delete process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER; });
+  afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
   it('names the goal once it has been answered, and not before', async () => {
     mockGear(gearDoc({ playFormat: 'doubles', budgetMaxCad: 200, fitGoal: 'more_control' }));
@@ -440,8 +418,7 @@ describe('GearPickSheet — alternatives and the feedback loop', () => {
       <FitHarness owned={owned} />
     </NextIntlClientProvider>,
   );
-  beforeEach(() => { process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER = 'true'; });
-  afterEach(() => { cleanup(); vi.unstubAllGlobals(); delete process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER; });
+  afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
   it('lists the two alternatives under "Or consider": chips on the left, price and difference on the right', async () => {
     mockAll(gearDoc());

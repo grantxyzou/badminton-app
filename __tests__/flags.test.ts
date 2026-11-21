@@ -6,7 +6,6 @@ const originalEnv = { ...process.env };
 describe('feature flags', () => {
   beforeEach(() => {
     delete process.env.NEXT_PUBLIC_FLAG_DESIGN_PREVIEW;
-    delete process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER;
     delete process.env.NEXT_PUBLIC_ENV;
   });
 
@@ -50,21 +49,6 @@ describe('feature flags', () => {
     process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP = 'true';
     expect(isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP')).toBe(true);
     delete process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP;
-  });
-
-  // Sets and deletes explicitly rather than relying on the `beforeEach` reset,
-  // which only clears some of the registered flags — env otherwise leaks between
-  // cases in this file.
-
-  describe('NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER', () => {
-    it('is on only for the literal string "true"', () => {
-      process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER = 'true';
-      expect(isFlagOn('NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER')).toBe(true);
-      for (const v of ['1', 'yes', 'TRUE', 'false', '']) {
-        process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER = v;
-        expect(isFlagOn('NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER')).toBe(false);
-      }
-    });
   });
 });
 

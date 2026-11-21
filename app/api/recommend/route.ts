@@ -7,12 +7,10 @@ import { ensureCatalogSeeded } from '@/lib/catalogSeed';
 import { isFlagOn } from '@/lib/flags';
 import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { verifyMemberAuth, nameOwnership, requireMember, isAdminAuthedWithMember } from '@/lib/auth';
-import { recommendRacket } from '@/lib/recommend';
 import { buildProfile } from '@/lib/racketProfile';
 import { recommendFit, comfortTensionDeltaLb, FIT_ENGINE_VERSION } from '@/lib/racketFit';
 import { fitReasonTexts } from '@/lib/fitReasonText';
 import { pairString } from '@/lib/stringPair';
-import { getCanonicalLevel } from '@/lib/levelStore';
 import { buildPickReasons, buildPickReasonKeys } from '@/lib/pickReasons';
 import { tallyClubGear, type ClubGearEntry } from '@/lib/clubGear';
 import type { CatalogItem, EquipmentCategory, PlayerGear } from '@/lib/types';
@@ -95,13 +93,6 @@ async function clubEntriesOrEmpty(groupId: string): Promise<ClubGearEntry[]> {
 }
 
 
-function reasonFor(item: CatalogItem, stage?: number): string {
-  if (typeof stage === 'number') {
-    return `Players around your level often reach for the ${item.brand} ${item.model}.`;
-  }
-  return `A solid all-rounder lots of players start with: the ${item.brand} ${item.model}.`;
-}
-
 /** Is the admin asking the person the recommendation is for? */
 async function adminIsSubject(req: NextRequest, memberId: string): Promise<boolean> {
   const admin = await isAdminAuthedWithMember(req);
@@ -124,9 +115,8 @@ export async function GET(req: NextRequest) {
   if (!checkRateLimit(`recommend:${ip}`, 30, 60 * 1000)) {
     return NextResponse.json({ item: null, reason: null });
   }
-  // Members only, on BOTH engine branches. The GEAR_RECOMMENDER branch below
-  // already demands the caller own the name; the flag-off branch was public by
-  // design, which members-only no longer allows.
+  // Members only. The name-ownership gate below additionally demands the
+  // caller own the name (or be an admin).
   const gate = await requireMember(req);
   if (!gate.ok) return gate.response;
   try {
@@ -145,221 +135,181 @@ export async function GET(req: NextRequest) {
     }
     const category = (rawCategory ?? 'racket') as EquipmentCategory;
 
-    if (isFlagOn('NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER')) {
-      // D8 privacy gate: engine reasons quote the player's individual skill
-      // ratings ("smash 3/5"), and member names are enumerable via
-      // GET /api/members. The flag-off branch below stays public because it
-      // returns only a coarse stage-derived pick.
-      // The GATE goes through the shared helper (`nameOwnership`, the answer
-      // behind `ownsNameOrAdmin`), not a local copy — an inlined gate cannot be found by the
-      // grep that asks which name-keyed reads are unguarded.
-      const ownership = name ? await nameOwnership(req, name) : null;
-      if (!name || !ownership?.allowed) {
-        return NextResponse.json({ error: 'forbidden' }, { status: 403 });
-      }
-      // Still needed separately below: an ADMIN passes the gate but is not the
-      // person being recommended to, and `recordServed` must not attribute a
-      // served item to a member who never saw it.
-      const member = verifyMemberAuth(req);
-      const ownsName = ownership?.selfMemberId != null;
-
-      if (!ENGINE_CATEGORIES.includes(category)) {
-        // A valid category we cannot score yet. NOT an error: the rail
-        // renders its parked card from this, and shoes/shuttles are a
-        // data-sourcing problem, not a request-shape problem. Checked before
-        // any profile/catalog work so an unsupported category is cheap.
-        return NextResponse.json({ item: null, reason: null, unavailable: 'no_engine' });
-      }
-
-      await ensureCatalogSeeded();
-      const subject = await resolveActiveSubject(resolveGroupId(req), name, verifyMemberAuth(req));
-      const { resources: assessments } = await getContainer('assessments')
-        .items.query({
-          query: 'SELECT c.memberId, c.takenAt, c.ratings FROM c WHERE c.memberId = @memberId',
-          parameters: [{ name: '@memberId', value: subject.memberId }],
-        })
-        .fetchAll();
-      const latest = (assessments as { memberId?: string; takenAt?: string; ratings?: unknown }[])
-        .filter((a) => a && a.memberId === subject.memberId && typeof a.takenAt === 'string')
-        .sort((a, b) => (a.takenAt! < b.takenAt! ? 1 : -1))[0];
-
-      await ensureGear();
-      // A missing gear doc (real-Cosmos 404) means "no gear yet" and is fine
-      // to treat as null. Any OTHER read failure must NOT be swallowed into
-      // null — that would silently re-enable the bug this feature fixes
-      // (recommending a racket the player already owns) and lose their
-      // format/budget, so it falls through to the outer catch's 500 instead
-      // (lying-empty-state rule).
-      const stored: PlayerGear | null = await readGearOrNull(subject.memberId);
-      // An admin asking on a member's behalf scores WITHOUT the arm answers
-      // (Claude Security F29, 2026-11-17). Its warnings and eased tension
-      // would otherwise say what the policy keeps for the member alone. Every
-      // read below uses this one copy, so no path reaches the answer.
-      // An admin signed in with the admin cookie alone is still the owner of
-      // their OWN answers.
-      const isSubject = ownsName || (stored !== null && await adminIsSubject(req, subject.memberId));
-      const gear: PlayerGear | null = stored && !isSubject ? withoutArmAnswers(stored) : stored;
-
-      const ratings = (latest?.ratings as Rating[]) ?? [];
-      const profile = buildProfile({ ratings, gear });
-
-      // D5: no ratings -> say so rather than score fourteen 3s and emit a
-      // confident, meaningless pick. The FIT engine has its own honest-state
-      // ladder (a racket in the bag, or a check-in, or goal + swing) and
-      // answers `needsFit` itself, so only the string branch keeps this gate.
-      if (!profile && category !== 'racket') {
-        return NextResponse.json({ item: null, reason: null, needsCheckIn: true });
-      }
-
-      const catalogItems = await catalogByCategory(category);
-
-      if (catalogItems.length === 0) {
-        return NextResponse.json({ item: null, reason: null, unavailable: 'no_catalog' });
-      }
-
-      // Pairing needs frames as well as strings, and `category` only fetched
-      // one of the two. Queried only when it is actually needed.
-      const catalogRackets = category === 'string'
-        ? await catalogByCategory('racket')
-        : [];
-
-      if (category === 'string') {
-        // The string engine reads skill dimensions, so it keeps the D5 gate
-        // even when the fit flag lifted it for rackets above.
-        if (!profile) return NextResponse.json({ item: null, reason: null, needsCheckIn: true });
-        // D1 ladder. The frame is resolved HERE rather than taken from the
-        // client: a racketId in the query string would let any caller pair
-        // against any frame, and the gear doc that answers rung one is already
-        // in hand server-side.
-        //
-        // Rung 1 is `profile.currentRacketId`, which buildProfile sets from
-        // activeRacket(gear).catalogId and ONLY when a catalogId exists — a
-        // free-text "Other" item is a label with no attributes behind it, so
-        // it correctly falls through to rung 2 rather than pairing against
-        // nothing.
-        let frame: CatalogItem | null = null;
-        let source: 'owned' | 'recommended' = 'owned';
-
-        if (profile.currentRacketId) {
-          frame = (catalogRackets as CatalogItem[])
-            .find((r) => r.id === profile.currentRacketId) ?? null;
-        }
-        if (!frame) {
-          source = 'recommended';
-          frame = recommendFit(buildFitInput(gear, ratings, catalogRackets as CatalogItem[]), catalogRackets as CatalogItem[]).top?.item ?? null;
-        }
-        // No frame from either rung means the racket catalog is empty or
-        // unscorable — a catalog problem, the same one the racket card reports.
-        if (!frame) return NextResponse.json({ item: null, reason: null, unavailable: 'no_catalog' });
-
-        // A sore arm lowers the tension a pound or two inside the frame's
-        // rated window — the one comfort effect the evidence supports. The
-        // SAME delta scores the candidates and names the tension below, or
-        // the card would name a string that won at a tension it then tells
-        // the member not to use.
-        const tensionDelta = comfortTensionDeltaLb(effectiveArmComfort(gear));
-        // The swing answer picks the tension band (docs/plans/tension-follows-swing.md);
-        // same rule as the delta: scored and named at one tension.
-        const pairing = pairString(frame, catalogItems as CatalogItem[], profile, tensionDelta, gear?.fitSwing);
-        // Every candidate rejected by the tension gate. Not a failure and not
-        // a catalog gap: this frame genuinely has no compatible string here.
-        if (!pairing) return NextResponse.json({ item: null, reason: null, unavailable: 'no_catalog' });
-
-        // This branch's "deliberately no drill grounding" note is now the
-        // general rule for every category — see lib/pickReasons.ts.
-        const reasons = buildPickReasons({
-          item: pairing.item,
-          engineReasons: pairing.reasons,
-          clubEntries: await clubEntriesOrEmpty(resolveGroupId(req)),
-        });
-
-        return NextResponse.json({
-          item: pairing.item,
-          reason: reasons[0] ?? null,
-          reasons,
-          warnings: pairing.warnings,
-          // Distinct from `warnings` all the way to the sheet — the caveat
-          // paragraph under the action carries this, the inline warning list
-          // carries those. See `StringPairing.provenance`.
-          provenance: pairing.provenance,
-          pairedWith: { label: `${frame.brand} ${frame.model}`, source },
-          tensionLbs: pairing.tensionLbs,
-        });
-      }
-
-      // The fit engine. Reasons are KEYS; the English strings alongside
-      // are transitional (`lib/fitReasonText.ts`) for the client that still
-      // reads `reasons: string[]`. Everything new is additive.
-      const fit = recommendFit(buildFitInput(gear, ratings, catalogItems as CatalogItem[]), catalogItems as CatalogItem[]);
-      if (fit.fitState === 'needsFit') {
-        return NextResponse.json({ item: null, reason: null, needsFit: true, engineVersion: FIT_ENGINE_VERSION, fitState: fit.fitState });
-      }
-      if (!fit.top) return NextResponse.json({ item: null, reason: null, unavailable: 'no_catalog' });
-      const [, clubEntries] = await Promise.all([
-        ownsName && member
-          ? recordServed(resolveGroupId(req), subject.memberId, member.name, fit.top.item.id, FIT_ENGINE_VERSION)
-          : Promise.resolve(),
-        clubEntriesOrEmpty(resolveGroupId(req)),
-      ]);
-      // The club line keeps its reserved last slot on the engine path too —
-      // as a KEY, so the rail can say it in the member's locale.
-      const reasonKeys = buildPickReasonKeys({ item: fit.top.item, engineReasons: fit.top.reasons, clubEntries });
-      const reasons = fitReasonTexts(reasonKeys);
-      return NextResponse.json({
-        item: fit.top.item,
-        reason: reasons[0] ?? null,
-        reasons,
-        warnings: fitReasonTexts(fit.top.warnings),
-        reasonKeys,
-        warningKeys: fit.top.warnings,
-        alternatives: fit.alternatives.map((a) => ({
-          item: a.item,
-          reasons: fitReasonTexts(a.reasons),
-          reasonKeys: a.reasons,
-          differsBy: a.differsBy ?? [],
-          differsByText: fitReasonTexts(a.differsBy ?? []),
-        })),
-        engineVersion: FIT_ENGINE_VERSION,
-        fitState: fit.fitState,
-      });
+    // D8 privacy gate: engine reasons quote the player's individual skill
+    // ratings ("smash 3/5"), and member names are enumerable via
+    // GET /api/members.
+    // The GATE goes through the shared helper (`nameOwnership`, the answer
+    // behind `ownsNameOrAdmin`), not a local copy — an inlined gate cannot be found by the
+    // grep that asks which name-keyed reads are unguarded.
+    const ownership = name ? await nameOwnership(req, name) : null;
+    if (!name || !ownership?.allowed) {
+      return NextResponse.json({ error: 'forbidden' }, { status: 403 });
     }
+    // Still needed separately below: an ADMIN passes the gate but is not the
+    // person being recommended to, and `recordServed` must not attribute a
+    // served item to a member who never saw it.
+    const member = verifyMemberAuth(req);
+    const ownsName = ownership?.selfMemberId != null;
 
-    // The flag-off branch scores RACKETS and nothing else — its catalog query
-    // below is literally `@category: 'racket'`. Before the rail existed that
-    // was harmless (the only caller never passed a category), but the rail asks
-    // per category, so on a deployment with GEAR_RECOMMENDER off (bpm-stable
-    // today) `?category=string` would have come back a racket and rendered
-    // under the STRINGS card. Same `unavailable: 'no_engine'` contract as the
-    // flag-on branch, so the rail's parked card covers both without knowing
-    // which branch answered.
-    if (category !== 'racket') {
+    if (!ENGINE_CATEGORIES.includes(category)) {
+      // A valid category we cannot score yet. NOT an error: the rail
+      // renders its parked card from this, and shoes/shuttles are a
+      // data-sourcing problem, not a request-shape problem. Checked before
+      // any profile/catalog work so an unsupported category is cheap.
       return NextResponse.json({ item: null, reason: null, unavailable: 'no_engine' });
     }
 
     await ensureCatalogSeeded();
+    const subject = await resolveActiveSubject(resolveGroupId(req), name, verifyMemberAuth(req));
+    const { resources: assessments } = await getContainer('assessments')
+      .items.query({
+        query: 'SELECT c.memberId, c.takenAt, c.ratings FROM c WHERE c.memberId = @memberId',
+        parameters: [{ name: '@memberId', value: subject.memberId }],
+      })
+      .fetchAll();
+    const latest = (assessments as { memberId?: string; takenAt?: string; ratings?: unknown }[])
+      .filter((a) => a && a.memberId === subject.memberId && typeof a.takenAt === 'string')
+      .sort((a, b) => (a.takenAt! < b.takenAt! ? 1 : -1))[0];
 
-    // Stage now rides the canonical skill level (folds self check-ins + game
-    // calibration + Member.stage as fallback) instead of the rarely-set
-    // Member.stage alone. null canonical stage → undefined → all-rounder pick.
-    // We read only `.stage` (a coarse 1–6) and return only {item, reason}, so
-    // nothing from the private CanonicalLevel leaks through this public route.
-    let stage: number | undefined;
-    if (name) {
-      const subject = await resolveActiveSubject(resolveGroupId(req), name, verifyMemberAuth(req));
-      const canonical = await getCanonicalLevel(subject, resolveGroupId(req));
-      stage = typeof canonical.stage === 'number' ? canonical.stage : undefined;
+    await ensureGear();
+    // A missing gear doc (real-Cosmos 404) means "no gear yet" and is fine
+    // to treat as null. Any OTHER read failure must NOT be swallowed into
+    // null — that would silently re-enable the bug this feature fixes
+    // (recommending a racket the player already owns) and lose their
+    // format/budget, so it falls through to the outer catch's 500 instead
+    // (lying-empty-state rule).
+    const stored: PlayerGear | null = await readGearOrNull(subject.memberId);
+    // An admin asking on a member's behalf scores WITHOUT the arm answers
+    // (Claude Security F29, 2026-11-17). Its warnings and eased tension
+    // would otherwise say what the policy keeps for the member alone. Every
+    // read below uses this one copy, so no path reaches the answer.
+    // An admin signed in with the admin cookie alone is still the owner of
+    // their OWN answers.
+    const isSubject = ownsName || (stored !== null && await adminIsSubject(req, subject.memberId));
+    const gear: PlayerGear | null = stored && !isSubject ? withoutArmAnswers(stored) : stored;
+
+    const ratings = (latest?.ratings as Rating[]) ?? [];
+    const profile = buildProfile({ ratings, gear });
+
+    // D5: no ratings -> say so rather than score fourteen 3s and emit a
+    // confident, meaningless pick. The FIT engine has its own honest-state
+    // ladder (a racket in the bag, or a check-in, or goal + swing) and
+    // answers `needsFit` itself, so only the string branch keeps this gate.
+    if (!profile && category !== 'racket') {
+      return NextResponse.json({ item: null, reason: null, needsCheckIn: true });
     }
 
-    const items = await catalogByCategory('racket');
+    const catalogItems = await catalogByCategory(category);
 
-    // recommendRacket filters to category='racket' internally, so the mock store
-    // ignoring @category is harmless here.
-    const item = recommendRacket({ stage, catalog: items as CatalogItem[] });
-    // An empty catalog is a SOURCING gap, not a failure — tag it so the rail
-    // can tell it apart from the one other 200 that carries no item, the
-    // rate-limit refusal above, which must render as an error.
-    if (!item) return NextResponse.json({ item: null, reason: null, unavailable: 'no_catalog' });
-    return NextResponse.json({ item, reason: reasonFor(item, stage) });
+    if (catalogItems.length === 0) {
+      return NextResponse.json({ item: null, reason: null, unavailable: 'no_catalog' });
+    }
+
+    // Pairing needs frames as well as strings, and `category` only fetched
+    // one of the two. Queried only when it is actually needed.
+    const catalogRackets = category === 'string'
+      ? await catalogByCategory('racket')
+      : [];
+
+    if (category === 'string') {
+      // The string engine reads skill dimensions, so it keeps the D5 gate
+      // even when the fit flag lifted it for rackets above.
+      if (!profile) return NextResponse.json({ item: null, reason: null, needsCheckIn: true });
+      // D1 ladder. The frame is resolved HERE rather than taken from the
+      // client: a racketId in the query string would let any caller pair
+      // against any frame, and the gear doc that answers rung one is already
+      // in hand server-side.
+      //
+      // Rung 1 is `profile.currentRacketId`, which buildProfile sets from
+      // activeRacket(gear).catalogId and ONLY when a catalogId exists — a
+      // free-text "Other" item is a label with no attributes behind it, so
+      // it correctly falls through to rung 2 rather than pairing against
+      // nothing.
+      let frame: CatalogItem | null = null;
+      let source: 'owned' | 'recommended' = 'owned';
+
+      if (profile.currentRacketId) {
+        frame = (catalogRackets as CatalogItem[])
+          .find((r) => r.id === profile.currentRacketId) ?? null;
+      }
+      if (!frame) {
+        source = 'recommended';
+        frame = recommendFit(buildFitInput(gear, ratings, catalogRackets as CatalogItem[]), catalogRackets as CatalogItem[]).top?.item ?? null;
+      }
+      // No frame from either rung means the racket catalog is empty or
+      // unscorable — a catalog problem, the same one the racket card reports.
+      if (!frame) return NextResponse.json({ item: null, reason: null, unavailable: 'no_catalog' });
+
+      // A sore arm lowers the tension a pound or two inside the frame's
+      // rated window — the one comfort effect the evidence supports. The
+      // SAME delta scores the candidates and names the tension below, or
+      // the card would name a string that won at a tension it then tells
+      // the member not to use.
+      const tensionDelta = comfortTensionDeltaLb(effectiveArmComfort(gear));
+      // The swing answer picks the tension band (docs/plans/tension-follows-swing.md);
+      // same rule as the delta: scored and named at one tension.
+      const pairing = pairString(frame, catalogItems as CatalogItem[], profile, tensionDelta, gear?.fitSwing);
+      // Every candidate rejected by the tension gate. Not a failure and not
+      // a catalog gap: this frame genuinely has no compatible string here.
+      if (!pairing) return NextResponse.json({ item: null, reason: null, unavailable: 'no_catalog' });
+
+      // This branch's "deliberately no drill grounding" note is now the
+      // general rule for every category — see lib/pickReasons.ts.
+      const reasons = buildPickReasons({
+        item: pairing.item,
+        engineReasons: pairing.reasons,
+        clubEntries: await clubEntriesOrEmpty(resolveGroupId(req)),
+      });
+
+      return NextResponse.json({
+        item: pairing.item,
+        reason: reasons[0] ?? null,
+        reasons,
+        warnings: pairing.warnings,
+        // Distinct from `warnings` all the way to the sheet — the caveat
+        // paragraph under the action carries this, the inline warning list
+        // carries those. See `StringPairing.provenance`.
+        provenance: pairing.provenance,
+        pairedWith: { label: `${frame.brand} ${frame.model}`, source },
+        tensionLbs: pairing.tensionLbs,
+      });
+    }
+
+    // The fit engine. Reasons are KEYS; the English strings alongside
+    // are transitional (`lib/fitReasonText.ts`) for the client that still
+    // reads `reasons: string[]`. Everything new is additive.
+    const fit = recommendFit(buildFitInput(gear, ratings, catalogItems as CatalogItem[]), catalogItems as CatalogItem[]);
+    if (fit.fitState === 'needsFit') {
+      return NextResponse.json({ item: null, reason: null, needsFit: true, engineVersion: FIT_ENGINE_VERSION, fitState: fit.fitState });
+    }
+    if (!fit.top) return NextResponse.json({ item: null, reason: null, unavailable: 'no_catalog' });
+    const [, clubEntries] = await Promise.all([
+      ownsName && member
+        ? recordServed(resolveGroupId(req), subject.memberId, member.name, fit.top.item.id, FIT_ENGINE_VERSION)
+        : Promise.resolve(),
+      clubEntriesOrEmpty(resolveGroupId(req)),
+    ]);
+    // The club line keeps its reserved last slot on the engine path too —
+    // as a KEY, so the rail can say it in the member's locale.
+    const reasonKeys = buildPickReasonKeys({ item: fit.top.item, engineReasons: fit.top.reasons, clubEntries });
+    const reasons = fitReasonTexts(reasonKeys);
+    return NextResponse.json({
+      item: fit.top.item,
+      reason: reasons[0] ?? null,
+      reasons,
+      warnings: fitReasonTexts(fit.top.warnings),
+      reasonKeys,
+      warningKeys: fit.top.warnings,
+      alternatives: fit.alternatives.map((a) => ({
+        item: a.item,
+        reasons: fitReasonTexts(a.reasons),
+        reasonKeys: a.reasons,
+        differsBy: a.differsBy ?? [],
+        differsByText: fitReasonTexts(a.differsBy ?? []),
+      })),
+      engineVersion: FIT_ENGINE_VERSION,
+      fitState: fit.fitState,
+    });
   } catch (error) {
     console.error('GET recommend error:', error);
     return NextResponse.json({ error: 'load_failed' }, { status: 500 });
