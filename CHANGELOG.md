@@ -8,6 +8,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## The card fee goes on Visa and Mastercard credit cards only (2026-11-20)
+
+- **When the organiser turns the card fee on, only Visa and Mastercard credit cards pay it** (`docs/plans/card-surcharge.md`). American Express and other card brands pay no fee, like debit cards, until the club has checked those brands' own rules.
+- The note under "Pay by card" and the card form now say "Visa and Mastercard credit cards", and the organiser's switch explains the same.
+- **While the fee is on, the Pay by card button itself shows "+2.4% fee"**, with the note below it saying which cards pay it.
+
 ## Unreleased
 
 - **The gear recommender's feature flag is retired** (`NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER`, on in production since it shipped). Nothing changes for members: the skill-scored racket and string picks were already what everyone saw. The old stage-derived "all-rounder" pick, which only a deployment with the flag off ever served, is gone.

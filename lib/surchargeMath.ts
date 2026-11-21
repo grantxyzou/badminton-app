@@ -12,6 +12,19 @@ export const SURCHARGE_MAX_BPS = 240;
 /** What a club starts at when it first turns the fee on. */
 export const SURCHARGE_DEFAULT_BPS = 240;
 
+/**
+ * The card brands a fee may go on: Visa and Mastercard, whose Canadian rules
+ * (the 2022 class settlement) the club gave notice under. American Express
+ * and every other brand pay no fee until the club has checked that brand's
+ * own rules and given whatever notice it asks for (docs/plans/card-surcharge.md).
+ */
+export const SURCHARGE_BRANDS: readonly string[] = ['visa', 'mastercard'];
+
+/** A card that may carry the fee: a Visa or Mastercard CREDIT card, never debit or prepaid. */
+export function surchargeableCard(funding: string | null | undefined, brand: string | null | undefined): boolean {
+  return funding === 'credit' && SURCHARGE_BRANDS.includes((brand ?? '').toLowerCase());
+}
+
 /** A rate the toggle accepts: a whole number of basis points, 1 to 240. */
 export function validSurchargeBps(bps: unknown): bps is number {
   return typeof bps === 'number' && Number.isInteger(bps) && bps >= 1 && bps <= SURCHARGE_MAX_BPS;

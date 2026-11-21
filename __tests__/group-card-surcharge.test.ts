@@ -239,6 +239,17 @@ describe('what a member sees before paying', () => {
       expect([funding, st, quote.feeCents, quote.totalCents]).toEqual([funding, st, 0, 2700]);
     }
   });
+
+  it('Visa and Mastercard credit cards only: Amex and other brands pay no fee', async () => {
+    feeOn();
+    for (const [brand, fee] of [['visa', 64], ['mastercard', 64], ['amex', 0], ['discover', 0], ['unionpay', 0]] as const) {
+      resetIntents();
+      card = { funding: 'credit', brand, last4: '0005' };
+      surchargeDetail = { status: 'available', maximum_amount: 64 };
+      const quote = await (await step({ step: 'quote', paymentMethodId: 'pm_card_1' })).json();
+      expect([brand, quote.feeCents, quote.totalCents]).toEqual([brand, fee, 2700 + fee]);
+    }
+  });
 });
 
 function resetIntents() {

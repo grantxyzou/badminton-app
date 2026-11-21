@@ -1,8 +1,18 @@
 import { describe, it, expect } from 'vitest';
-import { feeShareOf, linesPartOfRefund, maxAllowedSurcharge, surchargeCents, validSurchargeBps } from '@/lib/surchargeMath';
+import { feeShareOf, linesPartOfRefund, maxAllowedSurcharge, surchargeableCard, surchargeCents, validSurchargeBps } from '@/lib/surchargeMath';
 
 /** The card fee's arithmetic (docs/plans/card-surcharge.md): always rounded DOWN, never over 2.4%. */
 describe('surcharge math', () => {
+  it('only Visa and Mastercard credit cards carry the fee', () => {
+    expect(surchargeableCard('credit', 'visa')).toBe(true);
+    expect(surchargeableCard('credit', 'Mastercard')).toBe(true);
+    expect(surchargeableCard('credit', 'amex')).toBe(false);
+    expect(surchargeableCard('debit', 'visa')).toBe(false);
+    expect(surchargeableCard('prepaid', 'mastercard')).toBe(false);
+    expect(surchargeableCard(undefined, 'visa')).toBe(false);
+    expect(surchargeableCard('credit', null)).toBe(false);
+  });
+
   it('2.4% of the lines, rounded down', () => {
     expect(surchargeCents(2700, 240)).toBe(64); // 64.8
     expect(surchargeCents(1373, 240)).toBe(32); // 32.95

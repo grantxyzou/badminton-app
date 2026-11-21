@@ -90,6 +90,9 @@ describe('Pay by card', () => {
     const post = fetchSpy.mock.calls.find(([, i]) => (i as RequestInit | undefined)?.method === 'POST');
     expect((post![1] as RequestInit).body).toBeUndefined();
     expect(open).not.toHaveBeenCalled();
+    // No card fee: no "+% fee" on the button and no note under it.
+    expect(screen.queryByTestId('card-fee-tag')).toBeNull();
+    expect(screen.queryByTestId('card-fee-note')).toBeNull();
   });
 
   it('with a card fee: says so under the button, and the button opens the in-app form, not Stripe’s page', async () => {
@@ -97,7 +100,8 @@ describe('Pay by card', () => {
       new Response(JSON.stringify({ ...OWED, cardFee: { bps: 240 } }), { status: 200 }),
     );
     wrap(<UnpaidSessionsCard name="Lin" />);
-    expect((await screen.findByTestId('card-fee-note')).textContent).toBe('Credit cards add 2.4%. Debit cards pay no fee.');
+    expect((await screen.findByTestId('card-fee-note')).textContent).toBe('Visa and Mastercard credit cards add 2.4%. Debit and other cards pay no fee.');
+    expect(screen.getByTestId('card-fee-tag').textContent).toBe('+2.4% fee');
     fireEvent.click(screen.getByRole('button', { name: /Pay by card/ }));
     expect(await screen.findByTestId('card-pay-sheet')).toBeTruthy();
     expect(fetchSpy.mock.calls.some(([, i]) => (i as RequestInit | undefined)?.method === 'POST')).toBe(false);

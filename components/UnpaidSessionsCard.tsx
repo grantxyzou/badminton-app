@@ -533,7 +533,9 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
               {spend === 'error' && <p className="field-error" role="alert">{tCredit('error')}</p>}
             </div>
           )}
-          {data.cardPay === true && data.totalOwed > 0 && (
+          {data.cardPay === true && data.totalOwed > 0 && (() => {
+            const feePct = data.cardFee ? `${(data.cardFee.bps / 100).toFixed(data.cardFee.bps % 10 === 0 ? 1 : 2)}%` : null;
+            return (
             <div className="flex flex-col gap-2">
               <button type="button" className="btn-ghost pay-card-btn" disabled={!online || card === 'busy'} onClick={() => void payByCard()}>
                 <span>{card === 'busy' ? tPay('cardBusy') : tPay('card')}</span>
@@ -544,16 +546,23 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
                     <img key={m} src={`${BASE}/brand/cards/${m}.svg`} alt="" width={28} height={18} decoding="async" />
                   ))}
                 </span>
+                {/* While the club charges a card fee, the button itself says so
+                    (Grant, 2026-11-21: "Say that there is a % fee whenever the
+                    toggle turns on"); the line below says which cards. */}
+                {feePct && (
+                  <span className="pay-card-fee" data-testid="card-fee-tag">{tPay('cardFeeTag', { pct: feePct })}</span>
+                )}
               </button>
-              {data.cardFee && (
+              {feePct && (
                 <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)' }} data-testid="card-fee-note">
-                  {tPay('cardFeeNote', { pct: `${(data.cardFee.bps / 100).toFixed(data.cardFee.bps % 10 === 0 ? 1 : 2)}%` })}
+                  {tPay('cardFeeNote', { pct: feePct })}
                 </p>
               )}
               {card === 'error' && <p className="field-error" role="alert">{tPay('cardError')}</p>}
               {data.cardFee && <CardPaySheet open={cardForm} onClose={() => setCardForm(false)} />}
             </div>
-          )}
+            );
+          })()}
           {canSayPaid && data.totalOwed > 0 && (
             sent === 'done' ? (
               <p className="fs-sm motion-fade" role="status" style={{ margin: '0', color: 'var(--text-secondary)' }}>

@@ -52,7 +52,7 @@ describe('CardPaySheet', () => {
   it('a credit card: the fee and the total are shown before Pay, and Pay charges the quoted intent', async () => {
     const calls = serve(credit);
     wrap();
-    expect(await screen.findByText(/A credit card adds a 2.4% card fee/)).toBeTruthy();
+    expect(await screen.findByText(/A Visa or Mastercard credit card adds a 2.4% card fee/)).toBeTruthy();
     fireEvent.click(await screen.findByTestId('card-pay-continue'));
     const review = await screen.findByTestId('card-pay-review');
     expect(review.textContent).toContain('Card fee (2.4%, credit card)');
