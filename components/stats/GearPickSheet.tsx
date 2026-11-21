@@ -6,7 +6,6 @@ import ErrorState from '@/components/primitives/ErrorState';
 import StatusBadge from '@/components/primitives/StatusBadge';
 import ListRow from '@/components/primitives/ListRow';
 import { recordEngagement } from '@/lib/engagement';
-import { isFlagOn } from '@/lib/flags';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '../BottomSheet';
 import type { GearPick } from './gearPick';
 import { budgetWords, type UseGear } from './useGear';
@@ -209,10 +208,6 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
   // a parked category cannot happen (no pick, no sheet) but the type says so.
   const beaconMeta = { engineVersion: pick?.engineVersion, category: category === 'racket' || category === 'string' ? category : undefined };
 
-  // The two preferences the scoring engine actually reads. Only the
-  // skill-scored engine consumes them, so the controls follow its flag rather
-  // than the sheet's.
-  const recommenderOn = isFlagOn('NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER');
   // A failed or still-pending gear read means the stored preferences are
   // UNKNOWN. Lighting `both` / `no cap` out of the `??` fallbacks would assert
   // a setting the server never reported — the same unknown-as-confirmed bug
@@ -263,7 +258,8 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
     else setAddError(t('pickSheetAddError'));
   }
 
-  const showPrefs = recommenderOn && category === 'racket';
+  // The two preferences the racket engine reads (format and budget).
+  const showPrefs = category === 'racket';
 
   /* A failed or pending gear read means the preferences are UNKNOWN, and the
      summary sentence must not be written from the `??` fallbacks — it would

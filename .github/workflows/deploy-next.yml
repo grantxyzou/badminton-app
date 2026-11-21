@@ -114,7 +114,6 @@ jobs:
           # NEXT_PUBLIC_* is baked at build time, so a flag must live HERE -- an
           # Azure App Setting cannot turn it on.
           NEXT_PUBLIC_FLAG_DESIGN_PREVIEW: 'true'
-          NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER: 'true'
           # E-transfer auto-detection (docs/plans/payments.md). ON since
           # 2026-10-03, after a real notification's headers confirmed the
           # anti-spoof check. Inert until an admin mints a key and installs

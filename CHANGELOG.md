@@ -8,6 +8,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Unreleased
+
+- **The gear recommender's feature flag is retired** (`NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER`, on in production since it shipped). Nothing changes for members: the skill-scored racket and string picks were already what everyone saw. The old stage-derived "all-rounder" pick, which only a deployment with the flag off ever served, is gone.
+
+
 ## Signing in: one layout, buttons where the thumb is (2026-11-20)
 
 The sign-in pages, redrawn on the canvas and built (`docs/plans/sign-in-redesign.md`; Grant: "A log in screen should be clean and easy", "The title should always be on the same height ... CTA button should not jump around").

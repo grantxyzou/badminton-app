@@ -33,11 +33,9 @@ describe('GET /api/recommend — the fit engine', () => {
     __resetCatalogSeedForTests();
     _resetCalibrationCache();
     setupAdminPin();
-    process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER = 'true';
         seedMember('Lin', { id: 'member-lin' });
   });
   afterAll(() => {
-    delete process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER;
       });
 
   it('still refuses (401) without the member cookie — reasons quote the member', async () => {
