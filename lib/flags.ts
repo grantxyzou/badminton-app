@@ -17,7 +17,6 @@
 
 export type FlagName =
   | 'NEXT_PUBLIC_FLAG_DESIGN_PREVIEW'
-  | 'NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER'
   | 'NEXT_PUBLIC_FLAG_STRINGING'
   | 'NEXT_PUBLIC_FLAG_NATIVE_MIGRATE'
   | 'NEXT_PUBLIC_FLAG_MULTI_GROUP'
@@ -76,11 +75,6 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     plannedRemoval: '2026-12-15',
     note: 'Kept past its 2026-11-15 date (Grant, 2026-11-16): it is the one app-wide kill switch for stringing, which takes money. Each club already turns stringing on or off itself (`run.stringing`, docs/plans/stringing-add-on.md), so retiring this loses only the switch for every club at once. Ask again on the new date.',
   },
-  NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER: {
-    description: 'Skill-scored equipment recommendations: the racket engine (lib/racketRecommend.ts) AND the string pairing engine (lib/stringPair.ts), both reached through GET /api/recommend. On for bpm-next, off on bpm-stable, which falls back to the coarse stage-derived racket pick. Renamed from NEXT_PUBLIC_FLAG_RACKET_RECOMMENDER when string pairing landed and the old name stopped describing what it gates.',
-    owner: 'grant',
-    plannedRemoval: '2026-11-19',
-  },
   NEXT_PUBLIC_FLAG_LEDGER_MIRROR: {
     description:
       'Phase 2 of docs/plans/payments.md, stage 1: every charge and payment ALSO writes an append-only `ledger` entry beside the fields the app reads (Player.paid, owedAmount, StringingJob.paidAt stay the truth). Read SERVER-side by lib/ledgerMirror.ts; off, the mirror is a no-op and the backfill route 404s. Nothing visible changes either way.',
@@ -129,8 +123,6 @@ function readFlag(name: FlagName): string | undefined {
   switch (name) {
     case 'NEXT_PUBLIC_FLAG_DESIGN_PREVIEW':
       return process.env.NEXT_PUBLIC_FLAG_DESIGN_PREVIEW;
-    case 'NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER':
-      return process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER;
     case 'NEXT_PUBLIC_FLAG_STRINGING':
       return process.env.NEXT_PUBLIC_FLAG_STRINGING;
     case 'NEXT_PUBLIC_FLAG_NATIVE_MIGRATE':

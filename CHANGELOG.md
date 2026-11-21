@@ -8,6 +8,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Unreleased
+
+- **The gear recommender's feature flag is retired** (`NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER`, on in production since it shipped). Nothing changes for members: the skill-scored racket and string picks were already what everyone saw. The old stage-derived "all-rounder" pick, which only a deployment with the flag off ever served, is gone.
+
 ## Paying by e-transfer: tap to copy the address and the amount (2026-11-20)
 
 - **Home's balance card shows the club's e-transfer address and the amount as two rows; tap one to copy it**, then paste it into your bank's app (`docs/plans/etransfer-copy.md`). The amount copies as a plain number (`27.00`), which banks accept. The address used to be a line of text you had to type out.

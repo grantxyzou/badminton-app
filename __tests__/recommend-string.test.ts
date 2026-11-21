@@ -79,12 +79,10 @@ describe('GET /api/recommend?category=string', () => {
     resetMockStore();
     __resetCatalogSeedForTests();
     setupAdminPin();
-    process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER = 'true';
     seedAdminMember();
   });
 
   afterEach(() => {
-    delete process.env.NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER;
   });
 
   it('pairs against the racket the member actually owns', async () => {

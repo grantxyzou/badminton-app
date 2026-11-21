@@ -369,13 +369,9 @@ export function useGearPicks(
               status: 'ready',
               pick: {
                 item: d.item as CatalogItem,
-                // Two response shapes, not one. Only the engine paths return a
-                // `reasons` array; the non-recommender path (route.ts:311, the
-                // one bpm-stable always takes because deploy-stable.yml sets
-                // NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER 'false') returns a singular
-                // `reason` string. Reading only the array threw that away and
-                // left the pick sheet — whose entire job is explaining one
-                // recommendation — with a heading and an Add button and no why.
+                // The route sends a `reasons` array; the singular `reason` is
+                // read only as a fallback, so a pick never reaches the sheet
+                // — whose whole job is explaining it — with no why.
                 reasons: Array.isArray(d.reasons)
                   ? d.reasons
                   : (typeof d.reason === 'string' && d.reason ? [d.reason] : []),

@@ -105,7 +105,7 @@ paths:
   retires. `maxFlexDemand` is still exported for that legacy path only — the
   fit engine no longer reads it.
 
-### Racket recommender (`NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER`) — off the route since the flag above retired (2026-10-24); `recommendRackets` stays for Phase 4
+### Racket recommender — off the route since the flag above retired (2026-10-24); `recommendRackets` stays for Phase 4. Its own flag `NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER` retired 2026-11-21, taking the stage-derived fallback pick with it
 
 Scores the **fourteen check-in skill ratings** rather than the old
 `Member.stage` (optional, rarely set — so it showed nearly everyone the same
@@ -169,12 +169,13 @@ racket and never excluded what they owned).
   baked into the static footnote copy: the other 33 ARE
   manufacturer-published, and saying otherwise about them is a false claim,
   not a cautious one.
-- **The flag-on route requires auth; flag-off stays public.** `GET
-  /api/recommend` was unauthenticated because it returned only a coarse
-  stage-derived pick. Engine reasons quote individual ratings ("smash 4/5"),
-  and member names are enumerable via `GET /api/members`, so the flag-on branch
-  gates on a `member_session` cookie for that name or admin (same gate as
-  `/api/stats/level`). Rate limiting stays first (security rule 4).
+- **The route requires the name's owner or an admin.** `GET /api/recommend`
+  was once unauthenticated because it returned only a coarse stage-derived
+  pick (gone with the flag, 2026-11-21). Engine reasons quote individual
+  ratings ("smash 4/5"), and member names are enumerable via `GET
+  /api/members`, so it gates on a `member_session` cookie for that name or
+  admin (same gate as `/api/stats/level`). Rate limiting stays first
+  (security rule 4).
 - **The fit questionnaire WAS its own sheet — `GearFitSheet`** (DELETED
   2026-10-19 when `NEXT_PUBLIC_FLAG_GEAR_PAGES` retired; `FitProfilePage` asks the
   questions now, so read what follows as the history of rules that page
