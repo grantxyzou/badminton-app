@@ -12,6 +12,7 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 - **When the organiser turns the card fee on, only Visa and Mastercard credit cards pay it** (`docs/plans/card-surcharge.md`). American Express and other card brands pay no fee, like debit cards, until the club has checked those brands' own rules.
 - The note under "Pay by card" and the card form now say "Visa and Mastercard credit cards", and the organiser's switch explains the same.
+- **While the fee is on, the Pay by card button itself shows "+2.4% fee"**, with the note below it saying which cards pay it.
 
 ## Paying by e-transfer: tap to copy the address and the amount (2026-11-20)
 

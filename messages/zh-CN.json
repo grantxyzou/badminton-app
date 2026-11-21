@@ -687,6 +687,7 @@
         "cancelledBody": "没有扣款。",
         "back": "返回 %APP_SHORT% App"
       },
+      "cardFeeTag": "+{pct} 手续费",
       "cardFeeNote": "Visa 和 Mastercard 信用卡另收 {pct}。借记卡和其他卡不收手续费。",
       "cardForm": {
         "title": "刷卡支付",

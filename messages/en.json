@@ -687,6 +687,7 @@
         "cancelledBody": "Nothing was charged.",
         "back": "Back to the %APP_SHORT% app"
       },
+      "cardFeeTag": "+{pct} fee",
       "cardFeeNote": "Visa and Mastercard credit cards add {pct}. Debit and other cards pay no fee.",
       "cardForm": {
         "title": "Pay by card",
