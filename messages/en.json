@@ -721,7 +721,8 @@
       "label": "Your credit",
       "balance": "You have {amount} in credit.",
       "pay": "Pay with credit",
-      "notEnough": "Your credit doesn\u2019t cover a whole session yet \u2014 it stays for next time.",
+      "use": "Use {amount} credit",
+      "notEnough": "Nothing to pay with credit yet. It works once a session\u2019s bill is final.",
       "error": "Couldn\u2019t use your credit \u2014 try again."
     },
     "guest": {

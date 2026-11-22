@@ -314,82 +314,143 @@ async function writeRefund(scope: GroupScope, memberId: string, line: SpendLine,
   }
 }
 
+/** One credit spend as the ledger holds it, sized to what is put against the row. */
+type Spend = { id: string; n: number; amountCents: number; at: string };
+
+/** `n` of a `spend:<ref>:<n>` / `refund:<ref>:<n>` id, or -1. */
+const idNumber = (id: string, prefix: string, ref: string): number => {
+  const head = `${prefix}:${ref}:`;
+  if (!id.startsWith(head)) return -1;
+  const n = Number(id.slice(head.length));
+  return Number.isInteger(n) && n >= 0 ? n : -1;
+};
+
 /**
- * Mark the row paid by credit, stamping `paidAt` with the SPEND's time (the
- * moment the credit was taken), which is also how a stringing job remembers
- * it was credit that paid it (see `'credit'` below).
+ * Put ONE credit spend onto its row (docs/plans/partial-credit.md), stamping
+ * `paidAt` with the SPEND's time (the moment the credit was taken).
  *
- *   'paid'    — by this call.
- *   'credit'  — already paid, BY THIS CREDIT: a session row says
- *               `paidVia: 'credit'`; a stringing job carries no `paidVia`, so
- *               it is credit's when its `paidAt` IS the spend's `createdAt`
- *               (the live path and the stale finish both stamp it so). The
- *               common case never gets here: `refundStaleSpends` answers it
- *               from the mirror's payment entry without reading the row.
- *   'already' — paid some other way (an e-transfer, an admin's tap): the
- *               credit must go back.
+ *   'paid'    — by this call, and the row is now paid in full.
+ *   'part'    — by this call, and the row still owes the rest (a session
+ *               row only: `paidAmount`, "paid $10 of $15").
+ *   'credit'  — this spend had already landed: the row lists it in
+ *               `creditSpends`, or (a row from before that field) it is paid
+ *               with `paidVia: 'credit'`; a stringing job carries no list,
+ *               so it is credit's when its `paidAt` IS the spend's time.
+ *   'already' — paid some other way, or the spend no longer fits what the
+ *               row owes (a bill lowered since): the credit must go back.
  *   'gone'    — covered, deleted, or removed before any bill froze on it:
  *               the credit must go back too.
  */
-async function markRowPaid(
+async function applyCreditToRow(
   scope: GroupScope,
   line: SpendLine,
-  opts: { spendAt: string; now: string },
-): Promise<'paid' | 'credit' | 'already' | 'gone'> {
+  spend: Spend,
+  now: string,
+): Promise<'paid' | 'part' | 'credit' | 'already' | 'gone'> {
   if (line.kind === 'session') {
     const row = await scope.read<Player & Record<string, unknown>>('players', line.ref, line.pk);
     // A row removed AFTER its bill froze still owes it (Home shows it, and
     // "Remove without covering" means exactly that), so credit may pay it;
     // only a removal with no frozen bill on the row is "gone" (audit, 2026-11-05).
     if (!row || row.writtenOff === true || (row.removed === true && typeof row.settledAt !== 'string')) return 'gone';
-    if (row.paid === true) return row.paidVia === 'credit' ? 'credit' : 'already';
-    // Credit pays what is still owed in full: the whole bill is received now.
-    const written = await scope.replace('players', { ...row, paid: true, paidAt: opts.spendAt, paidVia: 'credit', paidAmount: row.owedAmount }, line.pk);
-    if (!written) return 'gone';
-    await mirrorPaid(scope, written as unknown as Player, line.amountCents); // the owed side; the credit side is the spend entry
-    return 'paid';
+    const landed = Array.isArray(row.creditSpends) ? (row.creditSpends as string[]) : null;
+    if (landed?.includes(spend.id)) return 'credit';
+    if (row.paid === true) return row.paidVia === 'credit' && landed === null ? 'credit' : 'already';
+    const owedCents = Math.round(Number(row.owedAmount ?? 0) * 100);
+    const receivedCents = Math.round(Number(row.paidAmount ?? 0) * 100);
+    const remaining = owedCents - receivedCents;
+    // Never more than the line still owes: more would be a guess.
+    if (spend.amountCents <= 0 || spend.amountCents > remaining) return 'already';
+    const full = spend.amountCents === remaining;
+    const written = await scope.replace(
+      'players',
+      {
+        ...row,
+        paid: full,
+        paidAt: spend.at,
+        paidVia: 'credit',
+        paidAmount: (receivedCents + spend.amountCents) / 100,
+        creditSpends: [...(landed ?? []), spend.id],
+      },
+      line.pk,
+    );
+    if (!written) {
+      // Changed under us: if another request landed THIS spend, it is done;
+      // anything else and the credit goes back.
+      const fresh = await scope.read<Player & Record<string, unknown>>('players', line.ref, line.pk);
+      return Array.isArray(fresh?.creditSpends) && (fresh.creditSpends as string[]).includes(spend.id) ? 'credit' : 'gone';
+    }
+    // The owed side; the credit side is the spend entry.
+    await mirrorPaid(scope, written as unknown as Player, spend.amountCents);
+    return full ? 'paid' : 'part';
   }
   const job = await scope.read<StringingJob>('stringingJobs', line.ref, line.pk);
   if (!job) return 'gone';
-  if (job.paidAt !== null) return job.paidVia === 'credit' || job.paidAt === opts.spendAt ? 'credit' : 'already';
-  const written = await scope.replace('stringingJobs', { ...job, paidAt: opts.spendAt, paidVia: 'credit' as const, updatedAt: opts.now }, line.pk);
-  if (!written) return 'gone';
+  if (job.paidAt !== null) return job.paidVia === 'credit' || job.paidAt === spend.at ? 'credit' : 'already';
+  const written = await scope.replace('stringingJobs', { ...job, paidAt: spend.at, paidVia: 'credit' as const, updatedAt: now }, line.pk);
+  if (!written) {
+    const fresh = await scope.read<StringingJob>('stringingJobs', line.ref, line.pk);
+    return fresh?.paidAt === spend.at ? 'credit' : 'gone';
+  }
   await mirrorStringingChanged(scope, job, written, 'credit');
   return 'paid';
+}
+
+/** A line's credit, read from the ledger: its spends and what of them is shown landed. */
+function creditPicture(entries: readonly LedgerEntry[], refId: string, voided: ReadonlySet<string>) {
+  const forLine = entries.filter(
+    (e) => e.ref?.id === refId && accountOf(e) === 'member_credit' && (e.kind === 'credit_spend' || e.kind === 'credit_refund'),
+  );
+  const spends = forLine
+    .filter((e) => e.kind === 'credit_spend')
+    .sort((a, b) => (a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0));
+  const refundedN = new Set(forLine.filter((e) => e.kind === 'credit_refund').map((e) => idNumber(e.id, 'refund', refId)));
+  // The mirror's owed-side payment for a credit spend carries the spend's time.
+  const mirrored = entries.filter((e) => e.kind === 'payment' && e.ref?.id === refId && e.meta?.via === 'credit' && !voided.has(e.id));
+  const mirroredAt = new Set(mirrored.map((e) => e.createdAt));
+  return {
+    spends,
+    refundedN,
+    mirroredAt,
+    /** Credit taken for the line and not returned. */
+    takenCents: -forLine.reduce((sum, e) => sum + e.amountCents, 0),
+    /** Of that, what the mirror shows landed. */
+    mirroredCents: -mirrored.reduce((sum, e) => sum + e.amountCents, 0),
+    /** A spend younger than UNFINISHED_SPEND_MS that nothing shows landed or returned: a request is mid-way through it. */
+    inFlight: (nowMs: number) =>
+      spends.some(
+        (s) => nowMs - Date.parse(s.createdAt) < UNFINISHED_SPEND_MS && !mirroredAt.has(s.createdAt) && !refundedN.has(idNumber(s.id, 'spend', refId)),
+      ),
+  };
 }
 
 /**
  * Reconcile every STALE spend in this member's credit against its ROW —
  * whatever happened to the row since.
  *
- * A spend is written BEFORE its row is marked paid, so a process that dies
- * between the two leaves credit taken for a line that is still owed. Finding
+ * A spend is written BEFORE its row records it, so a process that dies
+ * between the two leaves credit taken for a line that still owes it. Finding
  * those by walking the member's OWED lines (what `payWithCredit` once did)
- * missed the worst case: a row since paid another way — an e-transfer, an
- * admin's tap, a cover — is no longer owed, so it was never visited and its
- * credit stayed taken forever. This walks the LEDGER instead: a line whose
- * `credit_spend`s outweigh its `credit_refund`s has credit taken for it.
+ * missed the worst case: a row since paid another way is no longer owed, so
+ * it was never visited and its credit stayed taken forever. This walks the
+ * LEDGER instead, line by line, and since a line may now hold several credit
+ * payments (docs/plans/partial-credit.md), SPEND by spend:
  *
- *   - FRESH (younger than `UNFINISHED_SPEND_MS`): another request is paying
- *     it right now — left alone, or this would race a good payment.
- *   - COMPLETED (the common case — every credit payment ever made nets
- *     negative here): answered from the ledger itself, with NO row read.
- *     The mirror writes the owed-side `payment` entry into the same
- *     partition with `meta.via: 'credit'` (`paymentEntry` /
- *     `stringingPaymentEntry` in lib/ledgerMirror.ts), matched on `ref.id`
- *     so every id shape a session payment can take counts; a payment since
- *     VOIDED (the row un-ticked) does not count, so the row is read again.
- *     Reading the row for each of a member's past credit payments on every
- *     balance read would have grown with their history forever.
- *   - Otherwise the ROW is read (the mirror flag off, or a mirror write that
- *     failed): still unpaid and owed → the row update is FINISHED; paid by
- *     credit → nothing; paid another way, covered, removed or gone →
- *     `refund:<ref>:<n>`.
+ *   - FRESH (the line's newest spend is younger than `UNFINISHED_SPEND_MS`):
+ *     another request is paying it right now — left alone.
+ *   - COMPLETED (the common case): the mirror's live credit payments on the
+ *     line add up to the credit taken for it — answered with NO row read.
+ *     Reading the row for each past credit payment on every balance read
+ *     would have grown with the member's history forever.
+ *   - Otherwise each spend nothing shows landed or returned is offered to its
+ *     row (`applyCreditToRow`): it lands, it had landed (the row lists it), or
+ *     it is refunded (`refund:<ref>:<n>`, the spend's own n). Never more than
+ *     the credit taken and not shown landed: that is the BUDGET, so a missing
+ *     pairing can only leave credit for a person to see, never move extra.
  *
  * Called at the top of every "Pay with credit" and, best-effort, from the
- * member's own balance read — so a member with nothing left to pay still gets
- * the credit back the next time they look. The admin reconcile does NOT call
- * it: that stays no-auto-repair.
+ * member's own balance read. The admin reconcile does NOT call it: that
+ * stays no-auto-repair.
  */
 export async function refundStaleSpends(
   scope: GroupScope,
@@ -397,39 +458,46 @@ export async function refundStaleSpends(
   ledger?: LedgerEntry[],
 ): Promise<{ finished: number; refunded: number; ledger: LedgerEntry[] }> {
   let entries = ledger ?? (await ledgerFor(scope, memberId));
-  const byRef = new Map<string, LedgerEntry[]>();
+  const refs = new Map<string, { kind: SpendLine['kind']; pk: string }>();
   for (const e of entries) {
-    // Credit entries only: the mirror writes a line's charge and payment under
+    // Credit spends only: the mirror writes a line's charge and payment under
     // member_owed in the same partition, and they are not spends.
-    if (accountOf(e) !== 'member_credit' || (e.kind !== 'credit_spend' && e.kind !== 'credit_refund')) continue;
+    if (accountOf(e) !== 'member_credit' || e.kind !== 'credit_spend') continue;
     if (!e.ref || (e.ref.kind !== 'session' && e.ref.kind !== 'stringing')) continue;
-    const list = byRef.get(e.ref.id) ?? [];
-    list.push(e);
-    byRef.set(e.ref.id, list);
+    refs.set(e.ref.id, { kind: e.ref.kind, pk: e.ref.pk });
   }
   const voided = new Set(entries.filter((e) => e.kind === 'void').map((e) => e.id.slice('void:'.length)));
-  const completedByMirror = (refId: string) =>
-    entries.some((e) => e.kind === 'payment' && e.ref?.id === refId && e.meta?.via === 'credit' && !voided.has(e.id));
   let finished = 0;
   let refunded = 0;
   const now = new Date().toISOString();
-  for (const [refId, forLine] of byRef) {
-    const net = forLine.reduce((sum, e) => sum + e.amountCents, 0);
-    if (net >= 0) continue;
-    const spends = forLine.filter((e) => e.kind === 'credit_spend').sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
-    const last = spends[spends.length - 1];
-    if (!last?.ref || Date.now() - Date.parse(last.createdAt) < UNFINISHED_SPEND_MS) continue;
-    if (completedByMirror(refId)) continue;
-    // Refund what was TAKEN (−net), not what the row says now: an owedAmount
-    // edited since is the row's business, the credit's is what left it.
-    const line: SpendLine = { kind: last.ref.kind as SpendLine['kind'], ref: refId, pk: last.ref.pk, amountCents: -net };
-    const outcome = await markRowPaid(scope, line, { spendAt: last.createdAt, now });
-    if (outcome === 'credit') continue;
-    if (outcome === 'paid') {
-      finished += 1;
-    } else {
-      await writeRefund(scope, memberId, line, spends.length - 1, 'Paid another way — credit returned');
-      refunded += 1;
+  const nowMs = Date.now();
+  for (const [refId, where] of refs) {
+    const pic = creditPicture(entries, refId, voided);
+    if (pic.takenCents <= 0) continue;
+    const newest = pic.spends[pic.spends.length - 1];
+    if (!newest || nowMs - Date.parse(newest.createdAt) < UNFINISHED_SPEND_MS) continue;
+    let budget = pic.takenCents - pic.mirroredCents;
+    if (budget <= 0) continue;
+    // Newest first: a crash leaves the newest spend unfinished, and an older
+    // spend whose payment a return-the-credit voided is not the one missing.
+    for (const s of [...pic.spends].reverse()) {
+      if (budget <= 0) break;
+      const n = idNumber(s.id, 'spend', refId);
+      if (n < 0 || pic.mirroredAt.has(s.createdAt) || pic.refundedN.has(n)) continue;
+      // Refund or finish what was TAKEN (never above the budget), not what
+      // the row says now: an owedAmount edited since is the row's business.
+      const amountCents = Math.min(-s.amountCents, budget);
+      if (amountCents <= 0) continue;
+      const line: SpendLine = { kind: where.kind, ref: refId, pk: where.pk, amountCents };
+      const outcome = await applyCreditToRow(scope, line, { id: s.id, n, amountCents, at: s.createdAt }, now);
+      budget -= amountCents;
+      if (outcome === 'credit') continue;
+      if (outcome === 'paid' || outcome === 'part') {
+        finished += 1;
+      } else {
+        await writeRefund(scope, memberId, line, n, 'Paid another way — credit returned');
+        refunded += 1;
+      }
     }
   }
   if (finished + refunded > 0) entries = await ledgerFor(scope, memberId);
@@ -437,59 +505,74 @@ export async function refundStaleSpends(
 }
 
 /**
- * Pay this member's owed lines from their credit: oldest first, each line
- * only if what is left covers it in full. Returns what was paid.
+ * Pay this member's owed lines from their credit (docs/plans/partial-credit.md):
  *
- * PER-LINE ACCOUNTING, so every failure is recoverable:
+ *   1. every FROZEN line the credit covers in full, oldest first;
+ *   2. then whatever is left onto the oldest frozen SESSION line still owing,
+ *      as a part-payment ("paid $10 of $15"). A stringing job is paid whole
+ *      or not at all: a job has no amount received of its own.
+ *
+ * PER-SPEND ACCOUNTING, so every failure is recoverable:
  *   - A line's spends are numbered: `spend:<ref>:<n>`, where n is how many
  *     spends that line has ever had. A double tap computes the same n and
- *     collides on insert; a line whose earlier spend was REFUNDED gets n+1
- *     and can be paid again (a fixed `spend:<ref>` id stranded it forever).
- *   - A line whose spends outweigh its refunds already has credit taken for
- *     it. `refundStaleSpends` runs FIRST — before the owed lines are even
- *     read — and finishes the row update if the row is still unpaid, or
- *     returns the credit if the row was settled some other way meanwhile.
- *   - Any failure to mark the row writes `refund:<ref>:<n>` before giving up,
- *     so credit is never taken for a line that stays owed.
+ *     collides on insert; a line paid in parts gets n+1 for each part.
+ *   - `refundStaleSpends` runs FIRST and settles every spend a crash left
+ *     half-done. A line with a FRESH spend nothing shows landed is being paid
+ *     by another request right now, and is left to it.
+ *   - Any failure to record the spend on its row writes `refund:<ref>:<n>`
+ *     before giving up, so credit is never taken for a line that stays owed.
  *   - Two requests at once could each pay a different line from the same
  *     starting balance: the balance is re-read after each insert, and a spend
  *     that took it below zero refunds itself.
  */
-export async function payWithCredit(groupId: string, memberId: string): Promise<{ paid: number; spentCents: number; balanceCents: number }> {
+export async function payWithCredit(
+  groupId: string,
+  memberId: string,
+): Promise<{ paid: number; part: number; spentCents: number; balanceCents: number }> {
   const scope = groupScope(groupId);
   const stale = await refundStaleSpends(scope, memberId);
   let ledger = stale.ledger;
   const identity = await resolveIdentity({ memberId }, groupId);
   // Frozen lines only (`settledLines`): credit spent on a live estimate is
-  // credit spent on a number that can still move.
+  // credit spent on a number that can still move. Each line's amount is what
+  // it still owes, a part already received taken off.
   const lines = settledLines(await computeOwed(scope, identity), identity.memberId);
   if (lines.length === 0 && stale.finished === 0) throw new CreditError('nothing_to_pay');
 
+  const voided = new Set(ledger.filter((e) => e.kind === 'void').map((e) => e.id.slice('void:'.length)));
+  const nowMs = Date.now();
+  const open = lines.filter((l) => l.amountCents > 0 && !creditPicture(ledger, l.ref, voided).inFlight(nowMs));
+
+  // The plan: whole lines first, then one part with what is left.
+  let left = balanceOf(ledger);
+  const plan: { line: (typeof lines)[number]; amountCents: number }[] = [];
+  for (const line of open) {
+    if (line.amountCents > left) continue;
+    plan.push({ line, amountCents: line.amountCents });
+    left -= line.amountCents;
+  }
+  if (left > 0) {
+    const partLine = open.find((l) => l.kind === 'session' && !plan.some((p) => p.line === l));
+    if (partLine) plan.push({ line: partLine, amountCents: left });
+  }
+
   let paid = stale.finished;
+  let part = 0;
   let spent = 0;
   const now = new Date().toISOString();
   const refund = (line: SpendLine, n: number, note: string) => writeRefund(scope, memberId, line, n, note);
 
-  for (const line of lines) {
-    const forLine = ledger.filter((e) => e.ref?.id === line.ref && accountOf(e) === 'member_credit');
-    const spends = forLine.filter((e) => e.kind === 'credit_spend').length;
-    const net = forLine.reduce((sum, e) => sum + e.amountCents, 0);
-
-    // Credit already taken for this line, and `refundStaleSpends` left it:
-    // the spend is FRESH, so another request is mid-way through paying it (a
-    // double tap). Touching it would race that request and could refund a
-    // good payment.
-    if (net < 0) continue;
-    if (line.amountCents <= 0 || line.amountCents > balanceOf(ledger)) continue;
-
-    const n = spends;
+  for (const { line, amountCents } of plan) {
+    const n = ledger.filter((e) => e.ref?.id === line.ref && accountOf(e) === 'member_credit' && e.kind === 'credit_spend').length;
+    const id = `spend:${line.ref}:${n}`;
+    const spendLine: SpendLine = { kind: line.kind, ref: line.ref, pk: line.pk, amountCents };
     try {
       await scope.create<LedgerEntry>('ledger', {
-        id: `spend:${line.ref}:${n}`,
+        id,
         memberId,
         account: 'member_credit',
         kind: 'credit_spend',
-        amountCents: -line.amountCents,
+        amountCents: -amountCents,
         note: line.kind === 'session' ? `Session ${line.at.slice(0, 10)}` : 'Stringing',
         ref: { kind: line.kind, id: line.ref, pk: line.pk },
         createdAt: now,
@@ -502,26 +585,33 @@ export async function payWithCredit(groupId: string, memberId: string): Promise<
 
     ledger = await ledgerFor(scope, memberId);
     if (balanceOf(ledger) < 0) {
-      await refund(line, n, 'Not enough credit — returned');
+      await refund(spendLine, n, 'Not enough credit — returned');
       ledger = await ledgerFor(scope, memberId);
       continue;
     }
 
-    let outcome: Awaited<ReturnType<typeof markRowPaid>>;
+    let outcome: Awaited<ReturnType<typeof applyCreditToRow>>;
     try {
-      outcome = await markRowPaid(scope, line, { spendAt: now, now });
+      outcome = await applyCreditToRow(scope, spendLine, { id, n, amountCents, at: now }, now);
     } catch (err) {
-      await refund(line, n, 'Could not mark it paid — returned');
+      await refund(spendLine, n, 'Could not mark it paid — returned');
       throw err;
     }
-    if (outcome !== 'paid') {
-      await refund(line, n, 'Already settled — credit returned');
+    // 'credit': this very spend is already on the row (a retry that raced
+    // itself). It landed; nothing goes back.
+    if (outcome === 'credit') {
+      spent += amountCents;
+      continue;
+    }
+    if (outcome !== 'paid' && outcome !== 'part') {
+      await refund(spendLine, n, 'Already settled — credit returned');
       ledger = await ledgerFor(scope, memberId);
       continue;
     }
-    spent += line.amountCents;
-    paid += 1;
+    spent += amountCents;
+    if (outcome === 'paid') paid += 1;
+    else part += 1;
   }
-  if (paid === 0) throw new CreditError('nothing_to_pay');
-  return { paid, spentCents: spent, balanceCents: balanceOf(await ledgerFor(scope, memberId)) };
+  if (paid === 0 && part === 0) throw new CreditError('nothing_to_pay');
+  return { paid, part, spentCents: spent, balanceCents: balanceOf(await ledgerFor(scope, memberId)) };
 }

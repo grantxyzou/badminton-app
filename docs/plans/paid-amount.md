@@ -17,7 +17,7 @@ If, a month after shipping, no row in production carries a `paidAmount` short of
 - **No part-payment by hand.** The admin tap stays "paid in full". A part-payment arises only when an organiser assigns a transfer by hand to lines it does not cover; nobody types "$30 of $45".
 - **No part-paid stringing job.** A job line is paid whole or left for the next payment; `StringingJob` gets no amount field.
 - ~~Lifting the "Edit the bill" refusal~~ — done 2026-11-18, below.
-- No change to what the automatic match, card pay or credit accept: a line in full, or nothing.
+- No change to what the automatic match, card pay or credit accept: a line in full, or nothing. (Credit since takes a part of a session line: `docs/plans/partial-credit.md`, 2026-11-21.)
 
 ## Decisions
 

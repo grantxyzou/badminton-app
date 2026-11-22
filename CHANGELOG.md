@@ -8,6 +8,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Credit that doesn't cover the whole bill can still be used (2026-11-21)
+
+- **"Pay with credit" now uses credit even when it's less than what you owe** (`docs/plans/partial-credit.md`). It pays every night it covers in full, then puts what's left on the next night: "paid $10 of $15". The rest is paid by e-transfer or card as usual.
+- On Home the button says how much it will use ("Use $10 credit") when the credit won't cover everything; it says "Pay with credit" when it will. Stringing jobs are still paid by credit only in full.
+- Un-ticking a night that credit helped pay goes through "Needs a look", as a credit payment always has, and "Return the credit" works on a part-paid night too.
+
 ## The card fee goes on Visa and Mastercard credit cards only (2026-11-20)
 
 - **When the organiser turns the card fee on, only Visa and Mastercard credit cards pay it** (`docs/plans/card-surcharge.md`). American Express and other card brands pay no fee, like debit cards, until the club has checked those brands' own rules.

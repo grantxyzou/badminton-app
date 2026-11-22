@@ -94,9 +94,19 @@ export async function returnCredit(scope: GroupScope, paymentId: string, adminId
   if (c.kind === 'session') {
     const row = await scope.read<Player & Record<string, unknown>>('players', c.ref, c.pk);
     if (!row) throw new CreditReviewError('row_changed');
-    if (row.paid === true) {
-      if (row.paidVia !== 'credit') throw new CreditReviewError('row_changed');
-      const written = await scope.replace('players', { ...row, paid: false, paidAt: undefined, paidVia: undefined, paymentId: undefined, paidAmount: undefined }, c.pk);
+    // A row credit paid in full (before part-payments, `paidVia: 'credit'`),
+    // or one that lists a credit spend, paid in full or in part
+    // (docs/plans/partial-credit.md). Un-ticking clears every payment on the
+    // row, as any un-tick does; the credit goes back below.
+    const listsCredit = Array.isArray(row.creditSpends) && (row.creditSpends as string[]).length > 0;
+    const holdsMoney = row.paid === true || Number(row.paidAmount ?? 0) > 0;
+    if (holdsMoney) {
+      if (!listsCredit && !(row.paid === true && row.paidVia === 'credit')) throw new CreditReviewError('row_changed');
+      const written = await scope.replace(
+        'players',
+        { ...row, paid: false, paidAt: undefined, paidVia: undefined, paymentId: undefined, paidAmount: undefined, creditSpends: undefined },
+        c.pk,
+      );
       if (!written) throw new CreditReviewError('row_changed');
       await mirrorUnpaid(scope, row as unknown as Player);
     }

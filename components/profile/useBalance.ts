@@ -100,21 +100,27 @@ export function useBalance(name: string | null): UseBalance {
 
 /**
  * What "Pay with credit" would pay, in cents: the same walk the server makes
- * (`payWithCredit` in lib/storeCredit.ts) — FROZEN lines only (a settled
- * session or a finished racket), oldest first, each paid in full or skipped.
- * Zero means the button has nothing to offer.
+ * (`payWithCredit` in lib/storeCredit.ts, docs/plans/partial-credit.md) —
+ * FROZEN lines only (a settled session or a finished racket), oldest first,
+ * each paid in full when the credit covers it; then what is left goes onto
+ * the oldest frozen SESSION line still owing, as a part. A racket is never
+ * part-paid. Zero means the button has nothing to offer.
  */
-export function creditWouldPay(data: Pick<BalanceData, 'sessions' | 'stringing'>, creditCents: number): number {
+export function creditWouldPay(
+  data: { sessions: readonly { date: string; owedAmount: number; settled?: boolean }[]; stringing?: readonly { at: string; amount: number }[] },
+  creditCents: number,
+): number {
   const lines = [
-    ...data.sessions.filter((s) => s.settled).map((s) => ({ at: s.date, cents: Math.round(s.owedAmount * 100) })),
-    ...(data.stringing ?? []).map((j) => ({ at: j.at, cents: Math.round(j.amount * 100) })),
+    ...data.sessions.filter((s) => s.settled).map((s) => ({ kind: 'session' as const, at: s.date, cents: Math.round(s.owedAmount * 100) })),
+    ...(data.stringing ?? []).map((j) => ({ kind: 'stringing' as const, at: j.at, cents: Math.round(j.amount * 100) })),
   ].sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
   let left = creditCents;
-  let paid = 0;
-  for (const line of lines) {
-    if (line.cents <= 0 || line.cents > left) continue;
+  const whole = new Set<number>();
+  lines.forEach((line, i) => {
+    if (line.cents <= 0 || line.cents > left) return;
     left -= line.cents;
-    paid += line.cents;
-  }
-  return paid;
+    whole.add(i);
+  });
+  if (left > 0 && lines.some((l, i) => l.kind === 'session' && l.cents > 0 && !whole.has(i))) left = 0;
+  return creditCents - left;
 }

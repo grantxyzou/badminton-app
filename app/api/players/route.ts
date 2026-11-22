@@ -28,6 +28,7 @@ import { cleanGuestName, guestDisplayName, guestsPerMemberOf, isGuestRow } from 
 import type { ActiveMember } from '@/lib/auth';
 import type { RecoveryEvent, Session } from '@/lib/types';
 import { fileCreditReview } from '@/lib/creditReview';
+import { accountOf, ledgerFor } from '@/lib/storeCredit';
 
 /**
  * Close the signup capacity race (#79). The pre-insert count check and the
@@ -1222,13 +1223,24 @@ export async function PATCH(req: NextRequest) {
        gap 6; Grant, 2026-11-16: "un-tick should go through a review"). The row
        stays paid; `review: true` files it under Needs a look, where the
        organiser returns the credit or keeps it paid (lib/creditReview.ts). */
-    if (updates.paid === false && existing.paid === true && existing.paidVia === 'credit') {
+    // Since part-payments (docs/plans/partial-credit.md) a row credit helped
+    // pay may be paid in full another way, or not in full at all: what
+    // decides is whether the row lists a credit spend.
+    const creditSpends = Array.isArray(existing.creditSpends) ? (existing.creditSpends as string[]) : [];
+    const holdsMoney = existing.paid === true || Number(existing.paidAmount ?? 0) > 0;
+    if (updates.paid === false && holdsMoney && (creditSpends.length > 0 || (existing.paid === true && existing.paidVia === 'credit'))) {
       if (body.review !== true) return NextResponse.json({ error: 'paid_with_credit' }, { status: 409 });
       const payer = typeof existing.memberId === 'string' ? existing.memberId : typeof existing.guestOf === 'string' ? existing.guestOf : null;
       if (!payer) return NextResponse.json({ error: 'paid_with_credit' }, { status: 409 });
+      // What credit paid: the net taken for this row, when the row lists its spends; the whole bill for a row from before.
+      const creditCents = creditSpends.length > 0
+        ? -(await ledgerFor(scope, payer))
+            .filter((e) => e.ref?.id === id && accountOf(e) === 'member_credit' && (e.kind === 'credit_spend' || e.kind === 'credit_refund'))
+            .reduce((sum, e) => sum + e.amountCents, 0)
+        : Math.round(Number(existing.owedAmount ?? 0) * 100);
       const filed = await fileCreditReview(scope, {
         kind: 'session', ref: id, pk: sessionId, memberId: payer,
-        amountCents: Math.round(Number(existing.owedAmount ?? 0) * 100),
+        amountCents: creditCents,
         paidAt: typeof existing.paidAt === 'string' ? existing.paidAt : null,
         memberName: String(existing.name ?? ''),
       });

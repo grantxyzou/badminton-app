@@ -186,6 +186,32 @@ describe('<UnpaidSessionsCard />', () => {
     expect(screen.queryByText(/in credit\./)).toBeNull();
     vi.unstubAllEnvs();
   });
+
+  /* docs/plans/partial-credit.md: credit short of the bill is used anyway, and
+     the button says how much; covering everything it says "Pay with credit";
+     with nothing frozen to pay it is not offered at all. */
+  it.each([
+    [1000, true, 'Use $10 credit'],
+    [5000, true, 'Pay with credit'],
+    [1000, false, null],
+  ])('credit %i with a settled bill %s: the button reads %s', async (creditCents, settled, label) => {
+    vi.stubEnv('NEXT_PUBLIC_FLAG_STORE_CREDIT', 'true');
+    vi.spyOn(global, 'fetch').mockImplementation(async (input: RequestInfo | URL) =>
+      String(input).includes('/api/credit')
+        ? new Response(JSON.stringify({ balanceCents: creditCents }), { status: 200 })
+        : new Response(JSON.stringify({
+          totalOwed: 40,
+          sessionCount: 1,
+          mostRecent: { sessionId: 's1', date: '2026-06-08T19:00:00-04:00', owedAmount: 40, settled },
+          sessions: [{ sessionId: 's1', date: '2026-06-08T19:00:00-04:00', owedAmount: 40, settled }],
+        }), { status: 200 }),
+    );
+    wrap(<UnpaidSessionsCard name="Lin" variant="home" />);
+    await screen.findByTestId('credit-chip');
+    if (label) expect(screen.getByRole('button', { name: label })).toBeTruthy();
+    else expect(screen.queryByRole('button', { name: /credit/i })).toBeNull();
+    vi.unstubAllEnvs();
+  });
 });
 
 describe('it re-reads when something else changes what is owed', () => {
