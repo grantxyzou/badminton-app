@@ -6,25 +6,24 @@ import { useTranslations } from 'next-intl';
 import LaunchArt from '@/components/launch/LaunchArt';
 import { usePaneMode } from '@/lib/paneMode';
 import { buttonDelayMs } from '@/lib/launchMotion';
+import TopBar from '@/components/primitives/TopBar';
 import TopToast from '@/components/primitives/TopToast';
 import ThemeToggle from '@/components/ThemeToggle';
 import LanguageToggle from '@/components/LanguageToggle';
 import NativeBridge from '@/components/NativeBridge';
+import SignInForm from '@/components/SignInForm';
+import AskAccessForm, { type AskApproved } from '@/components/auth/AskAccessForm';
 import KeepAccountPage from '@/components/auth/KeepAccountPage';
-import type { Provider } from '@/components/auth/ProviderButtons';
+import ProviderButtons, { type Provider } from '@/components/auth/ProviderButtons';
+import EmailCodeSignInForm from '@/components/auth/EmailCodeSignInForm';
 import ForgotPasswordSheet from '@/components/auth/ForgotPasswordSheet';
-import { useEmailCode } from '@/components/auth/useEmailCode';
-import { usePinSignIn } from '@/components/auth/usePinSignIn';
-import { usePasswordSignIn } from '@/components/auth/usePasswordSignIn';
+import ChooseNameSheet from '@/components/auth/ChooseNameSheet';
 import DoorJoinPage from '@/components/onboarding/DoorJoinPage';
 import WaitingAsks, { type Ask } from '@/components/onboarding/WaitingAsks';
-import AuthStage from '@/components/onboarding/AuthStage';
-import ClubLinkPage from '@/components/onboarding/ClubLinkPage';
-import NameStep from '@/components/onboarding/NameStep';
-import { CheckEmailPage, EmailCodeChoices } from '@/components/onboarding/SignInPieces';
 import HandoffCodeSheet from '@/components/auth/HandoffCodeSheet';
 import ResetPasswordSheet from '@/components/auth/ResetPasswordSheet';
 import { clearIdentity, getIdentity, setIdentity, IDENTITY_EVENT } from '@/lib/identity';
+import { parseInviteInput } from '@/lib/parseInviteInput';
 import { hardReload } from '@/lib/reload';
 import type { GroupListEntry } from '@/lib/useCurrentGroup';
 import { noticeBanner, noticeTimeoutMs, type AuthNotice } from '@/lib/authNotice';
@@ -49,9 +48,8 @@ const CreateGroupPage = dynamic(() => import('./CreateGroupPage'), { ssr: false 
 const JoinGroupPage = dynamic(() => import('./JoinGroupPage'), { ssr: false });
 const GroupsPage = dynamic(() => import('@/components/profile/GroupsPage'), { ssr: false });
 
-/** `create` and `join` are reachable only with multi-group on. `name`: back
- *  from Google or Apple with a new sign-in and no club's link (creating one). */
-type View = 'welcome' | 'login' | 'signup' | 'create' | 'join' | 'cantSignIn' | 'door' | 'name';
+/** `create` and `join` are reachable only with multi-group on. */
+type View = 'welcome' | 'login' | 'signup' | 'create' | 'join' | 'ask' | 'door';
 type Invite = { token?: string; code?: string };
 
 /**
@@ -132,11 +130,12 @@ export default function SignedOutShell({ authProviders = [], noClub: noClubProp 
   /** The native return code from the landing's `#hc=`, or from the name step. */
   const [returnCode, setReturnCode] = useState<string | null>(null);
   const [resetRequest, setResetRequest] = useState<{ token: string; email: string } | null>(null);
-  /** Back from Google or Apple with a new sign-in: the name step, on the club's link or for a new club. */
-  const [namingAfterProvider, setNamingAfterProvider] = useState<{ noGroup: boolean } | null>(null);
+  const [chooseName, setChooseName] = useState<{ open: boolean; invite: Invite; noGroup: boolean }>({
+    open: false,
+    invite: {},
+    noGroup: false,
+  });
   const [initialInvite, setInitialInvite] = useState<Invite | null>(null);
-  /** "Reset my password", from Can't sign in? */
-  const [forgotOpen, setForgotOpen] = useState(false);
   /** A club's link, signed out: sign in first, then ask (docs/plans/one-way-in.md, step 4). */
   const [doorToken, setDoorToken] = useState<string | null>(null);
   const consumed = useRef(false);
@@ -202,23 +201,14 @@ export default function SignedOutShell({ authProviders = [], noClub: noClubProp 
         : (pruneStaleOnboardingResume(), null);
 
     if (params.get('authFlow') === 'name') {
-      // A brand-new Google/Apple identity: the name step, a page like the
-      // email path's (docs/plans/sign-in-redesign.md, merge 4). The club's
-      // link rode the excursion in localStorage — the callback URL carries
-      // none of ours — so it opens the club's page at its name step. A CREATE
-      // resume means "join me to nothing", and is re-marked, because the read
-      // above was destructive and the reload after the name step still needs
-      // it to land on the create form.
+      // A brand-new Google/Apple identity: collect a name. The invite rode the
+      // excursion in localStorage — the callback URL carries none of ours.
+      // A CREATE resume means "join me to nothing" — and it is re-marked,
+      // because the read above was destructive and the reload after the name
+      // step still needs it to land on the create form.
       const creating = resume?.intent === 'create';
       if (creating) markOnboardingResume('create');
-      if (!creating && resume?.token && !noClubMode) {
-        setDoorToken(resume.token);
-        setNamingAfterProvider({ noGroup: false });
-        setView('door');
-      } else {
-        setNamingAfterProvider({ noGroup: creating });
-        setView('name');
-      }
+      setChooseName({ open: true, invite: { token: resume?.token }, noGroup: creating });
       strip('authFlow');
     }
     if (params.get('signedIn') === '1') {
@@ -252,7 +242,7 @@ export default function SignedOutShell({ authProviders = [], noClub: noClubProp 
     // page (sign in first, then ask); a signed-in member in no club already
     // has an account, so it asks from the join page.
     const link = params.get('claim') ?? params.get('join');
-    if (link && params.get('authFlow') !== 'name') {
+    if (link) {
       if (noClubMode) {
         setInitialInvite({ token: link });
         setView('join');
@@ -397,44 +387,16 @@ export default function SignedOutShell({ authProviders = [], noClub: noClubProp 
             onJoined={hardReload}
             onAsked={hardReload}
           />
-        ) : view === 'cantSignIn' ? (
-          /* Can't sign in? Back in through the club's link: sign in a new way,
-             and "Is that you?" joins it to the account (docs/plans/sign-in-redesign.md). */
-          <CantSignInView
-            onBack={() => setView('login')}
-            onDoor={(token) => {
-              setDoorToken(token);
-              setView('door');
-            }}
-            onResetPassword={() => setForgotOpen(true)}
-          />
-        ) : view === 'name' && namingAfterProvider ? (
-          <NameStep
-            title={tAuth('chooseNameTitle')}
-            noGroup={namingAfterProvider.noGroup}
-            prefill
-            onBack={() => {
-              setNamingAfterProvider(null);
-              setView('welcome');
-            }}
-            onMade={(name) => setIdentity({ name, sessionId: '' })}
-            onReturnCode={(code) => {
-              setReturnCode(code);
-              window.location.assign(nativeReturnHref(code));
-            }}
-          />
+        ) : view === 'ask' ? (
+          /* "I play here already": asking to be let in. A page, not a sheet
+             (Grant, 2026-11-08): a real person approves it. */
+          <AskAccessPage onBack={() => setView('login')} />
         ) : view === 'door' && doorToken ? (
           <DoorJoinPage
             token={doorToken}
             authProviders={authProviders}
-            startAtName={!!namingAfterProvider}
-            onReturnCode={(code) => {
-              setReturnCode(code);
-              window.location.assign(nativeReturnHref(code));
-            }}
             onBack={() => {
               setDoorToken(null);
-              setNamingAfterProvider(null);
               setView('welcome');
             }}
           />
@@ -442,39 +404,24 @@ export default function SignedOutShell({ authProviders = [], noClub: noClubProp 
           <LogInView
             authProviders={authProviders}
             onBack={() => setView('welcome')}
-            onJoin={() => setView('signup')}
-            onCantSignIn={() => setView('cantSignIn')}
-            onForgotPassword={() => setForgotOpen(true)}
+            onSignUp={() => setView('signup')}
+            onAsk={() => setView('ask')}
           />
         ) : view === 'signup' ? (
-          <ClubLinkPage
-            title={tCover('join.title')}
-            heading={tCover('join.heading')}
-            copy={tCover('join.body')}
-            scanAt="middle"
+          <SignUpView
             onBack={() => {
               clearOnboardingResume();
               setView('welcome');
             }}
-            onLink={(token) => {
+            onLogIn={() => setView('login')}
+            onCreate={groupsOn ? () => setView('create') : undefined}
+            onDoor={(token) => {
               // The club's page: sign in first, then ask.
               clearOnboardingResume();
               setInitialInvite(null);
               setDoorToken(token);
               setView('door');
             }}
-            links={
-              <>
-                {groupsOn && (
-                  <button type="button" className="link-quiet" onClick={() => setView('create')}>
-                    {tCover('join.startClub')}
-                  </button>
-                )}
-                <button type="button" className="link-quiet" onClick={() => setView('login')}>
-                  {tCover('join.logIn')}
-                </button>
-              </>
-            }
           />
         ) : noClub ? (
           <NoClubView
@@ -493,8 +440,19 @@ export default function SignedOutShell({ authProviders = [], noClub: noClubProp 
           dispatches `bpm:resume`, which the handoff collection listens for. */}
       <NativeBridge activeTab="home" onGoHome={() => setView('welcome')} />
 
+      <ChooseNameSheet
+        key={chooseName.open ? 'choose-name-open' : 'choose-name-closed'}
+        open={chooseName.open}
+        onClose={() => setChooseName({ open: false, invite: {}, noGroup: false })}
+        sessionId=""
+        inviteToken={chooseName.invite.token}
+        noGroup={chooseName.noGroup}
+        onReturnCode={(code) => {
+          setReturnCode(code);
+          window.location.assign(nativeReturnHref(code));
+        }}
+      />
       <HandoffCodeSheet {...handoffCollect} />
-      <ForgotPasswordSheet open={forgotOpen} onClose={() => setForgotOpen(false)} />
       <ResetPasswordSheet
         key={resetRequest ? 'reset-open' : 'reset-closed'}
         open={!!resetRequest}
@@ -592,11 +550,25 @@ function NoClubView({
 
   if (noClub.groups.length === 0 && asks.length > 0) {
     // Asked to join through a club's link and waiting (docs/plans/one-way-in.md,
-    // step 4): one page, "Request sent" the first time and "still pending"
-    // after (docs/plans/sign-in-redesign.md). The doors a brand-new organiser
-    // needs would only be noise here: the one thing this person is doing is
-    // waiting for an organizer.
-    return <WaitingAsks asks={asks} onIn={onSwitched} onJoin={onJoin} onSignOut={onSignOut} />;
+    // step 4). The doors a brand-new organiser needs would only be noise here:
+    // the one thing this person is doing is waiting for an organiser.
+    return (
+      <div className="animate-fadeIn">
+        {/* The top bar keeps the card clear of the fixed theme and language toggles. */}
+        <TopBar title={t('waiting.pageTitle')} backLabel={t('back')} />
+        <div style={{ display: 'grid', gap: 'var(--space-5)', paddingBlock: '0 var(--space-9)' }}>
+        <WaitingAsks asks={asks} onIn={onSwitched} />
+        <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <button type="button" className="link-quiet" onClick={onJoin}>
+            {t('waiting.joinAnother')}
+          </button>
+          <button type="button" className="link-quiet" onClick={onSignOut}>
+            {t('waiting.signOut')}
+          </button>
+        </div>
+        </div>
+      </div>
+    );
   }
 
   if (noClub.groups.length > 0) {
@@ -605,6 +577,7 @@ function NoClubView({
     // to. A tap switches (the server re-mints the cookies) and reloads.
     return (
       <div style={{ display: 'grid', gap: 'var(--space-5)', paddingBlock: '0 var(--space-9)' }}>
+        {asks.length > 0 && <WaitingAsks asks={asks} onIn={onSwitched} />}
         <GroupsPage
           groups={noClub.groups}
           hint={t('noClub.yourClubs')}
@@ -657,300 +630,232 @@ function NoClubView({
 
 // ── Log in ─────────────────────────────────────────────────────────────────
 
-/**
- * Log in (docs/plans/sign-in-redesign.md; Grant, 2026-11-19: "A log in screen
- * should be clean and easy."): the lockup, then Apple, Google and an emailed
- * code at the bottom, where the thumb is. The PIN is behind "Other ways" — it
- * keeps working for everyone who has one, and nobody new is offered one.
- *
- * Someone who signs in with a PIN and has nothing else gets "Keep your
- * account" straight away, once, before the app opens: each person who adds
- * Apple, Google or an email never needs an organizer to get back in.
- */
 function LogInView({
   authProviders,
   onBack,
-  onJoin,
-  onCantSignIn,
-  onForgotPassword,
+  onSignUp,
+  onAsk,
 }: {
   authProviders: Provider[];
   onBack: () => void;
-  onJoin: () => void;
-  onCantSignIn: () => void;
-  onForgotPassword: () => void;
+  onSignUp: () => void;
+  /** "I play here already": the ask page. */
+  onAsk: () => void;
 }) {
   const t = useTranslations('signedOut');
-  const tl = useTranslations('signedOut.login');
-  const tRec = useTranslations('recovery');
-  const tAuth = useTranslations('profile.auth');
-  const tPinCopy = useTranslations('pin');
-  const [mode, setMode] = useState<'email' | 'pin' | 'password'>('email');
-  /** Signed in with a PIN that is their only way in: "Keep your account" first. */
-  const [keepFor, setKeepFor] = useState<string | null>(null);
+  // The email code first; name and PIN behind "Other ways to log in"
+  // (docs/plans/one-way-in.md, step 6). PINs keep working for everyone who
+  // has one; nobody new is offered one.
+  const [mode, setMode] = useState<'pin' | 'email'>('email');
+  const [forgotOpen, setForgotOpen] = useState(false);
 
-  const signedIn = ({ name }: { name: string }) => setIdentity({ name, sessionId: '' });
-  const code = useEmailCode({ onSuccess: signedIn });
-  const pw = usePasswordSignIn({ onSuccess: signedIn });
-  const pin = usePinSignIn({
-    sessionId: '',
-    onSuccess: ({ name, token }) => {
-      void (async () => {
-        // The cookie is set; ask what else this account can sign in with.
-        // Unknown (a failed read) goes straight in: the prompt is a nicety.
-        try {
-          const res = await fetch(`${BASE}/api/auth/methods`, { cache: 'no-store' });
-          const m = res.ok
-            ? ((await res.json()) as { linked?: string[] | null; hasPassword?: boolean; hasEmailCode?: boolean; hasPin?: boolean })
-            : null;
-          // `hasPin` tells "a PIN is all they have" from the anonymous answer
-          // (every field false), which a cookie that did not stick would give.
-          const pinOnly =
-            !!m && m.hasPin === true && Array.isArray(m.linked) && m.linked.length === 0 && m.hasPassword === false && m.hasEmailCode !== true;
-          if (pinOnly) {
-            setKeepFor(name);
-            return;
-          }
-        } catch {
-          /* straight in */
-        }
-        setIdentity({ name, sessionId: '', ...(token ? { token } : {}) });
-      })();
-    },
-  });
+  const signedIn = (result: { name: string; token?: string }) =>
+    setIdentity({ name: result.name, sessionId: '', ...(result.token ? { token: result.token } : {}) });
 
-  if (keepFor) {
+  return (
+    <div className="animate-fadeIn">
+      <TopBar title={t('login.title')} onBack={onBack} backLabel={t('back')} />
+      <div style={{ display: 'grid', gap: 'var(--space-5)', paddingBlock: '0 var(--space-9)' }}>
+        <p style={{ margin: 0, fontSize: 'var(--fs-md)', color: 'var(--text-secondary)' }}>{t('login.body')}</p>
+        <div className="glass-card" style={{ display: 'grid', gap: 'var(--space-4)', padding: 'var(--space-5)' }}>
+          {authProviders.length > 0 && (
+            <>
+              <ProviderButtons mode="signin" available={authProviders} />
+              <p style={{ margin: 0, textAlign: 'center', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
+                {t('login.or')}
+              </p>
+            </>
+          )}
+
+          {/* Keyed wrapper: email ↔ PIN crossfades rather than swapping the
+              form (and the card's height) in one frame. */}
+          <div key={mode} className="motion-fade">
+            {mode === 'email' ? (
+              // A code first, the password a tap away (docs/plans/one-way-in.md, step 3).
+              <EmailCodeSignInForm onSuccess={signedIn} onForgotPassword={() => setForgotOpen(true)} />
+            ) : (
+              <SignInForm sessionId="" onSuccess={signedIn} probeName={false} />
+            )}
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', whiteSpace: 'nowrap' }}>
+            {/* "Forgot password?" lives on the form's password route now, the
+                only place a password is asked for. */}
+            <button type="button" className="link-quiet" onClick={onAsk}>
+              {t('login.playHereAlready')}
+            </button>
+            <button type="button" className="link-quiet" onClick={() => setMode((m) => (m === 'pin' ? 'email' : 'pin'))}>
+              {mode === 'pin' ? t('login.useEmail') : t('login.otherWays')}
+            </button>
+          </div>
+        </div>
+
+        <button type="button" className="link-quiet" style={{ justifySelf: 'center' }} onClick={onSignUp}>
+          {t('login.newHere')}
+        </button>
+      </div>
+
+      <ForgotPasswordSheet open={forgotOpen} onClose={() => setForgotOpen(false)} />
+    </div>
+  );
+}
+
+// ── Ask to be let in / ask to join ─────────────────────────────────────────
+
+/**
+ * The ask as a PAGE (Grant, 2026-11-08: "Since there's a real person approval
+ * steps I think they all should be using a page not a sheet"), reached from
+ * Log in's "I play here already". The club's link no longer leads here: it
+ * signs in first and asks (`DoorJoinPage`, docs/plans/one-way-in.md, step 4d).
+ *
+ * Three steps on one page: the form, the wait (the form shows it), and — once
+ * an organiser lets them in with nothing to sign in WITH — "Keep your
+ * account". The identity is written only when they leave that last step,
+ * because writing it reloads this screen into the app; the session cookie is
+ * already set, so the step's Apple, Google and password all act on the new
+ * account. Someone approved who already has a PIN goes straight in.
+ */
+function AskAccessPage({ onBack }: { onBack: () => void }) {
+  const t = useTranslations('signedOut');
+  const tAsk = useTranslations('recovery');
+  const [approved, setApproved] = useState<AskApproved | null>(null);
+  // A stale local identity saves a returning player typing their own name.
+  // Read once, at mount.
+  const [staleName] = useState(() => (typeof window === 'undefined' ? '' : getIdentity()?.name ?? ''));
+
+  const enter = (name: string) => setIdentity({ name, sessionId: '' });
+
+  if (approved) {
     return (
       <KeepAccountPage
-        name={keepFor}
-        reason="pinOnly"
-        onDone={() => setIdentity({ name: keepFor, sessionId: '' })}
+        name={approved.name}
+        onDone={() => enter(approved.name)}
       />
     );
   }
 
-  if (mode === 'email' && code.step === 'code') {
-    return <CheckEmailPage code={code} title={tl('title')} definite={false} />;
-  }
-
-  if (mode === 'pin') {
-    return (
-      <AuthStage
-        data-page="login-pin"
-        title={tl('title')}
-        onBack={onBack}
-        backLabel={t('back')}
-        logoTagline={t('tagline')}
-        links={
-          <>
-            <button type="button" className="link-quiet" onClick={onCantSignIn}>
-              {tl('forgotPin')}
-            </button>
-            <button type="button" className="link-quiet" onClick={() => setMode('password')}>
-              {tl('usePassword')}
-            </button>
-            <button type="button" className="link-quiet" onClick={() => setMode('email')}>
-              {tl('useEmail')}
-            </button>
-          </>
-        }
-      >
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            void pin.submit();
-          }}
-          style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}
-        >
-          <input
-            className="auth-field"
-            type="text"
-            value={pin.name}
-            onChange={(e) => pin.setName(e.target.value)}
-            placeholder={tRec('nameLabel')}
-            aria-label={tRec('nameLabel')}
-            autoComplete="nickname"
-            maxLength={50}
-          />
-          <input
-            className="auth-field"
-            type="password"
-            inputMode="numeric"
-            autoComplete="current-password"
-            value={pin.pin}
-            onChange={(e) => pin.setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
-            placeholder={tRec('pinLabel')}
-            aria-label={tRec('pinLabel')}
-            aria-invalid={pin.error === 'invalid' || undefined}
-            maxLength={4}
-            disabled={pin.paused}
-          />
-          {pin.error === 'invalid' && (
-            <p role="alert" className="field-error">
-              {tRec('errorInvalid')}
-            </p>
-          )}
-          {pin.error === 'paused' && pin.paused && (
-            <p role="alert" className="field-warn">
-              {tPinCopy('paused', { time: pin.pauseLabel })}
-            </p>
-          )}
-          {pin.error === 'rate_limited' && (
-            <p role="alert" className="field-warn">
-              {tRec('errorRateLimited')}
-            </p>
-          )}
-          {pin.error === 'admin_logged_in' && (
-            <p role="alert" className="field-warn">
-              {tRec('errorAdminLoggedIn')}
-            </p>
-          )}
-          {pin.error === 'network' && (
-            <p role="alert" className="field-warn">
-              {tRec('errorNetwork')}
-            </p>
-          )}
-          <button type="submit" className="auth-btn auth-btn--primary" disabled={!pin.canSubmit}>
-            {pin.submitting ? tRec('submitting') : tRec('submitPin')}
-          </button>
-        </form>
-      </AuthStage>
-    );
-  }
-
-  if (mode === 'password') {
-    return (
-      <AuthStage
-        data-page="login-password"
-        title={tl('title')}
-        onBack={onBack}
-        backLabel={t('back')}
-        logoTagline={t('tagline')}
-        links={
-          <>
-            <button type="button" className="link-quiet" onClick={onForgotPassword}>
-              {tAuth('forgotPasswordLink')}
-            </button>
-            <button type="button" className="link-quiet" onClick={() => setMode('pin')}>
-              {tl('usePin')}
-            </button>
-            <button type="button" className="link-quiet" onClick={() => setMode('email')}>
-              {tl('useEmail')}
-            </button>
-          </>
-        }
-      >
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            void pw.submit();
-          }}
-          style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}
-        >
-          <input
-            className="auth-field"
-            type="email"
-            inputMode="email"
-            autoComplete="email"
-            autoCapitalize="none"
-            spellCheck={false}
-            value={pw.email}
-            onChange={(e) => pw.setEmail(e.target.value)}
-            placeholder={tAuth('emailLabel')}
-            aria-label={tAuth('emailLabel')}
-            maxLength={254}
-          />
-          <input
-            className="auth-field"
-            type="password"
-            autoComplete="current-password"
-            value={pw.password}
-            onChange={(e) => pw.setPassword(e.target.value)}
-            placeholder={tAuth('passwordLabel')}
-            aria-label={tAuth('passwordLabel')}
-            aria-invalid={pw.error === 'invalid' || undefined}
-            maxLength={200}
-          />
-          {pw.error === 'invalid' && (
-            <p role="alert" className="field-error">
-              {tAuth('signInInvalid')}
-            </p>
-          )}
-          {pw.error === 'rate_limited' && (
-            <p role="alert" className="field-warn">
-              {tAuth('signInRateLimited')}
-            </p>
-          )}
-          {pw.error === 'service' && (
-            <p role="alert" className="field-warn">
-              {tAuth('signInService')}
-            </p>
-          )}
-          <button type="submit" className="auth-btn auth-btn--primary" disabled={!pw.canSubmit}>
-            {pw.busy ? tAuth('emailSignInChecking') : tAuth('emailSignInCta')}
-          </button>
-        </form>
-      </AuthStage>
-    );
-  }
-
   return (
-    <AuthStage
-      data-page="login"
-      title={tl('title')}
-      onBack={onBack}
-      backLabel={t('back')}
-      logoTagline={t('tagline')}
-      links={
-        <>
-          <button type="button" className="link-quiet" onClick={onCantSignIn}>
-            {tl('cantSignIn')}
-          </button>
-          <button type="button" className="link-quiet" onClick={() => setMode('pin')}>
-            {tl('otherWays')}
-          </button>
-          <button type="button" className="link-quiet" onClick={onJoin}>
-            {tl('joinClub')}
-          </button>
-        </>
-      }
-    >
-      <EmailCodeChoices code={code} authProviders={authProviders} />
-    </AuthStage>
+    <div className="animate-slideInRight space-y-5" data-ask-page>
+      <TopBar title={tAsk('askTitle')} onBack={onBack} backLabel={t('back')} />
+      <div className="glass-card p-5">
+        <AskAccessForm
+          initialName={staleName}
+          onApproved={(result) => {
+            // Nothing to sign in with next time: the account step first.
+            if (!result.hasPin) setApproved(result);
+            else enter(result.name);
+          }}
+        />
+      </div>
+    </div>
   );
 }
 
-// ── Can't sign in? ─────────────────────────────────────────────────────────
+// ── Sign up ────────────────────────────────────────────────────────────────
 
-/**
- * Back in through the club's link (docs/plans/sign-in-redesign.md, merge 1):
- * scan the club's QR code, sign in a new way, and "Is that you?" joins the new
- * sign-in to the account. It replaced the signed-out, name-only "let me in"
- * ask, which needed the page kept open and lapsed within an hour.
- */
-function CantSignInView({
+function SignUpView({
   onBack,
+  onLogIn,
+  onCreate,
   onDoor,
-  onResetPassword,
 }: {
   onBack: () => void;
+  onLogIn: () => void;
+  /** Multi-group on: "Start your own club". Absent, the line only explains. */
+  onCreate?: () => void;
+  /** A live club link: open the club's page (sign in first, then ask). */
   onDoor: (token: string) => void;
-  onResetPassword: () => void;
 }) {
-  const tc = useTranslations('signedOut.cantSignIn');
-  return (
-    <ClubLinkPage
-      title={tc('title')}
-      heading={tc('heading')}
-      copy={tc('body')}
-      scanAt="bottom"
-      onBack={onBack}
-      onLink={onDoor}
-      links={
-        <button type="button" className="link-quiet" onClick={onResetPassword}>
-          {tc('resetPassword')}
-        </button>
+  const t = useTranslations('signedOut');
+  const [entry, setEntry] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  /**
+   * "Join a club" without the link in hand (docs/plans/one-way-in.md, step 5):
+   * the club's link is the only way in, so this page asks for it. A pasted
+   * link opens the club's page; anything else, an old invite's 8-character
+   * code included, is told what to ask for.
+   */
+  async function check() {
+    const { token } = parseInviteInput(entry, window.location.origin);
+    if (!token) {
+      setError(t('signup.needLink'));
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      // The ONE club-related read a signed-out visitor may make: the club's
+      // name for a live link, and nothing else.
+      const res = await fetch(`${BASE}/api/groups/preview?token=${encodeURIComponent(token)}`, { cache: 'no-store' });
+      if (!res.ok) {
+        setError(res.status === 404 ? t('signup.linkNotFound') : t('signup.failed'));
+        return;
       }
-    />
+      onDoor(token);
+    } catch {
+      setError(t('signup.failed'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="animate-fadeIn">
+      <TopBar title={t('signup.title')} onBack={onBack} backLabel={t('back')} />
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void check();
+        }}
+        style={{ display: 'grid', gap: 'var(--space-5)', paddingBlock: '0 var(--space-9)' }}
+      >
+        <p style={{ margin: 0, fontSize: 'var(--fs-md)', color: 'var(--text-secondary)' }}>{t('signup.body')}</p>
+
+        <label style={{ display: 'grid', gap: 'var(--space-2)' }}>
+          <span className="section-label">{t('signup.linkLabel')}</span>
+          <input
+            type="text"
+            inputMode="url"
+            value={entry}
+            onChange={(e) => {
+              setEntry(e.target.value);
+              setError(null);
+            }}
+            placeholder={t('signup.linkPlaceholder')}
+            aria-label={t('signup.linkLabel')}
+            autoCapitalize="none"
+            autoComplete="off"
+            spellCheck={false}
+          />
+        </label>
+
+        {error && (
+          <p className="field-error" role="alert">
+            {error}
+          </p>
+        )}
+
+        <button type="submit" disabled={busy || !entry.trim()} className="btn-primary w-full">
+          {busy ? t('signup.checking') : t('signup.continue')}
+        </button>
+
+        {onCreate ? (
+          // The stranger's door to a club of their own (Grant, 2026-10-07: a
+          // link here, not a third button on Welcome).
+          <button type="button" className="link-quiet" style={{ justifySelf: 'center' }} onClick={onCreate}>
+            {t('signup.createInstead')}
+          </button>
+        ) : (
+          <p style={{ margin: 0, textAlign: 'center', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
+            {t('signup.noInvite')}
+          </p>
+        )}
+        <button type="button" className="link-quiet" style={{ justifySelf: 'center' }} onClick={onLogIn}>
+          {t('signup.haveAccount')}
+        </button>
+      </form>
+    </div>
   );
 }

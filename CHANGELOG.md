@@ -18,22 +18,6 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 - **The gear recommender's feature flag is retired** (`NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER`, on in production since it shipped). Nothing changes for members: the skill-scored racket and string picks were already what everyone saw. The old stage-derived "all-rounder" pick, which only a deployment with the flag off ever served, is gone.
 
-
-## Signing in: one layout, buttons where the thumb is (2026-11-20)
-
-The sign-in pages, redrawn on the canvas and built (`docs/plans/sign-in-redesign.md`; Grant: "A log in screen should be clean and easy", "The title should always be on the same height ... CTA button should not jump around").
-
-- **Every sign-in page has the same shape.** The title sits at the same height on every page, the buttons sit at the bottom where the thumb is, and the small links sit under them. No card around anything.
-- **Log in** is the logo, then Apple, Google and "Email me a code". A PIN or a password is behind "Other ways". An iPhone shows Apple first, an Android phone Google first. Both buttons follow Apple's and Google's own designs.
-- **Join a club scans the club's QR code** (the poster at the hall), with "Paste a link" as the other way. Scanning a club's code opens the club's page.
-- **The club's link is three steps**, marked "Step 1 of 3": sign in ("Check your email", a six-box code that says it is valid for 10 minutes and can be sent again), "What's your name?", and "Request sent".
-- **A request stays open for 3 days**, not 14, and every waiting page says so. A request that was declined or ran out says "Not this time".
-- **Can't sign in?** replaces "I play here already": scan the club's code, sign in a new way, and "Is that you?" adds it to your account.
-- **Signing in with a PIN that is your only way in** shows "Add a way back in" straight away, once, before the app opens.
-- **Too many wrong PINs now says so, with a countdown**: "Let's pause a moment — try again in 3:42", and the PIN field waits it out while Apple, Google and the email code stay on the screen. It reads the same for every name, real or not, so it never tells anyone which names have an account. On Log in, the console sign-in and Update PIN.
-- **"Is that you?" needs no organizer first.** A new sign-in that picks a name someone already plays under proves it with their PIN, or by approving on any phone where they're still signed in ("Someone is signing in as you on a new phone. Is this you?", then tap the number the new phone shows), or, only if neither works, by asking an organizer, who sees how the new phone signed in. The typed organizer code is gone.
-- **Signing out goes back to Welcome**, instead of leaving an empty app with a second set of doors. `bpm.grantzou.com` with nothing after it opens the app instead of a "not found" page.
-
 ## Paying by e-transfer: tap to copy the address and the amount (2026-11-20)
 
 - **Home's balance card shows the club's e-transfer address and the amount as two rows; tap one to copy it**, then paste it into your bank's app (`docs/plans/etransfer-copy.md`). The amount copies as a plain number (`27.00`), which banks accept. The address used to be a line of text you had to type out.

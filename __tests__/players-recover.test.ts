@@ -207,10 +207,6 @@ describe('POST /api/players/recover', () => {
       ),
     );
     expect(sixth.status).toBe(429);
-    // A countdown, keyed on the name for every name (sign-in redesign, step 2).
-    const body = await sixth.json();
-    expect(body.error).toBe('pin_paused');
-    expect(body.retryAfter).toBeGreaterThan(3500);
 
     // Different name OR different IP → still allowed
     const differentName = await POST(
@@ -223,9 +219,6 @@ describe('POST /api/players/recover', () => {
     );
     expect(differentName.status).toBe(401);
 
-    // A different address gets past the (name, IP) limit, but not the NAME's
-    // own count: Michael has no PIN, so his name is counted in memory on the
-    // account lock's schedule, and this is the sixth guess at it (step 2).
     const differentIp = await POST(
       makeRequest(
         'POST',
@@ -234,8 +227,7 @@ describe('POST /api/players/recover', () => {
         fakeIp,
       ),
     );
-    expect(differentIp.status).toBe(429);
-    expect((await differentIp.json()).error).toBe('pin_paused');
+    expect(differentIp.status).toBe(401);
   });
 
   it('Mints new token AND invalidates old', async () => {

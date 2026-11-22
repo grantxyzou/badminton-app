@@ -2,14 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import type { Provider } from '@/components/auth/ProviderButtons';
-import { useEmailCode } from '@/components/auth/useEmailCode';
+import TopBar from '@/components/primitives/TopBar';
+import ProviderButtons, { type Provider } from '@/components/auth/ProviderButtons';
+import EmailCodeSignInForm from '@/components/auth/EmailCodeSignInForm';
 import { markOnboardingResume } from '@/lib/onboardingResume';
 import { setIdentity } from '@/lib/identity';
-import { markJustAsked } from '@/lib/justAsked';
-import AuthStage from './AuthStage';
-import NameStep from './NameStep';
-import { CheckEmailPage, EmailCodeChoices, useDoorStep } from './SignInPieces';
+import { isFullName } from '@/lib/fullName';
+import { useOnline } from '@/lib/useOnline';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
@@ -18,38 +17,49 @@ interface Props {
   token: string;
   authProviders: Provider[];
   onBack: () => void;
-  /** Back from Google or Apple with a new sign-in: straight to the name. */
-  startAtName?: boolean;
-  /** The native shell's name step hands its return code back to the app. */
-  onReturnCode?: (code: string) => void;
 }
+
+type Stage = 'start' | 'name' | 'claim' | 'asked';
 
 /**
  * Joining a club through its link, signed out (docs/plans/one-way-in.md,
- * step 4; drawn in docs/plans/sign-in-redesign.md). Three steps, each a page
- * on the sign-in layout:
+ * step 4). Sign in first, with Apple, Google or an email code; then the name
+ * the club will see; then the ask. The account exists before anyone says yes,
+ * so there is nothing to keep open: the organiser lets them in, and they hear
+ * it by email.
  *
- *   1. Sign in — Apple, Google or an email code ("Check your email").
- *   2. "What's your name?" — the shared `NameStep`, which asks.
- *   3. "Request sent" — on the far side of the reload signing in causes, as
- *      the no-club waiting page (`lib/justAsked.ts` tells it this is the
- *      first time it is shown).
+ * Three ways through:
+ *  - Google or Apple: the provider's round trip carries the link in the
+ *    onboarding resume, the name step is the existing name sheet, and the
+ *    sign-up sends the link as its invite (`signupGroupFor` reads it).
+ *  - An email code for a NEW address: `verify` parks the address, this page
+ *    asks for the name and makes the account (`complete-signup`), which asks.
+ *  - An email code for an address that already has an account: signed in,
+ *    then asked with `POST /api/groups/ask` under the account's name.
  *
- * An address that already has an account is signed in by its code and asks
- * at once, under the name it already goes by. Someone on the list who never
- * signed in comes in the same way, and the organizer links the two at
- * approval (step 4b).
+ * Someone already on the list who has never signed in comes in the same way,
+ * under the name the club knows; the organiser links the two at approval
+ * (step 4b). The name-only claim that used to sit under this page went in
+ * step 4d.
+ *
+ * The identity is written only when they leave the "asked" screen, because
+ * writing it reloads this page into the app (or the waiting screen).
  */
-export default function DoorJoinPage({ token, authProviders, onBack, startAtName, onReturnCode }: Props) {
+export default function DoorJoinPage({ token, authProviders, onBack }: Props) {
   const t = useTranslations('signedOut');
-  const td = useTranslations('signedOut.door');
-  const doorStep = useDoorStep();
+  const tClaim = useTranslations('profile.auth');
+  const online = useOnline();
+  /** "Is that you?": their PIN, or a 6-digit code from an organiser. */
+  const [secret, setSecret] = useState('');
+  const [useCode, setUseCode] = useState(false);
   const [club, setClub] = useState<string | null>(null);
   const [linkDead, setLinkDead] = useState(false);
-  const [naming, setNaming] = useState(!!startAtName);
-  /** An existing account signed in, and its ask did not go through. */
-  const [askFailed, setAskFailed] = useState<{ name: string; message: string } | null>(null);
-  const [asking, setAsking] = useState(false);
+  const [stage, setStage] = useState<Stage>('start');
+  const [name, setName] = useState('');
+  const [hinted, setHinted] = useState<string | null>(null);
+  const [signedInAs, setSignedInAs] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -70,19 +80,12 @@ export default function DoorJoinPage({ token, authProviders, onBack, startAtName
   }, [token]);
 
   const clubName = club ?? '';
-  const title = club ? td('title', { club }) : td('titleNoClub');
-
-  /** Asked: sign the phone in, which reloads into the waiting page. */
-  function asked(name: string) {
-    markJustAsked(clubName);
-    setIdentity({ name, sessionId: '' });
-  }
 
   async function askSignedIn(accountName: string) {
-    // An existing account proved its address: it is signed in now, so it
-    // asks as itself, under the name it already goes by.
-    setAsking(true);
-    setAskFailed(null);
+    // An existing account proved its address: it is signed in now, so ask
+    // as itself, under the name it already goes by.
+    setBusy(true);
+    setError(null);
     try {
       const res = await fetch(`${BASE}/api/groups/ask`, {
         method: 'POST',
@@ -94,101 +97,258 @@ export default function DoorJoinPage({ token, authProviders, onBack, startAtName
         setIdentity({ name: accountName, sessionId: '' });
         return;
       }
-      if (res.ok) {
-        asked(accountName);
+      if (!res.ok) {
+        setError(res.status === 409 ? t('door.busy', { club: clubName }) : t('door.failed'));
+        setSignedInAs(accountName);
+        setBusy(false);
         return;
       }
-      setAskFailed({ name: accountName, message: res.status === 409 ? td('busy', { club: clubName }) : td('failed') });
+      setSignedInAs(accountName);
+      setStage('asked');
     } catch {
-      setAskFailed({ name: accountName, message: td('failed') });
+      setError(t('door.failed'));
     }
-    setAsking(false);
+    setBusy(false);
   }
 
-  const code = useEmailCode({
-    doorToken: token,
-    onNewAccount: () => setNaming(true),
-    onSuccess: ({ name }) => void askSignedIn(name),
-  });
+  async function makeAccountAndAsk() {
+    const trimmed = name.trim();
+    if (!trimmed || busy || !online) return;
+    // A first and last name helps the organiser know who is asking, but a
+    // club may know someone by one name: a hint once, then it goes.
+    if (!isFullName(trimmed) && hinted !== trimmed) {
+      setHinted(trimmed);
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`${BASE}/api/auth/complete-signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: trimmed, inviteToken: token }),
+      });
+      if (res.status === 201) {
+        setSignedInAs(trimmed);
+        setStage('asked');
+      } else if (res.status === 409) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        // Someone on the list signs in under this name (docs/plans/one-way-in.md,
+        // step 6): if it is them, their PIN or a code connects this sign-in.
+        if (body.error === 'name_taken') {
+          setSecret('');
+          setUseCode(false);
+          setStage('claim');
+        } else setError(t('door.emailTaken'));
+      } else if (res.status === 404) {
+        setError(t('signup.linkNotFound'));
+      } else {
+        setError(t('door.failed'));
+      }
+    } catch {
+      setError(t('door.failed'));
+    }
+    setBusy(false);
+  }
+
+  async function claimName() {
+    const trimmed = secret.trim();
+    if (!trimmed || busy || !online) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`${BASE}/api/auth/claim-name`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim(), inviteToken: token, ...(useCode ? { code: trimmed } : { pin: trimmed }) }),
+      });
+      if (res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { name?: string };
+        // Connected and signed in to the club they are already in: straight in.
+        setIdentity({ name: body.name ?? name.trim(), sessionId: '' });
+        return;
+      }
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      if (res.status === 429) setError(tClaim('claimRateLimited'));
+      else if (body.error === 'already_linked') setError(tClaim('claimAlreadyLinked'));
+      else if (res.status === 401) setError(tClaim('claimWrong'));
+      else setError(t('door.failed'));
+    } catch {
+      setError(t('door.failed'));
+    }
+    setBusy(false);
+  }
+
+  const title = club ? t('door.title', { club }) : t('door.titleNoClub');
 
   if (linkDead) {
     return (
-      <AuthStage
-        data-page="link-dead"
-        title={td('titleNoClub')}
-        onBack={onBack}
-        backLabel={t('back')}
-        heading={td('deadHeading')}
-        copy={<p className="auth-copy">{td('deadBody')}</p>}
-        actions={
-          <button type="button" className="auth-btn auth-btn--neutral" onClick={onBack}>
-            {td('back')}
-          </button>
-        }
-      />
+      <div className="animate-fadeIn">
+        <TopBar title={t('door.titleNoClub')} onBack={onBack} backLabel={t('back')} />
+        <p className="field-error" role="alert">{t('signup.linkNotFound')}</p>
+      </div>
     );
   }
 
-  if (askFailed) {
+  if (stage === 'asked') {
     return (
-      <AuthStage
-        data-page="ask-failed"
-        title={title}
-        backLabel={t('back')}
-        heading={td('askFailedHeading')}
-        copy={
-          <p className="field-error" role="alert">
-            {askFailed.message}
+      <div className="animate-fadeIn">
+        <TopBar title={title} backLabel={t('back')} />
+        <div style={{ display: 'grid', gap: 'var(--space-5)', paddingBlock: '0 var(--space-9)' }}>
+          <div className="glass-card" style={{ display: 'grid', gap: 'var(--space-3)', padding: 'var(--space-5)' }}>
+            <p className="bpm-h3" style={{ margin: 0 }} role="status">
+              {t('door.askedTitle', { club: clubName })}
+            </p>
+            <p style={{ margin: 0, fontSize: 'var(--fs-md)', color: 'var(--text-secondary)' }}>{t('door.askedBody')}</p>
+            <button
+              type="button"
+              className="btn-primary"
+              style={{ width: '100%' }}
+              onClick={() => setIdentity({ name: signedInAs ?? name.trim(), sessionId: '' })}
+            >
+              {t('door.done')}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (stage === 'claim') {
+    return (
+      <div className="animate-fadeIn">
+        <TopBar title={tClaim('claimTitle')} onBack={() => setStage('name')} backLabel={t('back')} />
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void claimName();
+          }}
+          style={{ display: 'grid', gap: 'var(--space-5)', paddingBlock: '0 var(--space-9)' }}
+        >
+          <p style={{ margin: 0, fontSize: 'var(--fs-md)', color: 'var(--text-secondary)' }}>
+            {tClaim('claimBody', { name: name.trim() })}
           </p>
-        }
-        actions={
+          <div className="glass-card" style={{ display: 'grid', gap: 'var(--space-3)', padding: 'var(--space-5)' }}>
+            <input
+              key={useCode ? 'code' : 'pin'}
+              type="password"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              value={secret}
+              onChange={(e) => {
+                setSecret(e.target.value.replace(/\D/g, '').slice(0, useCode ? 6 : 4));
+                setError(null);
+              }}
+              aria-label={useCode ? tClaim('claimCodeLabel') : tClaim('claimPinLabel')}
+              placeholder={useCode ? tClaim('claimCodeLabel') : tClaim('claimPinLabel')}
+            />
+            {error && <p className="field-error" role="alert">{error}</p>}
+            <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={busy || !online || secret.length !== (useCode ? 6 : 4)}>
+              {busy ? tClaim('claimChecking') : tClaim('claimCta')}
+            </button>
+          </div>
           <button
             type="button"
-            className="auth-btn auth-btn--primary"
-            disabled={asking}
-            onClick={() => void askSignedIn(askFailed.name)}
+            className="link-quiet"
+            style={{ justifySelf: 'center' }}
+            onClick={() => {
+              setUseCode((v) => !v);
+              setSecret('');
+              setError(null);
+            }}
           >
-            {asking ? td('asking') : td('tryAgain')}
+            {useCode ? tClaim('claimUsePin') : tClaim('claimNoPin')}
           </button>
-        }
-      />
+          <button
+            type="button"
+            className="link-quiet"
+            style={{ justifySelf: 'center' }}
+            onClick={() => {
+              setStage('name');
+              setError(null);
+            }}
+          >
+            {tClaim('claimDifferentName')}
+          </button>
+        </form>
+      </div>
     );
   }
 
-  if (naming) {
+  if (stage === 'name') {
+    const oneWord = name.trim().length > 0 && !isFullName(name.trim());
     return (
-      <NameStep
-        title={title}
-        onBack={() => {
-          setNaming(false);
-          code.restart();
-        }}
-        step={doorStep(2)}
-        inviteToken={token}
-        club={club}
-        prefill={!!startAtName}
-        onMade={asked}
-        onReturnCode={onReturnCode}
-      />
+      <div className="animate-fadeIn">
+        <TopBar title={title} onBack={() => setStage('start')} backLabel={t('back')} />
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void makeAccountAndAsk();
+          }}
+          style={{ display: 'grid', gap: 'var(--space-5)', paddingBlock: '0 var(--space-9)' }}
+        >
+          <p style={{ margin: 0, fontSize: 'var(--fs-md)', color: 'var(--text-secondary)' }}>{t('door.nameBody')}</p>
+          <div className="glass-card" style={{ display: 'grid', gap: 'var(--space-3)', padding: 'var(--space-5)' }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+              <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>{t('door.nameLabel')}</span>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  setError(null);
+                }}
+                aria-label={t('door.nameLabel')}
+                autoComplete="name"
+                maxLength={50}
+                autoFocus
+              />
+              {hinted !== null && oneWord && (
+                <span className="field-warn" role="status">{t('door.nameHint')}</span>
+              )}
+            </label>
+            {error && <p className="field-error" role="alert">{error}</p>}
+            <button
+              type="submit"
+              className="btn-primary"
+              style={{ width: '100%' }}
+              disabled={busy || !online || !name.trim()}
+            >
+              {busy ? t('door.asking') : t('door.askCta')}
+            </button>
+          </div>
+        </form>
+      </div>
     );
-  }
-
-  if (code.step === 'code') {
-    return <CheckEmailPage code={code} title={title} step={doorStep(1)} definite />;
   }
 
   return (
-    <AuthStage data-page="door" title={title} onBack={onBack} backLabel={t('back')} logoTagline={t('tagline')}>
-      {/* The link must survive the trip to Google or Apple: the callback
-          builds its return URL from scratch, so the resume is the only thing
-          that comes back. It rides as an invite token, which
-          `signupGroupFor` reads as the club's link. */}
-      <EmailCodeChoices code={code} authProviders={authProviders} onLeave={() => markOnboardingResume('join', token)} />
-      {asking && (
-        <p role="status" className="auth-note" style={{ textAlign: 'center' }}>
-          {td('asking')}
-        </p>
-      )}
-    </AuthStage>
+    <div className="animate-fadeIn">
+      <TopBar title={title} onBack={onBack} backLabel={t('back')} />
+      <div style={{ display: 'grid', gap: 'var(--space-5)', paddingBlock: '0 var(--space-9)' }}>
+        <p style={{ margin: 0, fontSize: 'var(--fs-md)', color: 'var(--text-secondary)' }}>{t('door.body')}</p>
+        <div className="glass-card" style={{ display: 'grid', gap: 'var(--space-4)', padding: 'var(--space-5)' }}>
+          {authProviders.length > 0 && (
+            <>
+              {/* The link must survive the trip to Google or Apple: the
+                  callback builds its return URL from scratch, so the resume
+                  is the only thing that comes back. It rides as an invite
+                  token, which `signupGroupFor` reads as the club's link. */}
+              <ProviderButtons mode="signin" available={authProviders} onLeave={() => markOnboardingResume('join', token)} />
+              <p style={{ margin: 0, textAlign: 'center', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
+                {t('signup.or')}
+              </p>
+            </>
+          )}
+          <EmailCodeSignInForm
+            doorToken={token}
+            onNewAccount={() => setStage('name')}
+            onSuccess={({ name: accountName }) => void askSignedIn(accountName)}
+          />
+          {busy && <p role="status" className="fs-sm" style={{ margin: 0, color: 'var(--text-muted)' }}>{t('door.asking')}</p>}
+          {error && <p className="field-error" role="alert">{error}</p>}
+        </div>
+      </div>
+    </div>
   );
 }

@@ -41,7 +41,6 @@ type ScaleOut = 'safe' | 'multiplies' | 'stale' | 'browser';
 
 const REGISTRY: ReadonlyArray<{ file: string; name: string; scaleOut: ScaleOut; note: string }> = [
   { file: 'lib/rateLimit.ts', name: 'store', scaleOut: 'multiplies', note: 'per-IP and per-member limits; the sign-in throttle included' },
-  { file: 'lib/pinLockPolicy.ts', name: 'nameLocks', scaleOut: 'multiplies', note: 'PIN guesses at a name with no PIN behind it, on the account lock\'s schedule; N instances count separately' },
   { file: 'lib/cosmos.ts', name: 'ensured', scaleOut: 'safe', note: 'createIfNotExists memo; a second instance pays one extra metadata call per container' },
   { file: 'lib/cosmos.ts', name: 'pointerMemo', scaleOut: 'stale', note: '5 s per-group session-pointer memo; an advance on one instance reads old on another for up to POINTER_TTL_MS' },
   { file: 'lib/levelStore.ts', name: 'calCache', scaleOut: 'stale', note: 'group calibration, 30 s TTL; writers invalidate only their own process' },
@@ -119,7 +118,7 @@ describe('single-instance registry', () => {
     // and the pointer-memo gotcha should find the same files here. Pin the
     // set so the two cannot drift apart silently.
     const risky = REGISTRY.filter((r) => r.scaleOut === 'multiplies' || r.scaleOut === 'stale').map((r) => r.file);
-    expect(new Set(risky)).toEqual(new Set(['lib/rateLimit.ts', 'lib/cosmos.ts', 'lib/levelStore.ts', 'app/api/equipment/catalog/route.ts', 'lib/stringShelfRead.ts', 'lib/latestRatings.ts', 'lib/pinLockPolicy.ts']));
+    expect(new Set(risky)).toEqual(new Set(['lib/rateLimit.ts', 'lib/cosmos.ts', 'lib/levelStore.ts', 'app/api/equipment/catalog/route.ts', 'lib/stringShelfRead.ts', 'lib/latestRatings.ts']));
   });
 
   it('the scanner itself still finds the rate limiter (a regex that matches nothing passes vacuously)', () => {

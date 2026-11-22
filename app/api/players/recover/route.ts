@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { claimPinAttempt, notePinSuccess } from '@/lib/pinLockout';
-import { claimNameAttempt, nameLockSeconds } from '@/lib/pinLockPolicy';
-import { pinPaused } from '@/lib/pinPaused';
 import { randomBytes } from 'crypto';
 import { completeSignIn } from '@/lib/authSession';
-import { checkRateLimit, getClientIp, retryAfterSeconds } from '@/lib/rateLimit';
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId, explicitGroupId } from '@/lib/groupContext';
@@ -76,11 +74,7 @@ async function handlePost(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   }
 
-  const nameIpKey = `recover:${name.toLowerCase()}:${ip}`;
-  if (!checkRateLimit(nameIpKey, 5, 60 * 60 * 1000)) {
-    // Keyed on the NAME for every name, so a PIN guess past it gets the same
-    // countdown whether or not the name has an account (sign-in redesign, step 2).
-    if (pin) return pinPaused(retryAfterSeconds(nameIpKey));
+  if (!checkRateLimit(`recover:${name.toLowerCase()}:${ip}`, 5, 60 * 60 * 1000)) {
     return NextResponse.json({ error: 'rate_limited', retryAfter: 60 * 60 }, { status: 429 });
   }
 
@@ -130,17 +124,6 @@ async function handlePost(req: NextRequest) {
   // hash-less when signup doesn't include a PIN field. By making the
   // member record the source of truth, the PIN persists across sessions.
   if (pin) {
-    // THE COUNTDOWN A PERSON SEES comes from the name alone, counted before
-    // anything is looked up, the same at every PIN check in the app — never
-    // from the account's own lock, or it would list who holds a PIN
-    // (lib/pinLockPolicy.ts). Paused: refuse without comparing.
-    const attempt = claimNameAttempt(name);
-    if (!attempt) return pinPaused(nameLockSeconds(name));
-    const wrongPin = () => {
-      const paused = nameLockSeconds(name);
-      return paused > 0 ? pinPaused(paused) : FAIL();
-    };
-
     // WHO COULD THIS BE? With one club a name was a person. With groups on and
     // no group context — a fresh device, a link from outside the app — the same
     // name can be two people in two clubs, and the PIN is the only thing that
@@ -191,12 +174,11 @@ async function handlePost(req: NextRequest) {
         });
         await scope.upsert('players', { ...player, recoveryEvents: updatedEvents });
       }
-      return wrongPin();
+      return FAIL();
     }
     const member = matches[0].member;
     const signInGroupId = matches[0].groupId;
     await notePinSuccess(member);
-    attempt.undo();
 
     // PIN verified. If a session player exists IN THE GROUP WE SIGNED THEM
     // INTO, mint a fresh deleteToken on that row.

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { resetMockStore, setupAdminPin, seedTestAdminMember, getTestAdminName, seedMember, makeRequest, getStore } from './helpers';
 import { hashPin, FAKE_HASH } from '../lib/recoveryHash';
-import { FREE_ATTEMPTS } from '../lib/pinLockPolicy';
+import { FREE_ATTEMPTS } from '../lib/pinLockout';
 import { POST as adminLogin } from '@/app/api/admin/route';
 import { POST as recover } from '@/app/api/players/recover/route';
 
@@ -50,8 +50,7 @@ describe('a parallel burst reaches the real PIN at most FREE_ATTEMPTS + 1 times'
     const guesses = Array.from({ length: BURST }, (_, i) =>
       adminLogin(makeRequest('POST', 'http://x/api/admin', { name: getTestAdminName(), pin: String(1000 + i * 7) })));
     const answers = await Promise.all(guesses);
-    // A wrong PIN, or paused once the lock forms: never a way in.
-    expect(answers.every((r) => r.status === 401 || r.status === 429)).toBe(true);
+    expect(answers.every((r) => r.status === 401)).toBe(true);
     expect(real.compares).toBeLessThanOrEqual(FREE_ATTEMPTS + 1);
   });
 

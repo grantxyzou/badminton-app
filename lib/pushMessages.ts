@@ -390,32 +390,3 @@ export function buildInvoiceUnpaidPayload(
     tag: safeTag(`str-${job.jobNo}-unpaid`),
   };
 }
-
-/**
- * "Is this you?" — to the person a new phone is signing in as
- * (docs/plans/sign-in-redesign.md, step 3). Opens Home, where the prompt asks
- * them to tap the number the new phone shows. No name of the asker: the
- * prompt in the app says how they signed in.
- */
-export function buildNewPhonePayload(locale: PushLocale = 'en'): PushPayload {
-  const t = pushT(locale);
-  return { title: t('newPhone.title'), body: t('newPhone.body'), url: `${BASE}/`, tag: 'new-phone' };
-}
-
-/** "Is this Lin?" — to the club's admins when the new phone asks an organizer instead. */
-export function buildNewPhoneOrganizerPayload(name: string, memberId: string, locale: PushLocale = 'en'): PushPayload {
-  const t = pushT(locale);
-  return {
-    title: t('newPhoneOrganizer.title', { name }),
-    body: t('newPhoneOrganizer.body', { name }),
-    url: `${BASE}/?tab=admin`,
-    tag: safeTag(`access-${memberId}`),
-  };
-}
-
-/** "A new way in was added" — to the person, when an organizer approved a new
- *  sign-in onto their account, so a mistake is seen (sign-in redesign, step 3). */
-export function buildNewSignInAddedPayload(locale: PushLocale = 'en'): PushPayload {
-  const t = pushT(locale);
-  return { title: t('newSignInAdded.title'), body: t('newSignInAdded.body'), url: `${BASE}/?tab=profile`, tag: 'new-sign-in-added' };
-}

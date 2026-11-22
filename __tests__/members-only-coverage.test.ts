@@ -150,8 +150,6 @@ const ROUTES: Record<string, Entry> = {
   // A gifter's own cards (docs/plans/gift-card-ledger.md): the member cookie, then the switch.
   giftcards: { kind: 'authed', helper: 'requireGroupMember' },
   'stringing/jobs': { kind: 'authed', helper: 'verifyLiveMemberAuth' },
-  // "Is this you?" asks waiting on the caller's OWN account (sign-in redesign, step 3).
-  'auth/new-phone': { kind: 'authed', helper: 'verifyLiveMemberAuth' },
 
   // ── Public by design: nothing about the club ─────────────────────────────
   admin: { kind: 'public', reason: 'the admin-status probe: answers only `authed`' },

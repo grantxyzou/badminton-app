@@ -21,7 +21,6 @@ type NotificationsPageComponent = typeof import('@/components/NotificationsPage'
 import { usePush } from '@/lib/usePush';
 import { isNative } from '@/lib/native';
 import TopToast from '@/components/primitives/TopToast';
-import NewPhonePrompt from '@/components/auth/NewPhonePrompt';
 import AdminErrorBoundary from '@/components/AdminErrorBoundary';
 import PullToRefresh from '@/components/PullToRefresh';
 import { StringingFallback, StatsFallback, ProfileFallback, AdminFallback, NotificationsFallback } from '@/components/TabFallbacks';
@@ -30,8 +29,7 @@ import type { Announcement } from '@/lib/types';
 import { getIdentity, setIdentity, IDENTITY_EVENT } from '@/lib/identity';
 import { useUsageBeacons } from '@/lib/useUsageBeacons';
 import { noticeBanner, noticeTimeoutMs, type AuthNotice } from '@/lib/authNotice';
-import { showTopToast, useTopToastBus } from '@/lib/topToast';
-import { consumeJustAsked } from '@/lib/justAsked';
+import { useTopToastBus } from '@/lib/topToast';
 import { useOnline, useReportFetchFailure } from '@/lib/useOnline';
 import { consumeRecentExcursion } from '@/lib/excursion';
 import { nativeReturnHref, pendingHandoffId, readReturnCodeFromHash } from '@/lib/handoffClient';
@@ -89,8 +87,10 @@ const DemoMode = dynamic(() => import('@/components/DemoMode'), { ssr: false });
 // and together they pulled the provider buttons, the invite preview and the
 // group forms into everyone's first payload. Closed is still ABSENT (each is
 // rendered behind a condition), so the chunk loads on first open only.
+const ChooseNameSheet = dynamic(() => import('./auth/ChooseNameSheet'), { ssr: false });
 const HandoffCodeSheet = dynamic(() => import('./auth/HandoffCodeSheet'), { ssr: false });
 const ResetPasswordSheet = dynamic(() => import('./auth/ResetPasswordSheet'), { ssr: false });
+const WelcomeDoors = dynamic(() => import('./onboarding/WelcomeDoors'), { ssr: false });
 const CreateGroupPage = dynamic(() => import('./onboarding/CreateGroupPage'), { ssr: false });
 const JoinGroupPage = dynamic(() => import('./onboarding/JoinGroupPage'), { ssr: false });
 
@@ -215,6 +215,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
   // authenticated provider identity with no member yet. The verified provider
   // facts live in a signed, HttpOnly cookie the client cannot read; all this
   // flag does is decide whether to show the name prompt.
+  const [chooseNameOpen, setChooseNameOpen] = useState(false);
   // `?intent=delete` from the public delete-account page; consumed by
   // ProfileTab once an identity exists. See the param effect below.
   const [deleteIntent, setDeleteIntent] = useState(false);
@@ -241,6 +242,17 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
    * a signed-in person for one frame is the unknown-is-not-known-false rule.
    */
   const [hasIdentity, setHasIdentity] = useState<boolean | null>(null);
+  /**
+   * "I already have an account" steps PAST the doors without creating one.
+   *
+   * It needs its own flag because the doors render INSTEAD of the tabs: setting
+   * the active tab behind them changed nothing anybody could see, so the button
+   * fired and the screen sat there — a dead control, which is worse than a
+   * missing one. Not persisted: a reload with still no identity shows the doors
+   * again, which is the right answer for someone who went looking for sign-in,
+   * did not finish, and needs the other two doors back.
+   */
+  const [doorsDismissed, setDoorsDismissed] = useState(false);
   const groupsEnabled = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
   const { group, refresh: refreshGroups } = useCurrentGroup();
   // A club with stringing switched off has no Stringing tab (docs/plans/stringing-add-on.md).
@@ -262,15 +274,6 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
   // Messages raised from anywhere in the tree (the advance form's "Session
   // created!"); the bus owns their timer.
   const { toast: appToast, dismiss: dismissAppToast } = useTopToastBus();
-  // Asked to join another club through its link while signed out, as an
-  // account already in a club: the reload lands here, not on the waiting
-  // page, so "Request sent" is said here (lib/justAsked.ts). After the bus
-  // above, so its listener is already in place.
-  const tWaiting = useTranslations('signedOut.waiting');
-  useEffect(() => {
-    if (consumeJustAsked() === null) return;
-    showTopToast({ tone: 'success', icon: 'check_circle', title: tWaiting('sentHeading'), body: tWaiting('sentBody') });
-  }, [tWaiting]);
   /** Set by `?signedIn=1`; consumed once by the whoami effect below. */
   const [signedInPending, setSignedInPending] = useState<{
     provider: 'google' | 'apple' | null;
@@ -339,10 +342,9 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
     const cleaned = new URL(window.location.href);
     let dirty = false;
 
-    // A provider identity with no member yet is the SIGNED-OUT shell's to name
-    // (its name step, docs/plans/sign-in-redesign.md): the server renders this
-    // shell only for a member, so here the marker is stale and only stripped.
+    // A provider identity with no member yet: collect a display name.
     if (params.get('authFlow') === 'name') {
+      setChooseNameOpen(true);
       cleaned.searchParams.delete('authFlow');
       dirty = true;
     }
@@ -444,9 +446,12 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
     // the first tab is about to come back for.
     const resume = armed ? consumeOnboardingResume() : (pruneStaleOnboardingResume(), null);
     if (resume && groupsEnabled) {
-      // APPLIED NOW, not when identity arrives: the join page reads
-      // `joinToken` on its first render, so a late token would open it empty
-      // and the person would be asked for a link they already followed.
+      // APPLIED NOW, not when identity arrives. Deferring would mount
+      // ChooseNameSheet while `joinToken` is still null, so the name submit
+      // would fire WITHOUT the invite, land the account on BPM, and only then
+      // join the real club — the two-roster defect, reintroduced by the
+      // mechanism meant to prevent it. `sentInvite` is computed per render, so
+      // a late token is a guaranteed loss rather than a race.
       if (resume.token) setJoinToken(resume.token);
       // `signedIn=1` means a member already resolved, so the account step is
       // behind us and starting there would flash a screen we are leaving.
@@ -596,8 +601,8 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
    * `resolveStaleIdentity` short-circuits on an empty `sessionId`
    * (`if (!stored || !stored.sessionId) return {action:'keep'}`), so a blank one
    * is never treated as stale — and it is the honest value for a returning
-   * member who has not signed up for this week yet. The sign-in pages
-   * (`NameStep`, Log in) write exactly this shape.
+   * member who has not signed up for this week yet. `ChooseNameSheet.finish()`
+   * already writes exactly this shape.
    *
    * The instinct on review is to "fix" this by awaiting /api/session first.
    * Do not: a hung or failing session fetch would mean identity never lands,
@@ -623,6 +628,7 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
   // Each lazily loaded sheet mounts on its first open and stays (see
   // `useEverOpened`), so its chunk is never fetched for a visitor who never
   // reaches it and its close animation is never cut short.
+  const chooseNameEver = useEverOpened(chooseNameOpen);
   const handoffEver = useEverOpened(!!handoffCollect.prompt);
   const resetEver = useEverOpened(!!resetRequest);
 
@@ -837,6 +843,8 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
     const read = () => {
       const present = getIdentity() !== null;
       setHasIdentity(present);
+      // A sign-out puts someone back at the start; the doors are the start.
+      if (!present) setDoorsDismissed(false);
     };
     read();
     window.addEventListener(IDENTITY_EVENT, read);
@@ -927,8 +935,9 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
    * context the person has no relationship with yet.
    */
   const showOnboardingPage = groupsEnabled && onboarding !== null;
+  const showDoors = groupsEnabled && hasIdentity === false && !doorsDismissed && !showOnboardingPage;
   /** Either takes the full screen, so the tab bar belongs to neither. */
-  const inOnboarding = showOnboardingPage;
+  const inOnboarding = showDoors || showOnboardingPage;
 
   /**
    * And the tabs you have not opened yet are opened for you, hidden, once the
@@ -1050,10 +1059,6 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
             }
             onClose={online && authNotice ? () => setAuthNotice(null) : online && appToast ? dismissAppToast : undefined}
           />
-          {/* "Someone is signing in as you on a new phone. Is this you?" — any
-              signed-in phone answers "Is that you?" from a new sign-in
-              (docs/plans/sign-in-redesign.md, step 3). A sheet, so it portals. */}
-          {hasIdentity === true && !inOnboarding && <NewPhonePrompt />}
           {/* No "sign in to see your stats" banner (removed 2026-09-14). Each
               Stats card a device may not fill now locks itself with its own
               Sign in button (components/stats/LockedCard.tsx), and Profile
@@ -1108,6 +1113,25 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
                 }}
               />
             )
+          ) : showDoors ? (
+            /* First launch with no identity, multi-group on: three doors and
+               nothing else. The tabs are NOT rendered behind them — a roster and
+               a sign-up card for a club this person has no relationship with is
+               the wrong first screen, and it is what the doors exist to replace.
+               `hasIdentity === null` is UNKNOWN and shows neither. */
+            <WelcomeDoors
+              onCreate={() => {
+                setCreateAuthFirst(true); // the doors render only with no identity
+                setOnboarding('create');
+              }}
+              onJoin={() => setOnboarding('join')}
+              onExisting={() => {
+                // Both, and in this order: the tab is where they are going, and
+                // dismissing is what lets them see it.
+                setActiveTab('profile');
+                setDoorsDismissed(true);
+              }}
+            />
           ) : (
           <>
           {noticesOpen && (NoticesPageView ? (
@@ -1191,11 +1215,30 @@ export default function HomeShell({ initialAnnouncement, authProviders = [], mem
         {!inOnboarding && <BottomNav activeTab={activeTab} onTabChange={changeTab} hideStringing={stringingHidden} />}
       </div>
       {demoMode && <DemoMode onClose={() => setDemoMode(false)} />}
+      {/* Mounted at shell level, not inside a tab: the provider callback lands
+          on whatever tab the app restores, and the name prompt has to appear
+          regardless of which one that is. */}
+      {/* Keyed on open so the sheet REMOUNTS each time: mode, PIN field and
+          error all reset without setState-in-effect. */}
+      {chooseNameEver && (
+      <ChooseNameSheet
+        inviteToken={joinToken}
+        noGroup={onboarding === 'create'}
+        key={chooseNameOpen ? 'choose-name-open' : 'choose-name-closed'}
+        open={chooseNameOpen}
+        onClose={() => setChooseNameOpen(false)}
+        sessionId={profileSession.id}
+        onReturnCode={(code) => {
+          setReturnCode(code);
+          window.location.assign(nativeReturnHref(code));
+        }}
+      />
+      )}
       {/* The typed-code fallback for a Google/Apple sign-in that finished
           somewhere that could not report back. Shell level: it can be needed
           on whatever tab the app restores. */}
       {handoffEver && <HandoffCodeSheet {...handoffCollect} />}
-      {/* Shell level: a reset link lands
+      {/* Shell level for the same reason as ChooseNameSheet: a reset link lands
           on /bpm at whatever tab the app restores. Keyed so the fields reset on
           each open rather than via setState-in-effect. */}
       {resetEver && (

@@ -18,7 +18,6 @@ import RecoveryPinSheet from './RecoveryPinSheet';
 import ReleaseNotesSheet from './ReleaseNotesSheet';
 import InstallSheet from './InstallSheet';
 import SignInForm from './SignInForm';
-import { hardReload } from '@/lib/reload';
 import ProviderButtons, { type Provider as AuthProvider } from './auth/ProviderButtons';
 import { useSignInMethods, methodsSummary } from './auth/useSignInMethods';
 import EmailSignInForm from './auth/EmailSignInForm';
@@ -415,11 +414,6 @@ export default function ProfileTab({
     } catch (err) {
       console.warn('Admin cookie clear failed (network):', err);
     }
-    // ONE front door (docs/plans/sign-in-redesign.md): the server decides what
-    // a signed-out phone sees, so ask it. Staying on this page left the app
-    // open with nobody in it, and the old doors and Profile's name-and-PIN
-    // form appeared — a second Welcome and a second Log in.
-    hardReload();
   }
 
   // Anonymous state — Profile is identity-only. Inline sign-in form (name +

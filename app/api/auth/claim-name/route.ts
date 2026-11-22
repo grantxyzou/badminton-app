@@ -12,11 +12,12 @@
  *
  * WHAT COUNTS AS PROOF
  * --------------------
- * The member's PIN, verified against `members.pinHash`. That is the first
- * rung of "Is that you?" (docs/plans/sign-in-redesign.md); the other two —
- * the person's own signed-in phone, then an organizer — approve in the app
- * through `POST /api/auth/claim-ask`, and replaced the admin-issued recovery
- * code this route used to take as well (step 3).
+ * The same two credentials `/api/players/recover` accepts:
+ *
+ *   - the member's PIN, verified against `members.pinHash`;
+ *   - an admin-issued 6-digit recovery code, for members who never set a PIN
+ *     (the invite-list case — they have no secret of their own, so an admin
+ *     vouching for them is the only proof available).
  *
  * A NAME IS NEVER PROOF. Names are enumerable via `GET /api/members`, so
  * accepting one would hand any account to anyone who can read that list. This
@@ -32,10 +33,10 @@ import { claimPinAttempt, notePinSuccess } from '@/lib/pinLockout';
 import { getContainer } from '@/lib/cosmos';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { verifyPin, FAKE_HASH } from '@/lib/recoveryHash';
+import { verifyRecoveryCode, noteRecoveryCodeFailure } from '@/lib/memberRecoveryCode';
+import { appendEvent } from '@/lib/recoveryAudit';
 import { completeSignIn } from '@/lib/authSession';
-import { claimNameAttempt, nameLockSeconds } from '@/lib/pinLockPolicy';
-import { pinPaused } from '@/lib/pinPaused';
-import { linkSignInTo } from '@/lib/linkSignIn';
+import { reserveIdentity, releaseIdentity, normalizeEmail } from '@/lib/authIdentity';
 import { readPendingSignup, clearPendingSignup } from '@/lib/pendingSignup';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
 import type { Member } from '@/lib/types';
@@ -47,12 +48,6 @@ import { padMissingAccount } from '@/lib/accountPad';
 export const dynamic = 'force-dynamic';
 
 const FAIL = () => NextResponse.json({ error: 'invalid_credentials' }, { status: 401 });
-
-/** A wrong PIN, or the countdown once the NAME is paused (lib/pinLockPolicy.ts). */
-function wrongPin(name: string) {
-  const paused = nameLockSeconds(name);
-  return paused > 0 ? pinPaused(paused) : FAIL();
-}
 
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req);
@@ -66,7 +61,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'rate_limited', retryAfter: 3600 }, { status: 429 });
   }
 
-  let body: { name?: unknown; pin?: unknown; inviteToken?: unknown; inviteCode?: unknown };
+  let body: { name?: unknown; pin?: unknown; code?: unknown; inviteToken?: unknown; inviteCode?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -75,8 +70,13 @@ export async function POST(req: NextRequest) {
 
   const name = typeof body.name === 'string' ? body.name.trim().slice(0, 50) : '';
   const pin = typeof body.pin === 'string' ? body.pin : null;
+  const code = typeof body.code === 'string' ? body.code : null;
 
-  if (!name || !pin) return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
+  if (!name) return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
+  // Exactly one credential, matching /api/players/recover's contract.
+  if ((pin && code) || (!pin && !code)) {
+    return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
+  }
   // The club's link this person arrived with, if any: the only thing that
   // names THEIR club. A signed-out browser carries no club cookie, so
   // `resolveGroupId` answers BPM, and the name was looked up on BPM's roster
@@ -85,7 +85,8 @@ export async function POST(req: NextRequest) {
   // docs/plans/one-way-in.md step 5: it resolves nothing, so it fails.
   const inviteToken = typeof body.inviteToken === 'string' && body.inviteToken.trim() ? body.inviteToken.trim().slice(0, 128) : null;
   const inviteCode = !inviteToken && typeof body.inviteCode === 'string' && body.inviteCode.trim() ? body.inviteCode.trim().slice(0, 64) : null;
-  if (!/^[0-9]{4}$/.test(pin)) return FAIL();
+  if (pin && !/^[0-9]{4}$/.test(pin)) return FAIL();
+  if (code && !/^[0-9]{6}$/.test(code)) return FAIL();
 
   // Same envelope as /recover: 5 per hour per (name, IP).
   if (!checkRateLimit(`auth-claim:${name.toLowerCase()}:${ip}`, 5, 60 * 60 * 1000)) {
@@ -107,11 +108,6 @@ export async function POST(req: NextRequest) {
      captured-callback takeover, where a victim typed their own name and PIN
      into an attacker's sign-in. */
 
-  // THE COUNTDOWN A PERSON SEES comes from the name alone, counted before
-  // anything is looked up, the same at every PIN check (lib/pinLockPolicy.ts).
-  const attempt = claimNameAttempt(name);
-  if (!attempt) return pinPaused(nameLockSeconds(name));
-
   try {
     const container = getContainer('members');
     // Name -> memberId goes through lib/memberResolve.ts, which owns that
@@ -125,8 +121,8 @@ export async function POST(req: NextRequest) {
       // A link that no longer resolves (or a retired code) is the same 401 at
       // the same cost, never a quiet fall back to BPM's roster.
       if (!invited) {
-        await verifyPin(pin, FAKE_HASH);
-        return wrongPin(name);
+        await verifyPin(pin ?? code ?? '', FAKE_HASH);
+        return FAIL();
       }
       groupId = invited;
     }
@@ -138,32 +134,76 @@ export async function POST(req: NextRequest) {
     // Constant-time miss: no such member, or a member with no PIN, must cost
     // the same as a wrong PIN.
     if (!member) {
-      await verifyPin(pin, FAKE_HASH);
+      await verifyPin(pin ?? code ?? '', FAKE_HASH);
       await padMissingAccount(); // the reads and write a real account's miss does (gap 3)
-      return wrongPin(name);
+      return FAIL();
     }
 
-    // A locked account (lib/pinLockout.ts) verifies against FAKE_HASH like
-    // one with no PIN: same cost, same answer. The guess is counted BEFORE it
-    // is compared, so a parallel burst from many addresses cannot all be
-    // compared before the lock forms (Claude Security F9).
-    const usable = typeof member.pinHash === 'string' && (await claimPinAttempt(member));
-    const stored = usable ? (member.pinHash as string) : FAKE_HASH;
-    if (!(await verifyPin(pin, stored)) || !member.pinHash) {
-      return wrongPin(name);
+    if (pin) {
+      // A locked account (lib/pinLockout.ts) verifies against FAKE_HASH like
+      // one with no PIN: same cost, same answer. The guess is counted BEFORE
+      // it is compared, so a parallel burst from many addresses cannot all
+      // be compared before the lock forms (Claude Security F9).
+      const usable = typeof member.pinHash === 'string' && (await claimPinAttempt(member));
+      const stored = usable ? (member.pinHash as string) : FAKE_HASH;
+      if (!(await verifyPin(pin, stored)) || !member.pinHash) {
+        return FAIL();
+      }
+      await notePinSuccess(member);
+    } else {
+      if (!(await verifyRecoveryCode(member.recoveryCode, code!))) {
+        await noteRecoveryCodeFailure(member.id, { event: true });
+        return FAIL();
+      }
     }
-    await notePinSuccess(member);
-    attempt.undo();
 
-    // Proof accepted: join the new sign-in to them (lib/linkSignIn.ts). A 409
+    // Proof accepted. Reserve the provider identity for THIS member. A 409
     // means the identity already belongs to someone else — never steal it.
-    const linked = await linkSignInTo(member.id, pending);
-    if (!linked.ok) {
-      return linked.reason === 'already_linked'
-        ? NextResponse.json({ error: 'already_linked' }, { status: 409 })
-        : FAIL();
+    const reserved = await reserveIdentity(pending.provider, pending.sub, member.id);
+    if (!reserved.ok) return NextResponse.json({ error: 'already_linked' }, { status: 409 });
+
+    // Best-effort address claim. If another member already holds it, the link
+    // still succeeds — the provider identity is what signs them in, and the
+    // address simply stays with whoever reserved it first.
+    let claimedEmail: string | null = null;
+    if (pending.email && pending.emailVerified) {
+      const email = normalizeEmail(pending.email);
+      // An email-code sign-in IS this address, reserved just above.
+      const emailReserved = pending.provider === 'email' ? { ok: true } : await reserveIdentity('email', email, member.id);
+      if (emailReserved.ok) {
+        claimedEmail = email;
+        // Release the address this member previously held, if it changed.
+        // Leaving it reserved would keep `old@addr -> memberId` resolving, so
+        // password sign-in with the OLD address would still work and the OAuth
+        // linker would still treat it as a verified link target — while
+        // `member.email` says otherwise. It would also block that address for
+        // whoever actually owns it, permanently.
+        const previous = typeof member.email === 'string' ? normalizeEmail(member.email) : null;
+        if (previous && previous !== email) {
+          await releaseIdentity('email', previous);
+        }
+      }
     }
-    const updated = linked.member;
+
+    // An email-proven identity (step 4's email code) is the address itself,
+    // reserved below; only Google and Apple are "linked providers".
+    const linked = new Set([...(member.linkedProviders ?? []), ...(pending.provider === 'email' ? [] : [pending.provider])]);
+    const updated: Member = {
+      ...member,
+      linkedProviders: [...linked],
+      ...(claimedEmail ? { email: claimedEmail, emailVerified: true, mailboxProven: true } : {}),
+      // A consumed recovery code must not be replayable.
+      ...(code ? { recoveryCode: undefined } : {}),
+      ...(code
+        ? {
+            recoveryEvents: appendEvent(member.recoveryEvents, {
+              event: 'recovered-via-code',
+              at: new Date().toISOString(),
+            }),
+          }
+        : {}),
+    };
+    await container.items.upsert(updated);
 
     const res = NextResponse.json({
       ok: true,
