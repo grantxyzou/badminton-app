@@ -49,13 +49,8 @@ describe('JoinGroupPage — links that cannot take you in', () => {
       </NextIntlClientProvider>,
     );
 
-    // The second-club join (the canvas): step 1 of 2 is the name, then the ask.
-    expect(await screen.findByRole('heading', { name: "What's your name?" })).toBeDefined();
-    expect(screen.getByRole('img', { name: 'Step 1 of 2' })).toBeDefined();
-    expect((screen.getByLabelText('Your name') as HTMLInputElement).value).toBe('Lin');
-    fireEvent.click(screen.getByRole('button', { name: 'Ask to join' }));
-    expect(await screen.findByRole('heading', { name: 'Request sent' })).toBeDefined();
-    expect(screen.getByRole('img', { name: 'Step 2 of 2' })).toBeDefined();
+    fireEvent.click(await screen.findByRole('button', { name: 'Ask to join Six Feathers' }));
+    expect(await screen.findByText('Asked to join Six Feathers')).toBeDefined();
     const ask = fetchMock.mock.calls.find(([u]) => String(u).includes('/api/groups/ask'))!;
     expect(JSON.parse(String((ask[1] as RequestInit).body))).toEqual({ doorToken: 'a1'.repeat(16), name: 'Lin' });
     fireEvent.click(screen.getByRole('button', { name: 'Done' }));
@@ -81,10 +76,7 @@ describe('JoinGroupPage — links that cannot take you in', () => {
         <JoinGroupPage onBack={vi.fn()} sessionId="" defaultName="Lin" />
       </NextIntlClientProvider>,
     );
-    // Scan first; the link is the quiet way.
-    expect(screen.getByRole('button', { name: 'Scan QR code' })).toBeDefined();
-    fireEvent.click(screen.getByRole('button', { name: 'Paste a link' }));
-    fireEvent.change(await screen.findByLabelText("Your club's link"), { target: { value: 'ABCD2345' } });
+    fireEvent.change(screen.getByLabelText("The club's link"), { target: { value: 'ABCD2345' } });
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
     expect((await screen.findByRole('alert')).textContent).toMatch(/Paste the whole link/);
     expect(fetchMock).not.toHaveBeenCalled();

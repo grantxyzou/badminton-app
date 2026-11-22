@@ -19,22 +19,19 @@ import type { Member } from '@/lib/types';
 export async function updateAccessRequests(
   memberId: string,
   change: (open: Array<StoredAccessRequest & { id: string }>, member: Member) =>
-    StoredAccessRequest[] | { requests: StoredAccessRequest[]; patch: Pick<Member, 'newPhoneLog'> } | null,
+    StoredAccessRequest[] | null,
 ): Promise<{ member: Member; stored: StoredAccessRequest[] } | null> {
   const container = getContainer('members');
   for (let attempt = 0; attempt < 3; attempt++) {
     const { resource } = await container.item(memberId, memberId).read<Member & { _etag?: string }>();
     if (!resource) return null;
-    const changed = change(openRequests(resource), resource);
-    if (changed === null) return null;
-    // A list, or a list with the "Is this you?" log beside it (one write).
-    const next = Array.isArray(changed) ? changed : changed.requests;
-    const patch = Array.isArray(changed) ? {} : changed.patch;
+    const next = change(openRequests(resource), resource);
+    if (next === null) return null;
 
     // The legacy field is dropped on every write, so a doc is promoted the
     // first time anything touches it.
     const { accessRequest: _legacy, ...rest } = resource;
-    const doc = { ...rest, ...patch, accessRequests: next };
+    const doc = { ...rest, accessRequests: next };
     try {
       await container.items.upsert(
         doc,

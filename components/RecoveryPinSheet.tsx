@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter, SheetCloseButton } from './BottomSheet';
 import PinInput from './PinInput';
-import { usePinPause, pinPausedSeconds } from '@/lib/usePinPause';
 import type { Identity } from '@/lib/identity';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -44,8 +43,6 @@ export default function RecoveryPinSheet({ open, onClose, identity, hasPin, auth
   const [confirmPin, setConfirmPin] = useState('');
   const [pinError, setPinError] = useState<PinError>(null);
   const [submitting, setSubmitting] = useState(false);
-  // "Let's pause a moment — try again in 3:42" (sign-in redesign, step 2).
-  const pause = usePinPause();
 
   function reset() {
     setCurrentPin('');
@@ -76,12 +73,8 @@ export default function RecoveryPinSheet({ open, onClose, identity, hasPin, auth
         }),
       });
       if (!patchRes.ok) {
-        const paused = await pinPausedSeconds(patchRes);
         const body = await patchRes.json().catch(() => ({}));
-        if (paused) {
-          pause.pauseFor(paused);
-          setCurrentPin('');
-        } else if (patchRes.status === 429) setPinError('rate_limited');
+        if (patchRes.status === 429) setPinError('rate_limited');
         else if (body.error === 'pin_too_common') setPinError('too_common');
         else if (body.error === 'Invalid PIN format') setPinError('invalid');
         else if (body.error === 'invalid_credentials' || body.error === 'current_pin_required') setPinError('wrong_current');
@@ -109,7 +102,6 @@ export default function RecoveryPinSheet({ open, onClose, identity, hasPin, auth
   const submitLabel = hasPin ? tSettings('updatePin') : tPin('save');
   const canSubmit =
     !submitting &&
-    !pause.paused &&
     newPin.length === 4 &&
     newPin === confirmPin &&
     (!hasPin || currentPin.length === 4);
@@ -139,7 +131,6 @@ export default function RecoveryPinSheet({ open, onClose, identity, hasPin, auth
                 label={tPin('currentLabel')}
                 autoFocus
                 ariaInvalid={pinError === 'wrong_current'}
-                disabled={pause.paused}
               />
             </div>
           )}
@@ -189,11 +180,6 @@ export default function RecoveryPinSheet({ open, onClose, identity, hasPin, auth
             {pinError === 'wrong_current' && (
               <p role="alert" className="field-error" style={{ margin: '0' }}>
                 {t('pinWrongCurrent')}
-              </p>
-            )}
-            {pause.paused && (
-              <p role="alert" className="field-warn" style={{ margin: '0' }}>
-                {tPin('paused', { time: pause.label })}
               </p>
             )}
             {pinError === 'rate_limited' && (

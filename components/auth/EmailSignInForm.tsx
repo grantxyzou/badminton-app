@@ -1,7 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { usePasswordSignIn } from './usePasswordSignIn';
+
+const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 interface Props {
   onSuccess: (result: { name: string }) => void;
@@ -35,20 +37,53 @@ interface Props {
  */
 export default function EmailSignInForm({ onSuccess, onForgotPassword }: Props) {
   const t = useTranslations('profile.auth');
-  const form = usePasswordSignIn({ onSuccess });
-  const { email, password, busy } = form;
-  const error =
-    form.error === 'invalid'
-      ? t('signInInvalid')
-      : form.error === 'rate_limited'
-        ? t('signInRateLimited')
-        : form.error === 'service'
-          ? t('signInService')
-          : null;
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    void form.submit();
+    if (busy || !email.trim() || !password) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch(`${BASE}/api/auth/signin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
+
+      if (res.status === 429) {
+        setError(t('signInRateLimited'));
+        setBusy(false);
+        return;
+      }
+      if (res.status >= 500) {
+        setError(t('signInService'));
+        setBusy(false);
+        return;
+      }
+      if (!res.ok) {
+        // One message for every credential failure — the server deliberately
+        // answers identically for a wrong password and an unknown address, and
+        // splitting them here would undo that.
+        setError(t('signInInvalid'));
+        setBusy(false);
+        return;
+      }
+
+      const body = await res.json().catch(() => null);
+      if (!body || typeof body.name !== 'string') {
+        setError(t('signInService'));
+        setBusy(false);
+        return;
+      }
+      onSuccess({ name: body.name });
+    } catch {
+      setError(t('signInService'));
+      setBusy(false);
+    }
   }
 
   return (
@@ -58,7 +93,10 @@ export default function EmailSignInForm({ onSuccess, onForgotPassword }: Props) 
         inputMode="email"
         autoComplete="email"
         value={email}
-        onChange={(e) => form.setEmail(e.target.value)}
+        onChange={(e) => {
+          setEmail(e.target.value);
+          setError(null);
+        }}
         placeholder={t('emailLabel')}
         aria-label={t('emailLabel')}
         maxLength={254}
@@ -67,7 +105,10 @@ export default function EmailSignInForm({ onSuccess, onForgotPassword }: Props) 
         type="password"
         autoComplete="current-password"
         value={password}
-        onChange={(e) => form.setPassword(e.target.value)}
+        onChange={(e) => {
+          setPassword(e.target.value);
+          setError(null);
+        }}
         placeholder={t('passwordLabel')}
         aria-label={t('passwordLabel')}
         maxLength={200}
@@ -75,7 +116,7 @@ export default function EmailSignInForm({ onSuccess, onForgotPassword }: Props) 
       {error && <p className="field-error">{error}</p>}
       <button
         type="submit"
-        disabled={!form.canSubmit}
+        disabled={busy || !email.trim() || !password}
         className="cc-btn cc-btn-primary cc-btn-lg"
         style={{ width: '100%' }}
       >

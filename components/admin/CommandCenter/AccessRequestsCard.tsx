@@ -19,12 +19,7 @@ interface Waiting {
   requestId: string | null;
   /** Nobody has ever signed in under this name: no PIN, password or Google. */
   neverSignedIn?: boolean;
-  /** "Is that you?" from a new phone (docs/plans/sign-in-redesign.md, step 3):
-   *  how it signed in. Approving adds that sign-in to their account. */
-  newSignIn?: { provider: 'google' | 'apple' | 'email'; email: string | null } | null;
 }
-
-const PROVIDER_WORDS = { google: 'Google', apple: 'Apple', email: 'an email code' } as const;
 
 /** An account asking to JOIN through the club's link (docs/plans/one-way-in.md, step 4). */
 interface Joining {
@@ -264,13 +259,6 @@ export default function AccessRequestsCard({ refreshKey = 0 }: { refreshKey?: nu
                   <span className="fs-sm" style={{ display: 'block', color: 'var(--text-muted)' }}>
                     {r.count} devices asked. Clear them, then have {r.name} ask again with you there.
                   </span>
-                ) : r.newSignIn ? (
-                  /* A new phone that chose their name and asked an organizer:
-                     say how it signed in, so the person can be asked. */
-                  <span className="fs-sm" style={{ display: 'block', color: 'var(--text-muted)' }}>
-                    New phone, signed in with {PROVIDER_WORDS[r.newSignIn.provider]}
-                    {r.newSignIn.email ? ` (${r.newSignIn.email})` : ''}.{organiser ? ' Check it\'s them before you let it in.' : ' Waiting for an organiser.'}
-                  </span>
                 ) : r.neverSignedIn && (
                   /* A name nobody has signed in under: let in someone you know asked. */
                   <span className="fs-sm" style={{ display: 'block', color: 'var(--text-muted)' }}>
@@ -307,8 +295,6 @@ export default function AccessRequestsCard({ refreshKey = 0 }: { refreshKey?: nu
                   >
                     Ignore
                   </button>
-                  {/* A new sign-in is joined to them for good: an organiser's call. */}
-                  {(!r.newSignIn || organiser) && (
                   <button
                     type="button"
                     className="cc-btn cc-btn-primary"
@@ -317,7 +303,6 @@ export default function AccessRequestsCard({ refreshKey = 0 }: { refreshKey?: nu
                   >
                     {busy === r.memberId ? 'Letting in…' : 'Let them in'}
                   </button>
-                  )}
                 </>
               )}
             </div>

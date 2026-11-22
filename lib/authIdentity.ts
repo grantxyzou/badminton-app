@@ -75,7 +75,7 @@ export async function reserveIdentity(
   provider: AuthProvider,
   key: string,
   memberId: string,
-): Promise<{ ok: true; identity: AuthIdentity; created: boolean } | { ok: false; reason: 'taken' }> {
+): Promise<{ ok: true; identity: AuthIdentity } | { ok: false; reason: 'taken' }> {
   await ready();
   const id = identityId(provider, key);
   const identity: AuthIdentity = {
@@ -86,13 +86,13 @@ export async function reserveIdentity(
   };
   try {
     const { resource } = await getContainer('identities').items.create(identity);
-    return { ok: true, identity: (resource as AuthIdentity) ?? identity, created: true };
+    return { ok: true, identity: (resource as AuthIdentity) ?? identity };
   } catch (err) {
     if ((err as { code?: number })?.code !== 409) throw err;
     // Already exists. Idempotent when it is the SAME member re-reserving —
     // otherwise the key belongs to someone else and must not be stolen.
     const existing = await lookupIdentity(provider, key);
-    if (existing && existing.memberId === memberId) return { ok: true, identity: existing, created: false };
+    if (existing && existing.memberId === memberId) return { ok: true, identity: existing };
     return { ok: false, reason: 'taken' };
   }
 }

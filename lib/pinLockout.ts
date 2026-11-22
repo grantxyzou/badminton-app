@@ -26,11 +26,43 @@
  * person who had just proved who they were.
  */
 import { getContainer } from './cosmos';
-import { isPinLocked, recordPinFailure } from './pinLockPolicy';
+import type { PinLock } from './types';
 
 /** The call sites hold the member as a loosely typed doc (a scan row, a
  *  point read's `resource`); only the id and the lock matter here. */
 type LockableMember = { id: string; pinLock?: unknown };
+
+function asLock(v: unknown): PinLock | undefined {
+  if (!v || typeof v !== 'object') return undefined;
+  const l = v as Partial<PinLock>;
+  if (typeof l.failures !== 'number' || typeof l.lastFailedAt !== 'string') return undefined;
+  return l as PinLock;
+}
+
+export const FREE_ATTEMPTS = 5;
+export const BASE_LOCK_MS = 60_000;
+export const MAX_LOCK_MS = 60 * 60_000;
+export const DECAY_MS = 24 * 60 * 60_000;
+
+export function isPinLocked(value: unknown, now: number = Date.now()): boolean {
+  const lock = asLock(value);
+  return !!lock?.lockedUntil && Date.parse(lock.lockedUntil) > now;
+}
+
+/** The next state after a wrong PIN. Unchanged while locked. */
+export function recordPinFailure(value: unknown, now: number = Date.now()): PinLock {
+  const lock = asLock(value);
+  if (isPinLocked(lock, now)) return lock as PinLock;
+  const stale = !lock || now - Date.parse(lock.lastFailedAt) > DECAY_MS;
+  const failures = (stale ? 0 : lock.failures) + 1;
+  const over = failures - FREE_ATTEMPTS;
+  const next: PinLock = { failures, lastFailedAt: new Date(now).toISOString() };
+  if (over > 0) {
+    const ms = Math.min(MAX_LOCK_MS, BASE_LOCK_MS * 2 ** (over - 1));
+    next.lockedUntil = new Date(now + ms).toISOString();
+  }
+  return next;
+}
 
 /** Record a wrong PIN against the account. Best-effort: a write failure is
  *  logged and never turns the 401 into a 500.
@@ -159,4 +191,3 @@ export async function notePinSuccess(member: LockableMember): Promise<void> {
     }
   }
 }
-

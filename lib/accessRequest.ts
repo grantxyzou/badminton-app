@@ -1,4 +1,4 @@
-import { randomBytes, randomInt, createHash, timingSafeEqual } from 'crypto';
+import { randomBytes, createHash, timingSafeEqual } from 'crypto';
 
 /**
  * "I can't sign in — let me in."
@@ -72,33 +72,6 @@ export interface StoredAccessRequest {
    *  docs/plans/one-way-in.md, when the link stopped taking a name; kept on
    *  the type for rows a rollback might still read. */
   via?: 'link';
-  /**
-   * "Is that you?" (docs/plans/sign-in-redesign.md, step 3): a NEW sign-in —
-   * Apple, Google or an email code, from the asking phone's pending-signup
-   * cookie — waiting to be joined to this person. Approval links it to the
-   * account (`linkSignInTo`), so the next sign-in that way lands here even if
-   * the waiting page is gone.
-   */
-  link?: PendingLink;
-  /** The number the new phone shows. The person's own phone must tap it
-   *  (Google's and WhatsApp's pattern), so a reflex "Yes" lets nobody in. */
-  match?: number;
-  /** The three numbers their phone offers, one of them `match`. */
-  choices?: number[];
-  /** Asked of an organizer too ("Ask an organizer"): shown on the club's
-   *  card. A `link` ask without it waits on the person's own phones only. */
-  organizer?: boolean;
-  /** The address the approval added to an account that had none, so a "No,
-   *  it's not me" after an organizer's yes can take it back too. */
-  addedEmail?: string;
-}
-
-/** A provider identity that has proved itself and has no account yet. */
-export interface PendingLink {
-  provider: 'google' | 'apple' | 'email';
-  sub: string;
-  email?: string | null;
-  emailVerified?: boolean;
 }
 
 function hash(secret: string): string {
@@ -110,12 +83,9 @@ function hash(secret: string): string {
  * plus the record to persist on the member doc.
  */
 export function issueAccessRequest(
-  context: { groupId?: string; link?: PendingLink; organizer?: boolean } = {},
+  context: { groupId?: string } = {},
 ): { secret: string; stored: StoredAccessRequest } {
   const secret = randomBytes(32).toString('hex');
-  // Numbers only for an ask the person's own phone answers: an organizer ask
-  // must never put a tappable prompt on that phone (third review, 2026-11-20).
-  const numbers = context.link && !context.organizer ? matchNumbers() : null;
   return {
     secret,
     stored: {
@@ -123,19 +93,8 @@ export function issueAccessRequest(
       hash: hash(secret),
       expiresAt: Date.now() + TTL_MS,
       ...(context.groupId ? { groupId: context.groupId } : {}),
-      ...(context.link ? { link: context.link } : {}),
-      ...(numbers ? { match: numbers.match, choices: numbers.choices } : {}),
-      ...(context.organizer ? { organizer: true } : {}),
     },
   };
-}
-
-/** Three different two-digit numbers in a random order, one of them the match. */
-function matchNumbers(): { match: number; choices: number[] } {
-  const picked = new Set<number>();
-  while (picked.size < 3) picked.add(randomInt(10, 100));
-  const choices = [...picked];
-  return { match: choices[randomInt(0, 3)], choices };
 }
 
 interface HasRequests {
@@ -168,11 +127,9 @@ export function openRequests(member: HasRequests | null | undefined): Array<Stor
   return out;
 }
 
-/** Open requests nobody has approved yet — what the admin is asked about. A
- *  new sign-in waiting on the person's OWN phone is not on the card until
- *  they ask an organizer (`organizer`). */
+/** Open requests nobody has approved yet — what the admin is asked about. */
 export function pendingRequests(member: HasRequests | null | undefined) {
-  return openRequests(member).filter((r) => r.approvedAt === undefined && (!r.link || r.organizer === true));
+  return openRequests(member).filter((r) => r.approvedAt === undefined);
 }
 
 /**
