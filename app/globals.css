@@ -4768,6 +4768,12 @@ html:root .glass-card.notice-list { padding: var(--space-2); }
   width: 360px;
   height: 740px;
   transform: translate(-50%, -50%) scale(var(--launch-k, 1));
+  /* The lockup is a picture: taps pass through it. Its 360 x 740 box is far
+     bigger than what it draws, and on the sign-in pages (`.auth-logo`) it
+     hangs over the fields and buttons below the logo, so it took every tap
+     on the email, name and PIN boxes (2026-11-22: "none of the buttons work").
+     The splash still takes taps through its own full-screen `.splash` box. */
+  pointer-events: none;
 }
 .launch-hero {
   position: absolute;
