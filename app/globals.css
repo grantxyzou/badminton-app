@@ -2789,6 +2789,20 @@ html:root .ink-button {
   color: var(--accent);
   font-weight: 600;
 }
+/* "+2.4% fee" on the Pay by card button while the club charges a card fee:
+   a neutral label, not a control (fill-only, no accent: Home's green is
+   kept for the main button, the one link and the active tab). */
+.pay-card-fee {
+  flex: none;
+  padding: var(--space-05) var(--space-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  background: var(--inner-card-bg);
+  color: var(--text-secondary);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
 .card-marks {
   display: inline-flex;
   align-items: center;

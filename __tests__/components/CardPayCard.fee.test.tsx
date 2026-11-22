@@ -33,7 +33,7 @@ describe('CardPayCard — the card fee', () => {
     fireEvent.click(screen.getByTestId('card-fee-told'));
     fireEvent.click(confirm);
     await waitFor(() => expect(patches[0]).toEqual({ surcharge: { on: true, bps: 240, acknowledged: true } }));
-    expect(await screen.findByText(/On · credit cards pay 2.4% more/)).toBeTruthy();
+    expect(await screen.findByText(/On · Visa and Mastercard credit cards pay 2.4% more/)).toBeTruthy();
   });
 
   it('turning it off needs no sheet', async () => {
