@@ -31,6 +31,7 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 - **The tagline under the logo is centred under the whole logo**, `bpm` and the shuttle together, in English and Chinese (Grant, 2026-11-22). It used to start at the `b`'s left edge, so the English line ran off to the right and the Chinese one sat left of centre.
 - **The Chinese tagline reads 但愿无事常打球** (was 但愿无事能打球; Grant, 2026-11-22).
+- **The English tagline reads "May worries be few, and rallies long."** (was "Weekly badminton with your club."; Grant, 2026-11-22): the Chinese line's wish, 但愿无事常打球, in English, with "long" echoing 长久.
 - **Signing in works again: the sign-in redesign is back, with its fields tappable** (2026-11-22). The redesign below went live on 2026-11-22 and was rolled back the same night (#1020): on the Log in pages and a club's link page the logo's invisible box lay over the email, name, PIN and password fields, so a tap never reached them, nothing could be typed, and every button stayed faded (Grant: "none of the buttons work"). The logo now lets taps through (`.launch-canvas`, `pointer-events: none`), and a test holds it there.
 - **The gear recommender's feature flag is retired** (`NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER`, on in production since it shipped). Nothing changes for members: the skill-scored racket and string picks were already what everyone saw. The old stage-derived "all-rounder" pick, which only a deployment with the flag off ever served, is gone.
 
