@@ -6,6 +6,8 @@ import { POST as webhook } from '@/app/api/payments/card/webhook/route';
 import { GET as unpaid } from '@/app/api/players/unpaid/route';
 import { PATCH as patchPlayer } from '@/app/api/players/route';
 import { _setStripeForTests, cardPaySettingsId, linesFromMetadata } from '@/lib/cardPay';
+import { balanceOf, ledgerFor, payWithCredit } from '@/lib/storeCredit';
+import { groupScope } from '@/lib/groupScope';
 import {
   resetMockStore,
   getStore,
@@ -526,5 +528,47 @@ describe('two clubs', () => {
     const res = await deliver(paidSession(metadata), ACCT);
     expect((await res.json()).result).toEqual({ ignored: 'account_mismatch' });
     expect(row(row1.id).paid).not.toBe(true);
+  });
+});
+
+describe('a card refund or chargeback on a night credit part-paid (docs/plans/partial-credit.md)', () => {
+  const charge = { id: 'ch_1', object: 'charge', payment_intent: 'pi_test_1' };
+  const dispute = (amount: number, status = 'needs_response') => ({ id: 'dp_1', object: 'dispute', charge: 'ch_1', payment_intent: 'pi_test_1', amount, status, reason: 'fraudulent', created: 1_793_200_000 });
+  const credit = async () => balanceOf(await ledgerFor(groupScope('bpm'), lin.id));
+
+  beforeEach(async () => {
+    process.env.NEXT_PUBLIC_FLAG_STORE_CREDIT = 'true';
+    connectClubAccount();
+    seedDoc('ledger', { id: 'grant:pc', groupId: 'bpm', memberId: lin.id, account: 'member_credit', kind: 'credit_grant', amountCents: 1000, note: 'Birthday', createdAt: '2026-10-01T00:00:00Z', createdBy: 'admin' });
+    // $10 of credit goes on the $12 night as a part; the card pays the $2 left and the $15 night.
+    expect(await payWithCredit('bpm', lin.id)).toMatchObject({ part: 1, spentCents: 1000 });
+    const metadata = await checkoutMetadata();
+    listedSession = paidSession(metadata, 1700);
+    await deliver(paidSession(metadata, 1700));
+    expect(row(row1.id)).toMatchObject({ paid: true, paidAmount: 12, creditSpends: [`spend:${row1.id}:0`] });
+  });
+
+  afterEach(() => {
+    delete process.env.NEXT_PUBLIC_FLAG_STORE_CREDIT;
+  });
+
+  it('a full refund gives the credit back with the night, instead of leaving it spent on a line that owes it all', async () => {
+    refundList = [{ amount: 1700, status: 'succeeded', metadata: {} }];
+    await deliver(charge, ACCT, SECRET, 'charge.refunded');
+    expect(row(row1.id).paid).toBe(false);
+    expect(row(row1.id).paidAmount).toBeUndefined();
+    expect(row(row1.id).creditSpends).toBeUndefined();
+    expect(await credit()).toBe(1000);
+  });
+
+  it('a chargeback gives the credit back; won, the card pays back only its own part', async () => {
+    await deliver(dispute(1700), ACCT, SECRET, 'charge.dispute.created');
+    expect(row(row1.id).paidAmount).toBeUndefined();
+    expect(await credit()).toBe(1000);
+    await deliver(dispute(1700, 'won'), ACCT, SECRET, 'charge.dispute.closed');
+    // The $2 the card brought back is recorded; the $10 credit is the member's again, so $10 is owed.
+    expect(row(row1.id)).toMatchObject({ paid: false, paidAmount: 2, paidVia: 'card' });
+    expect(row(row2.id)).toMatchObject({ paid: true, paidAmount: 15 });
+    expect(await credit()).toBe(1000);
   });
 });

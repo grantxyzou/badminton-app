@@ -369,6 +369,8 @@ async function applyCreditToRow(
         paid: full,
         paidAt: spend.at,
         paidVia: 'credit',
+        // The mirror keys a credit payment on it, so each spend is its own entry.
+        paymentId: spend.id,
         paidAmount: (receivedCents + spend.amountCents) / 100,
         creditSpends: [...(landed ?? []), spend.id],
       },
@@ -614,4 +616,76 @@ export async function payWithCredit(
   }
   if (paid === 0 && part === 0) throw new CreditError('nothing_to_pay');
   return { paid, part, spentCents: spent, balanceCents: balanceOf(await ledgerFor(scope, memberId)) };
+}
+
+/**
+ * Give back the credit a row HOLDS, spend by spend (docs/plans/partial-credit.md):
+ * an organiser's "Return the credit", a card refund or a chargeback that
+ * un-pays a row credit helped pay. Each spend goes back under its OWN pair id,
+ * `refund:<ref>:<n>` (the spend's n), so a second run — or an earlier refund
+ * of that spend — collides instead of returning anything twice.
+ *
+ * Only spends the row had RECEIVED. `landed` is, by what the caller knows:
+ *   - the row's `creditSpends` as it was before the caller cleared it;
+ *   - `'all'`: a line that was PAID IN FULL and keeps no list (a stringing
+ *     job, or a session row credit paid whole before the list existed). Every
+ *     spend not yet returned was its; a paid line is never offered to "Use
+ *     credit", so none can be mid-way;
+ *   - `'stale'`: the caller no longer knows (a retry after the row was
+ *     already cleared): every spend not yet returned that is not FRESH.
+ * A fresh spend outside those is a "Use credit" mid-way: it lands on the
+ * cleared row or returns itself, and returning it here too would pay it out
+ * twice. A spend the row lists AGAIN by now (a stale finish that raced the
+ * clearing) stays where it is.
+ *
+ * Call it AFTER the row is cleared. Returns the cents given back.
+ */
+export async function returnRowCredit(
+  scope: GroupScope,
+  memberId: string,
+  line: { kind: 'session' | 'stringing'; ref: string; pk: string },
+  landed: readonly string[] | 'all' | 'stale',
+  by: string,
+  note: string,
+): Promise<number> {
+  const entries = await ledgerFor(scope, memberId);
+  const voided = new Set(entries.filter((e) => e.kind === 'void').map((e) => e.id.slice('void:'.length)));
+  const pic = creditPicture(entries, line.ref, voided);
+  const nowMs = Date.now();
+  const toReturn = pic.spends.filter((s) => {
+    const n = idNumber(s.id, 'spend', line.ref);
+    if (n < 0 || pic.refundedN.has(n)) return false;
+    if (landed === 'all') return true;
+    if (landed === 'stale') return nowMs - Date.parse(s.createdAt) >= UNFINISHED_SPEND_MS;
+    return landed.includes(s.id);
+  });
+  if (toReturn.length === 0) return 0;
+  // What the row lists NOW: a spend a racing stale finish put back on it stays.
+  let listedNow: string[] = [];
+  if (line.kind === 'session') {
+    const row = await scope.read<Player & Record<string, unknown>>('players', line.ref, line.pk);
+    listedNow = Array.isArray(row?.creditSpends) ? (row!.creditSpends as string[]) : [];
+  }
+  let returned = 0;
+  for (const s of toReturn) {
+    if (listedNow.includes(s.id)) continue;
+    const n = idNumber(s.id, 'spend', line.ref);
+    try {
+      await scope.create<LedgerEntry>('ledger', {
+        id: `refund:${line.ref}:${n}`,
+        memberId,
+        account: 'member_credit',
+        kind: 'credit_refund',
+        amountCents: -s.amountCents,
+        note,
+        ref: { kind: line.kind, id: line.ref, pk: line.pk },
+        createdAt: new Date().toISOString(),
+        createdBy: by,
+      });
+      returned += -s.amountCents;
+    } catch (err) {
+      if (!isConflict(err)) throw err; // already returned
+    }
+  }
+  return returned;
 }

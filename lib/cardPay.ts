@@ -48,6 +48,22 @@ import type { EtransferPayment, Player, StringingJob } from './types';
 import { APP_NAME } from './brand';
 import { feeShareOf, linesPartOfRefund, maxAllowedSurcharge } from './surchargeMath';
 import { sendCardReceipt, sessionDay, type ReceiptLine } from './cardReceiptEmail';
+import { returnRowCredit } from './storeCredit';
+
+
+/**
+ * A card refund or chargeback un-paid a row credit had helped pay
+ * (docs/plans/partial-credit.md): the credit it held goes back to whoever
+ * spent it — the row's member, or a guest's host — spend by spend. Clearing
+ * the row without this left the credit spent on a line that now owes it all.
+ */
+async function giveBackRowCredit(scope: GroupScope, row: Record<string, unknown>, pk: string, note: string): Promise<void> {
+  const landed = Array.isArray(row.creditSpends) ? (row.creditSpends as string[]) : [];
+  if (landed.length === 0) return;
+  const spender = typeof row.memberId === 'string' ? row.memberId : typeof row.guestOf === 'string' ? row.guestOf : null;
+  if (!spender) return;
+  await returnRowCredit(scope, spender, { kind: 'session', ref: String(row.id), pk }, landed, 'stripe', note);
+}
 
 export const CARD_PAY_SETTINGS_ID = 'card-pay';
 export function cardPaySettingsId(groupId: string): string {
@@ -736,11 +752,12 @@ export async function applyRefund(charge: Stripe.Charge, eventAccount: string | 
     if (h.kind === 'session') {
       const written = await scope.replace(
         'players',
-        { ...h.doc, paid: false, paidAt: undefined, paidVia: undefined, paymentId: undefined, paidAmount: undefined, refundedPaymentId: session.id },
+        { ...h.doc, paid: false, paidAt: undefined, paidVia: undefined, paymentId: undefined, paidAmount: undefined, creditSpends: undefined, refundedPaymentId: session.id },
         h.line.pk,
       );
       if (!written) continue; // changed under us; the next delivery re-reads
       await mirrorUnpaid(scope, h.doc as unknown as Player);
+      await giveBackRowCredit(scope, h.doc, h.line.pk, 'Card refunded — credit returned');
     } else {
       const written = await scope.replace<StringingJob>(
         'stringingJobs',
@@ -822,7 +839,19 @@ export async function applyDispute(dispute: Stripe.Dispute, eventAccount: string
       if (h.kind === 'session') {
         const written = await scope.replace(
           'players',
-          { ...h.doc, paid: true, paidAt: now, paidVia: 'card', paymentId: session.id, paidAmount: h.doc.owedAmount, disputedPaymentId: undefined },
+          // What the card brings back is the line's part: the row records
+          // that on top of whatever it holds now, and is paid only once that
+          // covers the bill. A row credit or a short transfer had part-paid
+          // was cleared when the dispute opened (docs/plans/partial-credit.md).
+          {
+            ...h.doc,
+            paid: Math.round(Number(h.doc.paidAmount ?? 0) * 100) + h.line.amountCents >= Math.round(Number(h.doc.owedAmount ?? 0) * 100),
+            paidAt: now,
+            paidVia: 'card',
+            paymentId: session.id,
+            paidAmount: (Math.round(Number(h.doc.paidAmount ?? 0) * 100) + h.line.amountCents) / 100,
+            disputedPaymentId: undefined,
+          },
           h.line.pk,
         );
         if (!written) continue;
@@ -869,11 +898,12 @@ export async function applyDispute(dispute: Stripe.Dispute, eventAccount: string
     if (h.kind === 'session') {
       const written = await scope.replace(
         'players',
-        { ...h.doc, paid: false, paidAt: undefined, paidVia: undefined, paymentId: undefined, paidAmount: undefined, disputedPaymentId: session.id },
+        { ...h.doc, paid: false, paidAt: undefined, paidVia: undefined, paymentId: undefined, paidAmount: undefined, creditSpends: undefined, disputedPaymentId: session.id },
         h.line.pk,
       );
       if (!written) continue; // changed under us; the next delivery re-reads
       await mirrorUnpaid(scope, h.doc as unknown as Player);
+      await giveBackRowCredit(scope, h.doc, h.line.pk, 'Card payment disputed — credit returned');
     } else {
       const written = await scope.replace<StringingJob>(
         'stringingJobs',

@@ -27,6 +27,13 @@ If a part-credit line ever leaves the Ledger check with a mismatch it cannot exp
 - **Finishing a crashed payment never moves more than is missing.** `refundStaleSpends` works out the credit still taken for the line and not shown as landed, and finishes or refunds at most that, spend by spend. A spend whose money no longer fits the line (paid another way, or the bill lowered) is refunded, never forced on.
 - **Un-ticking a line credit helped pay goes through the review**, as a credit payment always has (`docs/plans/money-audit.md`, gap 6): a row that lists a credit spend, paid in full or not, answers `paid_with_credit`; returning the credit clears the row's payments and gives back the net credit taken for it.
 
+- **Security review, 2026-11-21 (the `security-reviewer` agent, before the PR), three findings, all fixed in this change:**
+  1. A card refund or chargeback on a night credit part-paid cleared the row and voided every payment on it, the credit's too, so the credit stayed spent on a line that owed it all again. Both un-pay paths now give the credit back (`giveBackRowCredit` in `lib/cardPay.ts` → `returnRowCredit`), and a won chargeback records only the card's own part (`paidAmount` + the line, paid only once that covers the bill).
+  2. "Return the credit" numbered its refund by how many refunds the line had, which could collide with a refund already paired to a spend; the 409 was swallowed and the next balance read re-applied the credit. Every return is now per spend under the spend's own pair id (`returnRowCredit`).
+  3. Returning the credit while a "Use credit" was mid-way refunded the in-flight spend too. A return now gives back only the spends the row had received (its `creditSpends`, or every spend for a line paid in full that keeps no list); one mid-way lands or returns itself.
+- **A credit payment's ledger entry is keyed on its spend** (`paymentId` = the spend id, `payment:<row>:<spend id>`), not its time: two parts could fall in one millisecond and the second entry was swallowed as a duplicate. A credit row from before keeps its time key.
+- **Known and left:** purging a row credit part-paid voids its charge and keeps the credit payment, so that credit is not returned (an e-transfer part on a purged row has the same shape already). A purge of a row someone has part-paid is rare and is an organiser's deliberate act.
+
 ## Shape
 
 | Piece | File |

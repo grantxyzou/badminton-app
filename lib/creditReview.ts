@@ -22,10 +22,10 @@
  */
 import { groupDocId, type GroupScope } from './groupScope';
 import { ensurePayments } from './paymentsInbox';
-import { ledgerFor, accountOf } from './storeCredit';
+import { returnRowCredit } from './storeCredit';
 import { mirrorUnpaid, mirrorStringingChanged } from './ledgerMirror';
 import { resolveIdentity } from './playerIdentity';
-import type { EtransferPayment, LedgerEntry, Player, StringingJob } from './types';
+import type { EtransferPayment, Player, StringingJob } from './types';
 
 export type CreditReviewRef = { kind: 'session' | 'stringing'; ref: string; pk: string; memberId: string; amountCents: number };
 
@@ -78,8 +78,9 @@ export class CreditReviewError extends Error {
 /**
  * The organiser's "Return the credit": un-tick the line and give the credit
  * back. Idempotent in both halves — a line already un-ticked is left alone,
- * and the refund is for the NET credit still taken for the line (spends
- * minus refunds), so a retry after a half-finished run writes nothing twice.
+ * and each credit spend the row held goes back under its own pair id
+ * (`refund:<ref>:<n>`), so a retry after a half-finished run writes nothing
+ * twice.
  */
 export async function returnCredit(scope: GroupScope, paymentId: string, adminId: string): Promise<EtransferPayment> {
   await ensurePayments();
@@ -89,6 +90,12 @@ export async function returnCredit(scope: GroupScope, paymentId: string, adminId
   if (payment.source !== 'credit' || !payment.credit) throw new CreditReviewError('not_a_payment');
   const c = payment.credit;
   const now = new Date().toISOString();
+
+  // The spends the row had received, read before the un-tick clears them:
+  // only those go back (`returnRowCredit`). A line paid in full that keeps no
+  // list gives back every spend ('all'); a retry that finds the line already
+  // cleared gives back what is not mid-way ('stale').
+  let landed: string[] | 'all' | 'stale' = 'stale';
 
   // 1. Un-tick, if the line is still paid by this credit.
   if (c.kind === 'session') {
@@ -100,6 +107,8 @@ export async function returnCredit(scope: GroupScope, paymentId: string, adminId
     // row, as any un-tick does; the credit goes back below.
     const listsCredit = Array.isArray(row.creditSpends) && (row.creditSpends as string[]).length > 0;
     const holdsMoney = row.paid === true || Number(row.paidAmount ?? 0) > 0;
+    if (listsCredit) landed = [...(row.creditSpends as string[])];
+    else if (holdsMoney) landed = 'all';
     if (holdsMoney) {
       if (!listsCredit && !(row.paid === true && row.paidVia === 'credit')) throw new CreditReviewError('row_changed');
       const written = await scope.replace(
@@ -115,34 +124,17 @@ export async function returnCredit(scope: GroupScope, paymentId: string, adminId
     if (!job) throw new CreditReviewError('row_changed');
     if (job.paidAt) {
       if (job.paidVia !== 'credit') throw new CreditReviewError('row_changed');
+      landed = 'all';
       const written = await scope.replace<StringingJob>('stringingJobs', { ...job, paidAt: null, paidVia: undefined, paymentId: undefined, updatedAt: now }, c.pk);
       if (!written) throw new CreditReviewError('row_changed');
       await mirrorStringingChanged(scope, job, written);
     }
   }
 
-  // 2. Give back exactly what is still taken for the line.
-  const entries = await ledgerFor(scope, c.memberId);
-  const mine = entries.filter((e) => accountOf(e) === 'member_credit' && (e.kind === 'credit_spend' || e.kind === 'credit_refund') && e.ref?.id === c.ref);
-  const net = mine.reduce((sum, e) => sum + e.amountCents, 0);
-  if (net < 0) {
-    const n = mine.filter((e) => e.kind === 'credit_refund').length;
-    try {
-      await scope.create<LedgerEntry>('ledger', {
-        id: `refund:${c.ref}:${n}`,
-        memberId: c.memberId,
-        account: 'member_credit',
-        kind: 'credit_refund',
-        amountCents: -net,
-        note: 'Payment un-ticked — credit returned',
-        ref: { kind: c.kind, id: c.ref, pk: c.pk },
-        createdAt: new Date().toISOString(),
-        createdBy: adminId,
-      });
-    } catch (err) {
-      if (!isConflict(err)) throw err;
-    }
-  }
+  // 2. Give back the credit, each spend under its own pair id, so a retry
+  //    after a half-finished run, or a spend refunded before, returns
+  //    nothing twice (docs/plans/partial-credit.md).
+  await returnRowCredit(scope, c.memberId, { kind: c.kind, ref: c.ref, pk: c.pk }, landed, adminId, 'Payment un-ticked — credit returned');
 
   // 3. Close the review.
   const next: EtransferPayment = { ...payment, status: 'matched', reason: undefined, matchedBy: adminId, resolvedAt: now };

@@ -206,6 +206,39 @@ describe('un-ticking a line credit helped pay', () => {
     expect(lin().paidAmount).toBeUndefined();
   });
 
+  it('returning the credit after an earlier refund on the same night gives it back, and nothing re-pays it (review finding 2)', async () => {
+    give(1000);
+    await atTimes(() => payWithCredit('bpm', linId)); // part 0 lands: $10
+    give(500);
+    crashedSpend(1, 500, '2026-10-05T01:00:00Z');
+    const id = String(lin().id);
+    await patchPlayer(makeAdminRequest('PATCH', `${BASE}/players`, { id, paid: true }));
+    await refundStaleSpends(scope(), linId); // refund:R:1 for the crashed $5
+    expect(await balance()).toBe(500);
+
+    expect((await patchPlayer(makeAdminRequest('PATCH', `${BASE}/players`, { id, paid: false, review: true }))).status).toBe(202);
+    expect((await assign(makeAdminRequest('POST', `${BASE}/admin/payments/assign`, { paymentId: reviews()[0].id, action: 'return_credit' }))).status).toBe(200);
+    expect(await balance()).toBe(1500);
+    vi.setSystemTime(new Date('2026-10-06T00:00:00Z'));
+    expect(await refundStaleSpends(scope(), linId)).toMatchObject({ finished: 0, refunded: 0 });
+    expect(lin().paidAmount).toBeUndefined();
+    expect(await balance()).toBe(1500);
+  });
+
+  it('a "Use credit" still mid-way is not returned with the rest: it lands or returns itself (review finding 3)', async () => {
+    give(1000);
+    await atTimes(() => payWithCredit('bpm', linId)); // part 0 lands: $10
+    const id = String(lin().id);
+    expect((await patchPlayer(makeAdminRequest('PATCH', `${BASE}/players`, { id, paid: false, review: true }))).status).toBe(202);
+    // The member taps "Use credit" again just as the organiser returns it: spend 1 is written, not yet on the row.
+    give(500);
+    crashedSpend(1, 500, new Date().toISOString());
+    expect((await assign(makeAdminRequest('POST', `${BASE}/admin/payments/assign`, { paymentId: reviews()[0].id, action: 'return_credit' }))).status).toBe(200);
+    expect(ledger().find((e) => e.id === `refund:${id}:0`)).toMatchObject({ amountCents: 1000 });
+    expect(ledger().some((e) => e.id === `refund:${id}:1`)).toBe(false);
+    expect(await balance()).toBe(1000); // $10 back; the $5 in flight is the other request's
+  });
+
   it('a row paid partly by credit and the rest by the organiser still goes through the review', async () => {
     give(1000);
     await payWithCredit('bpm', linId);

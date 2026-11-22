@@ -135,8 +135,11 @@ export function paymentEntry(
   const via = row.paidVia ?? 'manual';
   // A card payment is keyed on its Checkout Session id, like an e-transfer on
   // its payments doc: the webhook can be delivered twice, and a retry must
-  // compute the same id and collide.
-  const key = (via === 'etransfer' || via === 'card') && row.paymentId ? row.paymentId : ms(row.paidAt);
+  // compute the same id and collide. A credit part is keyed on its SPEND
+  // (docs/plans/partial-credit.md): a row may take several credit payments,
+  // and two keyed on the time could fall in one millisecond and become one.
+  // A credit row from before carries no paymentId and keeps the time key.
+  const key = (via === 'etransfer' || via === 'card' || via === 'credit') && row.paymentId ? row.paymentId : ms(row.paidAt);
   return {
     id: `payment:${row.id}:${key}`,
     memberId: memberOf(row),
