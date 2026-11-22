@@ -89,7 +89,7 @@ describe('<UnpaidSessionsCard />', () => {
     });
   });
 
-  it('e-transfer is one button that opens to the address, the amount and the memo, each a row that copies (docs/plans/payment-order.md)', async () => {
+  it('e-transfer is one button that opens to the address and the memo, each a row that copies (docs/plans/payment-order.md)', async () => {
     vi.spyOn(global, 'fetch').mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -114,7 +114,7 @@ describe('<UnpaidSessionsCard />', () => {
     fireEvent.click(toggle);
     expect(toggle.getAttribute('aria-expanded')).toBe('true');
     expect(screen.getByRole('button', { name: 'Copy the email address pay@example.com' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Copy the amount $22.50' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Copy the amount/ })).toBeNull();
     expect(screen.getByRole('button', { name: 'Copy the message BPM Core Jun 8 - Lin' })).toBeTruthy();
   });
 

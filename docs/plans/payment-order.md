@@ -29,6 +29,7 @@ If, by the review date, the share of nights paid by card has grown while e-trans
 
 - **The order is credit, e-transfer, card.** Credit first, and only while it can pay something (as before). E-transfer second, as one button that opens to the copy rows and "I've sent it". The card last.
 - **The e-transfer button starts closed.** Open, its rows filled the card above the other ways to pay. The chevron turns (`.motion-chevron`) and the rows open with `<Collapse>`, as every expanding row in the app does.
+- **No amount row.** Grant, after seeing it: "we dont need the cost copy and past option". The total is the card's headline figure right above the buttons, so the dropdown copies only what a member cannot read off the screen: the address and the memo.
 - **"I've sent it" moves inside the e-transfer dropdown.** It only means something after an e-transfer, and it sat under the card button.
 - **The card button keeps "Pay by card"**, with the four card marks beside it. "Credit card" would sit under "Pay with credit" (store credit) and read as the same thing, and debit cards pay too, with no fee.
 - **The memo is the club's own memo template filled in for this member**: the one the organiser edits beside the e-transfer address (`ETransferRecipient.memo`) and the receipts already print, `{club} {date} - {name}` by default, for example `BPM Core Oct 1, Oct 8 - Lin`. It is written on the server by `memberMemo` in `lib/receiptTemplate.ts`, beside the receipt's own `fmtMemo`, so the two cannot drift, and returned with the address, only to someone who owes, on their own balance (`GET /api/players/unpaid`). The template itself stays on the server. With the default template the name is last and is the member's name in this club, so `memoRosterName` reads it back out of the email (`__tests__/etransfer-memo.test.ts` holds the two together). Dates are the session nights owed, oldest first, at most three and then "+N"; stringing reads as "stringing".
@@ -39,6 +40,6 @@ If, by the review date, the share of nights paid by card has grown while e-trans
 | Piece | File |
 |---|---|
 | The memo | `lib/receiptTemplate.ts` (`memberMemo`), `lib/payTo.ts` (the template), `app/api/players/unpaid/route.ts` (`memo`) |
-| The copy rows (address, amount, memo) | `components/payments/EtransferCopy.tsx` |
+| The copy rows (address, memo) | `components/payments/EtransferCopy.tsx` |
 | The order and the dropdown | `components/UnpaidSessionsCard.tsx`, `components/profile/AccountBalancePage.tsx` |
 | Tests | `__tests__/etransfer-memo.test.ts`, `__tests__/components/UnpaidSessionsCard.test.tsx`, `__tests__/components/EtransferCopy.test.tsx` |

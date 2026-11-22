@@ -197,7 +197,7 @@ export default function AccountBalancePage({ balance, credit, onBack }: Props) {
         </BottomSheetHeader>
         <BottomSheetBody>
           {payTo && (
-            <EtransferCopy email={payTo.email} name={payTo.name} amountCents={totalCents} memo={data?.memo} />
+            <EtransferCopy email={payTo.email} name={payTo.name} memo={data?.memo} />
           )}
         </BottomSheetBody>
         {payTo && canSayPaid && (

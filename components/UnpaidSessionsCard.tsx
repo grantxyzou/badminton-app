@@ -579,7 +579,7 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
                 </button>
                 <Collapse open={etransferOpen} spaceAbove="var(--space-3)">
                   <div className="flex flex-col gap-3">
-                    <EtransferCopy email={email} name={data.payTo?.name} amountCents={Math.round(data.totalOwed * 100)} memo={data.memo} />
+                    <EtransferCopy email={email} name={data.payTo?.name} memo={data.memo} />
                     {sentIt}
                   </div>
                 </Collapse>

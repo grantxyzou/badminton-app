@@ -3,24 +3,25 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 
-type Field = 'email' | 'amount' | 'memo';
+type Field = 'email' | 'memo';
 type CopyState = { field: Field; ok: boolean } | null;
 
 /** How long "Copied" stays before the row reads "Copy" again. */
 const COPIED_MS = 2000;
 
 /**
- * Paying by Interac e-transfer, as rows a member taps: the club's address,
- * the amount and, when the server wrote one, the memo filled in for this
- * member (docs/plans/payment-order.md), each copied with one tap to paste
- * into their bank's app (docs/plans/etransfer-copy.md). No bank's send screen can be opened from
- * here, so this is the shortest way between the app and the bank.
+ * Paying by Interac e-transfer, as rows a member taps: the club's address
+ * and, when the server wrote one, the memo filled in for this member
+ * (docs/plans/payment-order.md), each copied with one tap to paste into
+ * their bank's app (docs/plans/etransfer-copy.md). No bank's send screen can
+ * be opened from here, so this is the shortest way between the app and the
+ * bank. The amount is not a row: it is the total the card already shows
+ * (Grant, 2026-11-22: "we dont need the cost copy and past option").
  *
- * The amount is copied as a plain number with two decimals (`27.00`): banks'
- * amount fields refuse a `$`. If the clipboard refuses, the row says so; the
- * text stays selectable, so press-and-hold still works.
+ * If the clipboard refuses, the row says so; the text stays selectable, so
+ * press-and-hold still works.
  */
-export default function EtransferCopy({ email, name, amountCents, memo }: { email: string; name?: string | null; amountCents: number; memo?: string | null }) {
+export default function EtransferCopy({ email, name, memo }: { email: string; name?: string | null; memo?: string | null }) {
   const t = useTranslations('etransferCopy');
   const [state, setState] = useState<CopyState>(null);
   const timer = useRef<number | null>(null);
@@ -28,8 +29,6 @@ export default function EtransferCopy({ email, name, amountCents, memo }: { emai
   useEffect(() => () => {
     if (timer.current !== null) window.clearTimeout(timer.current);
   }, []);
-
-  const amount = (amountCents / 100).toFixed(2);
 
   async function copy(field: Field, text: string) {
     let ok = false;
@@ -67,13 +66,6 @@ export default function EtransferCopy({ email, name, amountCents, memo }: { emai
         </span>
         {tag('email')}
       </button>
-      <button type="button" className="copy-row" onClick={() => void copy('amount', amount)} aria-label={t('copyAmount', { amount: `$${amount}` })}>
-        <span className="copy-row__text">
-          <span className="copy-row__label">{t('amount')}</span>
-          <span className="copy-row__value">${amount}</span>
-        </span>
-        {tag('amount')}
-      </button>
       {memo ? (
         <button type="button" className="copy-row" onClick={() => void copy('memo', memo)} aria-label={t('copyMemo', { memo })}>
           <span className="copy-row__text">
@@ -85,7 +77,7 @@ export default function EtransferCopy({ email, name, amountCents, memo }: { emai
       ) : null}
       {/* The row's own tag shows "Copied"; this says it to a screen reader. */}
       <p className="sr-only" role="status">
-        {state?.ok ? t(state.field === 'email' ? 'copiedEmail' : state.field === 'amount' ? 'copiedAmount' : 'copiedMemo') : ''}
+        {state?.ok ? t(state.field === 'email' ? 'copiedEmail' : 'copiedMemo') : ''}
       </p>
       {state && !state.ok && (
         <p className="field-warn" role="alert" style={{ margin: '0' }}>{t('copyFailed')}</p>

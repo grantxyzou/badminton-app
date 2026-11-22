@@ -4099,13 +4099,10 @@
   "etransferCopy": {
     "howTo": "在你的银行 App 里选择 Interac 转账，然后粘贴以下内容。",
     "to": "收款邮箱",
-    "amount": "金额",
     "copy": "复制",
     "copied": "已复制",
     "copyEmail": "复制邮箱地址 {email}",
-    "copyAmount": "复制金额 {amount}",
     "copiedEmail": "邮箱地址已复制",
-    "copiedAmount": "金额已复制",
     "copyFailed": "复制失败。请长按文字手动复制。",
     "memo": "留言",
     "copyMemo": "复制留言 {memo}",

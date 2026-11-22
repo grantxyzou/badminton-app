@@ -4111,13 +4111,10 @@
   "etransferCopy": {
     "howTo": "In your bank’s app, choose Interac e-Transfer and paste these.",
     "to": "Send to",
-    "amount": "Amount",
     "copy": "Copy",
     "copied": "Copied",
     "copyEmail": "Copy the email address {email}",
-    "copyAmount": "Copy the amount {amount}",
     "copiedEmail": "Email address copied",
-    "copiedAmount": "Amount copied",
     "copyFailed": "Couldn’t copy. Press and hold the text to copy it.",
     "memo": "Message",
     "copyMemo": "Copy the message {memo}",
