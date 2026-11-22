@@ -35,11 +35,14 @@ import type { Group, Member, StoredJoinRequest } from '@/lib/types';
 
 /**
  * An ask from a SIGNED-IN account (docs/plans/one-way-in.md, step 4) waits
- * fourteen days, not an hour: the person can close the app, so the request
- * waits on the organiser's week, not on a phone kept open. Fourteen is also
- * when a never-approved account is cleaned up (step 6).
+ * three days, not an hour: the person can close the app, so it waits on the
+ * organizer, not on a phone kept open. It was fourteen until
+ * docs/plans/sign-in-redesign.md (Grant, 2026-11-20: "Request shouldn't be a
+ * long wait time"); the waiting page says how long. One that runs out reads
+ * "Not this time", as a declined one does, and can be asked again at once.
+ * A never-approved account is still cleaned up at fourteen days (step 6).
  */
-export const ACCOUNT_ASK_TTL_MS = 14 * 24 * 60 * 60 * 1000;
+export const ACCOUNT_ASK_TTL_MS = 3 * 24 * 60 * 60 * 1000;
 /** Open account asks one club may hold: a full Saturday of people, not a flood. */
 export const MAX_OPEN_ACCOUNT_ASKS = 50;
 /** The same ceiling as an imported name (`POST /api/members`). */

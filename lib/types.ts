@@ -628,6 +628,13 @@ export interface Member {
    *  lib/accessRequest.ts. Emptied when one is claimed or the admin clears them. */
   accessRequests?: StoredAccessRequest[];
   /**
+   * "Is this you?" asks filed for this person in the last day, and whether
+   * any was stopped ("No, it's not me" or a wrong number). Bounds how often a
+   * stranger who knows the name can prompt them (lib/newPhoneGuard.ts,
+   * docs/plans/sign-in-redesign.md step 3). Epoch ms.
+   */
+  newPhoneLog?: Array<{ at: number; stopped?: boolean; organizer?: boolean }>;
+  /**
    * This person strings rackets. Deliberately NOT tied to `role`.
    *
    * With groups on the club's answer is `Membership.canString`

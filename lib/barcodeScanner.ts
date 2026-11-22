@@ -34,6 +34,14 @@ export async function canScan(): Promise<boolean> {
 const READ_W = 0.84;
 const READ_H = 0.6;
 
+/**
+ * What to read. `retail`: the stocktake's packet and reel codes. `qr`: a
+ * club's QR poster (docs/plans/sign-in-redesign.md, "Join a club" scans first).
+ * A QR code reads at any angle, so it is read upright only, from a square in
+ * the middle of the picture.
+ */
+export type ScanKind = 'retail' | 'qr';
+
 /** Read every this many ms: about seven reads a second, each upright or turned. */
 const READ_EVERY_MS = 140;
 
@@ -50,16 +58,25 @@ const READ_EVERY_MS = 140;
  * barcode read out of a whole cluttered frame did not read at all, where the
  * same sticker cropped to the box did.
  */
-export async function startBarcodeScanner(video: HTMLVideoElement, onCode: (code: string) => void): Promise<ScannerControls> {
+export async function startBarcodeScanner(
+  video: HTMLVideoElement,
+  onCode: (code: string) => void,
+  kind: ScanKind = 'retail',
+): Promise<ScannerControls> {
   const [{ BrowserMultiFormatReader }, { BarcodeFormat, DecodeHintType }] = await Promise.all([
     import('@zxing/browser'),
     import('@zxing/library'),
   ]);
   const hints = new Map();
-  hints.set(DecodeHintType.POSSIBLE_FORMATS, [
-    BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E,
-    BarcodeFormat.ITF, BarcodeFormat.CODE_128,
-  ]);
+  hints.set(
+    DecodeHintType.POSSIBLE_FORMATS,
+    kind === 'qr'
+      ? [BarcodeFormat.QR_CODE]
+      : [
+          BarcodeFormat.EAN_13, BarcodeFormat.EAN_8, BarcodeFormat.UPC_A, BarcodeFormat.UPC_E,
+          BarcodeFormat.ITF, BarcodeFormat.CODE_128,
+        ],
+  );
   const reader = new BrowserMultiFormatReader(hints);
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: false,
@@ -73,7 +90,10 @@ export async function startBarcodeScanner(video: HTMLVideoElement, onCode: (code
     stopped = true;
     if (timer) clearTimeout(timer);
     for (const track of stream.getTracks()) track.stop();
-    video.srcObject = null;
+    // Only if the picture is still this scan's: a second start on the same
+    // video (React runs a mount effect twice in development) owns it now, and
+    // clearing it interrupted that one's play().
+    if (video.srcObject === stream) video.srcObject = null;
   };
   try {
     video.muted = true;
@@ -93,8 +113,9 @@ export async function startBarcodeScanner(video: HTMLVideoElement, onCode: (code
     const vw = video.videoWidth;
     const vh = video.videoHeight;
     if (g && vw > 0 && vh > 0) {
-      const sw = Math.round(vw * READ_W);
-      const sh = Math.round(vh * READ_H);
+      const side = Math.min(vw, vh) * 0.8;
+      const sw = Math.round(kind === 'qr' ? side : vw * READ_W);
+      const sh = Math.round(kind === 'qr' ? side : vh * READ_H);
       const sx = Math.round((vw - sw) / 2);
       const sy = Math.round((vh - sh) / 2);
       g.setTransform(1, 0, 0, 1, 0, 0);
@@ -113,7 +134,7 @@ export async function startBarcodeScanner(video: HTMLVideoElement, onCode: (code
       } catch {
         /* nothing readable in this frame: the usual case */
       }
-      turned = !turned;
+      turned = kind === 'qr' ? false : !turned;
     }
     timer = setTimeout(tick, READ_EVERY_MS);
   };

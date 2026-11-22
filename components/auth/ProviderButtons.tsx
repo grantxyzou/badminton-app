@@ -52,7 +52,8 @@ const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 export type Provider = 'google' | 'apple';
 
-const PROVIDER_ORDER: Provider[] = ['apple', 'google'];
+/** Android first offers Google, everything else Apple: the phone's own account first. */
+const readIsAndroid = () => typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
 
 interface Props {
   /**
@@ -96,6 +97,12 @@ interface Props {
    * Optional; both existing call sites pass nothing.
    */
   onLeave?: () => void;
+  /**
+   * `auth`: the sign-in pages' size (docs/plans/sign-in-redesign.md): a 54px
+   * pill, as tall as every other button on those pages. Elsewhere the compact
+   * card button.
+   */
+  size?: 'auth';
 }
 
 /**
@@ -117,6 +124,7 @@ export default function ProviderButtons({
   linked = [],
   available: given,
   onLeave,
+  size,
 }: Props) {
   const t = useTranslations('profile.auth');
   const online = useOnline();
@@ -137,6 +145,10 @@ export default function ProviderButtons({
    * `hasNativePlugin`'s tri-state contract).
    */
   const probedMissing = useClientValue(readPluginMissing, false);
+  /* Read the same way and for the same reason: the server cannot know the
+     phone, so it renders the iPhone order and an Android phone swaps after
+     hydration. */
+  const android = useClientValue(readIsAndroid, false);
   // The probe is not the only way to learn this: an open can fail at the moment
   // it is attempted, on a shell where the plugin looked present. Either source
   // disables the button, so they are OR'd rather than one overwriting the other.
@@ -183,10 +195,12 @@ export default function ProviderButtons({
     };
   }, [given]);
 
-  /* APPLE FIRST (Grant, 2026-09-15). Decided here rather than trusted from
-     whichever source answered (the server prop, the probe), so every sign-in
-     surface lists them the same way. */
-  const available = (given ?? probed)?.filter((p) => !linked.includes(p)).sort((a, b) => PROVIDER_ORDER.indexOf(a) - PROVIDER_ORDER.indexOf(b));
+  /* THE PHONE'S OWN ACCOUNT FIRST (docs/plans/sign-in-redesign.md): Apple on
+     an iPhone and everywhere else, Google on Android. No "recommended" label;
+     the order says it. Decided here rather than trusted from whichever source
+     answered (the server prop, the probe), so every surface lists them alike. */
+  const order: Provider[] = android ? ['google', 'apple'] : ['apple', 'google'];
+  const available = (given ?? probed)?.filter((p) => !linked.includes(p)).sort((a, b) => order.indexOf(a) - order.indexOf(b));
   if (!available || available.length === 0) return null;
 
   return (
@@ -210,7 +224,7 @@ export default function ProviderButtons({
         const branded = p === 'google' || p === 'apple';
         const mark = p === 'google' ? <GoogleMark /> : p === 'apple' ? <AppleMark /> : null;
         const startHref = `${BASE}/api/auth/${p}/start${handoffRef ? `?hr=${handoffRef}` : ''}`;
-        const className = branded ? `cc-btn btn-${p}` : 'cc-btn cc-btn-secondary';
+        const className = size === 'auth' ? `auth-btn btn-${p}` : branded ? `cc-btn btn-${p}` : 'cc-btn cc-btn-secondary';
         const style = {
           display: 'flex',
           alignItems: 'center',

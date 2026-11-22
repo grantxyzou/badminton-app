@@ -81,6 +81,14 @@ Assert with your eyes on the things the suite structurally cannot see:
   colour class can be unreadable in one theme and fine in the other.
 - **A long name and an empty state.** Most layouts are only tested with
   convenient data.
+- **That a field takes a TAP.** Type into a field the way a thumb does: click
+  or tap it, then type (`browser_click` then `browser_type`, or in a script
+  `touchscreen.tap` + `keyboard.type`). Never only `fill()`: it writes the value
+  without asking what is on top, and on 2026-11-22 the sign-in pages shipped
+  with the logo's invisible box over every field — nobody could type, every
+  button stayed disabled, and every walk had passed with `fill()`. To check a
+  whole page, ask `document.elementFromPoint` at each control's centre and
+  compare it with the control (`__tests__/launch-art-taps-canary.test.ts`).
 
 ## Report honestly
 
