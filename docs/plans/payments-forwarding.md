@@ -70,14 +70,14 @@ After launch: if, four weeks after a club switches, fewer of its e-transfers aut
 ## Decisions
 
 - **2026-11-22 — Receive in Motioncraft's own Google Workspace, not Mailgun** (Grant: "I like the idea using what we are already paying OR staying in one ecosystem"). One mailbox, `pay@motioncraft-bpm.com`, read by a service account through the Gmail API. Against Mailgun: no new vendor holding clubs' payment notices and no DNS change, for about $7–8/month. Reading a mailbox in your OWN domain is internal, so it needs no Google app verification or paid security assessment; asking each organiser to "Connect Gmail" would need both, every year. The Claude API was asked about (2026-11-22) and does not fit: it reads text it is given but cannot receive email, and "is this really Interac?" has to be a signature check, not a judgement.
+- **2026-11-22 — Pilot on an alias; a dedicated seat before a second club forwards** (Grant asked what a seat costs and how hard the later switch is). A new Workspace user is a paid seat; an alias is free. But the service account's permission is per USER, and Google cannot narrow it to one address, so on an alias the app could read all of Grant's own mail. That is acceptable while only BPM Core's notices, Grant's own club, arrive, and not once another club's members' names do. The switch is cheap because organisers forward to an ADDRESS, not a mailbox: remove the `pay` alias, create the `pay@` user, and the address, every club's filter and Gmail's forwarding confirmation all stay as they are. The app reads the mailbox named in one App Setting (`PLATFORM_MAILBOX`), so the app side is that setting, the delegation in the Admin console, and a fresh Gmail watch. A notice arriving in the minute between is retried by the sending server for hours.
 - **2026-11-22 — The address is on `motioncraft-bpm.com`** (Grant). With Workspace that is a plus address on the main domain, not the `pay.` subdomain proposed earlier, so there is no DNS change at all.
-- **2026-11-22 — Daily reminders and the reconcile run on the first app open of the day** (Grant). Any member or admin opening the app for that club runs the club's daily job once: a per-club stamp under the payments settings doc's etag makes sure only one open runs it, and it runs after the response (Next's `after()`), so nobody's page waits. Reminders then arrive at "the first time anyone opens the app that day", not at 10 a.m., which is fine for a nudge three or seven days after settle.
+- **2026-11-22 — Daily reminders and the reconcile run on the hourly tick, not the first app open** (revised the same day; Grant to confirm). Grant chose the first app open when the alternative was described as a new scheduled job needing its own secret and a list of clubs. That job already exists: `.github/workflows/tick.yml` calls `POST /api/cron/tick` every hour with `CRON_KEY`, and `lib/tick.ts` runs each registered job for every open club (`docs/plans/stringing-request-nudge.md`). Reminders become one more `TICK_JOBS` entry that acts once a day, at a fixed hour, whether or not anyone opens the app. The Gmail mailbox catch-up read and the watch renewal are one `DEPLOYMENT_TICK_JOBS` entry. Nothing new to build or to keep secret.
 - **2026-11-22 — Trust Google's verdict on our own mailbox; no DKIM library.** Today's `isInteracAuthenticated` reads the FIRST `Authentication-Results`, which only `mx.google.com` writes. In the platform mailbox that header is written by OUR Workspace, so the same check applies unchanged to the raw message the Gmail API returns. The earlier plan added `mailauth` because a third-party relay's verdict describes the forwarding hop; that reason went with Mailgun. SPF is irrelevant after a forward; only Interac's DKIM signature matters, and step 0 is what proves it survives.
 
 ### Still Grant's
 
-1. **A dedicated seat, or an alias on an existing account.** Recommended: a dedicated `pay@` user, so the service account's access covers that mailbox and nothing of Grant's own.
-2. **The privacy-policy line**, in `app/legal/privacy`: payment notices an organiser forwards are processed to record who paid, then deleted. Grant's wording.
+1. **The privacy-policy line**, in `app/legal/privacy`: payment notices an organiser forwards are processed to record who paid, then deleted. Grant's wording.
 
 ## Steps
 
@@ -91,10 +91,10 @@ The file contains a payment amount and a name, so it is read once and not kept o
 
 **1. Motioncraft's side (Grant, once, with steps written out for him).**
 
-- The `pay@motioncraft-bpm.com` mailbox (decision 1 above).
-- A Google Cloud project with the Gmail API on, and a service account with domain-wide delegation for that one user, scope `gmail.modify` (read and delete, nothing else). Its key goes into an App Setting, never the repo.
+- The address `pay@motioncraft-bpm.com`: an alias on Grant's own user for the pilot, its own user before a second club forwards (the pilot decision above).
+- A Google Cloud project with the Gmail API on, and a service account with domain-wide delegation for the user that holds it, scope `gmail.modify` (read and delete, nothing else). Its key goes into an App Setting, never the repo.
 - A Pub/Sub topic that Gmail notifies on new mail, with a push subscription to the app. Pub/Sub's free tier covers this volume many times over.
-- A filter in the `pay@` mailbox that skips the inbox and marks read, so nobody browsing it as admin sees clubs' notices sit there.
+- A filter on `to:pay` that skips the inbox and marks read, so the notices never sit in front of whoever reads that mailbox, Grant during the pilot.
 
 **2. The receiving route.** `POST /api/payments/inbound`, called by Pub/Sub, never by a browser.
 
@@ -104,8 +104,8 @@ The file contains a payment amount and a name, so it is read once and not kept o
 - **Hands the message to `ingestEmail` unchanged**, with the first Authentication-Results, the original To, and the forwarding mailbox as `owner`, so `addressedElsewhere` keeps working.
 - **Treats Gmail's forwarding confirmation as setup, not payment:** recognised by sender (`forwarding-noreply@google.com`); the code and the requesting address are stored for the card, and nothing else is.
 - **Deletes each message** once its payment doc exists. A failure leaves the message in place, and the next run picks it up.
-- **A missed push is caught on open:** the first-open daily job (decision 3) and the Payments card both run the same history read, so a lost notification delays a payment, never loses it.
-- **Renews Gmail's watch**, which expires after seven days, from the daily job.
+- **A missed push is caught within the hour:** the hourly tick and the Payments card both run the same history read, so a lost notification delays a payment, never loses it.
+- **Renews Gmail's watch**, which expires after seven days, from the tick.
 - **Keeps the existing rules:** the body is never stored, and a refusal answers without saying why.
 
 **3. The Payments card** (`components/admin/CommandCenter/PaymentsInboxCard.tsx`).
@@ -116,7 +116,7 @@ The file contains a payment amount and a name, so it is read once and not kept o
 - The first-payment-per-member review keeps its one tap ("Is this Jordan? Yes, remember"), with that sentence leading, since a new club meets it once per member (audit finding 6).
 - Admin screens stay English (`.claude/rules/i18n.md`).
 
-**4. The daily job on first open** (decision 3).
+**4. Reminders and the reconcile on the hourly tick** (the reminders decision above). `POST /api/payments/remind` stays for clubs still on the script until phase 3.
 
 **5. Move BPM Core over, then the docs.**
 
@@ -124,10 +124,25 @@ The file contains a payment amount and a name, so it is read once and not kept o
 2. He uninstalls the script.
 3. The re-paste row in `docs/plans/audit-followups.md` is then closed.
 
+**6. The dedicated mailbox, before a second club forwards.** Create the `pay@` user, move the alias onto it, point `PLATFORM_MAILBOX` and the delegation at it, renew the watch. No organiser changes anything.
+
+**7. Every club off the script.** Then `public/payments/apps-script.gs`, `POST /api/payments/etransfer` and `/remind` are deleted (replace in place, `CLAUDE.md`), and so is the last copy of the app's URL that lives outside the app.
+
+## The connected workplan
+
+This plan and `docs/plans/domain-move.md` run as one sequence. The order is what keeps each move cheap: an address on `motioncraft-bpm.com` from day one never moves, and a club on forwarding has no copy of the app's URL to edit.
+
+| Phase | What | Plan |
+|---|---|---|
+| A | Step 0, then forwarding on the `pay@` alias, BPM Core only (steps 1–5) | this one |
+| B | The dedicated `pay@` user before a second club (step 6) | this one |
+| C | Every club off the script (step 7) | this one |
+| D–G | The app moves to `motioncraft-bpm.com`: both hosts serve, then the new one is the address, then the old one points onward, then clean-up | `domain-move.md` |
+
 ## What it costs to run
 
-- **Money:** one Workspace seat, about $7–8/month (USD), a Motioncraft platform cost, never a club's. Pub/Sub and the Gmail API are free at this volume.
-- **Exposure:** one new public endpoint, gated by Google's signed token; a service account that can read and delete one mailbox.
+- **Money:** nothing during the pilot (an alias is free); then one Workspace seat, about $7–8/month (USD), a Motioncraft platform cost, never a club's. Pub/Sub and the Gmail API are free at this volume.
+- **Exposure:** one new public endpoint, gated by Google's signed token; a service account that can read and delete one mailbox: Grant's own during the pilot, which is why phase B comes before a second club.
 - **New secrets:** the service account key and the Pub/Sub audience, as App Settings.
 - **Dependency:** Google's API client for the Gmail read, or plain `fetch` against its REST API with a signed JWT.
 
@@ -140,7 +155,7 @@ Filled in as it is built.
 | Receiving route | `app/api/payments/inbound/route.ts` |
 | Gmail read, watch and delete | `lib/platformMailbox.ts` |
 | Per-club tag, confirmation code, forwarding mailbox | `lib/paymentsInbox.ts` (fields on `PaymentsSettingsDoc`) |
-| Daily job on first open | `lib/dailyDuties.ts` |
+| Reminders, reconcile, mailbox catch-up and watch renewal on the tick | `lib/tick.ts` entries |
 | Card | `components/admin/CommandCenter/PaymentsInboxCard.tsx` |
 
 The flow as a page, with the audit and mockups of the four card states: https://claude.ai/artifact/McwMdh76R7ugqxuKbWfphU (private to Grant).
