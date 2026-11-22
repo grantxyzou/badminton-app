@@ -175,7 +175,8 @@ describe('gift cards', () => {
     await redeemAs(code);
     const stored = (getStore()['clubSettings'] as Array<{ kind?: string; redeemedBy?: string }>).find((d) => d.kind === 'giftcard')!;
     expect(stored.redeemedBy).toBe(lin.id);
-    // $12 of it pays the oldest owed line; $13 is left ON THIS CARD.
+    // $12 of it pays the oldest owed line, the other $13 goes on the $15 one
+    // as a part (docs/plans/partial-credit.md): the card is used up.
     await spend(makeRequest('POST', `${BASE}/credit/spend`, {}, asLin()));
     const { cards } = await (await listCards(makeAdminRequest('GET', `${BASE}/admin/giftcards`))).json();
     expect(cards).toHaveLength(1);
@@ -183,10 +184,15 @@ describe('gift cards', () => {
       amountCents: 2500, note: 'Raffle', hint: code.slice(-4),
       createdBy: { name: expect.any(String) },
       redeemedBy: { memberId: lin.id, name: 'Lin' },
-      usedCents: 1200, remainingCents: 1300,
+      usedCents: 2500, remainingCents: 0,
     });
     expect(cards[0].redeemedAt).toEqual(expect.any(String));
-    expect(cards[0].uses).toEqual([expect.objectContaining({ amountCents: 1200, note: 'Session 2026-09-24', reversed: false })]);
+    expect(cards[0].uses).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ amountCents: 1200, note: 'Session 2026-09-24', reversed: false }),
+        expect.objectContaining({ amountCents: 1300, note: 'Session 2026-10-01', reversed: false }),
+      ]),
+    );
     expect(JSON.stringify(cards)).not.toContain(code);
   });
 
@@ -279,12 +285,12 @@ describe('Pay with credit', () => {
     expect(row(row1.id)).toMatchObject({ paid: true, paidVia: 'credit' });
   });
 
-  it('pays the oldest lines the credit covers IN FULL, and nothing partly', async () => {
-    await giveLin(2000); // covers $12, not then $15
-    expect(await (await pay()).json()).toEqual({ ok: true, paid: 1, spentCents: 1200, balanceCents: 800 });
+  it('pays whole lines first, then puts what is left on the next line as a part (docs/plans/partial-credit.md)', async () => {
+    await giveLin(2000); // covers $12, then $8 of the $15
+    expect(await (await pay()).json()).toEqual({ ok: true, paid: 1, part: 1, spentCents: 2000, balanceCents: 0 });
     expect(row(row1.id)).toMatchObject({ paid: true, paidVia: 'credit' });
-    expect(row(row2.id).paid).toBe(false);
-    expect(await balance()).toBe(800);
+    expect(row(row2.id)).toMatchObject({ paid: false, paidAmount: 8, paidVia: 'credit' });
+    expect(await balance()).toBe(0);
   });
 
   it('skips a line it cannot cover to pay a later one it can', async () => {
@@ -305,8 +311,8 @@ describe('Pay with credit', () => {
     await Promise.all([pay(), pay(), pay()]);
     const left = await balance();
     expect(left).toBeGreaterThanOrEqual(0);
-    const paidRows = [row(row1.id), row(row2.id)].filter((r) => r.paid === true);
-    const paidCents = paidRows.reduce((sum, r) => sum + Math.round(Number(r.owedAmount) * 100), 0);
+    // What the rows received, parts included, is exactly what left the credit.
+    const paidCents = [row(row1.id), row(row2.id)].reduce((sum, r) => sum + Math.round(Number(r.paidAmount ?? 0) * 100), 0);
     expect(paidCents).toBe(2000 - left);
   });
 
@@ -345,14 +351,16 @@ describe('failure recovery (review of #544)', () => {
     entry(`spend:${row1.id}:0`, 'credit_spend', -1200, row1.id);
     const res = await (await pay()).json();
     expect(row(row1.id)).toMatchObject({ paid: true, paidVia: 'credit' });
-    expect(res.balanceCents).toBe(800); // debited once, not twice
+    // Debited once, not twice: the $8 left goes on the next line as a part.
+    expect(res.balanceCents).toBe(0);
+    expect(row(row2.id)).toMatchObject({ paid: false, paidAmount: 8 });
   });
 
   it('a line whose earlier spend was refunded can be paid with credit again', async () => {
     entry('grant:a', 'credit_grant', 2000);
     entry(`spend:${row1.id}:0`, 'credit_spend', -1200, row1.id);
     entry(`refund:${row1.id}:0`, 'credit_refund', 1200, row1.id);
-    expect(await (await pay()).json()).toMatchObject({ paid: 1, spentCents: 1200, balanceCents: 800 });
+    expect(await (await pay()).json()).toMatchObject({ paid: 1, part: 1, spentCents: 2000, balanceCents: 0 });
     expect(row(row1.id).paid).toBe(true);
     expect((getStore()['ledger'] as Array<{ id: string }>).map((e) => e.id)).toContain(`spend:${row1.id}:1`);
   });
@@ -372,8 +380,8 @@ describe('failure recovery (review of #544)', () => {
     }
     expect(row(row1.id).paid).toBe(false);
     expect(await balance()).toBe(2000);
-    // …and a retry pays it.
-    expect(await (await pay()).json()).toMatchObject({ paid: 1, spentCents: 1200 });
+    // …and a retry pays it (and puts the $8 left on the next line).
+    expect(await (await pay()).json()).toMatchObject({ paid: 1, part: 1, spentCents: 2000 });
   });
 
   it('an unfinished spend is finished even when the balance left is below zero', async () => {

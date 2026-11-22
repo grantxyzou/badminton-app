@@ -6,6 +6,7 @@ import { BALANCE_EVENT, announceBalanceChanged } from '@/lib/balanceRefresh';
 import { hasNativePlugin, isNative } from '@/lib/native';
 import CardPaySheet from './payments/CardPaySheet';
 import EtransferCopy from './payments/EtransferCopy';
+import { creditWouldPay } from './profile/useBalance';
 import { useTranslations, useFormatter } from 'next-intl';
 import ErrorState from './primitives/ErrorState';
 import EmptyState from './primitives/EmptyState';
@@ -182,6 +183,14 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
     }
   }
   const hasCredit = creditOn && (creditCents ?? 0) > 0;
+  // What "Pay with credit" would use, by the server's own walk: whole frozen
+  // lines first, then a part of a session (docs/plans/partial-credit.md).
+  // Short of everything frozen, the button says how much it will use.
+  const creditUse = hasCredit && data ? creditWouldPay(data, creditCents ?? 0) : 0;
+  const frozenCents = data
+    ? data.sessions.filter((s) => s.settled).reduce((sum, s) => sum + Math.round(s.owedAmount * 100), 0) +
+      (data.stringing ?? []).reduce((sum, j) => sum + Math.round(j.amount * 100), 0)
+    : 0;
   // Stripe-hosted Checkout on the club's own account. Nothing is marked paid
   // here: the rows change when Stripe's signed webhook says the money arrived.
   //
@@ -513,7 +522,7 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
               <EtransferCopy email={email} name={data.payTo?.name} amountCents={Math.round(data.totalOwed * 100)} />
             ) : null;
           })()}
-          {hasCredit && data.totalOwed > 0 && (
+          {hasCredit && data.totalOwed > 0 && creditUse > 0 && (
             <div className="flex flex-col gap-2">
               {/* On Home the chip above already says how much credit there is. */}
               {!isHome && (
@@ -525,7 +534,7 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
                 </div>
               )}
               <button type="button" className={isHome ? 'balance-action balance-action--accent' : 'btn-ghost'} disabled={!online || spend === 'busy'} onClick={() => void payWithCredit()}>
-                {tCredit('pay')}
+                {creditUse < frozenCents ? tCredit('use', { amount: fmtMoney(creditUse / 100) }) : tCredit('pay')}
               </button>
               {spend === 'notEnough' && (
                 <p className="fs-sm" role="status" style={{ margin: '0', color: 'var(--text-muted)' }}>{tCredit('notEnough')}</p>

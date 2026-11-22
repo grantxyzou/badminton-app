@@ -135,8 +135,11 @@ export function paymentEntry(
   const via = row.paidVia ?? 'manual';
   // A card payment is keyed on its Checkout Session id, like an e-transfer on
   // its payments doc: the webhook can be delivered twice, and a retry must
-  // compute the same id and collide.
-  const key = (via === 'etransfer' || via === 'card') && row.paymentId ? row.paymentId : ms(row.paidAt);
+  // compute the same id and collide. A credit part is keyed on its SPEND
+  // (docs/plans/partial-credit.md): a row may take several credit payments,
+  // and two keyed on the time could fall in one millisecond and become one.
+  // A credit row from before carries no paymentId and keeps the time key.
+  const key = (via === 'etransfer' || via === 'card' || via === 'credit') && row.paymentId ? row.paymentId : ms(row.paidAt);
   return {
     id: `payment:${row.id}:${key}`,
     memberId: memberOf(row),
@@ -453,6 +456,29 @@ export async function mirrorUnpaid(scope: GroupScope, prev: Player): Promise<voi
   } catch (err) {
     mirrorFailures += 1;
     console.error('[ledger-mirror] mirrorUnpaid failed', { rowId: prev.id, err });
+  }
+}
+
+/**
+ * After a card refund or chargeback took back ONE Checkout's part of a row
+ * (docs/plans/partial-credit.md). Only that card's payment goes — its
+ * `payment:<row>:<checkout>` entry and any re-pay numbered beside it — and the
+ * money the row received another way (credit, an e-transfer part) stays
+ * recorded, as it stays on the row. The kept share goes with it: the row no
+ * longer holds its bill.
+ */
+export async function mirrorCardUnpaid(scope: GroupScope, prev: Player, checkoutId: string): Promise<void> {
+  if (!on()) return;
+  try {
+    const id = `payment:${prev.id}:${checkoutId}`;
+    const all = await entriesFor(scope, memberOf(prev), prev.id);
+    for (const e of live(all, 'payment')) {
+      if (e.id === id || e.id.startsWith(`${id}:`)) await appendEntry(scope, voidOf(e, 'unpaid'));
+    }
+    await voidLive(scope, memberOf(prev), prev.id, 'overpaid', 'unpaid');
+  } catch (err) {
+    mirrorFailures += 1;
+    console.error('[ledger-mirror] mirrorCardUnpaid failed', { rowId: prev.id, err });
   }
 }
 

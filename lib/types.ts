@@ -181,6 +181,14 @@ export interface Player {
    */
   paidAmount?: number;
   /**
+   * The store-credit spends (`spend:<row>:<n>` ledger ids) this row has
+   * received, in full or in part (docs/plans/partial-credit.md). Written in
+   * the same write that records the money, so the row itself says which
+   * spends landed when a mirror entry is missing. Absent on every row from
+   * before: there, `paidVia: 'credit'` on a paid row is the old answer.
+   */
+  creditSpends?: string[];
+  /**
    * What the row had received when an organiser last un-ticked it, kept only
    * while that was MORE than its bill (a bill lowered after it was paid, the
    * club keeping the rest). A re-tick may record it again on the organiser's

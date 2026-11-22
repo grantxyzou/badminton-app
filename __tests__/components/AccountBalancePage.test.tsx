@@ -66,12 +66,13 @@ async function renderPage(balance = balanceState(), credit: UseCredit | null = c
 }
 
 describe('creditWouldPay', () => {
-  it('walks the frozen lines oldest first, each in full or not at all, as the server does', () => {
+  it('walks the frozen lines oldest first as the server does: whole lines, then a part on a session', () => {
     // Settled $10 (Sep) + racket $32 = $42 of $45; the unsettled Nov line never.
     expect(creditWouldPay(BALANCE, 4500)).toBe(4200);
-    // $35: the Sep line ($10) first, then the $32 racket no longer fits.
+    // $35: the Sep line ($10) whole; the $25 left cannot part-pay a racket.
     expect(creditWouldPay(BALANCE, 3500)).toBe(1000);
-    expect(creditWouldPay(BALANCE, 500)).toBe(0);
+    // $5: a part of the Sep line (docs/plans/partial-credit.md).
+    expect(creditWouldPay(BALANCE, 500)).toBe(500);
   });
 });
 
