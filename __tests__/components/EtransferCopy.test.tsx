@@ -75,6 +75,18 @@ describe('EtransferCopy', () => {
     expect(screen.queryByText('Copied')).toBeNull();
   });
 
+  it('copies the memo the server filled in for this member, and has no memo row without one (docs/plans/payment-order.md)', async () => {
+    renderIt({ memo: 'BPM Core Oct 1 - Lin' });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Copy the message BPM Core Oct 1 - Lin' }));
+    });
+    expect(writeText).toHaveBeenCalledWith('BPM Core Oct 1 - Lin');
+    expect(screen.getByRole('status').textContent).toBe('Message copied');
+    cleanup();
+    renderIt();
+    expect(screen.queryByRole('button', { name: /Copy the message/ })).toBeNull();
+  });
+
   it('leaves out the recipient line when the club gave no name', () => {
     renderIt({ name: null });
     expect(screen.queryByText('Club Treasurer')).toBeNull();

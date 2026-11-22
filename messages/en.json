@@ -676,6 +676,7 @@
     "payment": {
       "sentIt": "I\u2019ve sent it",
       "sentItDone": "Thanks \u2014 it\u2019ll be marked paid when the e-transfer arrives.",
+      "etransfer": "Pay by Interac e-Transfer",
       "card": "Pay by card",
       "cardBusy": "Opening card payment\u2026",
       "cardError": "Couldn\u2019t open card payment \u2014 try again.",
@@ -4117,6 +4118,9 @@
     "copyAmount": "Copy the amount {amount}",
     "copiedEmail": "Email address copied",
     "copiedAmount": "Amount copied",
-    "copyFailed": "Couldn’t copy. Press and hold the text to copy it."
+    "copyFailed": "Couldn’t copy. Press and hold the text to copy it.",
+    "memo": "Message",
+    "copyMemo": "Copy the message {memo}",
+    "copiedMemo": "Message copied"
   }
 }

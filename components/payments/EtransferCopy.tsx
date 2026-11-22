@@ -3,23 +3,24 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 
-type Field = 'email' | 'amount';
+type Field = 'email' | 'amount' | 'memo';
 type CopyState = { field: Field; ok: boolean } | null;
 
 /** How long "Copied" stays before the row reads "Copy" again. */
 const COPIED_MS = 2000;
 
 /**
- * Paying by Interac e-transfer, as two rows a member taps: the club's address
- * and the amount, each copied with one tap to paste into their bank's app
- * (docs/plans/etransfer-copy.md). No bank's send screen can be opened from
+ * Paying by Interac e-transfer, as rows a member taps: the club's address,
+ * the amount and, when the server wrote one, the memo filled in for this
+ * member (docs/plans/payment-order.md), each copied with one tap to paste
+ * into their bank's app (docs/plans/etransfer-copy.md). No bank's send screen can be opened from
  * here, so this is the shortest way between the app and the bank.
  *
  * The amount is copied as a plain number with two decimals (`27.00`): banks'
  * amount fields refuse a `$`. If the clipboard refuses, the row says so; the
  * text stays selectable, so press-and-hold still works.
  */
-export default function EtransferCopy({ email, name, amountCents }: { email: string; name?: string | null; amountCents: number }) {
+export default function EtransferCopy({ email, name, amountCents, memo }: { email: string; name?: string | null; amountCents: number; memo?: string | null }) {
   const t = useTranslations('etransferCopy');
   const [state, setState] = useState<CopyState>(null);
   const timer = useRef<number | null>(null);
@@ -73,9 +74,18 @@ export default function EtransferCopy({ email, name, amountCents }: { email: str
         </span>
         {tag('amount')}
       </button>
+      {memo ? (
+        <button type="button" className="copy-row" onClick={() => void copy('memo', memo)} aria-label={t('copyMemo', { memo })}>
+          <span className="copy-row__text">
+            <span className="copy-row__label">{t('memo')}</span>
+            <span className="copy-row__value">{memo}</span>
+          </span>
+          {tag('memo')}
+        </button>
+      ) : null}
       {/* The row's own tag shows "Copied"; this says it to a screen reader. */}
       <p className="sr-only" role="status">
-        {state?.ok ? t(state.field === 'email' ? 'copiedEmail' : 'copiedAmount') : ''}
+        {state?.ok ? t(state.field === 'email' ? 'copiedEmail' : state.field === 'amount' ? 'copiedAmount' : 'copiedMemo') : ''}
       </p>
       {state && !state.ok && (
         <p className="field-warn" role="alert" style={{ margin: '0' }}>{t('copyFailed')}</p>

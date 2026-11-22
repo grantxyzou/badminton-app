@@ -33,6 +33,8 @@ export interface BalanceData {
   sessions: OwedSessionLine[];
   stringing?: OwedStringingLine[];
   payTo?: { name: string; email: string } | null;
+  /** The memo to paste with the e-transfer (docs/plans/payment-order.md). */
+  memo?: string | null;
 }
 
 export interface UseBalance {

@@ -78,17 +78,18 @@ function fmtDate(iso: string): string {
   }
 }
 
-function fmtMemo(template: string, dateIso: string, name: string, clubName?: string): string {
-  const dateShort = (() => {
-    if (!dateIso) return '';
-    try {
-      return new Date(dateIso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: CLUB_TIME_ZONE });
-    } catch {
-      return dateIso.slice(0, 10);
-    }
-  })();
+function shortDate(dateIso: string): string {
+  if (!dateIso) return '';
+  try {
+    return new Date(dateIso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', timeZone: CLUB_TIME_ZONE });
+  } catch {
+    return dateIso.slice(0, 10);
+  }
+}
+
+function fillMemo(template: string, dateText: string, name: string, clubName?: string): string {
   return template
-    .replace(/\{date\}/g, dateShort)
+    .replace(/\{date\}/g, dateText)
     .replace(/\{name\}/g, name)
     // An unknown club collapses to nothing rather than to a placeholder or to
     // some other club's name — a memo reading "Sep 12 - Lin" is merely terse,
@@ -97,6 +98,36 @@ function fmtMemo(template: string, dateIso: string, name: string, clubName?: str
     .replace(/\{club\}/g, clubName?.trim() ?? '')
     .replace(/\s{2,}/g, ' ')
     .trim();
+}
+
+function fmtMemo(template: string, dateIso: string, name: string, clubName?: string): string {
+  return fillMemo(template, shortDate(dateIso), name, clubName);
+}
+
+/** Nights named in a member's memo before the rest are counted as "+N". */
+const MEMO_MAX_DATES = 3;
+
+/**
+ * The memo ONE member pastes into their e-transfer for everything they owe
+ * (docs/plans/payment-order.md): the club's own template (or the default
+ * below) with `{date}` as the nights owed, oldest first, at most three and
+ * then "+N", and "stringing" for a finished racket. With the default
+ * template the name comes LAST, after " - ", which is where `memoRosterName`
+ * (`lib/paymentsInbox.ts`) reads it back from the bank's email. A memo is a
+ * weak clue, never proof of who paid (F18).
+ */
+export function memberMemo(input: { template?: string | null; club?: string; name: string; dates: readonly string[]; stringing: boolean }): string | null {
+  const name = input.name.trim();
+  if (!name) return null;
+  const days = [...input.dates]
+    .filter((d) => Number.isFinite(Date.parse(d)))
+    .sort((a, b) => Date.parse(a) - Date.parse(b))
+    .map(shortDate);
+  const unique = days.filter((d, i) => days.indexOf(d) === i);
+  const named = unique.slice(0, MEMO_MAX_DATES).join(', ');
+  const more = unique.length > MEMO_MAX_DATES ? ` +${unique.length - MEMO_MAX_DATES}` : '';
+  const dateText = [named ? `${named}${more}` : '', input.stringing ? 'stringing' : ''].filter(Boolean).join(' + ');
+  return fillMemo(input.template?.trim() || DEFAULT_MEMO, dateText, name, input.club) || null;
 }
 
 /**

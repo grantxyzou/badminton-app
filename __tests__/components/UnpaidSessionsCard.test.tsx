@@ -89,7 +89,7 @@ describe('<UnpaidSessionsCard />', () => {
     });
   });
 
-  it('shows the club address and the amount as rows that copy (docs/plans/etransfer-copy.md)', async () => {
+  it('e-transfer is one button that opens to the address, the amount and the memo, each a row that copies (docs/plans/payment-order.md)', async () => {
     vi.spyOn(global, 'fetch').mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -98,6 +98,7 @@ describe('<UnpaidSessionsCard />', () => {
           mostRecent: { sessionId: 's1', date: '2026-06-08T19:00:00-04:00', owedAmount: 22.5 },
           sessions: [{ sessionId: 's1', date: '2026-06-08T19:00:00-04:00', owedAmount: 22.5 }],
           payTo: { name: 'Club Treasurer', email: 'pay@example.com' },
+          memo: 'BPM Core Jun 8 - Lin',
         }),
         { status: 200 },
       ),
@@ -105,10 +106,40 @@ describe('<UnpaidSessionsCard />', () => {
 
     wrap(<UnpaidSessionsCard name="Lin" />);
 
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Copy the email address pay@example.com' })).toBeTruthy();
-    });
+    const toggle = await screen.findByRole('button', { name: 'Pay by Interac e-Transfer' });
+    // Closed at first: the rows do not fill the card above the other ways to pay.
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByRole('button', { name: 'Copy the email address pay@example.com' })).toBeNull();
+
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByRole('button', { name: 'Copy the email address pay@example.com' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Copy the amount $22.50' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Copy the message BPM Core Jun 8 - Lin' })).toBeTruthy();
+  });
+
+  it('the ways to pay read credit, then e-transfer, then card', async () => {
+    vi.stubEnv('NEXT_PUBLIC_FLAG_STORE_CREDIT', 'true');
+    vi.spyOn(global, 'fetch').mockImplementation(async (input: RequestInfo | URL) =>
+      String(input).includes('/api/credit')
+        ? new Response(JSON.stringify({ balanceCents: 1000 }), { status: 200 })
+        : new Response(JSON.stringify({
+          totalOwed: 40,
+          sessionCount: 1,
+          mostRecent: { sessionId: 's1', date: '2026-06-08T19:00:00-04:00', owedAmount: 40, settled: true },
+          sessions: [{ sessionId: 's1', date: '2026-06-08T19:00:00-04:00', owedAmount: 40, settled: true }],
+          payTo: { name: 'Club Treasurer', email: 'pay@example.com' },
+          cardPay: true,
+        }), { status: 200 }),
+    );
+    wrap(<UnpaidSessionsCard name="Lin" variant="home" />);
+    await screen.findByRole('button', { name: 'Use $10 credit' });
+    const names = screen.getAllByRole('button').map((b) => b.getAttribute('aria-label') ?? b.textContent ?? '');
+    const at = (re: RegExp) => names.findIndex((n) => re.test(n));
+    expect(at(/Use \$10 credit/)).toBeGreaterThan(-1);
+    expect(at(/Use \$10 credit/)).toBeLessThan(at(/Interac e-Transfer/));
+    expect(at(/Interac e-Transfer/)).toBeLessThan(at(/Pay by card/));
+    vi.unstubAllEnvs();
   });
 
   it('home variant shows the balance title and owed amount', async () => {

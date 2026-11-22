@@ -17,7 +17,7 @@ If, by the review date, e-transfers matched to the wrong line or sent to a wrong
 ## Non-goals
 
 - Opening a bank's app. There is no shared link, and a per-bank list would break whenever a bank changed its app.
-- Copying a memo. Since the 2026-11-17 security scan, a name in the memo is never proof of who paid (`.claude/rules/security.md`, F18), so it would not make a payment match.
+- Copying a memo. Since the 2026-11-17 security scan, a name in the memo is never proof of who paid (`.claude/rules/security.md`, F18), so it would not make a payment match. (Reversed 2026-11-22 at Grant's request: `docs/plans/payment-order.md`.)
 - Interac "Request money": it needs a business Interac service and per-request fees.
 
 ## Decisions

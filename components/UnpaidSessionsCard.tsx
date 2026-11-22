@@ -64,6 +64,8 @@ interface UnpaidData {
   stringingOwed?: number;
   /** Where to send it — the club's recipient, only on a response that owes. */
   payTo?: { name: string; email: string } | null;
+  /** The memo to paste with the e-transfer, filled in for this member (docs/plans/payment-order.md). */
+  memo?: string | null;
   /** The club takes cards and something here is settled (docs/plans/card-pay-prototype.md). */
   cardPay?: boolean;
   /** The club's card fee on credit cards, when it charges one (docs/plans/card-surcharge.md). */
@@ -150,6 +152,8 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
   const [spend, setSpend] = useState<'idle' | 'busy' | 'notEnough' | 'error'>('idle');
   const [card, setCard] = useState<'idle' | 'busy' | 'error'>('idle');
   const [cardForm, setCardForm] = useState(false);
+  // "Pay by Interac e-Transfer" opens to the copy rows (docs/plans/payment-order.md).
+  const [etransferOpen, setEtransferOpen] = useState(false);
   useEffect(() => {
     if (!creditOn || !name) return;
     let cancelled = false;
@@ -514,14 +518,6 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
           </div>
           )}
 
-          {(() => {
-            // The server's answer first; the build-time env only for a
-            // response from before `payTo` existed.
-            const email = data.payTo?.email ?? (data.payTo === undefined ? process.env.NEXT_PUBLIC_ETRANSFER_EMAIL || null : null);
-            return email && data.totalOwed > 0 ? (
-              <EtransferCopy email={email} name={data.payTo?.name} amountCents={Math.round(data.totalOwed * 100)} />
-            ) : null;
-          })()}
           {hasCredit && data.totalOwed > 0 && creditUse > 0 && (
             <div className="flex flex-col gap-2">
               {/* On Home the chip above already says how much credit there is. */}
@@ -542,11 +538,59 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
               {spend === 'error' && <p className="field-error" role="alert">{tCredit('error')}</p>}
             </div>
           )}
+          {/* The ways to pay, in Grant's order (docs/plans/payment-order.md):
+              credit above, then e-transfer, which costs the club nothing,
+              then the card. E-transfer is one button that opens to the
+              copy rows and "I've sent it", so the rows no longer fill the
+              card above the other ways. */}
+          {(() => {
+            // The server's answer first; the build-time env only for a
+            // response from before `payTo` existed.
+            const email = data.payTo?.email ?? (data.payTo === undefined ? process.env.NEXT_PUBLIC_ETRANSFER_EMAIL || null : null);
+            const sentIt = canSayPaid && (
+              sent === 'done' ? (
+                <p className="fs-sm motion-fade" role="status" style={{ margin: '0', color: 'var(--text-secondary)' }}>
+                  {tPay('sentItDone')}
+                </p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <button type="button" className="btn-ghost" disabled={!online || sent === 'busy'} onClick={() => void sayPaid()}>
+                    {tPay('sentIt')}
+                  </button>
+                  {sent === 'error' && <p className="field-error" role="alert">{tPay('sentItError')}</p>}
+                </div>
+              )
+            );
+            if (data.totalOwed <= 0) return null;
+            // No address set: there is nothing to copy, but a member who paid
+            // by the receipt in the group chat can still say so.
+            if (!email) return sentIt || null;
+            return (
+              <div className="flex flex-col">
+                <button
+                  type="button"
+                  className="btn-ghost pay-method-btn"
+                  aria-expanded={etransferOpen}
+                  onClick={() => setEtransferOpen((v) => !v)}
+                  data-testid="etransfer-toggle"
+                >
+                  <span>{tPay('etransfer')}</span>
+                  <span className="material-icons icon-md motion-chevron" aria-hidden="true">expand_more</span>
+                </button>
+                <Collapse open={etransferOpen} spaceAbove="var(--space-3)">
+                  <div className="flex flex-col gap-3">
+                    <EtransferCopy email={email} name={data.payTo?.name} amountCents={Math.round(data.totalOwed * 100)} memo={data.memo} />
+                    {sentIt}
+                  </div>
+                </Collapse>
+              </div>
+            );
+          })()}
           {data.cardPay === true && data.totalOwed > 0 && (() => {
             const feePct = data.cardFee ? `${(data.cardFee.bps / 100).toFixed(data.cardFee.bps % 10 === 0 ? 1 : 2)}%` : null;
             return (
             <div className="flex flex-col gap-2">
-              <button type="button" className="btn-ghost pay-card-btn" disabled={!online || card === 'busy'} onClick={() => void payByCard()}>
+              <button type="button" className="btn-ghost pay-method-btn" disabled={!online || card === 'busy'} onClick={() => void payByCard()}>
                 <span>{card === 'busy' ? tPay('cardBusy') : tPay('card')}</span>
                 {/* Decorative: the button's name stays "Pay by card". 780×500 marks at 18px tall. */}
                 <span className="card-marks" aria-hidden="true">
@@ -572,25 +616,6 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
             </div>
             );
           })()}
-          {canSayPaid && data.totalOwed > 0 && (
-            sent === 'done' ? (
-              <p className="fs-sm motion-fade" role="status" style={{ margin: '0', color: 'var(--text-secondary)' }}>
-                {tPay('sentItDone')}
-              </p>
-            ) : (
-              <div className="flex flex-col gap-2">
-                <button
-                  type="button"
-                  className="btn-ghost"
-                  disabled={!online || sent === 'busy'}
-                  onClick={() => void sayPaid()}
-                >
-                  {tPay('sentIt')}
-                </button>
-                {sent === 'error' && <p className="field-error" role="alert">{tPay('sentItError')}</p>}
-              </div>
-            )
-          )}
         </>
       )
     )}
