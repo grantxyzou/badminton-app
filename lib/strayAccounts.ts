@@ -13,8 +13,9 @@
  *   - 14 days past its mark,
  *   - on no club's roster in any status (a removed member once got in, and is
  *     not a stranger), and
- *   - asking nowhere (an organiser's ask list keeps an ask 14 days from the
- *     LAST time it was made, so a person who asked again is still waiting).
+ *   - asking nowhere (an organiser's ask list keeps an ask 3 days from the
+ *     LAST time it was made, `ACCOUNT_ASK_TTL_MS`, so a person who asked
+ *     again is still waiting).
  * An account an organiser LINKED to an imported name (step 4b) is retired
  * (`mergedInto`): its sign-ins moved, and it goes at 14 days like the rest.
  *

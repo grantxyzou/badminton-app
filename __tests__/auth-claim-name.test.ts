@@ -109,24 +109,14 @@ describe('POST /api/auth/claim-name', () => {
     expect(await lookupIdentity('google', 'google-sub-1')).toBeNull();
   });
 
-  it('accepts an admin-issued recovery code for a member with no PIN', async () => {
+  it('takes no recovery code: the other phone or an organizer approves in the app instead (sign-in redesign, step 3)', async () => {
     const carolina = seedMember('Carolina', {
       recoveryCode: { hash: await hashPin('123456'), expiresAt: Date.now() + 900_000 },
     });
-
     const res = await POST(req({ name: 'Carolina', code: '123456' }, pendingCookie()));
-    expect(res.status).toBe(200);
-    expect((await lookupIdentity('google', 'google-sub-1'))?.memberId).toBe(carolina.id);
-    // The code is single-use — consumed, so it cannot be replayed.
-    expect(stored(carolina.id).recoveryCode).toBeUndefined();
-  });
-
-  it('refuses an expired recovery code', async () => {
-    seedMember('Carolina', {
-      recoveryCode: { hash: await hashPin('123456'), expiresAt: Date.now() - 1000 },
-    });
-    const res = await POST(req({ name: 'Carolina', code: '123456' }, pendingCookie()));
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(400);
+    expect(await lookupIdentity('google', 'google-sub-1')).toBeNull();
+    expect(stored(carolina.id).recoveryCode).toBeDefined();
   });
 
   it('rejects a request with no pending provider identity', async () => {
