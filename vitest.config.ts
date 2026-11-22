@@ -27,7 +27,10 @@ export default defineConfig({
     // that meant 506 files and 375 failures from another branch's checkout,
     // drowning this branch's real result. Both patterns kept: the wrong one is
     // harmless and someone may yet use that layout.
-    exclude: [...configDefaults.exclude, '**/.worktrees/**', '**/.claude/worktrees/**'],
+    // `e2e/` is the Playwright tour (docs/plans/e2e-test-club.md): its
+    // `*.spec.ts` files match vitest's default include, and would be run here
+    // as unit tests and fail on Playwright's `test`.
+    exclude: [...configDefaults.exclude, '**/.worktrees/**', '**/.claude/worktrees/**', 'e2e/**'],
   },
   resolve: {
     alias: {

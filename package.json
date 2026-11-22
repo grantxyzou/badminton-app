@@ -19,7 +19,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "e2e": "playwright test -c e2e"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",
@@ -52,6 +53,7 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^8.6.2",
+    "@playwright/test": "1.65.0",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
     "@types/node": "^22",

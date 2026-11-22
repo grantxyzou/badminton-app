@@ -1,7 +1,7 @@
 # End-to-end tests in the "E2E test" club
 
 **Track:** the deploy gate. `scripts/smoke-prod.mjs` proves a deploy came back; nothing proves a member can still DO anything on it.
-**Status:** intent
+**Status:** in-flight (steps 1 and 3 built, 2026-11-22)
 **Review on:** 2026-12-06 — are the personas set up and stored as secrets, and has the read-only tour (step 3) run green against production three times in a row?
 
 ## Problem
@@ -58,6 +58,7 @@ There are two layers, because each one catches bugs the other cannot:
    - give kudos between personas
    - change a profile setting, then put it back
    - for the joiner persona: ask to join, be approved, then leave so they can ask again next run
+   - the Stats tab's one-time "See how you compare?" ask, which opens by itself on a persona's first visit and covers the tab bar. Closing it saves "Keep it private" for that persona, which is the cautious answer and is asked only once.
 4. **Never on production**:
    - advancing a session
    - `purgeAll`
@@ -110,7 +111,8 @@ Each role walks every tab it can reach. That alone exercises each GET with a rea
    - Make one organiser persona, an admin in E2E test only.
    - Make three or four player personas, plus one joiner who is in no club.
    - Give each one an email and password ("Keep your account").
-   - Store them as GitHub Actions secrets: `E2E_ACCOUNTS` (JSON of persona → email and password) and `E2E_INVITE_TOKEN`.
+   - Store them as GitHub Actions secrets: `E2E_ACCOUNTS` (JSON of persona → email and password; the shape is in `e2e/personas.ts`) and `E2E_INVITE_TOKEN`.
+   - Optionally, set the club's id as the repository variable `E2E_GROUP_ID`, which pins the guard to the id as well as the name.
    - Passwords never go in the repo, a chat or a log.
 1. **Scaffold.**
    - Add `@playwright/test` and an `e2e/` folder with two projects, `mock` and `prod`.
@@ -127,4 +129,29 @@ Each role walks every tab it can reach. That alone exercises each GET with a rea
 
 ## Decisions
 
+- **The tour signs in through the API, then drives the screens.** Typing a password into the sign-in page on every run would spend each run re-testing that one page. It gets its own journey in step 4. The API sign-in uses the same `completeSignIn`.
+- **A persona's role comes from the server, never from its label.** `clubGuard` reads `GET /api/groups/current`. A secret labelled "organiser" that belongs to a player gets the player's tour.
+- **The guard runs even on the mock**, but there it only reads the role. The name and single-club checks apply on production only, because the mock's personas live in BPM Core.
+- **The mock target refuses any host that is not this machine.** Its personas are the seeded famous players with known PINs. Sent to production, they would be sign-in attempts against real accounts that share those names (`assertMockIsLocal`).
+- **`localhost`, not `127.0.0.1`, for the mock.** `next dev` refuses its own scripts to an origin it doesn't recognise, so on `127.0.0.1` the page never hydrated and the launch screen never lifted.
+- **Errors fail the run, warnings only report.** The first mock run showed why: the AI read answers 503 offline (there's no Anthropic key), and a chunk 404 appears in dev only. A 503 from `/api/stats/insight` is a warning on the mock and stays an error on production, where the key exists.
+- **The tour is its own workflow (`e2e.yml`), not a job in `deploy-next.yml`.** It starts on `workflow_run` after a successful deploy, so a red tour can't turn a deploy red, and the deploy workflow (which ships to every phone) is left untouched.
+- **The mock job boots `npm run dev:next:mock`, not a production build.** That script is the one place the full flag list and the seeds already live together, so the tour can't drift from them. The standalone build is already checked by `pr-ci.yml`.
+- **Full-page screenshots hide the tab bar.** A full-page capture stitches `position: fixed` elements into the middle of the image, which reads as a bug that isn't there.
+- **Not yet: axe accessibility, the write journeys, the issue-per-red-run.** These are steps 4 and 5. The capture list above describes the destination.
+
 ## Shape
+
+| Piece | File |
+|---|---|
+| Config: one worker, phone viewport, traces on failure | `e2e/playwright.config.ts` |
+| Mock or production, and the local-only rule for the mock | `e2e/target.ts` |
+| The personas; `E2E_ACCOUNTS` parsing, which never echoes the secret | `e2e/personas.ts` |
+| Sign-in, the English cookie, the club guard | `e2e/session.ts` |
+| What each screen records | `e2e/capture.ts` |
+| The read-only tour | `e2e/tour.spec.ts` |
+| The Markdown summary for the job page | `e2e/summary.mjs` |
+| The guard's own tests (vitest) | `__tests__/e2e-guard.test.ts` |
+| The workflow: mock nightly and on demand; prod after each deploy, nightly and on demand | `.github/workflows/e2e.yml` |
+
+Run it locally: start `PORT=3100 npm run dev:next:mock`, then `E2E_TARGET=mock npm run e2e`. In the cloud container, add `E2E_CHROMIUM_PATH=/opt/pw-browsers/chromium`. Results go to `e2e-results/` (gitignored): the screenshots in `screens/`, the HTML report in `report/`.

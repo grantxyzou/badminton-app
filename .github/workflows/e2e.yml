@@ -1,0 +1,148 @@
+name: E2E tour
+
+# The end-to-end tour (docs/plans/e2e-test-club.md): a real browser signs in
+# as each persona, taps through every tab it can reach, and records a
+# screenshot and the checks in e2e/capture.ts for each screen.
+#
+#   mock — the offline mock store, seeded with the famous-player fixtures.
+#          Nothing real is touched.
+#   prod — production, signed in as the E2E test club's personas from the
+#          E2E_ACCOUNTS secret. e2e/session.ts's club guard stops the run
+#          before the first screen unless each persona's only club is
+#          "E2E test". The tour is read-only apart from the sign-in, the app's
+#          usage beacons and the Stats privacy ask (closed = "Keep it private").
+#
+# It is its OWN workflow, so a red tour can never turn a deploy red; it runs
+# after each successful deploy, nightly, and from "Run workflow".
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Which app to tour
+        type: choice
+        options: [both, mock, prod]
+        default: both
+  workflow_run:
+    workflows: ['Deploy to bpm-next (three times a day, or on demand)']
+    types: [completed]
+  schedule:
+    # 02:41 in Vancouver (winter): after the evening deploy, before anyone plays.
+    - cron: '41 10 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  mock:
+    if: >-
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' && inputs.target != 'prod')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      # `dev:next:mock` is the one command that already carries every flag and
+      # the seeds (package.json), so this tour cannot drift from them.
+      - name: Start the app on the mock store
+        run: |
+          PORT=3100 npm run dev:next:mock > dev-server.log 2>&1 &
+          for i in $(seq 1 90); do
+            if curl -fsS -o /dev/null http://localhost:3100/bpm/api/releases; then exit 0; fi
+            sleep 2
+          done
+          echo "the app did not answer within three minutes"; tail -50 dev-server.log; exit 1
+
+      - name: Tour the mock app
+        run: npm run e2e
+        env:
+          E2E_TARGET: mock
+
+      - name: Summary
+        if: always()
+        run: node e2e/summary.mjs >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload screenshots and report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: e2e-mock-${{ github.run_id }}
+          path: e2e-results/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  prod:
+    if: >-
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' && inputs.target != 'mock') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # One tour of production at a time: the personas share one club and list.
+    concurrency:
+      group: e2e-prod
+      cancel-in-progress: false
+    env:
+      E2E_TARGET: prod
+      E2E_ACCOUNTS: ${{ secrets.E2E_ACCOUNTS }}
+      E2E_GROUP_ID: ${{ vars.E2E_GROUP_ID }}
+    steps:
+      - name: Check the personas are configured
+        id: ready
+        run: |
+          if [ -z "$E2E_ACCOUNTS" ]; then
+            echo "::notice::E2E_ACCOUNTS is not set, so the production tour is skipped (docs/plans/e2e-test-club.md, step 0)."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        if: steps.ready.outputs.ok == 'true'
+
+      - name: Set up Node.js
+        if: steps.ready.outputs.ok == 'true'
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        if: steps.ready.outputs.ok == 'true'
+        run: npm ci
+
+      - name: Install Chromium
+        if: steps.ready.outputs.ok == 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Tour production as the E2E test club
+        if: steps.ready.outputs.ok == 'true'
+        run: npm run e2e
+
+      - name: Summary
+        if: always() && steps.ready.outputs.ok == 'true'
+        run: node e2e/summary.mjs >> "$GITHUB_STEP_SUMMARY"
+
+      # Private to the repository. Every screen in it is the E2E test club's,
+      # whose only members are the personas.
+      - name: Upload screenshots and report
+        if: always() && steps.ready.outputs.ok == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: e2e-prod-${{ github.run_id }}
+          path: e2e-results/
+          retention-days: 14
+          if-no-files-found: ignore
