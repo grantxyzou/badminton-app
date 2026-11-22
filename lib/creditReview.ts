@@ -96,6 +96,11 @@ export async function returnCredit(scope: GroupScope, paymentId: string, adminId
   // list gives back every spend ('all'); a retry that finds the line already
   // cleared gives back what is not mid-way ('stale').
   let landed: string[] | 'all' | 'stale' = 'stale';
+  // The payments are voided AFTER the credit is back (step 3): a balance read
+  // in between then sees either the live payment or the refund, never a
+  // spend that looks taken and not landed, which it would land again
+  // (`refundStaleSpends`; review of docs/plans/partial-credit.md).
+  let voidAfter: (() => Promise<void>) | null = null;
 
   // 1. Un-tick, if the line is still paid by this credit.
   if (c.kind === 'session') {
@@ -117,8 +122,10 @@ export async function returnCredit(scope: GroupScope, paymentId: string, adminId
         c.pk,
       );
       if (!written) throw new CreditReviewError('row_changed');
-      await mirrorUnpaid(scope, row as unknown as Player);
     }
+    // Un-ticked now, or by a run that stopped before its voids: the row
+    // holds nothing, so no payment on it stays live.
+    voidAfter = () => mirrorUnpaid(scope, row as unknown as Player);
   } else {
     const job = await scope.read<StringingJob>('stringingJobs', c.ref, c.pk);
     if (!job) throw new CreditReviewError('row_changed');
@@ -127,7 +134,7 @@ export async function returnCredit(scope: GroupScope, paymentId: string, adminId
       landed = 'all';
       const written = await scope.replace<StringingJob>('stringingJobs', { ...job, paidAt: null, paidVia: undefined, paymentId: undefined, updatedAt: now }, c.pk);
       if (!written) throw new CreditReviewError('row_changed');
-      await mirrorStringingChanged(scope, job, written);
+      voidAfter = () => mirrorStringingChanged(scope, job, written);
     }
   }
 
@@ -136,7 +143,10 @@ export async function returnCredit(scope: GroupScope, paymentId: string, adminId
   //    nothing twice (docs/plans/partial-credit.md).
   await returnRowCredit(scope, c.memberId, { kind: c.kind, ref: c.ref, pk: c.pk }, landed, adminId, 'Payment un-ticked — credit returned');
 
-  // 3. Close the review.
+  // 3. Void the payments the un-tick took off the row.
+  if (voidAfter) await voidAfter();
+
+  // 4. Close the review.
   const next: EtransferPayment = { ...payment, status: 'matched', reason: undefined, matchedBy: adminId, resolvedAt: now };
   return (await scope.replace('payments', next)) ?? next;
 }

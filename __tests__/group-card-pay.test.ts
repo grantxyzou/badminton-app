@@ -552,23 +552,62 @@ describe('a card refund or chargeback on a night credit part-paid (docs/plans/pa
     delete process.env.NEXT_PUBLIC_FLAG_STORE_CREDIT;
   });
 
-  it('a full refund gives the credit back with the night, instead of leaving it spent on a line that owes it all', async () => {
+  const livePayments = (rowId: string) => {
+    const voided = new Set(ledger().filter((e) => e.kind === 'void').map((e) => e.id.slice('void:'.length)));
+    return ledger().filter((e) => e.kind === 'payment' && e.id.includes(rowId) && !voided.has(e.id)).map((e) => e.id);
+  };
+
+  it('a full refund takes back only the card\'s part: the credit stays on the night, which owes the $2 again', async () => {
     refundList = [{ amount: 1700, status: 'succeeded', metadata: {} }];
     await deliver(charge, ACCT, SECRET, 'charge.refunded');
-    expect(row(row1.id).paid).toBe(false);
-    expect(row(row1.id).paidAmount).toBeUndefined();
-    expect(row(row1.id).creditSpends).toBeUndefined();
-    expect(await credit()).toBe(1000);
+    expect(row(row1.id)).toMatchObject({ paid: false, paidAmount: 10, creditSpends: [`spend:${row1.id}:0`] });
+    expect(row(row1.id).paidVia).toBeUndefined();
+    expect(row(row2.id).paidAmount).toBeUndefined();
+    // The credit's payment stays; the card's is voided. The credit is still spent, on the night it paid.
+    expect(livePayments(row1.id)).toEqual([`payment:${row1.id}:spend:${row1.id}:0`]);
+    expect(await credit()).toBe(0);
   });
 
-  it('a chargeback gives the credit back; won, the card pays back only its own part', async () => {
+  it('a chargeback takes back the card\'s part; won, the card\'s part comes back and the night is paid', async () => {
     await deliver(dispute(1700), ACCT, SECRET, 'charge.dispute.created');
-    expect(row(row1.id).paidAmount).toBeUndefined();
-    expect(await credit()).toBe(1000);
+    expect(row(row1.id)).toMatchObject({ paid: false, paidAmount: 10 });
+    expect(await credit()).toBe(0);
     await deliver(dispute(1700, 'won'), ACCT, SECRET, 'charge.dispute.closed');
-    // The $2 the card brought back is recorded; the $10 credit is the member's again, so $10 is owed.
-    expect(row(row1.id)).toMatchObject({ paid: false, paidAmount: 2, paidVia: 'card' });
+    expect(row(row1.id)).toMatchObject({ paid: true, paidAmount: 12, paidVia: 'card', creditSpends: [`spend:${row1.id}:0`] });
     expect(row(row2.id)).toMatchObject({ paid: true, paidAmount: 15 });
-    expect(await credit()).toBe(1000);
+    expect(livePayments(row1.id).sort()).toEqual([`payment:${row1.id}:cs_test_1:1`, `payment:${row1.id}:spend:${row1.id}:0`]);
+    expect(await credit()).toBe(0);
+  });
+});
+
+describe('a chargeback on a night an e-transfer part-paid', () => {
+  const dispute = (amount: number, status = 'needs_response') => ({ id: 'dp_1', object: 'dispute', charge: 'ch_1', payment_intent: 'pi_test_1', amount, status, reason: 'fraudulent', created: 1_793_200_000 });
+  const livePayments = (rowId: string) => {
+    const voided = new Set(ledger().filter((e) => e.kind === 'void').map((e) => e.id.slice('void:'.length)));
+    return ledger().filter((e) => e.kind === 'payment' && e.id.includes(rowId) && !voided.has(e.id)).map((e) => e.id);
+  };
+
+  it('keeps the $10 the transfer brought while the dispute is open, and a win pays the night in full again', async () => {
+    connectClubAccount();
+    // $10 of the $15 night came by e-transfer, as the inbox writes a short transfer.
+    const players = getStore()['players'] as Array<Record<string, unknown>>;
+    Object.assign(players.find((p) => p.id === row2.id)!, { paidAt: '2026-10-03T00:00:00Z', paidVia: 'etransfer', paymentId: 'pay_p1', paidAmount: 10 });
+    seedDoc('ledger', { id: `payment:${row2.id}:pay_p1`, groupId: 'bpm', memberId: lin.id, account: 'member_owed', kind: 'payment', amountCents: -1000, note: 'E-transfer', ref: { kind: 'session', id: row2.id, pk: 'session-2026-10-01' }, meta: { via: 'etransfer', paymentId: 'pay_p1' }, createdAt: '2026-10-03T00:00:00Z', createdBy: 'system' });
+    // The card pays the $12 night and the $5 left on this one.
+    const metadata = await checkoutMetadata();
+    listedSession = paidSession(metadata, 1700);
+    await deliver(paidSession(metadata, 1700));
+    expect(row(row2.id)).toMatchObject({ paid: true, paidAmount: 15 });
+
+    await deliver(dispute(1700), ACCT, SECRET, 'charge.dispute.created');
+    // Only the card's $5 is owed again; the transfer's $10 and its ledger payment stay.
+    expect(row(row2.id)).toMatchObject({ paid: false, paidAmount: 10 });
+    expect(livePayments(row2.id)).toEqual([`payment:${row2.id}:pay_p1`]);
+    expect(row(row1.id).paidAmount).toBeUndefined();
+
+    await deliver(dispute(1700, 'won'), ACCT, SECRET, 'charge.dispute.closed');
+    expect(row(row2.id)).toMatchObject({ paid: true, paidAmount: 15 });
+    expect(row(row1.id)).toMatchObject({ paid: true, paidAmount: 12 });
+    expect(livePayments(row2.id).sort()).toEqual([`payment:${row2.id}:cs_test_1:1`, `payment:${row2.id}:pay_p1`]);
   });
 });

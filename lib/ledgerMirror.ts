@@ -459,6 +459,29 @@ export async function mirrorUnpaid(scope: GroupScope, prev: Player): Promise<voi
   }
 }
 
+/**
+ * After a card refund or chargeback took back ONE Checkout's part of a row
+ * (docs/plans/partial-credit.md). Only that card's payment goes — its
+ * `payment:<row>:<checkout>` entry and any re-pay numbered beside it — and the
+ * money the row received another way (credit, an e-transfer part) stays
+ * recorded, as it stays on the row. The kept share goes with it: the row no
+ * longer holds its bill.
+ */
+export async function mirrorCardUnpaid(scope: GroupScope, prev: Player, checkoutId: string): Promise<void> {
+  if (!on()) return;
+  try {
+    const id = `payment:${prev.id}:${checkoutId}`;
+    const all = await entriesFor(scope, memberOf(prev), prev.id);
+    for (const e of live(all, 'payment')) {
+      if (e.id === id || e.id.startsWith(`${id}:`)) await appendEntry(scope, voidOf(e, 'unpaid'));
+    }
+    await voidLive(scope, memberOf(prev), prev.id, 'overpaid', 'unpaid');
+  } catch (err) {
+    mirrorFailures += 1;
+    console.error('[ledger-mirror] mirrorCardUnpaid failed', { rowId: prev.id, err });
+  }
+}
+
 /** After a row went writtenOff false→true with absorb. (Resplit is followed by a re-settle, which re-charges.) */
 export async function mirrorCover(scope: GroupScope, row: Player): Promise<void> {
   if (!on()) return;

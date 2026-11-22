@@ -40,7 +40,7 @@ import { isFlagOn } from './flags';
 import { groupDocId, groupScope, type GroupScope } from './groupScope';
 import { computeOwed, settledLines, type OwedLine } from './owedBalance';
 import { resolveIdentity } from './playerIdentity';
-import { everPaidBy, mirrorPaid, mirrorStringingChanged, mirrorUnpaid } from './ledgerMirror';
+import { everPaidBy, mirrorCardUnpaid, mirrorPaid, mirrorStringingChanged } from './ledgerMirror';
 import { isBillable } from './stringingBilling';
 import { ensurePayments, releaseHoldIfSettled } from './paymentsInbox';
 import { requireOutboundOrigin } from './appOrigin';
@@ -48,21 +48,29 @@ import type { EtransferPayment, Player, StringingJob } from './types';
 import { APP_NAME } from './brand';
 import { feeShareOf, linesPartOfRefund, maxAllowedSurcharge } from './surchargeMath';
 import { sendCardReceipt, sessionDay, type ReceiptLine } from './cardReceiptEmail';
-import { returnRowCredit } from './storeCredit';
 
 
 /**
- * A card refund or chargeback un-paid a row credit had helped pay
- * (docs/plans/partial-credit.md): the credit it held goes back to whoever
- * spent it — the row's member, or a guest's host — spend by spend. Clearing
- * the row without this left the credit spent on a line that now owes it all.
+ * A card refund or chargeback takes back the CARD's part of a row, and only
+ * that (docs/plans/partial-credit.md). A row the card finished after credit
+ * or an e-transfer part-paid it keeps what those brought: it owes the card's
+ * amount again, not the whole bill. Clearing the row instead left the credit
+ * spent on a line that owed it all, and a won chargeback left the member
+ * chased for an e-transfer already received.
  */
-async function giveBackRowCredit(scope: GroupScope, row: Record<string, unknown>, pk: string, note: string): Promise<void> {
-  const landed = Array.isArray(row.creditSpends) ? (row.creditSpends as string[]) : [];
-  if (landed.length === 0) return;
-  const spender = typeof row.memberId === 'string' ? row.memberId : typeof row.guestOf === 'string' ? row.guestOf : null;
-  if (!spender) return;
-  await returnRowCredit(scope, spender, { kind: 'session', ref: String(row.id), pk }, landed, 'stripe', note);
+function withoutCardPart(row: Player & Record<string, unknown>, cardCents: number, stamp: Record<string, string>): Player & Record<string, unknown> {
+  const received = typeof row.paidAmount === 'number' ? Math.round(row.paidAmount * 100) : row.paid === true ? Math.round((row.owedAmount ?? 0) * 100) : 0;
+  const kept = received - cardCents;
+  return {
+    ...row,
+    paid: false,
+    paidAt: undefined,
+    paidVia: undefined,
+    paymentId: undefined,
+    paidAmount: kept > 0 ? kept / 100 : undefined,
+    creditSpends: kept > 0 ? row.creditSpends : undefined,
+    ...stamp,
+  };
 }
 
 export const CARD_PAY_SETTINGS_ID = 'card-pay';
@@ -752,12 +760,11 @@ export async function applyRefund(charge: Stripe.Charge, eventAccount: string | 
     if (h.kind === 'session') {
       const written = await scope.replace(
         'players',
-        { ...h.doc, paid: false, paidAt: undefined, paidVia: undefined, paymentId: undefined, paidAmount: undefined, creditSpends: undefined, refundedPaymentId: session.id },
+        withoutCardPart(h.doc, h.line.amountCents, { refundedPaymentId: session.id }),
         h.line.pk,
       );
       if (!written) continue; // changed under us; the next delivery re-reads
-      await mirrorUnpaid(scope, h.doc as unknown as Player);
-      await giveBackRowCredit(scope, h.doc, h.line.pk, 'Card refunded — credit returned');
+      await mirrorCardUnpaid(scope, h.doc as unknown as Player, session.id);
     } else {
       const written = await scope.replace<StringingJob>(
         'stringingJobs',
@@ -840,9 +847,9 @@ export async function applyDispute(dispute: Stripe.Dispute, eventAccount: string
         const written = await scope.replace(
           'players',
           // What the card brings back is the line's part: the row records
-          // that on top of whatever it holds now, and is paid only once that
-          // covers the bill. A row credit or a short transfer had part-paid
-          // was cleared when the dispute opened (docs/plans/partial-credit.md).
+          // that on top of what it kept when the dispute opened (credit or a
+          // transfer that part-paid it, `withoutCardPart`), and is paid once
+          // that covers the bill (docs/plans/partial-credit.md).
           {
             ...h.doc,
             paid: Math.round(Number(h.doc.paidAmount ?? 0) * 100) + h.line.amountCents >= Math.round(Number(h.doc.owedAmount ?? 0) * 100),
@@ -898,12 +905,11 @@ export async function applyDispute(dispute: Stripe.Dispute, eventAccount: string
     if (h.kind === 'session') {
       const written = await scope.replace(
         'players',
-        { ...h.doc, paid: false, paidAt: undefined, paidVia: undefined, paymentId: undefined, paidAmount: undefined, creditSpends: undefined, disputedPaymentId: session.id },
+        withoutCardPart(h.doc, h.line.amountCents, { disputedPaymentId: session.id }),
         h.line.pk,
       );
       if (!written) continue; // changed under us; the next delivery re-reads
-      await mirrorUnpaid(scope, h.doc as unknown as Player);
-      await giveBackRowCredit(scope, h.doc, h.line.pk, 'Card payment disputed — credit returned');
+      await mirrorCardUnpaid(scope, h.doc as unknown as Player, session.id);
     } else {
       const written = await scope.replace<StringingJob>(
         'stringingJobs',

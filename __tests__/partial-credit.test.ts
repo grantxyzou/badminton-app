@@ -239,6 +239,33 @@ describe('un-ticking a line credit helped pay', () => {
     expect(await balance()).toBe(1000); // $10 back; the $5 in flight is the other request's
   });
 
+  it('returning gives the credit back BEFORE it voids the payment, so a balance read in between can never land it again (second review)', async () => {
+    give(1000);
+    await payWithCredit('bpm', linId);
+    const id = String(lin().id);
+    expect((await patchPlayer(makeAdminRequest('PATCH', `${BASE}/players`, { id, paid: false, review: true }))).status).toBe(202);
+    expect((await assign(makeAdminRequest('POST', `${BASE}/admin/payments/assign`, { paymentId: reviews()[0].id, action: 'return_credit' }))).status).toBe(200);
+    // At every point a read could fall, the ledger showed the payment live or the refund written.
+    const order = ledger().map((e) => e.id);
+    const payment = `payment:${id}:spend:${id}:0`;
+    expect(order.indexOf(`refund:${id}:0`)).toBeGreaterThan(-1);
+    expect(order.indexOf(`refund:${id}:0`)).toBeLessThan(order.indexOf(`void:${payment}`));
+  });
+
+  it('a return that stopped after giving the credit back voids the payment on the retry, and gives nothing twice', async () => {
+    give(1000);
+    await payWithCredit('bpm', linId);
+    const id = String(lin().id);
+    expect((await patchPlayer(makeAdminRequest('PATCH', `${BASE}/players`, { id, paid: false, review: true }))).status).toBe(202);
+    // The first run cleared the row and wrote the refund, then died before the voids.
+    Object.assign(lin(), { paid: false, paidAt: undefined, paidVia: undefined, paymentId: undefined, paidAmount: undefined, creditSpends: undefined });
+    seedDoc('ledger', { id: `refund:${id}:0`, groupId: 'bpm', memberId: linId, account: 'member_credit', kind: 'credit_refund', amountCents: 1000, note: '', ref: { kind: 'session', id, pk: SID }, createdAt: new Date().toISOString(), createdBy: 'admin' });
+    expect(livePayments(id)).toHaveLength(1);
+    expect((await assign(makeAdminRequest('POST', `${BASE}/admin/payments/assign`, { paymentId: reviews()[0].id, action: 'return_credit' }))).status).toBe(200);
+    expect(livePayments(id)).toHaveLength(0);
+    expect(await balance()).toBe(1000);
+  });
+
   it('a row paid partly by credit and the rest by the organiser still goes through the review', async () => {
     give(1000);
     await payWithCredit('bpm', linId);
