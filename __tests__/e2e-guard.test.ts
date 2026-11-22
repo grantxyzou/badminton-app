@@ -1,0 +1,146 @@
+/**
+ * The end-to-end tour's safety wall (docs/plans/e2e-test-club.md, Safety rules).
+ *
+ * The tour signs in to PRODUCTION as the E2E test club's personas. What keeps
+ * it out of every other club is `clubGuard` in `e2e/session.ts`, and what
+ * keeps its passwords out of logs is `parseAccounts` in `e2e/personas.ts`.
+ * Neither runs in this suite otherwise (Playwright runs the tour, and only
+ * when someone starts it), so a regression in either would be invisible
+ * until it mattered.
+ */
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import type { Page } from '@playwright/test';
+import { clubGuard, E2E_CLUB_NAME } from '../e2e/session';
+import { isJoiner, parseAccounts } from '../e2e/personas';
+import { assertMockIsLocal, baseUrl, PROD_BASE, target } from '../e2e/target';
+
+const ENV_KEYS = ['E2E_TARGET', 'E2E_BASE_URL', 'E2E_GROUP_ID'] as const;
+let saved: Record<string, string | undefined>;
+beforeEach(() => {
+  saved = Object.fromEntries(ENV_KEYS.map((k) => [k, process.env[k]]));
+  for (const k of ENV_KEYS) delete process.env[k];
+});
+afterEach(() => {
+  for (const k of ENV_KEYS) {
+    if (saved[k] === undefined) delete process.env[k];
+    else process.env[k] = saved[k];
+  }
+});
+
+/** A page whose API answers are canned: `/api/groups/mine` and `/current`. */
+function fakePage(mine: unknown, current: unknown): Page {
+  const answer = (body: unknown) => ({ ok: () => true, status: () => 200, json: async () => body });
+  return {
+    request: {
+      get: async (url: string) => (url.endsWith('/api/groups/mine') ? answer(mine) : answer(current)),
+    },
+  } as unknown as Page;
+}
+
+const persona = { label: 'player1', kind: 'password' as const, email: 'x@example.com', password: 'p' };
+const E2E = { id: 'g-e2e', name: E2E_CLUB_NAME };
+
+describe('clubGuard on production', () => {
+  beforeEach(() => {
+    process.env.E2E_TARGET = 'prod';
+  });
+
+  it('passes a persona whose only club is the E2E test club', async () => {
+    const page = fakePage({ groups: [E2E], currentGroupId: 'g-e2e' }, { ...E2E, role: 'member' });
+    await expect(clubGuard(page, persona)).resolves.toMatchObject({ groupId: 'g-e2e', privileged: false });
+  });
+
+  it('reads an organiser from the server, not from the label', async () => {
+    const page = fakePage({ groups: [E2E], currentGroupId: 'g-e2e' }, { ...E2E, role: 'owner' });
+    await expect(clubGuard(page, persona)).resolves.toMatchObject({ role: 'owner', privileged: true });
+  });
+
+  it('refuses a persona that also belongs to another club', async () => {
+    const page = fakePage(
+      { groups: [E2E, { id: 'bpm', name: 'BPM Core' }], currentGroupId: 'g-e2e' },
+      { ...E2E, role: 'member' },
+    );
+    await expect(clubGuard(page, persona)).rejects.toThrow(/belongs to 2 clubs/);
+  });
+
+  it('refuses a session pointed at any other club', async () => {
+    const page = fakePage({ groups: [{ id: 'bpm', name: 'BPM Core' }], currentGroupId: 'bpm' }, { id: 'bpm', name: 'BPM Core', role: 'owner' });
+    await expect(clubGuard(page, persona)).rejects.toThrow(/club guard refused/);
+  });
+
+  it('refuses a club with the right name and the wrong pinned id', async () => {
+    process.env.E2E_GROUP_ID = 'g-other';
+    const page = fakePage({ groups: [E2E], currentGroupId: 'g-e2e' }, { ...E2E, role: 'member' });
+    await expect(clubGuard(page, persona)).rejects.toThrow(/E2E_GROUP_ID/);
+  });
+
+  it('refuses when the club list cannot be read', async () => {
+    const page = {
+      request: { get: async () => ({ ok: () => false, status: () => 401, json: async () => ({}) }) },
+    } as unknown as Page;
+    await expect(clubGuard(page, persona)).rejects.toThrow(/answered 401/);
+  });
+});
+
+describe('E2E_ACCOUNTS parsing', () => {
+  it('reads label → email and password', () => {
+    const list = parseAccounts(JSON.stringify({ organiser: { email: 'a@x.com', password: 'pw1' }, joiner: { email: 'b@x.com', password: 'pw2' } }));
+    expect(list.map((p) => p.label)).toEqual(['organiser', 'joiner']);
+    expect(list.filter(isJoiner).map((p) => p.label)).toEqual(['joiner']);
+  });
+
+  it('never repeats the secret in an error', () => {
+    const secret = '{"organiser":{"email":"a@x.com","password":"hunter2"';
+    expect(() => parseAccounts(secret)).toThrow();
+    try {
+      parseAccounts(secret);
+    } catch (e) {
+      expect(String(e)).not.toContain('hunter2');
+    }
+    try {
+      parseAccounts(JSON.stringify({ p: { email: 'a@x.com', password: 7 } }));
+    } catch (e) {
+      expect(String(e)).toContain('"p"');
+      expect(String(e)).not.toContain('a@x.com');
+    }
+  });
+
+  it('refuses an empty or missing secret', () => {
+    expect(() => parseAccounts(undefined)).toThrow(/not set/);
+    expect(() => parseAccounts('{}')).toThrow(/no accounts/);
+  });
+});
+
+describe('the target', () => {
+  it('defaults to the mock, and production must be named', () => {
+    expect(target()).toBe('mock');
+    process.env.E2E_TARGET = 'production';
+    expect(() => target()).toThrow();
+    process.env.E2E_TARGET = 'prod';
+    expect(baseUrl()).toBe(PROD_BASE);
+  });
+
+  it('refuses to send the seeded PINs to a host that is not this machine', () => {
+    process.env.E2E_BASE_URL = 'https://bpm.grantzou.com/bpm';
+    expect(() => assertMockIsLocal()).toThrow(/non-local/);
+    process.env.E2E_BASE_URL = 'http://localhost:3100/bpm';
+    expect(() => assertMockIsLocal()).not.toThrow();
+  });
+});
+
+describe('every tour that signs in passes the guard', () => {
+  const dir = join(process.cwd(), 'e2e');
+  const specs = readdirSync(dir).filter((f) => f.endsWith('.spec.ts'));
+
+  it('has at least one spec to check', () => {
+    expect(specs.length).toBeGreaterThan(0);
+  });
+
+  it.each(specs)('%s calls clubGuard right after signIn', (file) => {
+    const src = readFileSync(join(dir, file), 'utf8');
+    if (!/\bsignIn\(/.test(src)) return;
+    expect(src, `${file} signs in without the club guard`).toMatch(/signIn\([^)]*\);\s*\n\s*(const \w+ = )?await clubGuard\(/);
+  });
+});

@@ -115,3 +115,7 @@ ios/App/App/GoogleService-Info.plist
 *.p8
 *.p12
 *.mobileprovision
+
+# Playwright end-to-end runs: screenshots, traces and the HTML report
+# (docs/plans/e2e-test-club.md). CI uploads them as a private artifact.
+e2e-results/
