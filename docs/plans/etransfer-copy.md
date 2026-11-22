@@ -17,13 +17,13 @@ If, by the review date, e-transfers matched to the wrong line or sent to a wrong
 ## Non-goals
 
 - Opening a bank's app. There is no shared link, and a per-bank list would break whenever a bank changed its app.
-- Copying a memo. Since the 2026-11-17 security scan, a name in the memo is never proof of who paid (`.claude/rules/security.md`, F18), so it would not make a payment match.
+- Copying a memo. Since the 2026-11-17 security scan, a name in the memo is never proof of who paid (`.claude/rules/security.md`, F18), so it would not make a payment match. (Reversed 2026-11-22 at Grant's request: `docs/plans/payment-order.md`.)
 - Interac "Request money": it needs a business Interac service and per-request fees.
 
 ## Decisions
 
 - **One component for both places** (`components/payments/EtransferCopy.tsx`): Home's balance card and the Balance page's e-transfer sheet showed the address two ways and copied it one way; now both show the same two rows, the address (with the recipient's name under it, which the bank shows back) and the amount, each a button that copies it.
-- **The amount copies as a plain number with two decimals** (`27.00`): banks' amount fields refuse a `$`, and some refuse a thousands separator.
+- **The amount copies as a plain number with two decimals** (`27.00`): banks' amount fields refuse a `$`, and some refuse a thousands separator. (Removed 2026-11-22, Grant: "we dont need the cost copy and past option". The total is the card's own headline figure, and the rows are now the address and the member's memo: `docs/plans/payment-order.md`.)
 - **A copy that fails says so and leaves the text selectable**: the clipboard can be refused (an old WebView, a permission), and press-and-hold still works.
 
 ## Shape

@@ -130,7 +130,6 @@ describe('AccountBalancePage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Pay $52 by e-transfer' }));
     expect(screen.getByText('pay@example.com')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Copy the email address pay@example.com' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Copy the amount $52.00' })).toBeTruthy();
     cleanup();
     await renderPage(balanceState({ data: { ...BALANCE, payTo: null } }));
     expect(screen.queryByRole('button', { name: /by e-transfer/ })).toBeNull();

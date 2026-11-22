@@ -28,6 +28,8 @@ import type { ETransferRecipient, Group, Member } from './types';
 export interface PayTo {
   name: string;
   email: string;
+  /** The club's memo template, when it set one (`ETransferRecipient.memo`). */
+  memo?: string;
 }
 
 const usable = (r: ETransferRecipient | undefined | null): r is ETransferRecipient =>
@@ -42,7 +44,7 @@ export function recipientOf(group: Group | undefined | null): ETransferRecipient
 export async function clubPayTo(groupId: string): Promise<PayTo | null> {
   try {
     const r = recipientOf(await readGroup(groupId));
-    if (r) return { name: r.name ?? '', email: r.email };
+    if (r) return { name: r.name ?? '', email: r.email, ...(r.memo ? { memo: r.memo } : {}) };
   } catch (err) {
     console.error('payTo: group read failed', err);
   }
@@ -55,7 +57,7 @@ export async function clubPayTo(groupId: string): Promise<PayTo | null> {
       const admin = (resources ?? [])
         .filter((m) => m.role === 'admin' && m.active === true && usable(m.eTransferRecipient))
         .sort((a, b) => String(a.createdAt ?? '').localeCompare(String(b.createdAt ?? '')))[0];
-      if (admin?.eTransferRecipient) return { name: admin.eTransferRecipient.name ?? '', email: admin.eTransferRecipient.email };
+      if (admin?.eTransferRecipient) return { name: admin.eTransferRecipient.name ?? '', email: admin.eTransferRecipient.email, ...(admin.eTransferRecipient.memo ? { memo: admin.eTransferRecipient.memo } : {}) };
     } catch (err) {
       console.error('payTo: admin read failed', err);
     }

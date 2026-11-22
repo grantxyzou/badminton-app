@@ -9,6 +9,8 @@ import { stringingTotal } from '@/lib/stringingBilling';
 import { clubPayTo } from '@/lib/payTo';
 import { clubTakesCards } from '@/lib/cardPay';
 import { memberCardFee } from '@/lib/cardSurcharge';
+import { readGroup } from '@/lib/groups';
+import { memberMemo } from '@/lib/receiptTemplate';
 
 export const dynamic = 'force-dynamic';
 
@@ -84,6 +86,19 @@ export async function GET(req: NextRequest) {
     const totalOwed = round2(sessionsOwed + stringingOwed);
     // Only to someone who owes — see lib/payTo.ts for why this is the one place.
     const payTo = totalOwed > 0 ? await clubPayTo(scope.groupId) : null;
+    // The memo to paste with it (docs/plans/payment-order.md): the club's
+    // memo template filled in for this member and everything they owe, the
+    // receipt's own rule (`memberMemo`). A weak clue for the inbox, never
+    // proof (F18). A failed club read leaves the club's name out, never the memo.
+    const memo = payTo
+      ? memberMemo({
+          template: payTo.memo,
+          club: (await readGroup(scope.groupId).catch(() => undefined))?.name,
+          name,
+          dates: unpaid.map((s) => s.date),
+          stringing: stringing.length > 0,
+        })
+      : null;
     // "Pay by card" (docs/plans/card-pay-prototype.md): offered only to someone
     // with a SETTLED session line or a finished stringing job, on a club whose
     // Stripe account can take cards. A failed read hides the button — an
@@ -106,7 +121,9 @@ export async function GET(req: NextRequest) {
       mostRecent: unpaid[0] ?? null,
       sessions: unpaid,
       stringing,
-      payTo,
+      // The template stays on the server: the member gets it filled in.
+      payTo: payTo ? { name: payTo.name, email: payTo.email } : null,
+      memo,
       cardPay,
       cardFee,
     });

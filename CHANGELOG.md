@@ -8,6 +8,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Ways to pay: credit, then e-transfer, then card (2026-11-22)
+
+- **Home's balance card now lists the ways to pay in this order** (`docs/plans/payment-order.md`): "Pay with credit" when there is credit to use, then "Pay by Interac e-Transfer", then "Pay by card".
+- "Pay by Interac e-Transfer" is one button that opens to the club's address and a message to paste, each copied with one tap, with "I've sent it" under them. It starts closed. The amount is no longer a row to copy: it is the total at the top of the card.
+- **The message is filled in for each member**: the club's memo template with the nights they owe and their name, for example "BPM Core Oct 1, Oct 8 - Lin". It helps the organiser see whose nights a transfer is for; on its own it never marks anything paid.
+
 ## Credit that doesn't cover the whole bill can still be used (2026-11-21)
 
 - **"Pay with credit" now uses credit even when it's less than what you owe** (`docs/plans/partial-credit.md`). It pays every night it covers in full, then puts what's left on the next night: "paid $10 of $15". The rest is paid by e-transfer or card as usual.

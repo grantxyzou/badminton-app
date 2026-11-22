@@ -2714,11 +2714,13 @@ html:root .ink-button {
   outline-offset: 2px;
 }
 
-/* "Pay by card" on the Home balance: the label, then the accepted card
-   networks' acceptance marks (public/brand/cards/, Apache-2.0). Marks are
-   drawn at the icon ladder's md rung so they read as a hint, not as three
-   more buttons; their own colours are the networks' and are not themed. */
-.pay-card-btn {
+/* A way to pay on the Home balance, below "Pay with credit"
+   (docs/plans/payment-order.md): "Pay by Interac e-Transfer" with its
+   chevron, then "Pay by card" with the accepted networks' acceptance marks
+   (public/brand/cards/, Apache-2.0). Marks are drawn at the icon ladder's md
+   rung so they read as a hint, not as three more buttons; their own colours
+   are the networks' and are not themed. */
+.pay-method-btn {
   display: flex;
   align-items: center;
   justify-content: center;
