@@ -21,6 +21,19 @@ try {
   process.exit(0);
 }
 
+/**
+ * Text made safe for one Markdown table cell: colour codes dropped, then
+ * backslashes escaped BEFORE pipes, or a message ending in `\` would turn our
+ * `\|` back into a column break.
+ */
+function cell(text) {
+  return String(text)
+    .replace(/\x1b\[[0-9;]*m/g, '')
+    .replace(/[\r\n]+/g, ' ')
+    .replace(/\\/g, '\\\\')
+    .replace(/\|/g, '\\|');
+}
+
 const rows = [];
 const findings = new Map(); // "severity kind" -> Set of "[screen] detail"
 const walk = (suite) => {
@@ -40,7 +53,7 @@ const walk = (suite) => {
         findings.get(key).add(a.description ?? '');
       }
       const stopped = res.status !== 'passed' && errors === 0 ? (res.errors?.[0]?.message ?? '').split('\n')[0] : '';
-      rows.push(`| ${spec.title} | ${res.status === 'passed' ? '✅ passed' : '❌ ' + res.status} | ${errors} | ${warnings} | ${Math.round((res.duration ?? 0) / 1000)}s | ${stopped.replace(/\|/g, '\\|').replace(/\x1b\[[0-9;]*m/g, '').slice(0, 160)} |`);
+      rows.push(`| ${cell(spec.title)} | ${res.status === 'passed' ? '✅ passed' : '❌ ' + res.status} | ${errors} | ${warnings} | ${Math.round((res.duration ?? 0) / 1000)}s | ${cell(stopped.slice(0, 160))} |`);
     }
   }
   for (const child of suite.suites ?? []) walk(child);
