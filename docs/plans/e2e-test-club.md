@@ -1,7 +1,7 @@
 # End-to-end tests in the "E2E test" club
 
 **Track:** the deploy gate. `scripts/smoke-prod.mjs` proves a deploy came back; nothing proves a member can still DO anything on it.
-**Status:** in-flight (steps 1 and 3 built, 2026-11-22)
+**Status:** in-flight (steps 1 and 3 built 2026-11-22; step 4's sign-up and stringing journeys 2026-11-23)
 **Review on:** 2026-12-06 — are the personas set up and stored as secrets, and has the read-only tour (step 3) run green against production three times in a row?
 
 ## Problem
@@ -138,7 +138,13 @@ Each role walks every tab it can reach. That alone exercises each GET with a rea
 - **The tour is its own workflow (`e2e.yml`), not a job in `deploy-next.yml`.** It starts on `workflow_run` after a successful deploy, so a red tour can't turn a deploy red, and the deploy workflow (which ships to every phone) is left untouched.
 - **The mock job boots `npm run dev:next:mock`, not a production build.** That script is the one place the full flag list and the seeds already live together, so the tour can't drift from them. The standalone build is already checked by `pr-ci.yml`.
 - **Full-page screenshots hide the tab bar.** A full-page capture stitches `position: fixed` elements into the middle of the image, which reads as a bug that isn't there.
-- **Not yet: axe accessibility, the write journeys, the issue-per-red-run.** These are steps 4 and 5. The capture list above describes the destination.
+- **The personas sign in with email and password, and Grant's own account is none of them** (2026-11-23). The organiser persona made the E2E test club itself through "Start your own club", which needs no email code. The four others were added by that organiser: a name on the roster, a first PIN set by the organiser, a sign-in AS the member with that PIN, then the member's own email and password through `POST /api/auth/password` (the "Keep your account" route). The emailed code was the stumbling block: Log in sends nothing to an address with no account, and says nothing different. **Never sign these accounts in with an email code**: the first proof of an address drops a password set before it (`lib/emailProof.ts`).
+- **A fresh sign-in lands in BPM; the guard taps into the club** (#1033). A password sign-in asks for no club, so the cookie names BPM (`groupForMember`), and a persona that is only in E2E test arrives "in no club". The guard taps its one club through `POST /api/groups/switch`, but only after the club list has passed every check.
+- **The journeys tap where a person taps and call the API where the screen is a form.** Sign up, join the waitlist and cancel (with its sheet) are taps on Home. The stringing request and the stringer's status moves go through the same routes the request sheet and the bench buttons call, and every screen in between is the real one, photographed and checked from both sides. Driving the request sheet's racket and string pickers by hand is a later step, once the journeys have been steady for a while.
+- **A reset before and a clean-up after, each touching only the cast.** Before: the cast's rows are purged from the week's list, and the session is put back to open, two spots, at least a week out (moved by whole weeks, so its weekday and time stay the club's). The stringing jobs are archived, then deleted. After: the same again, in a `finally`, so a failed run leaves nobody holding a spot. On the mock store the organiser makes the cast first (`ensureMockCast`), with fixed PINs the in-memory store forgets on restart.
+- **Each persona signs in once per run** (`e2e/global-setup.ts`). Every persona browses from one address, and by the third spec the per-address limits on sign-in and the club list were answering 429. The cookies are kept in a temp folder outside `e2e-results/` (which is uploaded) and deleted at the end; the club guard still runs on every open, and only a 401 falls back to a fresh sign-in.
+- **A 429 is reported as its own kind, `rate-limited`.** The personas share an address the way a club on one gym Wi-Fi does. The first full run showed one worth a look: `GET /api/stats/insight` allows 30 an hour per address (`app/api/stats/insight/route.ts`), and Home asks for it in the background on every open, so a club night on one network could use the hour's allowance up. Reported to Grant, not changed: the limit guards the AI budget, and how to key it is his call.
+- **Not yet: the join journey, axe accessibility, the issue-per-red-run.** The joiner needs an account in no club and an organiser's yes each run, and the last two are step 5.
 
 ## Shape
 
@@ -146,10 +152,15 @@ Each role walks every tab it can reach. That alone exercises each GET with a rea
 |---|---|
 | Config: one worker, phone viewport, traces on failure | `e2e/playwright.config.ts` |
 | Mock or production, and the local-only rule for the mock | `e2e/target.ts` |
-| The personas; `E2E_ACCOUNTS` parsing, which never echoes the secret | `e2e/personas.ts` |
+| The personas and the journeys' cast; `E2E_ACCOUNTS` parsing, which never echoes the secret | `e2e/personas.ts` |
 | Sign-in, the English cookie, the club guard | `e2e/session.ts` |
 | What each screen records | `e2e/capture.ts` |
+| Opening the app as a persona, moving around it, photographing and checking a screen, calling the API as them | `e2e/journey.ts` |
 | The read-only tour | `e2e/tour.spec.ts` |
+| The sign-up journey: sign up, fill, waitlist, cancel, promotion | `e2e/signup.spec.ts` |
+| The stringing journey: request, bench, received → strung → ready, picked up | `e2e/stringing.spec.ts` |
+| The reset and clean-up, the mock cast | `e2e/cast.ts` |
+| One sign-in per persona per run | `e2e/global-setup.ts`, `e2e/global-teardown.ts` |
 | The Markdown summary for the job page | `e2e/summary.mjs` |
 | The guard's own tests (vitest) | `__tests__/e2e-guard.test.ts` |
 | The workflow: mock nightly and on demand; prod after each deploy, nightly and on demand | `.github/workflows/e2e.yml` |

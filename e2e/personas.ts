@@ -67,3 +67,41 @@ export function tourPersonas(): Persona[] {
   const all = target() === 'prod' ? parseAccounts(process.env.E2E_ACCOUNTS) : MOCK_PERSONAS;
   return all.filter((p) => !isJoiner(p));
 }
+
+/**
+ * The CAST the journeys need, by label. On production they come from
+ * `E2E_ACCOUNTS` (made in the E2E test club, `docs/plans/e2e-test-club.md`);
+ * a journey whose cast is incomplete is skipped with the missing labels named,
+ * never run with stand-ins.
+ *
+ * On the mock store the organiser (Grant) makes them on first use
+ * (`ensureMockCast` in `e2e/cast.ts`): a name on the roster and a fixed PIN,
+ * which the mock's in-memory store forgets on restart.
+ */
+export const CAST_LABELS = ['organiser', 'player1', 'player2', 'player3', 'stringer'] as const;
+export type CastLabel = (typeof CAST_LABELS)[number];
+
+export const MOCK_CAST: Record<Exclude<CastLabel, 'organiser'>, { name: string; pin: string; stringer?: true }> = {
+  player1: { name: 'E2E Player 1', pin: '2581' },
+  player2: { name: 'E2E Player 2', pin: '3692' },
+  player3: { name: 'E2E Player 3', pin: '4703' },
+  stringer: { name: 'E2E Stringer', pin: '5814', stringer: true },
+};
+
+export function cast(labels: readonly CastLabel[]): { members: Partial<Record<CastLabel, Persona>>; missing: CastLabel[] } {
+  const members: Partial<Record<CastLabel, Persona>> = {};
+  if (target() === 'prod') {
+    const all = parseAccounts(process.env.E2E_ACCOUNTS);
+    for (const l of labels) {
+      const p = all.find((x) => x.label === l);
+      if (p) members[l] = p;
+    }
+  } else {
+    for (const l of labels) {
+      if (l === 'organiser') members[l] = MOCK_PERSONAS[0];
+      else members[l] = { label: l, kind: 'pin', name: MOCK_CAST[l].name, pin: MOCK_CAST[l].pin };
+    }
+  }
+  return { members, missing: labels.filter((l) => !members[l]) };
+}
+

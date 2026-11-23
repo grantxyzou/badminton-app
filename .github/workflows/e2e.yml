@@ -11,6 +11,10 @@ name: E2E tour
 #          before the first screen unless each persona's only club is
 #          "E2E test". The tour is read-only apart from the sign-in, the app's
 #          usage beacons and the Stats privacy ask (closed = "Keep it private").
+#          The journeys write inside that club only, to the cast only, and
+#          undo it: sign-ups are cleared and the one stringing job is archived
+#          and deleted, before and after (e2e/cast.ts). No price, no shelf
+#          string, so no money and no stock moves.
 #
 # It is its OWN workflow, so a red tour can never turn a deploy red; it runs
 # after each successful deploy, nightly, and from "Run workflow".

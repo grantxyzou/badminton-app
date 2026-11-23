@@ -19,6 +19,8 @@ export interface SignedIn {
   role: ClubRole;
   /** Organiser or admin: sees Admin tools. */
   privileged: boolean;
+  /** This persona's name on the club's list, which is how its sign-up row is found. */
+  rosterName: string;
 }
 
 function origin(): string {
@@ -98,7 +100,7 @@ export async function clubGuard(page: Page, persona: Persona): Promise<SignedIn>
 
   const currentRes = await page.request.get(`${baseUrl()}/api/groups/current`);
   if (!currentRes.ok()) throw new Error(`club guard: /api/groups/current answered ${currentRes.status()} for "${persona.label}"`);
-  const current = (await currentRes.json()) as { id?: string; name?: string; role?: string };
+  const current = (await currentRes.json()) as { id?: string; name?: string; role?: string; rosterName?: string };
 
   if (prod) {
     const problems: string[] = [];
@@ -109,5 +111,5 @@ export async function clubGuard(page: Page, persona: Persona): Promise<SignedIn>
   }
 
   const role: ClubRole = current.role === 'owner' || current.role === 'admin' ? current.role : 'member';
-  return { groupId: String(current.id ?? ''), role, privileged: role !== 'member' };
+  return { groupId: String(current.id ?? ''), role, privileged: role !== 'member', rosterName: String(current.rosterName ?? '') };
 }

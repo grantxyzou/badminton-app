@@ -66,6 +66,9 @@ export class Recorder {
         const offline = target() === 'mock' && MOCK_ONLY_5XX.some((re) => re.test(pathOf(url)));
         this.add(offline ? 'warning' : 'error', offline ? 'http-5xx-mock-env' : 'http-5xx', what);
       }
+      // Its own kind: every persona shares one address, as a club on one gym
+      // Wi-Fi does, so a limit tripped by ordinary browsing is worth seeing.
+      else if (status === 429) this.add('warning', 'rate-limited', what);
       else if (status >= 400) this.add('warning', 'http-4xx', what);
     });
   }
