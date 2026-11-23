@@ -29,7 +29,7 @@ describe('pickTagline', () => {
     // Chinese keeps ONE line every visit; the list repeats it so its length
     // matches English's (the locale-parity tests compare leaf paths), and a new
     // English line fails here until Chinese has a slot for it.
-    expect(zh.signedOut.taglines).toEqual(en.signedOut.taglines.map(() => '但愿无事常打球'));
+    expect(zh.signedOut.taglines).toEqual(en.signedOut.taglines.map(() => '但愿无事能打球'));
     for (const line of en.signedOut.taglines) expect(line).toMatch(/^Badminton,? [Pp]\w* [Mm]/);
   });
 });
