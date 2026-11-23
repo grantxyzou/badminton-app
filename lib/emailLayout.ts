@@ -22,7 +22,7 @@ import { jobSides } from './stringingSides';
 import { reelColourFill } from './stringShelf';
 import { isStringColourId, isCustomColourId, comboParts, colourIdOf, type CustomColour } from './stringPalette';
 import { assetUrl } from './assetUrl';
-import { racketShareSrc } from './racketLook';
+import { racketEmailSrc, EMAIL_RACKET_GROUND } from './racketLook';
 import { APP_NAME } from './brand';
 
 /* eslint-disable no-restricted-syntax -- an email cannot read the app's CSS
@@ -60,9 +60,9 @@ function absolute(origin: string | null, u: string): string | null {
   return origin ? `${origin}${u.startsWith('/') ? '' : '/'}${u}` : null;
 }
 
-/** The racket render a job's email shows (`racketShareSrc`: its own, or the matte black one). */
+/** The racket picture a job's email shows (`racketEmailSrc`: its own, or the matte black one, on the tile's green). */
 export function racketPictureUrl(origin: string | null, catalogId: string | null): string | null {
-  return absolute(origin, racketShareSrc(catalogId));
+  return absolute(origin, racketEmailSrc(catalogId));
 }
 
 // ── Small blocks ─────────────────────────────────────────────────────────────
@@ -300,7 +300,7 @@ export function racketCard(opts: {
     `<!--[if mso]><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td width="${PIC_W}" valign="top"><![endif]-->` +
     `<div style="display:inline-block;vertical-align:top;width:100%;max-width:${PIC_W}px">` +
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="padding:12px">` +
-    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" valign="middle" height="${PIC_H}" style="height:${PIC_H}px;border-radius:12px;background:${C.accentSoft}">${picture}</td></tr></table>` +
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" valign="middle" height="${PIC_H}" style="height:${PIC_H}px;border-radius:12px;background:${EMAIL_RACKET_GROUND}">${picture}</td></tr></table>` +
     `</td></tr></table>` +
     `</div>` +
     `<!--[if mso]></td><td valign="top"><![endif]-->` +

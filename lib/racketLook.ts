@@ -234,6 +234,9 @@ function luminance(hex: string): number {
    file, which imports nothing). */
 /* eslint-disable no-restricted-syntax -- fixed grounds for a painted image, not theme colours */
 const LIGHT_GROUND = '#eef0f2';
+/** The green tile behind the racket in an email (`lib/emailLayout.ts`'s racket
+ *  card), baked into each email picture by `scripts/make-racket-email-images.mjs`. */
+export const EMAIL_RACKET_GROUND = '#dcfce7';
 const DARK_GROUND = '#1c2024';
 /* eslint-enable no-restricted-syntax */
 
@@ -257,14 +260,29 @@ export function racketSrc(catalogId: string | null | undefined): string {
 }
 
 /**
- * The racket on something that LEAVES the app (an email, the receipt and
- * invoice picture): the catalog racket's own render, or the matte black
- * `_unknown` for a racket the table does not know. Never `_default`, whose
- * green band is BPM's colourway: on a receipt it would read as the player's.
+ * The racket on something that LEAVES the app (the receipt and invoice
+ * picture): the catalog racket's own render, or the matte black `_unknown` for
+ * a racket the table does not know. Never `_default`, whose green band is BPM's
+ * colourway: on a receipt it would read as the player's.
  */
 export function racketShareSrc(catalogId: string | null | undefined): string {
-  const key = catalogId && RACKET_LOOKS[catalogId] ? catalogId : '_unknown';
-  return assetUrl(`rackets/${key}.webp`);
+  return assetUrl(`rackets/${shareKey(catalogId)}.webp`);
+}
+
+/**
+ * The same racket for an EMAIL: a JPEG with the email's green tile
+ * (`EMAIL_RACKET_GROUND`) baked in, 176 px wide (`public/rackets/email/`,
+ * `scripts/make-racket-email-images.mjs`). Gmail re-encodes the pictures it
+ * shows and drops a WebP's transparency, so the list picture arrived as a
+ * black box inside the tile (Grant's inbox, 2026-11-23). A JPEG has no
+ * transparency to lose.
+ */
+export function racketEmailSrc(catalogId: string | null | undefined): string {
+  return assetUrl(`rackets/email/${shareKey(catalogId)}.jpg`);
+}
+
+function shareKey(catalogId: string | null | undefined): string {
+  return catalogId && RACKET_LOOKS[catalogId] ? catalogId : '_unknown';
 }
 
 /**

@@ -8,6 +8,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## The racket in a stringing email no longer sits in a black box (2026-11-23)
+
+- **Gmail showed every racket picture in a stringing email or invoice on a black rectangle** inside the green tile (Grant's inbox). Gmail re-encodes the pictures it shows and drops the see-through background of the app's racket pictures. Emails now use a copy of each racket made for email, with the tile's green built in, so there is nothing to lose (`docs/plans/branded-emails.md`).
+
 ## Payment reminders no longer need the Gmail script (2026-11-23)
 
 - **Every club can send payment reminders now**, not only a club running the Gmail script. The app sends them itself, once a day between 10 a.m. and 8 p.m., to people who still owe 3 and 7 days after a bill is final. They stay off until an organiser turns them on.
