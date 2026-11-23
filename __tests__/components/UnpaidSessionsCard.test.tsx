@@ -158,7 +158,7 @@ describe('<UnpaidSessionsCard />', () => {
     wrap(<UnpaidSessionsCard name="Lin" variant="home" />);
 
     await waitFor(() => {
-      expect(screen.getByText('Balance')).toBeTruthy();
+      expect(screen.getByText('Payment')).toBeTruthy();
     });
     // TWICE when expanded: the line item and the total. The collapsed row's
     // own figure hides once open, because the Total row two lines below says
@@ -183,7 +183,7 @@ describe('<UnpaidSessionsCard />', () => {
 
     wrap(<UnpaidSessionsCard name="Lin" variant="home" />);
     // Renders, rather than vanishing.
-    const toggle = await screen.findByRole('button', { name: /balance/i });
+    const toggle = await screen.findByRole('button', { name: /payment/i });
     expect(toggle.getAttribute('aria-expanded')).toBe('false');
     // Collapsed by default when there is nothing owed...
     expect(screen.queryByLabelText(/all paid up/i)).toBeNull();

@@ -86,7 +86,7 @@ export default function QrScanSheet({ open, onClose, onLink, onPaste }: Props) {
               {failed ? t(camera) : wrong ? t('notClub') : t('aim')}
             </p>
           </div>
-          <button type="button" className="link-quiet" style={{ justifySelf: 'center' }} onClick={onPaste}>
+          <button type="button" className="link-quiet link-quiet--plain" style={{ justifySelf: 'center' }} onClick={onPaste}>
             {t('paste')}
           </button>
         </div>

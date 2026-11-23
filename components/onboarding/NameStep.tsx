@@ -289,7 +289,7 @@ export default function NameStep({ title, onBack, step, inviteToken, noGroup, cl
       setError(null);
     };
     const usePinLink = (
-      <button type="button" className="link-quiet" onClick={() => setProof('pin')}>
+      <button type="button" className="link-quiet link-quiet--plain" onClick={() => setProof('pin')}>
         {tc('usePin')}
       </button>
     );
@@ -316,7 +316,7 @@ export default function NameStep({ title, onBack, step, inviteToken, noGroup, cl
           actions={errorLine}
           links={
             <>
-              <button type="button" className="link-quiet" disabled={busy || !online} onClick={() => void askFor('organizer')}>
+              <button type="button" className="link-quiet link-quiet--plain" disabled={busy || !online} onClick={() => void askFor('organizer')}>
                 {tc('askOrganizerInstead')}
               </button>
               {usePinLink}
@@ -377,7 +377,7 @@ export default function NameStep({ title, onBack, step, inviteToken, noGroup, cl
             </>
           }
           links={
-            <button type="button" className="link-quiet" disabled={busy || !online} onClick={() => void askFor('phone')}>
+            <button type="button" className="link-quiet link-quiet--plain" disabled={busy || !online} onClick={() => void askFor('phone')}>
               {tc('otherPhone')}
             </button>
           }
@@ -430,12 +430,12 @@ export default function NameStep({ title, onBack, step, inviteToken, noGroup, cl
         }
         links={
           <>
-            <button type="button" className="link-quiet" disabled={busy || !online} onClick={() => void askFor('organizer')}>
+            <button type="button" className="link-quiet link-quiet--plain" disabled={busy || !online} onClick={() => void askFor('organizer')}>
               {tc('askOrganizer')}
             </button>
             <button
               type="button"
-              className="link-quiet"
+              className="link-quiet link-quiet--plain"
               onClick={() => {
                 setStage('name');
                 setProof(null);

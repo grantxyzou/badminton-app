@@ -125,7 +125,7 @@ export default function WaitingAsks({ asks: initial, onIn, onJoin, onSignOut }: 
   // the only way to end the session (a shared phone, the wrong Apple or
   // Google account).
   const signOut = (
-    <button type="button" className="link-quiet" onClick={onSignOut}>
+    <button type="button" className="link-quiet link-quiet--plain" onClick={onSignOut}>
       {tw('otherAccount')}
     </button>
   );

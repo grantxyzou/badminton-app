@@ -142,7 +142,7 @@ export default function KeepAccountPage({ name, reason, onSaved, onDone, onBack 
           </>
         }
         links={
-          <button type="button" className="link-quiet" onClick={onDone}>
+          <button type="button" className="link-quiet link-quiet--plain" onClick={onDone}>
             {t('notNow')}
           </button>
         }
@@ -208,7 +208,7 @@ export default function KeepAccountPage({ name, reason, onSaved, onDone, onBack 
         </>
       }
       links={
-        <button type="button" className="link-quiet" onClick={onDone}>
+        <button type="button" className="link-quiet link-quiet--plain" onClick={onDone}>
           {t('notNow')}
         </button>
       }

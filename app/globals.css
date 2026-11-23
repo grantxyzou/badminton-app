@@ -2677,6 +2677,13 @@ html:root .ink-button {
 .link-quiet--flush {
   padding-inline: 0;
 }
+/* The sign-in screens' quiet links carry no underline (Grant, 2026-11-23,
+   asked for it across the whole log-in experience). Each is
+   still a way out by its place (under the buttons, in `.auth-links`), its
+   secondary ink and its 44px tap. Everywhere else keeps the underline. */
+.link-quiet--plain {
+  text-decoration: none;
+}
 
 .btn-ghost {
   background: var(--btn-ghost-bg);

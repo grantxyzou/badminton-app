@@ -472,11 +472,11 @@ export default function SignedOutShell({ authProviders = [], noClub: noClubProp,
             links={
               <>
                 {groupsOn && (
-                  <button type="button" className="link-quiet" onClick={() => setView('create')}>
+                  <button type="button" className="link-quiet link-quiet--plain" onClick={() => setView('create')}>
                     {tCover('join.startClub')}
                   </button>
                 )}
-                <button type="button" className="link-quiet" onClick={() => setView('login')}>
+                <button type="button" className="link-quiet link-quiet--plain" onClick={() => setView('login')}>
                   {tCover('join.logIn')}
                 </button>
               </>
@@ -620,7 +620,7 @@ function NoClubView({
           onJoinAnother={onJoin}
           onCreateAnother={onCreate}
         />
-        <button type="button" className="link-quiet" style={{ justifySelf: 'center' }} onClick={onSignOut}>
+        <button type="button" className="link-quiet link-quiet--plain" style={{ justifySelf: 'center' }} onClick={onSignOut}>
           {t('noClub.signOut')}
         </button>
       </div>
@@ -653,7 +653,7 @@ function NoClubView({
         <button
           type="button"
           onClick={onSignOut}
-          className="link-quiet launch-btn"
+          className="link-quiet link-quiet--plain launch-btn"
           style={{ animationDelay: `${buttonDelayMs(2)}ms`, justifyContent: 'center' }}
         >
           {t('noClub.signOut')}
@@ -752,13 +752,13 @@ function LogInView({
         logoTagline={tagline}
         links={
           <>
-            <button type="button" className="link-quiet" onClick={onCantSignIn}>
+            <button type="button" className="link-quiet link-quiet--plain" onClick={onCantSignIn}>
               {tl('forgotPin')}
             </button>
-            <button type="button" className="link-quiet" onClick={() => setMode('password')}>
+            <button type="button" className="link-quiet link-quiet--plain" onClick={() => setMode('password')}>
               {tl('usePassword')}
             </button>
-            <button type="button" className="link-quiet" onClick={() => setMode('email')}>
+            <button type="button" className="link-quiet link-quiet--plain" onClick={() => setMode('email')}>
               {tl('useEmail')}
             </button>
           </>
@@ -837,13 +837,13 @@ function LogInView({
         logoTagline={tagline}
         links={
           <>
-            <button type="button" className="link-quiet" onClick={onForgotPassword}>
+            <button type="button" className="link-quiet link-quiet--plain" onClick={onForgotPassword}>
               {tAuth('forgotPasswordLink')}
             </button>
-            <button type="button" className="link-quiet" onClick={() => setMode('pin')}>
+            <button type="button" className="link-quiet link-quiet--plain" onClick={() => setMode('pin')}>
               {tl('usePin')}
             </button>
-            <button type="button" className="link-quiet" onClick={() => setMode('email')}>
+            <button type="button" className="link-quiet link-quiet--plain" onClick={() => setMode('email')}>
               {tl('useEmail')}
             </button>
           </>
@@ -912,13 +912,13 @@ function LogInView({
       logoTagline={tagline}
       links={
         <>
-          <button type="button" className="link-quiet" onClick={onCantSignIn}>
+          <button type="button" className="link-quiet link-quiet--plain" onClick={onCantSignIn}>
             {tl('cantSignIn')}
           </button>
-          <button type="button" className="link-quiet" onClick={() => setMode('pin')}>
+          <button type="button" className="link-quiet link-quiet--plain" onClick={() => setMode('pin')}>
             {tl('otherWays')}
           </button>
-          <button type="button" className="link-quiet" onClick={onJoin}>
+          <button type="button" className="link-quiet link-quiet--plain" onClick={onJoin}>
             {tl('joinClub')}
           </button>
         </>
@@ -956,7 +956,7 @@ function CantSignInView({
       onBack={onBack}
       onLink={onDoor}
       links={
-        <button type="button" className="link-quiet" onClick={onResetPassword}>
+        <button type="button" className="link-quiet link-quiet--plain" onClick={onResetPassword}>
           {tc('resetPassword')}
         </button>
       }

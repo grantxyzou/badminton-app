@@ -140,7 +140,7 @@ export default function NewPhonePrompt() {
             </button>
           ))}
         </div>
-        <button type="button" className="link-quiet" disabled={busy || !online} onClick={() => void answer({ notMe: true })}>
+        <button type="button" className="link-quiet link-quiet--plain" disabled={busy || !online} onClick={() => void answer({ notMe: true })}>
           {t('notMe')}
         </button>
       </BottomSheetFooter>

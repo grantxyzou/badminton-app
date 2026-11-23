@@ -94,7 +94,7 @@ export default function SignInForm({ sessionId, onSuccess, onForgotPin, probeNam
         {submitting ? t('submitting') : t('submitPin')}
       </button>
       {onForgotPin && (
-        <button type="button" onClick={handleForgotPin} className="link-quiet">
+        <button type="button" onClick={handleForgotPin} className="link-quiet link-quiet--plain">
           {t('forgotPinLink')}
         </button>
       )}
