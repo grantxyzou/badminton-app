@@ -171,6 +171,18 @@ export default function CardPayCard() {
               <span className="material-icons icon-sm" aria-hidden="true">open_in_new</span>
             </a>
           )}
+          {status.chargesEnabled && (
+            // BPM sends its own "Payment received" email (lib/cardReceiptEmail.ts);
+            // Stripe's receipt is a setting only the account owner can switch,
+            // so the card says where (docs/plans/branded-emails.md).
+            <p className="fs-sm" style={{ margin: '0', color: 'var(--text-muted)', lineHeight: 'var(--lh-normal)' }} data-testid="stripe-receipt-tip">
+              BPM emails each player a receipt when they pay by card. So they don&apos;t get two, turn off Stripe&apos;s: in Stripe, go to{' '}
+              <a href="https://dashboard.stripe.com/settings/emails" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'underline' }}>
+                Settings › Business › Customer emails
+              </a>{' '}
+              and switch off Successful payments. Leave Refunds on.
+            </p>
+          )}
           {connect === 'error' && <p className="field-error" role="alert">Couldn&apos;t open Stripe — try again.</p>}
 
           {status.chargesEnabled && (

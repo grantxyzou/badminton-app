@@ -50,3 +50,20 @@ describe('CardPayCard — the card fee', () => {
     expect(screen.getByText(/STRIPE_PUBLISHABLE_KEY/)).toBeTruthy();
   });
 });
+
+describe('CardPayCard — the Stripe receipt tip', () => {
+  it('once the club takes cards, says where to turn off Stripe’s own receipt', async () => {
+    serve({});
+    render(<CardPayCard />);
+    const tip = await screen.findByTestId('stripe-receipt-tip');
+    expect(tip.textContent).toMatch(/switch off Successful payments\. Leave Refunds on\./);
+    expect(tip.querySelector('a')?.getAttribute('href')).toBe('https://dashboard.stripe.com/settings/emails');
+  });
+
+  it('not while Stripe setup is unfinished', async () => {
+    serve({ chargesEnabled: false });
+    render(<CardPayCard />);
+    await screen.findByText(/Stripe still needs a few details/);
+    expect(screen.queryByTestId('stripe-receipt-tip')).toBeNull();
+  });
+});
