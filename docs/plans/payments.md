@@ -195,11 +195,11 @@ top-ups ≥ $40 with the payer covering the fee.
 | Script → app | `POST /api/payments/etransfer` |
 | Admin queue, assign, key | `/api/admin/payments`, `/api/admin/payments/assign`, `/api/admin/payments/key` |
 | "I've sent it" | `POST /api/payments/self-report` |
-| Reminders (who, when, send) | `lib/paymentReminders.ts`, `POST /api/payments/remind` |
+| Reminders (who, when, send) | `lib/paymentReminders.ts`, run daily by `lib/paymentsDaily.ts` on the hourly tick (`POST /api/payments/remind` until 2026-11-23) |
 | Store credit, gift cards | `lib/storeCredit.ts`; `/api/credit{,/redeem,/spend}`, `/api/admin/credit`, `/api/admin/giftcards` |
 | The mirror (Phase 2 stage 1) | `lib/ledgerMirror.ts` — hooks in settle, players PATCH/DELETE, stringing `[id]`, birds, the inbox, credit |
 | The history backfill | `lib/ledgerBackfill.ts`, `GET`/`POST /api/admin/ledger-backfill` |
-| The reconcile (Phase 2 stage 2) | `lib/ledgerReconcile.ts` over `computeOwedForRoster` (`lib/owedBalance.ts`); daily from `POST /api/payments/remind`; `GET`/`POST /api/admin/ledger/reconcile` |
+| The reconcile (Phase 2 stage 2) | `lib/ledgerReconcile.ts` over `computeOwedForRoster` (`lib/owedBalance.ts`); daily from `lib/paymentsDaily.ts` on the hourly tick; `GET`/`POST /api/admin/ledger/reconcile` |
 | The money view (Phase 2 stage 3) | `lib/ledgerView.ts` (pure buckets), `GET /api/admin/ledger`, `components/admin/LedgerPage.tsx` with `components/admin/ledger/{AddExpenseSheet,ReconcileSheet}.tsx` |
 | Admin-entered expenses | `POST`/`GET`/`DELETE /api/admin/expenses` (a `club_outlay` `expense` entry; delete is a void) |
 | The script admins paste | `public/payments/apps-script.gs` (served at `/bpm/payments/apps-script.gs`, so the setup sheet can copy it) |

@@ -10,7 +10,7 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ## Payment reminders no longer need the Gmail script (2026-11-23)
 
-- **Every club can send payment reminders now**, not only a club running the Gmail script. The app sends them itself, once a day from 10 a.m., to people who still owe 3 and 7 days after a bill is final. They stay off until an organiser turns them on.
+- **Every club can send payment reminders now**, not only a club running the Gmail script. The app sends them itself, once a day between 10 a.m. and 8 p.m., to people who still owe 3 and 7 days after a bill is final. They stay off until an organiser turns them on.
 - **The daily ledger check moved with them.** It used to run only when the script called in.
 - Organisers on the Gmail script need do nothing. A copy pasted before today logs a harmless message once a day; pasting the latest copy and running `install` removes it.
 

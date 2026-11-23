@@ -668,13 +668,29 @@ export async function wouldHold(groupId: string, threshold: number): Promise<str
 }
 
 /** Merge fields into the club's payments settings doc (creating it if absent). */
+/**
+ * Merge `patch` into the club's payments settings, under the etag (security
+ * review, 2026-11-23): the daily run writes this doc for every club, and a
+ * read-then-upsert could write back an OLD `keyHash` over a key rotated in the
+ * same moment, reviving a leaked key. A lost race re-reads and merges again;
+ * past three, it throws.
+ */
 export async function notePaymentsSettings(groupId: string, patch: Partial<Omit<PaymentsSettingsDoc, 'id'>>): Promise<void> {
   await ensurePayments();
-  const existing = await readPaymentsSettings(groupId);
-  await groupScope(groupId).upsert<PaymentsSettingsDoc>('clubSettings', {
-    ...(existing ?? { id: paymentsSettingsId(groupId) }),
-    ...patch,
-  });
+  const scope = groupScope(groupId);
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const existing = await readPaymentsSettings(groupId);
+    if (!existing) {
+      try {
+        await scope.create<PaymentsSettingsDoc>('clubSettings', { id: paymentsSettingsId(groupId), ...patch });
+        return;
+      } catch {
+        continue; // created by someone else in between: merge into theirs
+      }
+    }
+    if (await scope.replace<PaymentsSettingsDoc>('clubSettings', { ...existing, ...patch })) return;
+  }
+  throw new Error('payments settings: changed under three writes in a row');
 }
 
 export async function setHoldThreshold(groupId: string, holdAfterUnpaid: number): Promise<void> {

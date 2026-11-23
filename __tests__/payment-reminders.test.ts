@@ -13,6 +13,7 @@ import { PATCH as patchSettings } from '@/app/api/admin/payments/settings/route'
 import { notePaymentsSettings, readPaymentsSettings } from '@/lib/paymentsInbox';
 import { reminderDue, reminderPayload } from '@/lib/paymentReminders';
 import * as owedBalance from '@/lib/owedBalance';
+import * as ledgerReconcile from '@/lib/ledgerReconcile';
 import {
   resetMockStore,
   getStore,
@@ -96,9 +97,13 @@ describe('reminderDue — the rules', () => {
 });
 
 describe('dailyRunDue — once a day, from 10 a.m. Vancouver', () => {
-  it('never before 10, so no push arrives in the night', () => {
+  it('only between 10 a.m. and 8 p.m., so no push arrives in the evening or night', () => {
     expect(dailyRunDue(undefined, vancouverAt(9))).toBe(false);
     expect(dailyRunDue(undefined, vancouverAt(10))).toBe(true);
+    expect(dailyRunDue(undefined, vancouverAt(19))).toBe(true);
+    // A day whose earlier ticks all failed must not run at 11 p.m. (security review).
+    expect(dailyRunDue(undefined, vancouverAt(20))).toBe(false);
+    expect(dailyRunDue(undefined, vancouverAt(23))).toBe(false);
   });
 
   it('once per Vancouver day, however many ticks land after 10', () => {
@@ -151,6 +156,22 @@ describe('the daily payments run on the tick', () => {
       expect(sendPushToMembers).not.toHaveBeenCalled();
     });
 
+    it('an organiser who turns reminders off mid-run is not overruled', async () => {
+      process.env.NEXT_PUBLIC_FLAG_LEDGER_MIRROR = 'true';
+      seedPlayer('session-2026-09-24', 'Lin', { memberId: lin.id, owedAmount: 12, settledAt: ago(4) });
+      const check = vi.spyOn(ledgerReconcile, 'reconcileAndRecord').mockImplementation(async () => {
+        await notePaymentsSettings('bpm', { remindersOn: false });
+        return { checked: 0, mismatches: [] } as unknown as Awaited<ReturnType<typeof ledgerReconcile.reconcileAndRecord>>;
+      });
+      try {
+        expect(await call()).toEqual({ ran: 1, checked: 0, mismatches: 0 });
+        expect(sendPushToMembers).not.toHaveBeenCalled();
+      } finally {
+        check.mockRestore();
+        delete process.env.NEXT_PUBLIC_FLAG_LEDGER_MIRROR;
+      }
+    });
+
     it('skips the paid, the self-reported, the too-recent and the too-old', async () => {
       seedPlayer('session-2026-09-24', 'Lin', { memberId: lin.id, owedAmount: 12, settledAt: ago(4), paid: true });
       seedPlayer('session-2026-10-01', 'Lin', { memberId: lin.id, owedAmount: 15, settledAt: ago(4), selfReportedPaid: true });
@@ -160,6 +181,28 @@ describe('the daily payments run on the tick', () => {
       seedPlayer('session-2026-09-24', 'Kento', { memberId: k.id, owedAmount: 12, settledAt: ago(45) });
       expect(await call()).toEqual({ ran: 1, reminded: 0, sent: 0 });
     });
+  });
+});
+
+describe('notePaymentsSettings — under the etag', () => {
+  it('creates the doc when there is none, then merges without losing fields', async () => {
+    await notePaymentsSettings('bpm', { keyHash: 'new-key' });
+    await notePaymentsSettings('bpm', { lastReminderRunAt: '2026-10-01T18:00:00.000Z' });
+    const s = await readPaymentsSettings('bpm');
+    expect(s?.keyHash).toBe('new-key');
+    expect(s?.lastReminderRunAt).toBe('2026-10-01T18:00:00.000Z');
+  });
+
+  it('a key rotated between its read and its write is not written back over (security review)', async () => {
+    await notePaymentsSettings('bpm', { keyHash: 'old-key' });
+    const stale = await readPaymentsSettings('bpm');
+    // Someone rotates the key; then a write built from the STALE read lands.
+    await notePaymentsSettings('bpm', { keyHash: 'rotated-key' });
+    const { groupScope } = await import('@/lib/groupScope');
+    expect(await groupScope('bpm').replace('clubSettings', { ...stale!, lastReminderRunAt: 'x' })).toBeUndefined();
+    // The helper itself re-reads, so the rotated key survives its write.
+    await notePaymentsSettings('bpm', { lastReminderRunAt: '2026-10-01T18:00:00.000Z' });
+    expect((await readPaymentsSettings('bpm'))?.keyHash).toBe('rotated-key');
   });
 });
 
