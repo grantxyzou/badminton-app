@@ -21,6 +21,7 @@ import WaitingAsks, { type Ask } from '@/components/onboarding/WaitingAsks';
 import AuthStage from '@/components/onboarding/AuthStage';
 import ClubLinkPage from '@/components/onboarding/ClubLinkPage';
 import NameStep from '@/components/onboarding/NameStep';
+import { TaglineContext, useTagline } from '@/components/onboarding/TaglineContext';
 import { CheckEmailPage, EmailCodeChoices } from '@/components/onboarding/SignInPieces';
 import HandoffCodeSheet from '@/components/auth/HandoffCodeSheet';
 import ResetPasswordSheet from '@/components/auth/ResetPasswordSheet';
@@ -70,6 +71,8 @@ interface Props {
   authProviders?: Provider[];
   /** Present → the no-club mode below, instead of Welcome. Ignored with groups off. */
   noClub?: NoClub;
+  /** This visit's line under the logo, picked on the server (`lib/tagline.ts`). */
+  tagline?: string;
 }
 
 /**
@@ -118,7 +121,7 @@ interface Props {
  * needs. Every reload in that mode is explicit: Done, Joined, Switched, Sign
  * out. Club reads still refuse this person; the mode is doors and nothing else.
  */
-export default function SignedOutShell({ authProviders = [], noClub: noClubProp }: Props) {
+export default function SignedOutShell({ authProviders = [], noClub: noClubProp, tagline: taglineProp }: Props) {
   const tAuth = useTranslations('profile.auth');
   const groupsOn = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
   // A no-club member cannot exist with groups off (every active member is in
@@ -127,6 +130,9 @@ export default function SignedOutShell({ authProviders = [], noClub: noClubProp 
   const [view, setView] = useState<View>('welcome');
   const pane = usePaneMode();
   const tCover = useTranslations('signedOut');
+  // Outside its own provider, so the list's first line when the page passed none.
+  const firstTagline = useTagline();
+  const tagline = taglineProp ?? firstTagline;
   const [notice, setNotice] = useState<AuthNotice | null>(null);
   const [nativeReturn, setNativeReturn] = useState(false);
   /** The native return code from the landing's `#hc=`, or from the name step. */
@@ -323,14 +329,14 @@ export default function SignedOutShell({ authProviders = [], noClub: noClubProp 
   const banner = notice ? noticeBanner(notice) : null;
 
   return (
-    <>
+    <TaglineContext.Provider value={tagline}>
       <ThemeToggle />
       <LanguageToggle />
       {/* An open foldable: the lockup stays on the left page as a cover while
           a form takes the right one (globals.css, the two-pane block). */}
       {pane && (
         <div className="launch-stage signed-out-cover" aria-hidden="true">
-          <LaunchArt tagline={tCover('tagline')} variant="settled" />
+          <LaunchArt tagline={tagline} variant="settled" />
         </div>
       )}
       <main data-page-shell className="max-w-lg mx-auto px-4 page-shell-top min-h-screen signed-out-main">
@@ -507,7 +513,7 @@ export default function SignedOutShell({ authProviders = [], noClub: noClubProp 
           setView('login');
         }}
       />
-    </>
+    </TaglineContext.Provider>
   );
 }
 
@@ -534,6 +540,7 @@ function reloadIntoApp() {
 
 function WelcomeView({ onSignUp, onLogIn }: { onSignUp: () => void; onLogIn: () => void }) {
   const t = useTranslations('signedOut');
+  const tagline = useTagline();
   /* The launch screen's finished lockup, drawn by the SAME component as the
      cold-start splash and at the same geometry — so on a cold start the splash
      fades away over an identical picture and only the buttons arrive (their
@@ -542,7 +549,7 @@ function WelcomeView({ onSignUp, onLogIn }: { onSignUp: () => void; onLogIn: () 
      rise. */
   return (
     <div className="launch-stage launch-stage--welcome">
-      <LaunchArt tagline={t('tagline')} variant="settled" />
+      <LaunchArt tagline={tagline} variant="settled" />
 
       {/* Pinned to the bottom, where the thumb is. Sign up is the filled one:
           this screen is a stranger's first, and a returning player knows which
@@ -588,6 +595,7 @@ function NoClubView({
   onSwitched: () => void;
 }) {
   const t = useTranslations('signedOut');
+  const tagline = useTagline();
   const asks = noClub.asks ?? [];
 
   if (noClub.groups.length === 0 && asks.length > 0) {
@@ -624,7 +632,7 @@ function NoClubView({
      with the doors a brand-new organiser needs where Sign up and Log in were. */
   return (
     <div className="launch-stage launch-stage--welcome">
-      <LaunchArt tagline={t('tagline')} variant="settled" />
+      <LaunchArt tagline={tagline} variant="settled" />
       <div data-signed-out-welcome className="launch-actions">
         <button
           type="button"
@@ -681,6 +689,7 @@ function LogInView({
   onForgotPassword: () => void;
 }) {
   const t = useTranslations('signedOut');
+  const tagline = useTagline();
   const tl = useTranslations('signedOut.login');
   const tRec = useTranslations('recovery');
   const tAuth = useTranslations('profile.auth');
@@ -740,7 +749,7 @@ function LogInView({
         title={tl('title')}
         onBack={onBack}
         backLabel={t('back')}
-        logoTagline={t('tagline')}
+        logoTagline={tagline}
         links={
           <>
             <button type="button" className="link-quiet" onClick={onCantSignIn}>
@@ -825,7 +834,7 @@ function LogInView({
         title={tl('title')}
         onBack={onBack}
         backLabel={t('back')}
-        logoTagline={t('tagline')}
+        logoTagline={tagline}
         links={
           <>
             <button type="button" className="link-quiet" onClick={onForgotPassword}>
@@ -900,7 +909,7 @@ function LogInView({
       title={tl('title')}
       onBack={onBack}
       backLabel={t('back')}
-      logoTagline={t('tagline')}
+      logoTagline={tagline}
       links={
         <>
           <button type="button" className="link-quiet" onClick={onCantSignIn}>

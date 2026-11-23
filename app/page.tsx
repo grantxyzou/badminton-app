@@ -3,6 +3,9 @@
 import { HomeShell, SignedOutShell } from '@/components/PageShells';
 import { OnlineProvider } from '@/lib/useOnline';
 import { headers } from 'next/headers';
+import { getTranslations } from 'next-intl/server';
+import { pickTagline } from '@/lib/tagline';
+import { rawList } from '@/lib/rawList';
 import { NextRequest } from 'next/server';
 import { readActiveAnnouncements } from '@/lib/announcements';
 import { resolveGroupId } from '@/lib/groupContext';
@@ -30,7 +33,8 @@ export const dynamic = 'force-dynamic';
  * before this change. Direct server-render shaves the bulk of that.
  */
 export default async function Page() {
-  const cookie = (await headers()).get('cookie');
+  const requestHeaders = await headers();
+  const cookie = requestHeaders.get('cookie');
   // ONE parse of the cookie header for both the gate and the club it reads.
   // A header carrying member_session twice was read last-wins by the gate
   // (Next's cookie parser) and first-wins here, so a phone could pass the
@@ -72,6 +76,7 @@ export default async function Page() {
       <OnlineProvider>
         <SignedOutShell
           authProviders={authProviders}
+          tagline={pickTagline(rawList<string>((await getTranslations('signedOut')).raw('taglines')), requestHeaders.get('x-nonce'))}
           noClub={outcome.kind === 'no-club' ? { memberName: outcome.memberName, groups: outcome.groups, asks: outcome.asks } : undefined}
         />
       </OnlineProvider>
