@@ -711,7 +711,7 @@
         "errors": {
           "generic": "刷卡支付未完成，请重试。",
           "card_declined": "卡片被拒绝。请换一张卡，或改用转账支付。",
-          "brand_not_accepted": "我们只收 Visa 和 Mastercard，不收 American Express。请换一张卡，或改用转账支付。",
+          "brand_not_accepted": "暂不接受 American Express。请换一张卡，或改用转账支付。",
           "surcharge_off": "刷卡设置已更改。请关闭此页，再点一次“刷卡支付”。",
           "nothing_to_pay": "目前没有可以刷卡支付的款项。",
           "already_done": "这笔付款已经完成。",
