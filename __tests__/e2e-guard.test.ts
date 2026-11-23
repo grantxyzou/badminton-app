@@ -29,14 +29,35 @@ afterEach(() => {
   }
 });
 
-/** A page whose API answers are canned: `/api/groups/mine` and `/current`. */
-function fakePage(mine: unknown, current: unknown): Page {
-  const answer = (body: unknown) => ({ ok: () => true, status: () => 200, json: async () => body });
+/**
+ * A page whose API answers are canned: `/api/groups/mine` and `/current`, and
+ * `/api/groups/switch`, which moves the fake cookie and is recorded so a test
+ * can assert the guard never switched.
+ */
+function fakePage(
+  mine: { groups: Array<{ id: string; name: string }>; currentGroupId: string },
+  currentFor: (groupId: string) => unknown,
+): Page & { switches: string[] } {
+  const answer = (body: unknown, status = 200) => ({ ok: () => status < 400, status: () => status, json: async () => body });
+  let cookieGroup = mine.currentGroupId;
+  const switches: string[] = [];
   return {
+    switches,
     request: {
-      get: async (url: string) => (url.endsWith('/api/groups/mine') ? answer(mine) : answer(current)),
+      get: async (url: string) =>
+        url.endsWith('/api/groups/mine')
+          ? answer({ ...mine, currentGroupId: cookieGroup })
+          : cookieGroup === 'bpm' && !mine.groups.some((g) => g.id === 'bpm')
+            ? answer({ error: 'unauthorized' }, 401)
+            : answer(currentFor(cookieGroup)),
+      post: async (url: string, opts: { data: { groupId: string } }) => {
+        if (!url.endsWith('/api/groups/switch')) throw new Error(`unexpected POST ${url}`);
+        switches.push(opts.data.groupId);
+        cookieGroup = opts.data.groupId;
+        return answer({ ok: true });
+      },
     },
-  } as unknown as Page;
+  } as unknown as Page & { switches: string[] };
 }
 
 const persona = { label: 'player1', kind: 'password' as const, email: 'x@example.com', password: 'p' };
@@ -48,37 +69,54 @@ describe('clubGuard on production', () => {
   });
 
   it('passes a persona whose only club is the E2E test club', async () => {
-    const page = fakePage({ groups: [E2E], currentGroupId: 'g-e2e' }, { ...E2E, role: 'member' });
+    const page = fakePage({ groups: [E2E], currentGroupId: 'g-e2e' }, () => ({ ...E2E, role: 'member' }));
     await expect(clubGuard(page, persona)).resolves.toMatchObject({ groupId: 'g-e2e', privileged: false });
+    expect(page.switches).toEqual([]);
+  });
+
+  it('taps into the one E2E club when a fresh sign-in landed in BPM', async () => {
+    // What a password sign-in does: no club asked for, so the cookie names BPM.
+    const page = fakePage({ groups: [E2E], currentGroupId: 'bpm' }, () => ({ ...E2E, role: 'owner' }));
+    await expect(clubGuard(page, persona)).resolves.toMatchObject({ groupId: 'g-e2e', role: 'owner' });
+    expect(page.switches).toEqual(['g-e2e']);
   });
 
   it('reads an organiser from the server, not from the label', async () => {
-    const page = fakePage({ groups: [E2E], currentGroupId: 'g-e2e' }, { ...E2E, role: 'owner' });
+    const page = fakePage({ groups: [E2E], currentGroupId: 'g-e2e' }, () => ({ ...E2E, role: 'owner' }));
     await expect(clubGuard(page, persona)).resolves.toMatchObject({ role: 'owner', privileged: true });
   });
 
   it('refuses a persona that also belongs to another club', async () => {
     const page = fakePage(
-      { groups: [E2E, { id: 'bpm', name: 'BPM Core' }], currentGroupId: 'g-e2e' },
-      { ...E2E, role: 'member' },
+      { groups: [E2E, { id: 'bpm', name: 'BPM Core' }], currentGroupId: 'bpm' },
+      () => ({ ...E2E, role: 'member' }),
     );
     await expect(clubGuard(page, persona)).rejects.toThrow(/belongs to 2 clubs/);
+    // Refused BEFORE any switch: the cookie never moved.
+    expect(page.switches).toEqual([]);
   });
 
   it('refuses a session pointed at any other club', async () => {
-    const page = fakePage({ groups: [{ id: 'bpm', name: 'BPM Core' }], currentGroupId: 'bpm' }, { id: 'bpm', name: 'BPM Core', role: 'owner' });
+    const page = fakePage({ groups: [{ id: 'bpm', name: 'BPM Core' }], currentGroupId: 'bpm' }, () => ({ id: 'bpm', name: 'BPM Core', role: 'owner' }));
     await expect(clubGuard(page, persona)).rejects.toThrow(/club guard refused/);
+    expect(page.switches).toEqual([]);
   });
 
   it('refuses a club with the right name and the wrong pinned id', async () => {
     process.env.E2E_GROUP_ID = 'g-other';
-    const page = fakePage({ groups: [E2E], currentGroupId: 'g-e2e' }, { ...E2E, role: 'member' });
+    const page = fakePage({ groups: [E2E], currentGroupId: 'bpm' }, () => ({ ...E2E, role: 'member' }));
     await expect(clubGuard(page, persona)).rejects.toThrow(/E2E_GROUP_ID/);
+    expect(page.switches).toEqual([]);
   });
 
   it('refuses when the club list cannot be read', async () => {
     const page = {
-      request: { get: async () => ({ ok: () => false, status: () => 401, json: async () => ({}) }) },
+      request: {
+        get: async () => ({ ok: () => false, status: () => 401, json: async () => ({}) }),
+        post: async () => {
+          throw new Error('must not switch');
+        },
+      },
     } as unknown as Page;
     await expect(clubGuard(page, persona)).rejects.toThrow(/answered 401/);
   });

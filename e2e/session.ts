@@ -56,29 +56,56 @@ export async function signIn(page: Page, persona: Persona): Promise<void> {
  * club, that club is named E2E_CLUB_NAME (and has id E2E_GROUP_ID when that is
  * set), and the session cookie is pointed at it. Anything else throws before
  * the first screen loads, which ends the run.
+ *
+ * A fresh sign-in names BPM in the cookie (`groupForMember` in
+ * `lib/authSession.ts`: no club was asked for), so a persona who is only in
+ * the E2E test club arrives "in no club" — the person would see their club
+ * list and tap it. The guard does that tap (`POST /api/groups/switch`) only
+ * AFTER the club list has passed every check, so it can only ever move the
+ * cookie into the one E2E test club.
  */
+async function readMine(page: Page, persona: Persona) {
+  const res = await page.request.get(`${baseUrl()}/api/groups/mine`);
+  if (!res.ok()) throw new Error(`club guard: /api/groups/mine answered ${res.status()} for "${persona.label}"`);
+  return (await res.json()) as { groups?: Array<{ id: string; name: string }>; currentGroupId?: string };
+}
+
 export async function clubGuard(page: Page, persona: Persona): Promise<SignedIn> {
-  const mineRes = await page.request.get(`${baseUrl()}/api/groups/mine`);
-  if (!mineRes.ok()) throw new Error(`club guard: /api/groups/mine answered ${mineRes.status()} for "${persona.label}"`);
-  const mine = (await mineRes.json()) as { groups?: Array<{ id: string; name: string }>; currentGroupId?: string };
+  let mine = await readMine(page, persona);
   const groups = mine.groups ?? [];
+  const prod = target() === 'prod';
+  const refuse = (problems: string[]) => {
+    throw new Error(`club guard refused persona "${persona.label}": ${problems.join('; ')}`);
+  };
+
+  if (prod) {
+    const problems: string[] = [];
+    if (groups.length !== 1) problems.push(`belongs to ${groups.length} clubs, must be exactly 1`);
+    if (groups[0] && groups[0].name !== E2E_CLUB_NAME) problems.push(`club is "${groups[0].name}", not "${E2E_CLUB_NAME}"`);
+    const pinned = process.env.E2E_GROUP_ID;
+    if (pinned && groups[0] && groups[0].id !== pinned) problems.push('club id differs from E2E_GROUP_ID');
+    if (problems.length) refuse(problems);
+
+    if (mine.currentGroupId !== groups[0].id) {
+      const sw = await page.request.post(`${baseUrl()}/api/groups/switch`, {
+        headers: { origin: origin(), 'content-type': 'application/json' },
+        data: { groupId: groups[0].id },
+      });
+      if (!sw.ok()) throw new Error(`club guard: switching "${persona.label}" into ${E2E_CLUB_NAME} answered ${sw.status()}`);
+      mine = await readMine(page, persona);
+    }
+  }
 
   const currentRes = await page.request.get(`${baseUrl()}/api/groups/current`);
   if (!currentRes.ok()) throw new Error(`club guard: /api/groups/current answered ${currentRes.status()} for "${persona.label}"`);
   const current = (await currentRes.json()) as { id?: string; name?: string; role?: string };
 
-  if (target() === 'prod') {
+  if (prod) {
     const problems: string[] = [];
-    if (groups.length !== 1) problems.push(`belongs to ${groups.length} clubs, must be exactly 1`);
-    if (groups[0] && groups[0].name !== E2E_CLUB_NAME) problems.push(`club is "${groups[0].name}", not "${E2E_CLUB_NAME}"`);
     if (current.name !== E2E_CLUB_NAME) problems.push(`session points at "${current.name}"`);
-    if (groups[0] && current.id !== groups[0].id) problems.push('session is not in the listed club');
+    if (current.id !== groups[0].id) problems.push('session is not in the listed club');
     if (mine.currentGroupId !== current.id) problems.push('cookie club and current club differ');
-    const pinned = process.env.E2E_GROUP_ID;
-    if (pinned && current.id !== pinned) problems.push('club id differs from E2E_GROUP_ID');
-    if (problems.length) {
-      throw new Error(`club guard refused persona "${persona.label}": ${problems.join('; ')}`);
-    }
+    if (problems.length) refuse(problems);
   }
 
   const role: ClubRole = current.role === 'owner' || current.role === 'admin' ? current.role : 'member';
