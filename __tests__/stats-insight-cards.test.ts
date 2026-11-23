@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
-import { resetMockStore, getStore, seedMember, seedPointer, setupAdminPin, makeRequest, memberCookieValue } from './helpers';
+import { resetMockStore, getStore, seedMember, seedPointer, setupAdminPin, makeRequest, memberCookieValue, adminCookieValue, seedGroup, seedMembership } from './helpers';
 
 // Mock the Anthropic SDK so the route's single generate() call is deterministic.
 // `vi.hoisted` makes the spy available inside the hoisted vi.mock factory.
@@ -203,13 +203,97 @@ describe('GET /api/stats/insight — throttling', () => {
     expect(body.account).toBeUndefined();
   });
 
-  it('still caps one address, before it reads anything', async () => {
+  it('still caps one address, whoever is reading from it', async () => {
     const ip = `insight-ceiling-${Math.random()}`;
-    // No cookie and no such member: the ceiling must answer before the gate does.
-    const anon = () => new NextRequest(new URL(`${BASE}?name=Nobody`), { headers: { 'x-client-ip': ip } });
-    let res = await GET(anon());
-    for (let i = 0; i < 300; i++) res = await GET(anon());
+    const names = ['Lin', 'Viktor', 'Carolina', 'Akane', 'Kento', 'Sindhu', 'Lee'];
+    for (const n of names) seedMember(n);
+    // Six members × 50 reads = 300, under each person's 60: only the address ceiling can answer the next.
+    for (const n of names.slice(0, 6)) {
+      for (let i = 0; i < 50; i++) {
+        const res = await GET(reqAs(n, ip));
+        expect(res.status).not.toBe(429);
+      }
+    }
+    const res = await GET(reqAs('Lee', ip));
     expect(res.status).toBe(429);
+  });
+
+  it('a refused read spends nobody’s allowance', async () => {
+    seedMember('Lin');
+    seedMember('Viktor');
+    // Lin's cookie asking after Viktor is refused 61 times …
+    for (let i = 0; i < 61; i++) {
+      const res = await GET(
+        new NextRequest(new URL(`${BASE}?name=Viktor`), {
+          headers: { 'x-client-ip': `insight-403-${i}-${Math.random()}`, cookie: `member_session=${memberCookieValue('Lin')}` },
+        }),
+      );
+      expect(res.status).toBe(403);
+    }
+    // … and neither Lin's own read nor Viktor's is limited by it.
+    expect((await GET(reqAs('Lin', `insight-403-lin-${Math.random()}`))).status).not.toBe(429);
+    expect((await GET(reqAs('Viktor', `insight-403-v-${Math.random()}`))).status).not.toBe(429);
+  });
+
+  /**
+   * An admin reading on someone's behalf is limited as THEMSELVES. Keyed on the
+   * name asked about (the first cut), any account that made a club of its own
+   * — and so holds an admin cookie — could spend a real admin's allowance for
+   * that name an hour at a time (security review, 2026-11-23).
+   */
+  it('limits an admin by who they are, not by the name they ask about', async () => {
+    seedMember('Lin');
+    const asAdmin = (memberId: string, i: number) =>
+      new NextRequest(new URL(`${BASE}?name=Lin`), {
+        headers: { 'x-client-ip': `insight-admin-${memberId}-${i}-${Math.random()}`, cookie: `admin_session=${adminCookieValue({ memberId })}` },
+      });
+    // One admin spends their own 60 …
+    let res = await GET(asAdmin('admin-a', 0));
+    for (let i = 1; i <= 60; i++) res = await GET(asAdmin('admin-a', i));
+    expect(res.status).toBe(429);
+    // … which leaves another admin, and Lin herself, untouched.
+    expect((await GET(asAdmin('admin-b', 0))).status).not.toBe(429);
+    expect((await GET(reqAs('Lin', `insight-admin-lin-${Math.random()}`))).status).not.toBe(429);
+  });
+
+  it('with clubs on, limits a member by their own id, from their club’s name for them', async () => {
+    const prev = process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP;
+    process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP = 'true';
+    try {
+      seedGroup('bpm', { name: 'BPM Core' });
+      const lin = seedMember('Lin');
+      seedMembership('bpm', lin.id, { name: 'Lin' });
+      const req = (i: number) =>
+        new NextRequest(new URL(`${BASE}?name=Lin`), {
+          headers: { 'x-client-ip': `insight-groups-${i}-${Math.random()}`, cookie: `member_session=${memberCookieValue('Lin', lin.id)}` },
+        });
+      let res = await GET(req(0));
+      expect(res.status, 'Lin reads her own').not.toBe(403);
+      for (let i = 1; i <= 60; i++) res = await GET(req(i));
+      expect(res.status).toBe(429);
+    } finally {
+      if (prev === undefined) delete process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP;
+      else process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP = prev;
+    }
+  });
+
+  it('keeps one address to 30 model calls an hour, serving no fresh read past it', async () => {
+    process.env.ANTHROPIC_API_KEY = 'test-key';
+    mockCreate.mockResolvedValue(textResponse({ greeting: 'Steady week.', trend: null }));
+    const ip = `insight-model-${Math.random()}`;
+    const names = Array.from({ length: 31 }, (_, i) => `Player ${i + 1}`);
+    for (const n of names) {
+      const m = seedMember(n);
+      seedAssessment(m.id, '2026-05-01', 3.2, ['net_play']);
+    }
+    const statuses: number[] = [];
+    for (const n of names) statuses.push((await GET(reqAs(n, ip))).status);
+    delete process.env.ANTHROPIC_API_KEY;
+
+    expect(mockCreate).toHaveBeenCalledTimes(30);
+    // The 31st has no earlier read to fall back on: unavailable, never a model call.
+    expect(statuses.slice(0, 30).every((s) => s === 200)).toBe(true);
+    expect(statuses[30]).toBe(503);
   });
 });
 

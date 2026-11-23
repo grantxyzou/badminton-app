@@ -6,7 +6,7 @@ import { groupScope, groupDocId, type GroupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { takeMemberAiCall } from '@/lib/aiBudget';
 import { topPartners } from '@/lib/recommend';
-import { nameOwnership, verifyMemberAuth } from '@/lib/auth';
+import { adminCaller, nameOwnership, verifyMemberAuth } from '@/lib/auth';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { isFlagOn } from '@/lib/flags';
 import { summarizeAssessmentTrend, type AssessmentTrend, type StoredAssessment } from '@/lib/assessment';
@@ -192,14 +192,27 @@ async function fetchAssessmentDocs(memberId: string): Promise<StoredAssessment[]
  * shares one address on the gym's Wi-Fi, where 30 opens an hour (Home warms
  * this on every open) turned everyone's summary into "Couldn't load".
  *
- * Now: a per-address CEILING first (rule 4: before auth), wide enough for a
- * whole club on one network and still a wall against one machine hammering
- * the route; then, once the gate below says who may read this, a per-PERSON
- * limit keyed on the member the read is about.
+ * Now three limits, each where it belongs:
+ *   1. A per-address CEILING first (rule 4: before auth), wide enough for a
+ *      whole club on one network and still a wall against one machine
+ *      hammering the route.
+ *   2. Once the gate below says who may read this, a per-CALLER limit: the
+ *      member reading their own summary, or the admin reading on someone's
+ *      behalf — keyed on the admin, never on the name asked about. A key on
+ *      the name let any account that created a club of its own (and so holds
+ *      an admin cookie) spend a real admin's allowance for an hour at a time,
+ *      and let an admin step round the limit by rotating names (security
+ *      review of this change, 2026-11-23).
+ *   3. On the path that CALLS THE MODEL only, the old 30 an hour per address,
+ *      beside the per-member and per-club allowances: those are per person and
+ *      per club, and accounts and clubs are cheap to make, so this keeps one
+ *      address's model calls where they were. Over it, the member gets their
+ *      last read, as over any allowance.
  */
 const HOUR_MS = 60 * 60 * 1000;
 const PER_ADDRESS_PER_HOUR = 300;
-const PER_MEMBER_PER_HOUR = 60;
+const PER_CALLER_PER_HOUR = 60;
+const MODEL_CALLS_PER_ADDRESS_PER_HOUR = 30;
 
 /** A real 429, never the empty payload (see the comment in GET). */
 function rateLimited() {
@@ -240,10 +253,15 @@ export async function GET(req: NextRequest) {
   if (!ownership.allowed) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
-  // Per person, keyed on whom the read is about: the member's own id, or the
-  // name an admin asked after (which the gate above has already allowed).
-  const subject = ownership.selfMemberId ?? `name:${name.toLowerCase()}`;
-  if (!checkRateLimit(`stats-insight:member:${subject}`, PER_MEMBER_PER_HOUR, HOUR_MS)) {
+  // Per CALLER (see the note above GET): the member reading their own, or the
+  // admin by their own id and club — never the name they asked about.
+  const admin = ownership.selfMemberId ? null : adminCaller(req);
+  const caller = ownership.selfMemberId
+    ? `member:${ownership.selfMemberId}`
+    : admin
+      ? `admin:${admin.groupId}:${admin.memberId}`
+      : `address:${ip}`;
+  if (!checkRateLimit(`stats-insight:caller:${caller}`, PER_CALLER_PER_HOUR, HOUR_MS)) {
     return rateLimited();
   }
 
@@ -372,6 +390,14 @@ export async function GET(req: NextRequest) {
 
   if (!process.env.ANTHROPIC_API_KEY) {
     // No key — serve any stale insight rather than nothing.
+    const stale = staleOrNull(existing);
+    if (stale) return stale;
+    return aiUnavailable();
+  }
+  // One address's model calls an hour (see the note above GET), charged only
+  // here, where the model is about to be asked: a saved read never reaches it.
+  if (!checkRateLimit(`stats-insight-model:${ip}`, MODEL_CALLS_PER_ADDRESS_PER_HOUR, HOUR_MS)) {
+    console.warn('[insight-address-cap]', { groupId: scope.groupId });
     const stale = staleOrNull(existing);
     if (stale) return stale;
     return aiUnavailable();
