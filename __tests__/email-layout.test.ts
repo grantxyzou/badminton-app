@@ -48,12 +48,12 @@ function shown(html: string, needle: string): number {
 
 describe('the racket picture', () => {
   it('a catalog racket shows its own render', () => {
-    expect(racketPictureUrl(ORIGIN, 'racket-yonex-astrox-88d-pro')).toBe(`${ORIGIN}/rackets/racket-yonex-astrox-88d-pro.webp`);
+    expect(racketPictureUrl(ORIGIN, 'racket-yonex-astrox-88d-pro')).toBe(`${ORIGIN}/rackets/email/racket-yonex-astrox-88d-pro.jpg`);
   });
 
   it('anything else shows the matte black one, never the BPM-coloured default', () => {
-    expect(racketPictureUrl(ORIGIN, null)).toBe(`${ORIGIN}/rackets/_unknown.webp`);
-    expect(racketPictureUrl(ORIGIN, 'racket-nobody-makes')).toBe(`${ORIGIN}/rackets/_unknown.webp`);
+    expect(racketPictureUrl(ORIGIN, null)).toBe(`${ORIGIN}/rackets/email/_unknown.jpg`);
+    expect(racketPictureUrl(ORIGIN, 'racket-nobody-makes')).toBe(`${ORIGIN}/rackets/email/_unknown.jpg`);
   });
 
   it('no origin, no picture (a test, or a deployment with no APP_ORIGIN)', () => {
