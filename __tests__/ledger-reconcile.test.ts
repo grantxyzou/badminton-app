@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { GET as reconcileGet, POST as reconcilePost } from '@/app/api/admin/ledger/reconcile/route';
-import { POST as remind } from '@/app/api/payments/remind/route';
+import { runPaymentsDaily } from '@/lib/paymentsDaily';
 import { GET as inboxGet } from '@/app/api/admin/payments/route';
 import { runLedgerBackfill } from '@/lib/ledgerBackfill';
 import { runReconcile, reconcileAndRecord, lastReconcile } from '@/lib/ledgerReconcile';
 import { computeOwedForRoster, computeOwed } from '@/lib/owedBalance';
-import { mintPaymentsKey, readPaymentsSettings } from '@/lib/paymentsInbox';
+import { readPaymentsSettings } from '@/lib/paymentsInbox';
 import { resolveIdentity } from '@/lib/playerIdentity';
 import { groupScope } from '@/lib/groupScope';
 import type { LedgerEntry, Player, StringingJob } from '@/lib/types';
@@ -169,17 +169,15 @@ describe('each way the two can drift', () => {
   });
 });
 
+/** Noon in Vancouver on a fixed day: the daily run waits for 10 a.m. there. */
+const DAILY_NOW = Date.parse('2026-10-15T19:00:00Z');
+
 describe('the daily run and what it leaves behind', () => {
-  it('the remind route runs the check with reminders OFF, stores ids and cents, and answers counts only', async () => {
+  it('the daily run checks with reminders OFF, stores ids and cents, and answers counts only', async () => {
     await backfill();
     row('Viktor', 'session-2026-09-17').owedAmount = 20;
-    const key = await mintPaymentsKey('bpm');
-    const res = await remind(makeRequest('POST', `${BASE}/payments/remind`, {}, { 'x-payments-key': key }));
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.skipped).toBe('off');
-    expect(body.reconcile).toEqual({ checked: 3, mismatches: 1 });
-    expect(JSON.stringify(body)).not.toContain('Viktor');
+    const body = await runPaymentsDaily('bpm', DAILY_NOW);
+    expect(body).toEqual({ ran: 1, checked: 3, mismatches: 1 });
     const s = await readPaymentsSettings('bpm');
     expect(s?.lastReconcileAt).toEqual(expect.any(String));
     expect(s?.lastReconcileMismatches).toEqual([{ memberId: viktor.id, ref: { kind: 'session', id: row('Viktor', 'session-2026-09-17').id, pk: 'session-2026-09-17' }, code: 'amount_mismatch', ledgerCents: 1200, liveCents: 2000 }]);
@@ -187,11 +185,10 @@ describe('the daily run and what it leaves behind', () => {
     expect(JSON.stringify(s)).not.toContain('Viktor');
   });
 
-  it('with the mirror off the remind route checks nothing and stores nothing', async () => {
+  it('with the mirror off the daily run checks nothing and stores nothing', async () => {
     delete process.env.NEXT_PUBLIC_FLAG_LEDGER_MIRROR;
-    const key = await mintPaymentsKey('bpm');
-    const body = await (await remind(makeRequest('POST', `${BASE}/payments/remind`, {}, { 'x-payments-key': key }))).json();
-    expect(body.reconcile).toBeNull();
+    const body = await runPaymentsDaily('bpm', DAILY_NOW);
+    expect(body).toEqual({ ran: 1 });
     expect((await readPaymentsSettings('bpm'))?.lastReconcileAt).toBeUndefined();
     expect(await lastReconcile('bpm')).toBeNull();
   });

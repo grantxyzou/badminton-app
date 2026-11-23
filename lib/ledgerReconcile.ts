@@ -25,8 +25,8 @@
  * for a missing entry, or the admin re-doing the action for a missing void.
  * A reconcile that wrote entries would be a second mirror with its own bugs.
  *
- * Runs once a day from the club's script (`POST /api/payments/remind`, whether
- * or not reminders are on) and on an admin's tap. The result is stored on the
+ * Runs once a day on the hourly tick (`lib/paymentsDaily.ts`, whether or not
+ * reminders are on) and on an admin's tap. The result is stored on the
  * club's payments settings doc — ids and cents, never names — and the
  * E-transfers card warns on a mismatch or a stale check.
  */

@@ -228,7 +228,7 @@ export default function PaymentsInboxCard({
 
 // ── Reminders ──────────────────────────────────────────────────────────────
 
-/** The script calls daily; two missed days on means the pasted script predates reminders. */
+/** The app runs it daily (the hourly tick, from 10 a.m.); two missed days means the tick has stopped. */
 const REMINDER_STALE_MS = 2.5 * 24 * 60 * 60 * 1000;
 
 function ReminderRow({ reminders, onDone }: { reminders: Inbox['reminders']; onDone: () => void }) {
@@ -268,8 +268,8 @@ function ReminderRow({ reminders, onDone }: { reminders: Inbox['reminders']; onD
       </p>
       {stale && (
         <p className="fs-sm" role="status" style={{ margin: 0, color: 'var(--sev-warn)' }}>
-          Your Gmail script hasn&apos;t asked for reminders yet. Paste the latest script from Setup and run{' '}
-          <code>install</code> again.
+          {lastRunAt ? 'No reminder run in over two days' : 'Reminders haven\u2019t run yet'}. They go out once a day from
+          10&nbsp;a.m., so check back tomorrow; if this stays, the app&apos;s daily run has stopped.
         </p>
       )}
       <button type="button" className="cc-btn cc-btn-secondary" disabled={!online || busy} onClick={() => void set(!on)}>
@@ -338,8 +338,8 @@ function ReconcileRow({ reconcile, onDone }: { reconcile: NonNullable<Inbox['rec
       )}
       {mismatches === 0 && stale && (
         <p className="fs-sm" role="status" style={{ margin: 0, color: 'var(--sev-warn)' }}>
-          {lastAt ? 'No check in over two days' : 'Never checked'}. Your Gmail script runs it daily once the latest
-          script is installed — or check now.
+          {lastAt ? 'No check in over two days' : 'Never checked'}. It runs once a day from 10&nbsp;a.m. — or check
+          now.
         </p>
       )}
       <button type="button" className="cc-btn cc-btn-secondary" disabled={!online || busy} onClick={() => void checkNow()}>

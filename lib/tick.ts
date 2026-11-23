@@ -3,7 +3,7 @@
  *
  * App Service runs nothing on a schedule, so timed work had to ride on
  * something else: the members-first release waits for the next app open, and
- * the payment reminders wait for one club's Gmail script. The tick is one
+ * the payment reminders used to wait for one club's Gmail script. The tick is one
  * key-protected route (`POST /api/cron/tick`) that GitHub calls every hour
  * (`.github/workflows/tick.yml`); each timed job registers here and is run once
  * per open club.
@@ -23,6 +23,7 @@ import type { Group } from './types';
 import { runStringingNudges } from './stringingNudge';
 import { runInvoiceReminders } from './stringingInvoiceRemind';
 import { sweepStrayAccounts } from './strayAccounts';
+import { runPaymentsDaily } from './paymentsDaily';
 
 export const CRON_KEY_HEADER = 'x-cron-key';
 
@@ -50,6 +51,7 @@ export interface TickJob {
 export const TICK_JOBS: TickJob[] = [
   { name: 'stringingNudge', run: runStringingNudges },
   { name: 'stringingInvoiceRemind', run: runInvoiceReminders },
+  { name: 'paymentsDaily', run: runPaymentsDaily },
 ];
 
 /**

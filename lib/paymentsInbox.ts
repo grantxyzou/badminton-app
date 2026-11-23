@@ -58,7 +58,7 @@ export interface PaymentsSettingsDoc {
   holdAfterUnpaid?: number;
   /** Payment reminders (Phase 1b). Absent = off. */
   remindersOn?: boolean;
-  /** The last time the club's script asked for a reminder run — staleness shows on the card. */
+  /** The day's payments run (`lib/paymentsDaily.ts`): reminders and the ledger check. Staleness shows on the card. */
   lastReminderRunAt?: string;
   /** The last ledger reconcile (`lib/ledgerReconcile.ts`): ids and cents only, never names. Absent = never run. */
   lastReconcileAt?: string;

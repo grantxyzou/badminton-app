@@ -8,6 +8,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Payment reminders no longer need the Gmail script (2026-11-23)
+
+- **Every club can send payment reminders now**, not only a club running the Gmail script. The app sends them itself, once a day from 10 a.m., to people who still owe 3 and 7 days after a bill is final. They stay off until an organiser turns them on.
+- **The daily ledger check moved with them.** It used to run only when the script called in.
+- Organisers on the Gmail script need do nothing. A copy pasted before today logs a harmless message once a day; pasting the latest copy and running `install` removes it.
+
 ## The e-transfer message reads more plainly (2026-11-23)
 
 - **A finished racket now reads "Stringing service" in the e-transfer message**, after the nights: "BPM Core Nov 6, Nov 13, Stringing service - Lin". More than three nights read "& 2 more" instead of "+2" (`docs/plans/payment-order.md`).
