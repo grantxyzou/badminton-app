@@ -6,12 +6,14 @@ const { sendPushToMembers } = vi.hoisted(() => ({
 }));
 vi.mock('@/lib/push', async (orig) => ({ ...(await orig<typeof import('@/lib/push')>()), sendPushToMembers }));
 
-import { POST as remind } from '@/app/api/payments/remind/route';
+import { runPaymentsDaily, dailyRunDue, clubDay } from '@/lib/paymentsDaily';
+import { runTick } from '@/lib/tick';
 import { GET as inboxGet } from '@/app/api/admin/payments/route';
 import { PATCH as patchSettings } from '@/app/api/admin/payments/settings/route';
-import { mintPaymentsKey, notePaymentsSettings, readPaymentsSettings } from '@/lib/paymentsInbox';
+import { notePaymentsSettings, readPaymentsSettings } from '@/lib/paymentsInbox';
 import { reminderDue, reminderPayload } from '@/lib/paymentReminders';
 import * as owedBalance from '@/lib/owedBalance';
+import * as ledgerReconcile from '@/lib/ledgerReconcile';
 import {
   resetMockStore,
   getStore,
@@ -30,11 +32,21 @@ const ago = (days: number) => new Date(Date.now() - days * DAY).toISOString();
 const BASE = 'http://localhost:3000/api';
 const settled = () => ({ at: ago(5), costPerPerson: 12, totalCost: 48, courtTotal: 48, birdTotal: 0, playerCount: 4, playerNames: [] });
 
-let key: string;
 let lin: { id: string };
 const rows = () => getStore()['players'] as Array<Record<string, unknown>>;
 const row = (id: string) => rows().find((p) => p.id === id)!;
-const call = (k: string | null = key) => remind(makeRequest('POST', `${BASE}/payments/remind`, {}, k ? { 'x-payments-key': k } : {}));
+const HOUR = 60 * 60 * 1000;
+const vancouverHour = (t: number) => Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/Vancouver', hour: 'numeric', hourCycle: 'h23' }).format(new Date(t)));
+/** The instant within half a day of now whose Vancouver hour is `hour` (rows are seeded relative to now). */
+const vancouverAt = (hour: number) => {
+  for (let d = -12; d < 12; d += 1) {
+    const t = Date.now() + d * HOUR;
+    if (vancouverHour(t) === hour) return t;
+  }
+  throw new Error('unreachable');
+};
+const NOON = vancouverAt(12);
+const call = (now = NOON) => runPaymentsDaily('bpm', now);
 
 beforeEach(async () => {
   resetMockStore();
@@ -47,7 +59,6 @@ beforeEach(async () => {
   seedSession('session-2026-09-24', { settled: settled(), datetime: '2026-09-24T19:00:00-04:00' });
   seedSession('session-2026-10-01', { settled: settled(), datetime: '2026-10-01T19:00:00-04:00' });
   lin = seedMember('Lin');
-  key = await mintPaymentsKey('bpm');
 });
 
 afterEach(() => {
@@ -85,18 +96,42 @@ describe('reminderDue — the rules', () => {
   });
 });
 
-describe('POST /api/payments/remind', () => {
-  it('404 flag off; 401 without the club key', async () => {
-    expect((await call(null)).status).toBe(401);
-    process.env.NEXT_PUBLIC_FLAG_PAYMENTS_AUTO = 'false';
-    expect((await call()).status).toBe(404);
+describe('dailyRunDue — once a day, from 10 a.m. Vancouver', () => {
+  it('only between 10 a.m. and 8 p.m., so no push arrives in the evening or night', () => {
+    expect(dailyRunDue(undefined, vancouverAt(9))).toBe(false);
+    expect(dailyRunDue(undefined, vancouverAt(10))).toBe(true);
+    expect(dailyRunDue(undefined, vancouverAt(19))).toBe(true);
+    // A day whose earlier ticks all failed must not run at 11 p.m. (security review).
+    expect(dailyRunDue(undefined, vancouverAt(20))).toBe(false);
+    expect(dailyRunDue(undefined, vancouverAt(23))).toBe(false);
   });
 
-  it('OFF by default: sends nothing, but records that the script called', async () => {
+  it('once per Vancouver day, however many ticks land after 10', () => {
+    const noon = NOON;
+    expect(dailyRunDue(new Date(noon - HOUR).toISOString(), noon)).toBe(false);
+    // A tick that runs late (GitHub skips hours) still runs the day once.
+    expect(dailyRunDue(new Date(noon - 30 * HOUR).toISOString(), noon)).toBe(true);
+    expect(clubDay(noon - 30 * HOUR)).not.toBe(clubDay(noon));
+  });
+});
+
+describe('the daily payments run on the tick', () => {
+  it('flag off: does nothing and stamps nothing', async () => {
+    process.env.NEXT_PUBLIC_FLAG_PAYMENTS_AUTO = 'false';
+    expect(await call()).toEqual({});
+    expect((await readPaymentsSettings('bpm'))?.lastReminderRunAt).toBeUndefined();
+  });
+
+  it('OFF by default: sends nothing, but stamps the day', async () => {
     seedPlayer('session-2026-09-24', 'Lin', { memberId: lin.id, owedAmount: 12, settledAt: ago(4) });
-    expect(await (await call()).json()).toEqual({ ok: true, skipped: 'off', reconcile: null });
+    expect(await call()).toEqual({ ran: 1 });
     expect(sendPushToMembers).not.toHaveBeenCalled();
-    expect((await readPaymentsSettings('bpm'))?.lastReminderRunAt).toEqual(expect.any(String));
+    expect((await readPaymentsSettings('bpm'))?.lastReminderRunAt).toBe(new Date(NOON).toISOString());
+  });
+
+  it('runs for every club from the tick itself', async () => {
+    const run = await runTick(NOON);
+    expect(run.jobs.paymentsDaily).toEqual({ ok: 1, failed: 0, totals: { ran: 1 } });
   });
 
   describe('switched on', () => {
@@ -104,10 +139,10 @@ describe('POST /api/payments/remind', () => {
       await notePaymentsSettings('bpm', { remindersOn: true });
     });
 
-    it('nudges once per person, stamps every due line, and does not repeat the same day', async () => {
+    it('nudges once per person, stamps every due line, and does not run again the same day', async () => {
       const a = seedPlayer('session-2026-09-24', 'Lin', { memberId: lin.id, owedAmount: 12, settledAt: ago(4) });
       const b = seedPlayer('session-2026-10-01', 'Lin', { memberId: lin.id, owedAmount: 15, settledAt: ago(3.5) });
-      expect(await (await call()).json()).toEqual({ ok: true, reminded: 1, sent: 1, reconcile: null });
+      expect(await call()).toEqual({ ran: 1, reminded: 1, sent: 1 });
       expect(sendPushToMembers).toHaveBeenCalledTimes(1);
       // The payload is built per reader's language; read it in English.
       const [ids, content] = sendPushToMembers.mock.calls[0] as unknown as [string[], PushContent];
@@ -117,8 +152,24 @@ describe('POST /api/payments/remind', () => {
       expect(row(b.id).remindedAt).toHaveLength(1);
 
       sendPushToMembers.mockClear();
-      expect(await (await call()).json()).toEqual({ ok: true, reminded: 0, sent: 0, reconcile: null });
+      expect(await call(NOON + 3 * HOUR)).toEqual({});
       expect(sendPushToMembers).not.toHaveBeenCalled();
+    });
+
+    it('an organiser who turns reminders off mid-run is not overruled', async () => {
+      process.env.NEXT_PUBLIC_FLAG_LEDGER_MIRROR = 'true';
+      seedPlayer('session-2026-09-24', 'Lin', { memberId: lin.id, owedAmount: 12, settledAt: ago(4) });
+      const check = vi.spyOn(ledgerReconcile, 'reconcileAndRecord').mockImplementation(async () => {
+        await notePaymentsSettings('bpm', { remindersOn: false });
+        return { checked: 0, mismatches: [] } as unknown as Awaited<ReturnType<typeof ledgerReconcile.reconcileAndRecord>>;
+      });
+      try {
+        expect(await call()).toEqual({ ran: 1, checked: 0, mismatches: 0 });
+        expect(sendPushToMembers).not.toHaveBeenCalled();
+      } finally {
+        check.mockRestore();
+        delete process.env.NEXT_PUBLIC_FLAG_LEDGER_MIRROR;
+      }
     });
 
     it('skips the paid, the self-reported, the too-recent and the too-old', async () => {
@@ -128,8 +179,30 @@ describe('POST /api/payments/remind', () => {
       seedPlayer('session-2026-10-01', 'Viktor', { memberId: v.id, owedAmount: 15, settledAt: ago(1) });
       const k = seedMember('Kento');
       seedPlayer('session-2026-09-24', 'Kento', { memberId: k.id, owedAmount: 12, settledAt: ago(45) });
-      expect(await (await call()).json()).toEqual({ ok: true, reminded: 0, sent: 0, reconcile: null });
+      expect(await call()).toEqual({ ran: 1, reminded: 0, sent: 0 });
     });
+  });
+});
+
+describe('notePaymentsSettings — under the etag', () => {
+  it('creates the doc when there is none, then merges without losing fields', async () => {
+    await notePaymentsSettings('bpm', { keyHash: 'new-key' });
+    await notePaymentsSettings('bpm', { lastReminderRunAt: '2026-10-01T18:00:00.000Z' });
+    const s = await readPaymentsSettings('bpm');
+    expect(s?.keyHash).toBe('new-key');
+    expect(s?.lastReminderRunAt).toBe('2026-10-01T18:00:00.000Z');
+  });
+
+  it('a key rotated between its read and its write is not written back over (security review)', async () => {
+    await notePaymentsSettings('bpm', { keyHash: 'old-key' });
+    const stale = await readPaymentsSettings('bpm');
+    // Someone rotates the key; then a write built from the STALE read lands.
+    await notePaymentsSettings('bpm', { keyHash: 'rotated-key' });
+    const { groupScope } = await import('@/lib/groupScope');
+    expect(await groupScope('bpm').replace('clubSettings', { ...stale!, lastReminderRunAt: 'x' })).toBeUndefined();
+    // The helper itself re-reads, so the rotated key survives its write.
+    await notePaymentsSettings('bpm', { lastReminderRunAt: '2026-10-01T18:00:00.000Z' });
+    expect((await readPaymentsSettings('bpm'))?.keyHash).toBe('rotated-key');
   });
 });
 

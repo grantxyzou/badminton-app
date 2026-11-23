@@ -3,12 +3,11 @@
  *
  * Who is nudged, and when — pure — plus the run that sends them.
  *
- * THE TRIGGER IS THE CLUB'S OWN GMAIL SCRIPT. App Service runs nothing on a
- * schedule, and the script that forwards Interac emails already holds the
- * club's payments key and already runs on a timer. A daily call from it to
- * `POST /api/payments/remind` needs no new secret anywhere and is per-club by
- * construction (the key names its group). A GitHub Action was the first plan;
- * it would have needed a deployment-wide secret and a list of clubs.
+ * THE TRIGGER IS THE HOURLY TICK, once a day per club (`lib/paymentsDaily.ts`,
+ * since 2026-11-23). Until then it was the club's Gmail script calling
+ * `POST /api/payments/remind`, so a club without the script got no reminders;
+ * the tick already had the deployment-wide key and the list of clubs that
+ * once ruled a GitHub Action out.
  *
  * THE RULES, all of which exist to stop a reminder being wrong:
  *   - only a FINALIZED (settled) bill — never a live estimate;
