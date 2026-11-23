@@ -156,27 +156,60 @@ describe('/api/stats/insight — distributed insight cards', () => {
  * rate-limited read was therefore indistinguishable from a legitimate absence
  * and the greeting simply vanished, with nothing to explain it or to retry.
  *
- * Reachable in ordinary use, not just under attack: the limit is 30/hr per IP,
- * a whole club shares one NAT address at the venue, and a page load that hits
- * the 403 path issues FOUR of these (refusals are deliberately not memoized).
+ * And the limit itself was 30 an hour per ADDRESS, which a club on one gym
+ * Wi-Fi reached by ordinary use (Home warms this on every open; the E2E tour
+ * tripped it, docs/plans/e2e-test-club.md). The AI is capped where it is called
+ * (lib/aiBudget.ts), so reads are now limited per person, under a wide
+ * per-address ceiling.
  */
-describe('GET /api/stats/insight — a throttled read is not an empty one', () => {
-  it('returns a real 429, not 200 with a null payload', async () => {
-    const ip = `insight-throttle-${Math.random()}`;
-    const req = () =>
-      new NextRequest(new URL(`${BASE}?name=Lin`), {
-        headers: { 'x-client-ip': ip, cookie: `member_session=${memberCookieValue('Lin')}` },
-      });
+describe('GET /api/stats/insight — throttling', () => {
+  beforeEach(() => {
+    resetMockStore();
+    setupAdminPin();
+    mockCreate.mockReset();
+    delete process.env.ANTHROPIC_API_KEY;
+    seedPointer('session-2026-06-17');
+  });
 
-    // Limit is 30/hr on one IP; burn past it.
-    let res = await GET(req());
-    for (let i = 0; i < 32; i++) res = await GET(req());
+  function reqAs(name: string, ip: string) {
+    return new NextRequest(new URL(`${BASE}?name=${name}`), {
+      headers: { 'x-client-ip': ip, cookie: `member_session=${memberCookieValue(name)}` },
+    });
+  }
+
+  it('lets a whole club on one network read past the old 30 an hour', async () => {
+    const ip = `insight-wifi-${Math.random()}`;
+    const names = ['Lin', 'Viktor', 'Carolina', 'Akane'];
+    for (const n of names) seedMember(n);
+    // 4 members × 12 opens = 48 reads from one address in an hour.
+    for (let i = 0; i < 12; i++) {
+      for (const n of names) {
+        const res = await GET(reqAs(n, ip));
+        expect(res.status, `${n}, open ${i + 1}`).not.toBe(429);
+      }
+    }
+  });
+
+  it('still limits one member, wherever they read from, with a real 429', async () => {
+    seedMember('Lin');
+    let res = await GET(reqAs('Lin', `insight-member-0-${Math.random()}`));
+    // 60 an hour per member; spread over many addresses so only the per-member limit can answer.
+    for (let i = 1; i <= 61; i++) res = await GET(reqAs('Lin', `insight-member-${i}-${Math.random()}`));
 
     expect(res.status).toBe(429);
     const body = await res.json();
     expect(body.error).toBe('rate_limited');
     // The tell: no `account` field, so no consumer can mistake it for a payload.
     expect(body.account).toBeUndefined();
+  });
+
+  it('still caps one address, before it reads anything', async () => {
+    const ip = `insight-ceiling-${Math.random()}`;
+    // No cookie and no such member: the ceiling must answer before the gate does.
+    const anon = () => new NextRequest(new URL(`${BASE}?name=Nobody`), { headers: { 'x-client-ip': ip } });
+    let res = await GET(anon());
+    for (let i = 0; i < 300; i++) res = await GET(anon());
+    expect(res.status).toBe(429);
   });
 });
 
