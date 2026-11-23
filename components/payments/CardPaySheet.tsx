@@ -32,7 +32,7 @@ interface Quote {
 type Phase = 'loading' | 'card' | 'checking' | 'review' | 'paying' | 'done' | 'failed';
 
 /** The codes the route answers that have a sentence of their own. */
-const KNOWN = new Set(['surcharge_off', 'nothing_to_pay', 'card_declined', 'already_done', 'club_not_ready']);
+const KNOWN = new Set(['surcharge_off', 'nothing_to_pay', 'card_declined', 'already_done', 'club_not_ready', 'brand_not_accepted']);
 
 const pct = (bps: number) => `${(bps / 100).toFixed(bps % 10 === 0 ? 1 : 2)}%`;
 

@@ -20,7 +20,7 @@ import { sharedFetch } from '@/lib/sharedRead';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 /** Card networks the club's Stripe account accepts in Canada, as acceptance marks. */
-const CARD_MARKS = ['visa', 'mastercard', 'amex'] as const;
+const CARD_MARKS = ['visa', 'mastercard'] as const;
 
 /** The card's reads, named once: Home primes them before the card mounts. */
 export const unpaidPath = (name: string) => `/api/players/unpaid?name=${encodeURIComponent(name)}`;
