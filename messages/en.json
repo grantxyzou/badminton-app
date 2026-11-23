@@ -762,7 +762,7 @@
         "creditChip": "{amount} credit",
         "groupSessions": "Badminton",
         "groupStringing": "Stringing",
-      "title": "Balance",
+      "title": "Payment",
       "total": "Total",
       "paidUp": "You're all paid up",
       "signedOut": "Sign in to see what you owe.",
@@ -3347,10 +3347,10 @@
           "steps": [
             {
               "t": "Check your balance",
-              "b": "The Balance card on Home lists each session and any finished restring, with the total.",
+              "b": "The Payment card on Home lists each session and any finished restring, with the total.",
               "img": "balance-card",
-              "alt": "The Balance card on Home: two sessions and one restring, a total, and buttons to pay.",
-              "caption": "The Balance card on Home."
+              "alt": "The Payment card on Home: two sessions and one restring, a total, and buttons to pay.",
+              "caption": "The Payment card on Home."
             },
             {
               "t": "Send an e-transfer",

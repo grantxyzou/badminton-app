@@ -83,7 +83,7 @@ export default function EmailSignInForm({ onSuccess, onForgotPassword }: Props) 
       </button>
       {/* A way out, not another action — see `.link-quiet` in globals.css. */}
       {onForgotPassword && (
-        <button type="button" onClick={onForgotPassword} className="link-quiet">
+        <button type="button" onClick={onForgotPassword} className="link-quiet link-quiet--plain">
           {t('forgotPasswordLink')}
         </button>
       )}

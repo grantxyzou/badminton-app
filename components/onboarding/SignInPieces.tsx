@@ -113,7 +113,7 @@ export function CheckEmailPage({
         </>
       }
       links={
-        <button type="button" className="link-quiet" onClick={code.restart}>
+        <button type="button" className="link-quiet link-quiet--plain" onClick={code.restart}>
           {tc('otherEmail')}
         </button>
       }
@@ -123,7 +123,7 @@ export function CheckEmailPage({
         <p className="auth-note" role={code.resent ? 'status' : undefined}>
           {code.resent ? tc('resent') : tc('valid')}
         </p>
-        <button type="button" className="link-quiet link-quiet--flush" disabled={code.busy || !code.online} onClick={() => void code.send()}>
+        <button type="button" className="link-quiet link-quiet--plain link-quiet--flush" disabled={code.busy || !code.online} onClick={() => void code.send()}>
           {tc('resend')}
         </button>
       </div>

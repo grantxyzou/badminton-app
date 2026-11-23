@@ -181,7 +181,7 @@ export default function ClubLinkPage({ title, onBack, heading, copy, scanAt, onL
         actions={scanAt === 'bottom' ? scanButton : undefined}
         links={
           <>
-            <button type="button" className="link-quiet" onClick={() => setMode('paste')}>
+            <button type="button" className="link-quiet link-quiet--plain" onClick={() => setMode('paste')}>
               {tj('pasteLink')}
             </button>
             {links}

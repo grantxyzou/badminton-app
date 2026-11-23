@@ -285,7 +285,7 @@ export default function CreateGroupPage({
               <button
                 type="button"
                 onClick={() => setCredMode((m) => (m === 'signup' ? 'signin' : 'signup'))}
-                className="link-quiet"
+                className="link-quiet link-quiet--plain"
                 style={{ justifySelf: 'center' }}
               >
                 {credMode === 'signup' ? t('auth.haveAccount') : t('auth.needAccount')}
