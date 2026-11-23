@@ -1,7 +1,7 @@
 # The strings map: your racket, another of yours, or "what do you play with?"
 
 **Track:** North Star pillar 4 (equipment service), the same track as [`stringing-canvas-redesign.md`](stringing-canvas-redesign.md): the map is how a member picks the string for the one paid thing the app sells, and its glow is the "recommendations strong enough to suggest equipment purchases" half of the North Star.
-**Status:** in-flight
+**Status:** shipped 2026-11-19
 **Review on:** 2026-12-16 — From `playerGear` and Grant's own bench: how many members with no racket added one from the strip's "Add racket", and did any of them already have the same racket typed in by name (the case the strip does not ask about)?
 
 ## Problem
