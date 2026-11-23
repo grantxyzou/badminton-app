@@ -277,23 +277,49 @@ describe('GET /api/stats/insight — throttling', () => {
     }
   });
 
-  it('keeps one address to 30 model calls an hour, serving no fresh read past it', async () => {
-    process.env.ANTHROPIC_API_KEY = 'test-key';
-    mockCreate.mockResolvedValue(textResponse({ greeting: 'Steady week.', trend: null }));
-    const ip = `insight-model-${Math.random()}`;
-    const names = Array.from({ length: 31 }, (_, i) => `Player ${i + 1}`);
-    for (const n of names) {
-      const m = seedMember(n);
-      seedAssessment(m.id, '2026-05-01', 3.2, ['net_play']);
-    }
-    const statuses: number[] = [];
-    for (const n of names) statuses.push((await GET(reqAs(n, ip))).status);
-    delete process.env.ANTHROPIC_API_KEY;
+  it('keeps one address to 30 model calls an hour, and only the model calls', async () => {
+    // A clean window for every limiter: the club's daily AI allowance is shared
+    // with the tests above, so how many model calls THEY made must not decide
+    // which limit answers here.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(Date.now() + 3 * 24 * 60 * 60 * 1000);
+    try {
+      process.env.ANTHROPIC_API_KEY = 'test-key';
+      mockCreate.mockResolvedValue(textResponse({ greeting: 'Steady week.', trend: null }));
+      const ipA = `insight-model-a-${Math.random()}`;
+      const names = Array.from({ length: 32 }, (_, i) => `Player ${i + 1}`);
+      for (const n of names) {
+        const m = seedMember(n);
+        seedAssessment(m.id, '2026-05-01', 3.2, ['net_play']);
+      }
 
-    expect(mockCreate).toHaveBeenCalledTimes(30);
-    // The 31st has no earlier read to fall back on: unavailable, never a model call.
-    expect(statuses.slice(0, 30).every((s) => s === 200)).toBe(true);
-    expect(statuses[30]).toBe(503);
+      // 30 fresh reads from one address are written by the model …
+      for (const n of names.slice(0, 30)) expect((await GET(reqAs(n, ipA))).status).toBe(200);
+      expect(mockCreate).toHaveBeenCalledTimes(30);
+      // … the 31st is not, and has no earlier read to fall back on.
+      expect((await GET(reqAs('Player 31', ipA))).status).toBe(503);
+      expect(mockCreate).toHaveBeenCalledTimes(30);
+
+      // A saved read past the cap still comes back: it never reaches the model.
+      const saved = await GET(reqAs('Player 1', ipA));
+      expect(saved.status).toBe(200);
+      expect((await saved.json()).cached).toBe(true);
+
+      // The cap is per ADDRESS: another network is unaffected.
+      expect((await GET(reqAs('Player 32', `insight-model-b-${Math.random()}`))).status).toBe(200);
+      expect(mockCreate).toHaveBeenCalledTimes(31);
+
+      // Over the cap with an out-of-date read, the member gets that read, marked stale.
+      const pointer = (getStore()['sessions'] as Array<{ id: string; activeSessionId?: string }>).find((d) => d.id === 'active-session-pointer')!;
+      pointer.activeSessionId = 'session-2026-06-24';
+      const stale = await GET(reqAs('Player 2', ipA));
+      expect(stale.status).toBe(200);
+      expect((await stale.json()).stale).toBe(true);
+      expect(mockCreate).toHaveBeenCalledTimes(31);
+    } finally {
+      delete process.env.ANTHROPIC_API_KEY;
+      vi.useRealTimers();
+    }
   });
 });
 
