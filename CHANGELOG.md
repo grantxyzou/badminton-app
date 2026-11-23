@@ -8,6 +8,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## The e-transfer message reads more plainly (2026-11-23)
+
+- **A finished racket now reads "Stringing service" in the e-transfer message**, after the nights: "BPM Core Nov 6, Nov 13, Stringing service - Lin". More than three nights read "& 2 more" instead of "+2" (`docs/plans/payment-order.md`).
+
 ## Ways to pay: credit, then e-transfer, then card (2026-11-22)
 
 - **Home's balance card now lists the ways to pay in this order** (`docs/plans/payment-order.md`): "Pay with credit" when there is credit to use, then "Pay by Interac e-Transfer", then "Pay by card".

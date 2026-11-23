@@ -35,10 +35,11 @@ describe('memberMemo', () => {
     expect(memberMemo({ club: 'BPM Core', name: 'Lin', dates: ['2026-10-01T19:30:00-07:00'], stringing: false })).toBe('BPM Core Oct 1 - Lin');
   });
 
-  it('names three nights and counts the rest; a racket reads as stringing', () => {
+  it('names three nights and counts the rest; a racket reads as Stringing service', () => {
     const dates = ['2026-09-10', '2026-09-17', '2026-09-24', '2026-10-01', '2026-10-08'].map((d) => `${d}T19:00:00-07:00`);
-    expect(memberMemo({ club: 'BPM Core', name: 'Lin', dates, stringing: true })).toBe('BPM Core Sep 10, Sep 17, Sep 24 +2 + stringing - Lin');
-    expect(memberMemo({ club: 'BPM Core', name: 'Lin', dates: [], stringing: true })).toBe('BPM Core stringing - Lin');
+    expect(memberMemo({ club: 'BPM Core', name: 'Lin', dates, stringing: true })).toBe('BPM Core Sep 10, Sep 17, Sep 24 & 2 more, Stringing service - Lin');
+    expect(memberMemo({ club: 'BPM Core', name: 'Lin', dates: [], stringing: true })).toBe('BPM Core Stringing service - Lin');
+    expect(memberMemo({ club: 'BPM Core', name: 'Lin', dates: [OCT8, OCT1], stringing: true })).toBe('BPM Core Oct 1, Oct 8, Stringing service - Lin');
   });
 
   it('uses the club\'s own template when it set one, and leaves out an unknown club', () => {

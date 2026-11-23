@@ -104,14 +104,17 @@ function fmtMemo(template: string, dateIso: string, name: string, clubName?: str
   return fillMemo(template, shortDate(dateIso), name, clubName);
 }
 
-/** Nights named in a member's memo before the rest are counted as "+N". */
+/** Nights named in a member's memo before the rest are counted as "& N more". */
 const MEMO_MAX_DATES = 3;
+/** A finished racket in the memo (Grant, 2026-11-23: "Stringing service"). */
+const MEMO_STRINGING = 'Stringing service';
 
 /**
  * The memo ONE member pastes into their e-transfer for everything they owe
  * (docs/plans/payment-order.md): the club's own template (or the default
  * below) with `{date}` as the nights owed, oldest first, at most three and
- * then "+N", and "stringing" for a finished racket. With the default
+ * then "& N more", and "Stringing service" for a finished racket, after a
+ * comma ("Sep 10, Sep 17, Sep 24 & 2 more, Stringing service"). With the default
  * template the name comes LAST, after " - ", which is where `memoRosterName`
  * (`lib/paymentsInbox.ts`) reads it back from the bank's email. A memo is a
  * weak clue, never proof of who paid (F18).
@@ -125,8 +128,8 @@ export function memberMemo(input: { template?: string | null; club?: string; nam
     .map(shortDate);
   const unique = days.filter((d, i) => days.indexOf(d) === i);
   const named = unique.slice(0, MEMO_MAX_DATES).join(', ');
-  const more = unique.length > MEMO_MAX_DATES ? ` +${unique.length - MEMO_MAX_DATES}` : '';
-  const dateText = [named ? `${named}${more}` : '', input.stringing ? 'stringing' : ''].filter(Boolean).join(' + ');
+  const more = unique.length > MEMO_MAX_DATES ? ` & ${unique.length - MEMO_MAX_DATES} more` : '';
+  const dateText = [named ? `${named}${more}` : '', input.stringing ? MEMO_STRINGING : ''].filter(Boolean).join(', ');
   return fillMemo(input.template?.trim() || DEFAULT_MEMO, dateText, name, input.club) || null;
 }
 
