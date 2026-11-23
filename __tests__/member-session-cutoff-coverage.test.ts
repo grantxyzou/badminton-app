@@ -145,7 +145,9 @@ const REREADS: string[] = [
  * the whole app leans on for writes. So every POST/PUT/PATCH/DELETE that calls
  * the sync check is listed here with why, and a new one fails the build.
  */
-const ADMIN_SIGNATURE_ONLY = /\bisAdminAuthed\(/;
+// `adminCaller` is the same signature-only reading, returning WHO instead of
+// yes/no (2026-11-23): a write that authorized on it would be the same hole.
+const ADMIN_SIGNATURE_ONLY = /\b(?:isAdminAuthed|adminCaller)\(/;
 const ADMIN_SYNC_WRITES: Record<string, string> = {
   'app/api/games/route.ts#POST':
     'only the rule-7 sessionId override; the write itself is gated by requireGroupMember or isAdminAuthedWithMember above it',

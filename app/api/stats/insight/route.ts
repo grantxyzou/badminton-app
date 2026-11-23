@@ -6,7 +6,7 @@ import { groupScope, groupDocId, type GroupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { takeMemberAiCall } from '@/lib/aiBudget';
 import { topPartners } from '@/lib/recommend';
-import { nameOwnership, verifyMemberAuth } from '@/lib/auth';
+import { adminCaller, nameOwnership, verifyMemberAuth } from '@/lib/auth';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
 import { isFlagOn } from '@/lib/flags';
 import { summarizeAssessmentTrend, type AssessmentTrend, type StoredAssessment } from '@/lib/assessment';
@@ -180,9 +180,48 @@ async function fetchAssessmentDocs(memberId: string): Promise<StoredAssessment[]
   }
 }
 
+/**
+ * READS ARE LIMITED PER PERSON; THE AI IS LIMITED WHERE IT IS CALLED
+ * (docs/plans/e2e-test-club.md, Decisions; Grant, 2026-11-23).
+ *
+ * This was 30 an hour per ADDRESS, written when it was the only thing between
+ * a caller and the Anthropic bill. Since 2026-11-16 the model call is charged
+ * against `takeMemberAiCall` (lib/aiBudget.ts: 5 a day per member, 100 a day
+ * per club) right where it happens, and a saved read costs nothing there. So
+ * the per-address limit only throttled READING the saved summary — and a club
+ * shares one address on the gym's Wi-Fi, where 30 opens an hour (Home warms
+ * this on every open) turned everyone's summary into "Couldn't load".
+ *
+ * Now three limits, each where it belongs:
+ *   1. A per-address CEILING first (rule 4: before auth), wide enough for a
+ *      whole club on one network and still a wall against one machine
+ *      hammering the route.
+ *   2. Once the gate below says who may read this, a per-CALLER limit: the
+ *      member reading their own summary, or the admin reading on someone's
+ *      behalf — keyed on the admin, never on the name asked about. A key on
+ *      the name let any account that created a club of its own (and so holds
+ *      an admin cookie) spend a real admin's allowance for an hour at a time,
+ *      and let an admin step round the limit by rotating names (security
+ *      review of this change, 2026-11-23).
+ *   3. On the path that CALLS THE MODEL only, the old 30 an hour per address,
+ *      beside the per-member and per-club allowances: those are per person and
+ *      per club, and accounts and clubs are cheap to make, so this keeps one
+ *      address's model calls where they were. Over it, the member gets their
+ *      last read, as over any allowance.
+ */
+const HOUR_MS = 60 * 60 * 1000;
+const PER_ADDRESS_PER_HOUR = 300;
+const PER_CALLER_PER_HOUR = 60;
+const MODEL_CALLS_PER_ADDRESS_PER_HOUR = 30;
+
+/** A real 429, never the empty payload (see the comment in GET). */
+function rateLimited() {
+  return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+}
+
 export async function GET(req: NextRequest) {
   const ip = getClientIp(req);
-  if (!checkRateLimit(`stats-insight:${ip}`, 30, 60 * 60 * 1000)) {
+  if (!checkRateLimit(`stats-insight:${ip}`, PER_ADDRESS_PER_HOUR, HOUR_MS)) {
     // A real 429, not `emptyPayload(true)`. The empty payload is HTTP 200 with
     // every field null, which is exactly what "this member has no insight yet"
     // looks like — so a throttled read was indistinguishable from a legitimate
@@ -194,7 +233,7 @@ export async function GET(req: NextRequest) {
     // from "no insight" to a legible load failure the moment the status is
     // honest. And 403 stays separate on purpose — telling a rate-limited
     // member to sign in again would be its own lie.
-    return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
+    return rateLimited();
   }
 
   const name = new URL(req.url).searchParams.get('name')?.trim().slice(0, 50) ?? '';
@@ -213,6 +252,17 @@ export async function GET(req: NextRequest) {
   const ownership = await nameOwnership(req, name);
   if (!ownership.allowed) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  }
+  // Per CALLER (see the note above GET): the member reading their own, or the
+  // admin by their own id and club — never the name they asked about.
+  const admin = ownership.selfMemberId ? null : adminCaller(req);
+  const caller = ownership.selfMemberId
+    ? `member:${ownership.selfMemberId}`
+    : admin
+      ? `admin:${admin.groupId}:${admin.memberId}`
+      : `address:${ip}`;
+  if (!checkRateLimit(`stats-insight:caller:${caller}`, PER_CALLER_PER_HOUR, HOUR_MS)) {
+    return rateLimited();
   }
 
   let membersContainer;
@@ -340,6 +390,14 @@ export async function GET(req: NextRequest) {
 
   if (!process.env.ANTHROPIC_API_KEY) {
     // No key — serve any stale insight rather than nothing.
+    const stale = staleOrNull(existing);
+    if (stale) return stale;
+    return aiUnavailable();
+  }
+  // One address's model calls an hour (see the note above GET), charged only
+  // here, where the model is about to be asked: a saved read never reaches it.
+  if (!checkRateLimit(`stats-insight-model:${ip}`, MODEL_CALLS_PER_ADDRESS_PER_HOUR, HOUR_MS)) {
+    console.warn('[insight-address-cap]', { groupId: scope.groupId });
     const stale = staleOrNull(existing);
     if (stale) return stale;
     return aiUnavailable();

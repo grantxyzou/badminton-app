@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterAll, vi } from 'vitest';
-import { resetMockStore, getStore, seedMember, seedPointer, setupAdminPin, makeRequest, memberCookieValue } from './helpers';
+import { resetMockStore, getStore, seedMember, seedPointer, setupAdminPin, makeRequest, memberCookieValue, adminCookieValue, seedGroup, seedMembership } from './helpers';
 
 // Mock the Anthropic SDK so the route's single generate() call is deterministic.
 // `vi.hoisted` makes the spy available inside the hoisted vi.mock factory.
@@ -156,27 +156,170 @@ describe('/api/stats/insight — distributed insight cards', () => {
  * rate-limited read was therefore indistinguishable from a legitimate absence
  * and the greeting simply vanished, with nothing to explain it or to retry.
  *
- * Reachable in ordinary use, not just under attack: the limit is 30/hr per IP,
- * a whole club shares one NAT address at the venue, and a page load that hits
- * the 403 path issues FOUR of these (refusals are deliberately not memoized).
+ * And the limit itself was 30 an hour per ADDRESS, which a club on one gym
+ * Wi-Fi reached by ordinary use (Home warms this on every open; the E2E tour
+ * tripped it, docs/plans/e2e-test-club.md). The AI is capped where it is called
+ * (lib/aiBudget.ts), so reads are now limited per person, under a wide
+ * per-address ceiling.
  */
-describe('GET /api/stats/insight — a throttled read is not an empty one', () => {
-  it('returns a real 429, not 200 with a null payload', async () => {
-    const ip = `insight-throttle-${Math.random()}`;
-    const req = () =>
-      new NextRequest(new URL(`${BASE}?name=Lin`), {
-        headers: { 'x-client-ip': ip, cookie: `member_session=${memberCookieValue('Lin')}` },
-      });
+describe('GET /api/stats/insight — throttling', () => {
+  beforeEach(() => {
+    resetMockStore();
+    setupAdminPin();
+    mockCreate.mockReset();
+    delete process.env.ANTHROPIC_API_KEY;
+    seedPointer('session-2026-06-17');
+  });
 
-    // Limit is 30/hr on one IP; burn past it.
-    let res = await GET(req());
-    for (let i = 0; i < 32; i++) res = await GET(req());
+  function reqAs(name: string, ip: string) {
+    return new NextRequest(new URL(`${BASE}?name=${name}`), {
+      headers: { 'x-client-ip': ip, cookie: `member_session=${memberCookieValue(name)}` },
+    });
+  }
+
+  it('lets a whole club on one network read past the old 30 an hour', async () => {
+    const ip = `insight-wifi-${Math.random()}`;
+    const names = ['Lin', 'Viktor', 'Carolina', 'Akane'];
+    for (const n of names) seedMember(n);
+    // 4 members × 12 opens = 48 reads from one address in an hour.
+    for (let i = 0; i < 12; i++) {
+      for (const n of names) {
+        const res = await GET(reqAs(n, ip));
+        expect(res.status, `${n}, open ${i + 1}`).not.toBe(429);
+      }
+    }
+  });
+
+  it('still limits one member, wherever they read from, with a real 429', async () => {
+    seedMember('Lin');
+    let res = await GET(reqAs('Lin', `insight-member-0-${Math.random()}`));
+    // 60 an hour per member; spread over many addresses so only the per-member limit can answer.
+    for (let i = 1; i <= 61; i++) res = await GET(reqAs('Lin', `insight-member-${i}-${Math.random()}`));
 
     expect(res.status).toBe(429);
     const body = await res.json();
     expect(body.error).toBe('rate_limited');
     // The tell: no `account` field, so no consumer can mistake it for a payload.
     expect(body.account).toBeUndefined();
+  });
+
+  it('still caps one address, whoever is reading from it', async () => {
+    const ip = `insight-ceiling-${Math.random()}`;
+    const names = ['Lin', 'Viktor', 'Carolina', 'Akane', 'Kento', 'Sindhu', 'Lee'];
+    for (const n of names) seedMember(n);
+    // Six members × 50 reads = 300, under each person's 60: only the address ceiling can answer the next.
+    for (const n of names.slice(0, 6)) {
+      for (let i = 0; i < 50; i++) {
+        const res = await GET(reqAs(n, ip));
+        expect(res.status).not.toBe(429);
+      }
+    }
+    const res = await GET(reqAs('Lee', ip));
+    expect(res.status).toBe(429);
+  });
+
+  it('a refused read spends nobody’s allowance', async () => {
+    seedMember('Lin');
+    seedMember('Viktor');
+    // Lin's cookie asking after Viktor is refused 61 times …
+    for (let i = 0; i < 61; i++) {
+      const res = await GET(
+        new NextRequest(new URL(`${BASE}?name=Viktor`), {
+          headers: { 'x-client-ip': `insight-403-${i}-${Math.random()}`, cookie: `member_session=${memberCookieValue('Lin')}` },
+        }),
+      );
+      expect(res.status).toBe(403);
+    }
+    // … and neither Lin's own read nor Viktor's is limited by it.
+    expect((await GET(reqAs('Lin', `insight-403-lin-${Math.random()}`))).status).not.toBe(429);
+    expect((await GET(reqAs('Viktor', `insight-403-v-${Math.random()}`))).status).not.toBe(429);
+  });
+
+  /**
+   * An admin reading on someone's behalf is limited as THEMSELVES. Keyed on the
+   * name asked about (the first cut), any account that made a club of its own
+   * — and so holds an admin cookie — could spend a real admin's allowance for
+   * that name an hour at a time (security review, 2026-11-23).
+   */
+  it('limits an admin by who they are, not by the name they ask about', async () => {
+    seedMember('Lin');
+    const asAdmin = (memberId: string, i: number) =>
+      new NextRequest(new URL(`${BASE}?name=Lin`), {
+        headers: { 'x-client-ip': `insight-admin-${memberId}-${i}-${Math.random()}`, cookie: `admin_session=${adminCookieValue({ memberId })}` },
+      });
+    // One admin spends their own 60 …
+    let res = await GET(asAdmin('admin-a', 0));
+    for (let i = 1; i <= 60; i++) res = await GET(asAdmin('admin-a', i));
+    expect(res.status).toBe(429);
+    // … which leaves another admin, and Lin herself, untouched.
+    expect((await GET(asAdmin('admin-b', 0))).status).not.toBe(429);
+    expect((await GET(reqAs('Lin', `insight-admin-lin-${Math.random()}`))).status).not.toBe(429);
+  });
+
+  it('with clubs on, limits a member by their own id, from their club’s name for them', async () => {
+    const prev = process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP;
+    process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP = 'true';
+    try {
+      seedGroup('bpm', { name: 'BPM Core' });
+      const lin = seedMember('Lin');
+      seedMembership('bpm', lin.id, { name: 'Lin' });
+      const req = (i: number) =>
+        new NextRequest(new URL(`${BASE}?name=Lin`), {
+          headers: { 'x-client-ip': `insight-groups-${i}-${Math.random()}`, cookie: `member_session=${memberCookieValue('Lin', lin.id)}` },
+        });
+      let res = await GET(req(0));
+      expect(res.status, 'Lin reads her own').not.toBe(403);
+      for (let i = 1; i <= 60; i++) res = await GET(req(i));
+      expect(res.status).toBe(429);
+    } finally {
+      if (prev === undefined) delete process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP;
+      else process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP = prev;
+    }
+  });
+
+  it('keeps one address to 30 model calls an hour, and only the model calls', async () => {
+    // A clean window for every limiter: the club's daily AI allowance is shared
+    // with the tests above, so how many model calls THEY made must not decide
+    // which limit answers here.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(Date.now() + 3 * 24 * 60 * 60 * 1000);
+    try {
+      process.env.ANTHROPIC_API_KEY = 'test-key';
+      mockCreate.mockResolvedValue(textResponse({ greeting: 'Steady week.', trend: null }));
+      const ipA = `insight-model-a-${Math.random()}`;
+      const names = Array.from({ length: 32 }, (_, i) => `Player ${i + 1}`);
+      for (const n of names) {
+        const m = seedMember(n);
+        seedAssessment(m.id, '2026-05-01', 3.2, ['net_play']);
+      }
+
+      // 30 fresh reads from one address are written by the model …
+      for (const n of names.slice(0, 30)) expect((await GET(reqAs(n, ipA))).status).toBe(200);
+      expect(mockCreate).toHaveBeenCalledTimes(30);
+      // … the 31st is not, and has no earlier read to fall back on.
+      expect((await GET(reqAs('Player 31', ipA))).status).toBe(503);
+      expect(mockCreate).toHaveBeenCalledTimes(30);
+
+      // A saved read past the cap still comes back: it never reaches the model.
+      const saved = await GET(reqAs('Player 1', ipA));
+      expect(saved.status).toBe(200);
+      expect((await saved.json()).cached).toBe(true);
+
+      // The cap is per ADDRESS: another network is unaffected.
+      expect((await GET(reqAs('Player 32', `insight-model-b-${Math.random()}`))).status).toBe(200);
+      expect(mockCreate).toHaveBeenCalledTimes(31);
+
+      // Over the cap with an out-of-date read, the member gets that read, marked stale.
+      const pointer = (getStore()['sessions'] as Array<{ id: string; activeSessionId?: string }>).find((d) => d.id === 'active-session-pointer')!;
+      pointer.activeSessionId = 'session-2026-06-24';
+      const stale = await GET(reqAs('Player 2', ipA));
+      expect(stale.status).toBe(200);
+      expect((await stale.json()).stale).toBe(true);
+      expect(mockCreate).toHaveBeenCalledTimes(31);
+    } finally {
+      delete process.env.ANTHROPIC_API_KEY;
+      vi.useRealTimers();
+    }
   });
 });
 

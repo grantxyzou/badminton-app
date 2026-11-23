@@ -754,10 +754,25 @@ export async function requireMember(req: NextRequest): Promise<MemberGate> {
  * signed-in member who replayed their `member_session` value under this name.
  */
 export function isAdminAuthed(req: NextRequest): boolean {
+  // One reading of the cookie: `adminCaller` below does the verifying.
+  return adminCaller(req) !== null;
+}
+
+/**
+ * WHO the admin cookie belongs to — its member and its club — or null: the
+ * one verification of the cookie, which `isAdminAuthed` asks yes or no of.
+ *
+ * An IDENTITY, for keying a per-caller limit; never an authorization. Like
+ * `isAdminAuthed` it reads no doc, so it is blind to a demotion and to "Sign
+ * out everywhere" for the cookie's life; a caller that needs the role re-read
+ * uses `isAdminAuthedWithMember`.
+ */
+export function adminCaller(req: NextRequest): { memberId: string; groupId: string } | null {
   const cookie = req.cookies.get(COOKIE_NAME)?.value;
-  if (!cookie) return false;
+  if (!cookie) return null;
   const payload = verifyToken(cookie, 'admin');
-  return payload !== null && !claimsDisagree(req, payload);
+  if (payload === null || claimsDisagree(req, payload)) return null;
+  return { memberId: payload.memberId, groupId: payload.groupId ?? BPM_GROUP_ID };
 }
 
 /**

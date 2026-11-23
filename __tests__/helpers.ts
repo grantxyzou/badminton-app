@@ -327,13 +327,14 @@ function base64urlEncode(buf: Buffer): string {
  * the real verification path.
  */
 export function adminCookieValue(
-  /** `groupId: null` mints a cookie from before the claim existed (reads as BPM). */
-  opts: { groupId?: string | null } = {},
+  /** `groupId: null` mints a cookie from before the claim existed (reads as BPM).
+   *  `memberId` names a different admin than the default one. */
+  opts: { groupId?: string | null; memberId?: string } = {},
 ): string {
   const now = Math.floor(Date.now() / 1000);
   const groupId = opts.groupId === undefined ? 'bpm' : opts.groupId;
   const payload = {
-    memberId: TEST_ADMIN_MEMBER_ID,
+    memberId: opts.memberId ?? TEST_ADMIN_MEMBER_ID,
     name: TEST_ADMIN_NAME,
     ...(groupId === null ? {} : { groupId }),
     // The AUDIENCE, mirroring `setAdminCookie`. Without it this is a token no
