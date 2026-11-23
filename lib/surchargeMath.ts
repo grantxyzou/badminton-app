@@ -14,9 +14,9 @@ export const SURCHARGE_DEFAULT_BPS = 240;
 
 /**
  * The card brands a fee may go on: Visa and Mastercard, whose Canadian rules
- * (the 2022 class settlement) the club gave notice under. American Express
- * and every other brand pay no fee until the club has checked that brand's
- * own rules and given whatever notice it asks for (docs/plans/card-surcharge.md).
+ * (the 2022 class settlement) the club gave notice under. The club does not
+ * take American Express at all (`cardBrandRefused` in lib/cardPay.ts); any
+ * other brand Stripe accepts pays no fee (docs/plans/card-surcharge.md).
  */
 export const SURCHARGE_BRANDS: readonly string[] = ['visa', 'mastercard'];
 

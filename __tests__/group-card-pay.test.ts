@@ -233,6 +233,8 @@ describe('a member pays by card', () => {
     const web = params as unknown as { success_url: string; cancel_url: string };
     expect(web.success_url).toMatch(/\/\?tab=home&card=paid$/);
     expect(web.cancel_url).toMatch(/\/\?tab=home$/);
+    // The club does not take Amex: Stripe's page refuses it as it is typed.
+    expect((params as unknown as { payment_method_options: unknown }).payment_method_options).toEqual({ card: { restrictions: { brands_blocked: ['american_express'] } } });
   });
 
   it('the store apps come back through /pay/done (the browser sheet), under their own idempotency key', async () => {

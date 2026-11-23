@@ -180,7 +180,7 @@ export default function CardPayCard() {
                   <span className="fs-md" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Card fee on credit cards</span>
                   <span className="fs-sm" style={{ color: 'var(--text-secondary)' }}>
                     {status.surcharge?.on
-                      ? `On · Visa and Mastercard credit cards pay ${pct(status.surcharge.bps)} more. Debit, Amex, e-transfer and credit pay no fee.`
+                      ? `On · Visa and Mastercard credit cards pay ${pct(status.surcharge.bps)} more. Debit, e-transfer and credit pay no fee. The club does not take Amex.`
                       : 'Off · the club pays Stripe’s fee on every card payment.'}
                   </span>
                 </div>
@@ -220,7 +220,7 @@ export default function CardPayCard() {
                 </p>
                 <ul className="fs-sm" style={{ margin: 0, paddingLeft: 'var(--space-6)', listStyle: 'disc', color: 'var(--text-secondary)', lineHeight: 'var(--lh-normal)' }}>
                   <li>At most <strong>2.4%</strong>, even though Stripe charges the club more.</li>
-                  <li><strong>Visa and Mastercard credit cards only.</strong> Debit, prepaid, American Express and other cards pay nothing; the app checks the card before charging.</li>
+                  <li><strong>Visa and Mastercard credit cards only.</strong> Debit, prepaid and other cards pay nothing, and American Express is not taken at all; the app checks the card before charging.</li>
                   <li>The fee is <strong>shown before they pay</strong>, and they can pay by e-transfer instead.</li>
                   <li>A refund gives back its share of the fee.</li>
                   <li>Not allowed for a club in <strong>Quebec</strong>.</li>
