@@ -168,17 +168,33 @@ describe('the target', () => {
   });
 });
 
-describe('every tour that signs in passes the guard', () => {
+describe('every sign-in in the tour passes the guard', () => {
   const dir = join(process.cwd(), 'e2e');
-  const specs = readdirSync(dir).filter((f) => f.endsWith('.spec.ts'));
+  // session.ts DEFINES signIn; every other file that calls it is checked.
+  const files = readdirSync(dir).filter((f) => f.endsWith('.ts') && f !== 'session.ts');
 
-  it('has at least one spec to check', () => {
-    expect(specs.length).toBeGreaterThan(0);
+  it('finds the sign-ins to check', () => {
+    const callers = files.filter((f) => /\bawait signIn\(/.test(readFileSync(join(dir, f), 'utf8')));
+    expect(callers.length).toBeGreaterThan(0);
   });
 
-  it.each(specs)('%s calls clubGuard right after signIn', (file) => {
+  it.each(files)('%s calls clubGuard right after every signIn', (file) => {
     const src = readFileSync(join(dir, file), 'utf8');
-    if (!/\bsignIn\(/.test(src)) return;
-    expect(src, `${file} signs in without the club guard`).toMatch(/signIn\([^)]*\);\s*\n\s*(const \w+ = )?await clubGuard\(/);
+    const calls = src.match(/await signIn\([^)]*\);[^\n]*\n[^\n]*/g) ?? [];
+    for (const call of calls) {
+      expect(call, `${file} signs in without the club guard`).toMatch(/\n\s*(?:(?:const|let)\s+)?(?:\w+\s*=\s*)?await clubGuard\(/);
+    }
+  });
+
+  it('the cached-cookie path runs the guard too, and retries only a 401', () => {
+    const src = readFileSync(join(dir, 'journey.ts'), 'utf8');
+    expect(src).toMatch(/if \(cached\) \{\s*who = await clubGuard\(/);
+    expect(src).toMatch(/answered 401/);
+  });
+
+  it('the signed-in cookies are kept out of the uploaded results', () => {
+    const setup = readFileSync(join(dir, 'global-setup.ts'), 'utf8');
+    // The folder is made in the system's temp space, never under e2e-results/.
+    expect(setup).toMatch(/mkdtempSync\(join\(process\.env\.RUNNER_TEMP \|\| tmpdir\(\),/);
   });
 });

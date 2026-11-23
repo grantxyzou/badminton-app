@@ -20,6 +20,8 @@ const executablePath = process.env.E2E_CHROMIUM_PATH || undefined;
 
 export default defineConfig({
   testDir: '.',
+  globalSetup: './global-setup.ts',
+  globalTeardown: './global-teardown.ts',
   testMatch: /.*\.spec\.ts$/,
   fullyParallel: false,
   workers: 1,
