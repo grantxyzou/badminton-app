@@ -10,7 +10,7 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ## The club no longer takes American Express (2026-11-23)
 
-- **Pay by card now takes Visa and Mastercard, not American Express** (`docs/plans/card-surcharge.md`). Stripe's payment page refuses an Amex number as it is typed, and the card-fee form says "We take Visa and Mastercard, not American Express" before anything is charged. The Amex logo is gone from the button. Members with only an Amex can pay by e-transfer or credit.
+- **Pay by card now takes Visa and Mastercard, not American Express** (`docs/plans/card-surcharge.md`). Stripe's payment page refuses an Amex number as it is typed, and the card-fee form says "American Express is not accepted at this time. Pay with another card or by e-transfer." before anything is charged. The Amex logo is gone from the button. Members with only an Amex can pay by e-transfer or credit.
 
 ## The e-transfer message reads more plainly (2026-11-23)
 

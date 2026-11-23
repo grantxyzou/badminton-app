@@ -711,7 +711,7 @@
         "errors": {
           "generic": "Couldn’t complete the card payment. Try again.",
           "card_declined": "Your card was declined. Try another card or pay by e-transfer.",
-          "brand_not_accepted": "We take Visa and Mastercard, not American Express. Try another card or pay by e-transfer.",
+          "brand_not_accepted": "American Express is not accepted at this time. Pay with another card or by e-transfer.",
           "surcharge_off": "Card payments changed. Close this and tap Pay by card again.",
           "nothing_to_pay": "There’s nothing to pay by card right now.",
           "already_done": "This payment has already gone through.",
