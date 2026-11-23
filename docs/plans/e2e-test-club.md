@@ -1,7 +1,7 @@
 # End-to-end tests in the "E2E test" club
 
 **Track:** the deploy gate. `scripts/smoke-prod.mjs` proves a deploy came back; nothing proves a member can still DO anything on it.
-**Status:** in-flight (steps 1 and 3 built 2026-11-22; step 4's sign-up and stringing journeys 2026-11-23)
+**Status:** in-flight (steps 1, 3 and 4 built 2026-11-22/23; step 5's issue-per-red-run and accessibility check 2026-11-23)
 **Review on:** 2026-12-06 — are the personas set up and stored as secrets, and has the read-only tour (step 3) run green against production three times in a row?
 
 ## Problem
@@ -144,7 +144,10 @@ Each role walks every tab it can reach. That alone exercises each GET with a rea
 - **A reset before and a clean-up after, each touching only the cast.** Before: the cast's rows are purged from the week's list, and the session is put back to open, two spots, at least a week out (moved by whole weeks, so its weekday and time stay the club's). The stringing jobs are archived, then deleted. After: the same again, in a `finally`, so a failed run leaves nobody holding a spot. On the mock store the organiser makes the cast first (`ensureMockCast`), with fixed PINs the in-memory store forgets on restart.
 - **Each persona signs in once per run** (`e2e/global-setup.ts`). Every persona browses from one address, and by the third spec the per-address limits on sign-in and the club list were answering 429. The cookies are kept in a temp folder outside `e2e-results/` (which is uploaded) and deleted at the end; the club guard still runs on every open, and only a 401 falls back to a fresh sign-in.
 - **A 429 is reported as its own kind, `rate-limited`.** The personas share an address the way a club on one gym Wi-Fi does. The first full run showed one worth a look: `GET /api/stats/insight` allows 30 an hour per address (`app/api/stats/insight/route.ts`), and Home asks for it in the background on every open, so a club night on one network could use the hour's allowance up. Reported to Grant, not changed: the limit guards the AI budget, and how to key it is his call.
-- **Not yet: the join journey, axe accessibility, the issue-per-red-run.** The joiner needs an account in no club and an organiser's yes each run, and the last two are step 5.
+- **The join journey runs on production only** (2026-11-23). The joiner signs in, must belong to NO club (`joinerGuard`, stricter than the club guard), opens the club's link, gives their name and asks; the organiser approves through the Admin card's route; the joiner then passes the ordinary club guard and lands on the club's Home. The reset and clean-up take them off the roster and decline any request left waiting. The organiser reads the club's link each run, so it needs no secret. On the mock store the only club is BPM Core, and there it cannot reset (next point).
+- **Removing someone from BPM Core switches their whole account off** (found by the join journey, 2026-11-23; reported to Grant, not changed). `DELETE /api/members` writes `Member.active = false` when the admin's club is BPM (`writesMemberCopy`, the rollback copy), and the email sign-in and the email code both refuse an account that is not active. So a person in BPM Core AND another club who is removed from BPM Core can no longer sign in to the other club. Whether a BPM re-approval through the club link turns the account back on is not yet checked.
+- **Accessibility: axe on every screen, serious and critical only, as warnings** (`@axe-core/playwright` 4.14.0). Its first run found the green signed-up banner title (`text-green-400`, `fs-md`, semibold) under WCAG AA contrast on Home's signed-up state and the stringing "ready" state; reported to Grant, not changed.
+- **One issue per stretch of red, on main only** (`e2e/issue.sh`). A failing run opens "E2E tour failing (prod|mock)" with the summary and the run's link, or adds the run to the one already open; the next passing run closes it. A run started from a branch makes no issue: that is someone checking their own change.
 
 ## Shape
 
@@ -157,6 +160,8 @@ Each role walks every tab it can reach. That alone exercises each GET with a rea
 | What each screen records | `e2e/capture.ts` |
 | Opening the app as a persona, moving around it, photographing and checking a screen, calling the API as them | `e2e/journey.ts` |
 | The read-only tour | `e2e/tour.spec.ts` |
+| The join journey (production only): link, ask, approve, in | `e2e/join.spec.ts` |
+| One issue per stretch of red | `e2e/issue.sh`, tested by `__tests__/e2e-issue.test.ts` |
 | The sign-up journey: sign up, fill, waitlist, cancel, promotion | `e2e/signup.spec.ts` |
 | The stringing journey: request, bench, received → strung → ready, picked up | `e2e/stringing.spec.ts` |
 | The reset and clean-up, the mock cast | `e2e/cast.ts` |
