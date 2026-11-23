@@ -5,6 +5,7 @@ import { USAGE_KINDS, ERROR_KINDS, TIMING_KINDS } from './events';
 import { computeClubMetrics, USAGE_RECORDED_FROM, SKILL_SINCE, type ClubMetrics, type MetricsPlayer, type MetricsSession } from './metricsMath';
 import { isUnclaimed } from './claimLinks';
 import { readStringShelfReport } from './stringStockReport';
+import { lastReconcile } from './ledgerReconcile';
 
 /**
  * The ONE place club metrics are read (docs/plans/usage-metrics.md). The admin
@@ -294,5 +295,18 @@ export async function clubMetrics(groupId: string, sessionsShown: SessionsShown,
         : [],
     ),
   });
-  return { ...metrics, stringShelf };
+  // The last Ledger check, as counts only (no ids, no cents): the daily
+  // health check reads it through the reports key.
+  const reconcile = await lastReconcile(groupId);
+  const ledgerCheck = reconcile
+    ? {
+        at: reconcile.at,
+        checked: reconcile.checked,
+        mismatches: reconcile.mismatches.length,
+        byCode: reconcile.mismatches.reduce<Record<string, number>>((acc, m) => ({ ...acc, [m.code]: (acc[m.code] ?? 0) + 1 }), {}),
+        unlisted: reconcile.unlisted,
+        truncated: reconcile.truncated,
+      }
+    : null;
+  return { ...metrics, stringShelf, ledgerCheck };
 }

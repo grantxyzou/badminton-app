@@ -77,6 +77,40 @@ describe('GET /api/reports/metrics', () => {
   });
 });
 
+describe('the Ledger check in the report', () => {
+  it('is null before a check has run, then counts by reason with no ids or cents', async () => {
+    const key = await mintReportsKey('bpm');
+    const before = await (await metricsGET(withKey(`${BASE}/reports/metrics`, key))).json();
+    expect(before.ledgerCheck).toBeNull();
+
+    const at = ago(0.5);
+    seedDoc('clubSettings', {
+      id: 'payments-inbox',
+      groupId: 'bpm',
+      lastReconcileAt: at,
+      lastReconcileChecked: 12,
+      lastReconcileUnlisted: 1,
+      lastReconcileTruncated: false,
+      lastReconcileMismatches: [
+        { memberId: 'member-secret-a', ref: { kind: 'session', id: 'row-a', pk: 'session-2026-10-01' }, code: 'amount_mismatch', ledgerCents: 1234, liveCents: 2000 },
+        { memberId: 'member-secret-b', ref: { kind: 'stringing', id: 'job-b', pk: 'member-secret-b' }, code: 'missing_payment', ledgerCents: 4321, liveCents: 0 },
+        { memberId: 'member-secret-c', ref: { kind: 'session', id: 'row-c', pk: 'session-2026-10-01' }, code: 'amount_mismatch', ledgerCents: 999, liveCents: 0 },
+      ],
+    });
+    const report = await (await metricsGET(withKey(`${BASE}/reports/metrics`, key))).json();
+    expect(report.ledgerCheck).toEqual({
+      at,
+      checked: 12,
+      mismatches: 3,
+      byCode: { amount_mismatch: 2, missing_payment: 1 },
+      unlisted: 1,
+      truncated: false,
+    });
+    const text = JSON.stringify(report.ledgerCheck);
+    expect(text).not.toMatch(/member-secret|row-a|job-b|1234|4321/);
+  });
+});
+
 describe('GET /api/reports/feedback', () => {
   it('returns recent reports with the person taken out, newest first', async () => {
     seedDoc('releases', { id: 'r1', kind: 'feedback', message: 'Sign-up button did nothing', name: 'Lin', ip: '203.0.113.9', tab: 'home', url: 'https://bpm.grantzou.com/bpm?join=abcdef0123456789#code=999', createdAt: ago(2) });

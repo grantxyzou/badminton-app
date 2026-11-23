@@ -181,6 +181,23 @@ export interface ClubMetrics {
    * ADDITIVE and optional, so the pure `computeClubMetrics` never sets it.
    */
   stringShelf?: StringShelfReport | null;
+  /**
+   * The last Ledger check (`lib/ledgerReconcile.ts`), as counts: when it ran,
+   * how many people it checked, and how many lines disagreed, by reason. No
+   * member ids or cents, so the key-protected report can carry it to the
+   * daily health check. `null` when a check has never run. Attached by
+   * `clubMetrics()` like `stringShelf`; ADDITIVE and optional.
+   */
+  ledgerCheck?: LedgerCheckReport | null;
+}
+
+export interface LedgerCheckReport {
+  at: string;
+  checked: number;
+  mismatches: number;
+  byCode: Record<string, number>;
+  unlisted: number;
+  truncated: boolean;
 }
 
 /**

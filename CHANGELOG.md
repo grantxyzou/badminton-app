@@ -16,6 +16,7 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ## Unreleased
 
+- **The key-protected metrics report carries the last Ledger check** (2026-11-23): when it ran, how many people it checked, and how many lines disagreed by reason, as counts with no member ids or amounts (`ledgerCheck`, `lib/metrics.ts`). The daily health routine reads it so a red or stale check reaches Grant's phone instead of waiting for someone to open the ledger.
 - **Signing in works again: the sign-in redesign is back, with its fields tappable** (2026-11-22). The redesign below went live on 2026-11-22 and was rolled back the same night (#1020): on the Log in pages and a club's link page the logo's invisible box lay over the email, name, PIN and password fields, so a tap never reached them, nothing could be typed, and every button stayed faded (Grant: "none of the buttons work"). The logo now lets taps through (`.launch-canvas`, `pointer-events: none`), and a test holds it there.
 - **The gear recommender's feature flag is retired** (`NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER`, on in production since it shipped). Nothing changes for members: the skill-scored racket and string picks were already what everyone saw. The old stage-derived "all-rounder" pick, which only a deployment with the flag off ever served, is gone.
 
