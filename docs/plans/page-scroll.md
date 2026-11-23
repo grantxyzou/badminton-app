@@ -25,6 +25,14 @@ If the gap is seen again on the App Store app after this ships, the body scrolle
 - **Each Admin level keeps its own place** (Grant, 2026-11-15: "Remember position"). The console stays mounted, hidden, under each page, but the page is one scroller, so a page opened from far down the console opened part-way down itself, and Back showed the console at the page's height. `useTrailScroll` (`lib/trailScroll.ts`) notes the level's scroll just before a page is pushed, opens the new page at its top, and gives a level its own place back on Back, all before paint. It is used by the console's trail and the Stringing bench's, on one screen only (on two pages the list keeps its side). A first measure came back 26px short; that was Playwright's own click scrolling the button into view, and a click from inside the page returned exactly (400 → Roster → Back → 400, the Roster row at the same height on screen).
 - **The helpers already read both.** `lib/pageScroll.ts`, `useScrollCondensed`, `PullToRefresh`'s top check and the sheet lock were written to work whether the window or the body scrolls, so they change in their comments, not their code. The sheet lock is now the textbook case: it pins the body at `-scrollY` and scrolls back on release.
 
+## Seen again (2026-11-23)
+
+Grant, on the App Store app, with a screenshot ("Issue"): the same band, about 390px between the "‹ Admin" bar and "At a glance", the scroll bar at the top, the console still loading (tile skeletons, the "Sign-ups close 48h before…" toast). A small scroll cleared it. Asked to repeat it (Profile at the top, then scrolled to the bottom, each followed by Admin tools), he could not make it happen either way, so it is intermittent and not simply Profile's scroll offset carried over.
+
+- **By the kill criterion, the body scroller was not the cause.** The page scrolls, not the body, is still kept: it is the standard arrangement and other work rests on it (`useTrailScroll`). Reverting it would bring back the less-travelled path without curing anything.
+- **Not reproduced off the phone.** In Chromium at 390 x 844, opening Admin from a Profile scrolled 495px down puts "At a glance" at 103px from the top with the page at 0, from the first frame. WebKit is not available in the build sandbox.
+- **Next, before any change:** a screen recording from the moment Admin tools is tapped until the band clears, and what came just before (a fresh open of the app, a return from the background, another tab). A band the size of a card that a scroll repaints reads as WKWebView painting a stale frame; what triggers it is the open question.
+
 ## Shape
 
 | Piece | File |
