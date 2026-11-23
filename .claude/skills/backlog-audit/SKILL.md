@@ -8,12 +8,30 @@ disable-model-invocation: false
 
 There is ONE tracker: the **BPM Backlog** artifact,
 https://claude.ai/artifact/7oJobvyJSTew4jbuMCu415. Never create a second one.
-It holds the phased roadmap, the ranked order (27 rows, tiers 0–4), the full
-backlog (~185 items in six sections) and the links to docs, design system,
-templates and assets. Each backlog item carries a `v` note — the result of
-its last check, dated — and the page's Mark done / Drop / Reopen buttons
-write to the artifact's shared `marks` collection (`ArtifactData`, collection
-`marks`, doc id = the item id).
+It holds the roadmap in Asana's format (since 2026-11-23), the full backlog
+(~370 items) and the links to docs, design system, templates and assets.
+Each backlog item carries a `v` note — the result of its last check, dated —
+and the page's Mark done / Drop / Reopen buttons write to the artifact's
+shared `marks` collection (`ArtifactData`, collection `marks`, doc id = the
+item id).
+
+The roadmap is five constants in the page's script, rendered by the page:
+
+- `GOAL` — the one goal, its status (`on` | `risk` | `off`) and key results.
+- `STATUS` — the dated status update: status, one-line summary, `did`
+  (what shipped), `block` (blockers), `next` (next steps).
+- `MILESTONES` — `M1`..`M5`, each `{id, t, due, st, x}` (`x` = done when).
+- `TL` — the timeline: phase bars and its date range.
+- `SECS` — sections Now / Next / Later / Parked, each holding tasks
+  `{n, o, pr, st, e, due, m, dep, note, iss, d}` in global rank order:
+  `n` name (starts with a verb), `o` owner (Grant | Claude), `pr` priority
+  (High | Medium | Low), `st` status (`none` | `prog` | `on` | `risk` |
+  `off` | `done`), `e` effort (S | M | L), `m` milestone id, `dep` what it
+  waits on, `iss` / `d` issue, PR and doc links.
+
+The page works out "today" from the viewer's clock in Vancouver time, so
+overdue marks never wait on a run; a task past its `due` shows Off track on
+its own. Never hard-code `TODAY` again.
 
 The audit took 143 items on 2026-10-07 and found 11 done, 15 with wrong
 facts and 23 unverifiable from the repo. A run is worth doing only if it
@@ -53,13 +71,29 @@ re-checks what it can and stays silent when nothing moved.
 4. **Apply and publish.**
    `node .claude/skills/backlog-audit/apply.mjs saved.html results.json next.html "Audited <date> · … · code through PR #<n>"`
    prints `{done, stale, reopened, unknown}`. Refresh the **Start here** list
-   by hand from those, then `Artifact` → `publish` to the same URL. Omit
-   `capabilities` so the `db` declaration carries forward.
+   by hand from those. Then update the roadmap constants, by hand, only
+   where the evidence moved:
+   - **Tasks:** a task whose PR merged, flag is gone or issue closed gets
+     `st:"done"`; one with an open PR on it gets `st:"prog"`. A finished task
+     stays one run as done, then leaves `SECS`. A new item worth a rank goes
+     into the right section at the right rank, with every field filled.
+   - **Milestones:** re-rate each from its tasks: `done` when its "done
+     when" test holds, `off` when a High task under it is past due, `risk`
+     when one is due within 7 days and not started, otherwise `on`.
+   - **Goal:** the worst status among the key-result milestones (M2, M3).
+   - **Status update:** rewrite `STATUS` (date, summary, did, block, next)
+     only when a task, milestone or the goal changed. Otherwise leave it.
+   Then `Artifact` → `publish` to the same URL. Omit `capabilities` so the
+   `db` and `downloads` declaration carries forward. When the last save came
+   from another session, the first publish is refused once and hands back
+   the live version: check that its diff holds only your own edits (merge
+   anything else in), then publish the same file again.
 
 5. **Notify only on change.** Send a `PushNotification` when the run found
-   an item newly done, an item whose facts changed, a plan review newly
-   overdue, a flag past its date, a red CI on an open PR, or a new open PR or
-   issue. Lead with the one thing to act on. If nothing moved, send nothing.
+   an item or roadmap task newly done, an item whose facts changed, a
+   milestone or the goal changing status, a plan review newly overdue, a
+   flag past its date, a red CI on an open PR, or a new open PR or issue.
+   Lead with the one thing to act on. If nothing moved, send nothing.
 
 6. **New items.** Anything new found in a plan, an issue or a PR goes INTO
    the page's item array (same shape) and into its umbrella issue
@@ -68,6 +102,7 @@ re-checks what it can and stays silent when nothing moved.
 ## Don'ts
 
 - Don't rewrite notes that still hold; only a re-check changes a note.
+- Don't hard-code a date into the page's script; it reads the clock.
 - Don't mark an item done because its date passed. Done means the work is in
   the tree, the issue is closed, or the flag is gone.
 - Don't overwrite an owner mark. A `marks` doc wins over the audit.
