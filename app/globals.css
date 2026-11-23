@@ -4834,7 +4834,6 @@ html:root .glass-card.notice-list { padding: var(--space-2); }
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: var(--space-4);
 }
 .launch-wordmark {
   font-family: var(--font-display);
@@ -4844,22 +4843,24 @@ html:root .glass-card.notice-list { padding: var(--space-2); }
   letter-spacing: -0.04em;
   white-space: nowrap;
 }
+/* Centred under the WHOLE logo, `bpm` and the shuttle together (Grant,
+   2026-11-22: "center aligned with the logo"), not under `bpm` alone: the
+   logo's ink runs from x = 75 (the `b`) to 306 (the shuttle) on the 360 canvas,
+   so its centre is 190.5, which is 120.5 into the lockup (left: 70). Out of the
+   column's flow, so the lockup's own left edge (where `bpm` must sit, on the
+   shuttle) never moves with the tagline's width; `translate` centres it on that
+   line and leaves `transform` to the entrance (launchMotion's text rise). Re-
+   measure the ink if the art or the display face changes. */
 .launch-tagline {
-  margin: 0;
+  position: absolute;
+  top: 100%;
+  left: 120.5px;
+  translate: -50% 0;
+  margin: var(--space-4) 0 0;
+  white-space: nowrap;
+  text-align: center;
   font-size: 17px;
   color: var(--launch-tagline);
-}
-/* Chinese: the tagline is spaced out to the width of `bpm` above it (Grant,
-   2026-10-03). Stretching it to the lockup column makes it exactly as wide as
-   the wordmark, the column's widest child, and justifying its one line puts
-   the slack between the characters — so it tracks the wordmark at any length
-   rather than carrying a letter-spacing tuned to seven characters. A tagline
-   longer than the wordmark simply widens the column and sets normally, which
-   is what the English one does. */
-.launch-tagline:lang(zh) {
-  align-self: stretch;
-  text-align: justify;
-  text-align-last: justify;
 }
 
 /* The loading shot, before JS, is NOT here: `launchLoopCss()` emits both the

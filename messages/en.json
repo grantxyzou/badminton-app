@@ -3038,7 +3038,20 @@
       "join": "I have a club link",
       "signOut": "Sign out"
     },
-    "tagline": "Weekly badminton with your club.",
+    "taglines": [
+      "Badminton, pretty much.",
+      "Badminton, play more.",
+      "Badminton, pure magic.",
+      "Badminton, pure motion.",
+      "Badminton Per Management.",
+      "Badminton, pure movement.",
+      "Badminton, plus mood.",
+      "Badminton, pleasant mood.",
+      "Badminton, passion making.",
+      "Badminton, perfect match.",
+      "Badminton, precious moments.",
+      "Badminton, play mates."
+    ],
     "signUp": "Join a club",
     "logIn": "Log in",
     "back": "Back",

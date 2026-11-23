@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
+import { useTagline } from '@/components/onboarding/TaglineContext';
 import type { Provider } from '@/components/auth/ProviderButtons';
 import { useEmailCode } from '@/components/auth/useEmailCode';
 import { markOnboardingResume } from '@/lib/onboardingResume';
@@ -43,6 +44,7 @@ interface Props {
 export default function DoorJoinPage({ token, authProviders, onBack, startAtName, onReturnCode }: Props) {
   const t = useTranslations('signedOut');
   const td = useTranslations('signedOut.door');
+  const tagline = useTagline();
   const doorStep = useDoorStep();
   const [club, setClub] = useState<string | null>(null);
   const [linkDead, setLinkDead] = useState(false);
@@ -178,7 +180,7 @@ export default function DoorJoinPage({ token, authProviders, onBack, startAtName
   }
 
   return (
-    <AuthStage data-page="door" title={title} onBack={onBack} backLabel={t('back')} logoTagline={t('tagline')}>
+    <AuthStage data-page="door" title={title} onBack={onBack} backLabel={t('back')} logoTagline={tagline}>
       {/* The link must survive the trip to Google or Apple: the callback
           builds its return URL from scratch, so the resume is the only thing
           that comes back. It rides as an invite token, which

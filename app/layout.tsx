@@ -1,3 +1,5 @@
+import { pickTagline } from '@/lib/tagline';
+import { rawList } from '@/lib/rawList';
 import type { Metadata, Viewport } from 'next';
 import localFont from 'next/font/local';
 import { getLocale, getTranslations } from 'next-intl/server';
@@ -176,10 +178,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const locale = await getLocale();
   // The splash renders outside NextIntlClientProvider, so its one string is
   // resolved here on the server.
-  const tagline = (await getTranslations('signedOut'))('tagline');
   // This request's script nonce (`proxy.ts`, `lib/csp.ts`): the policy runs
-  // only inline scripts that carry it.
+  // only inline scripts that carry it. It also picks this visit's tagline, the
+  // same one `app/page.tsx` hands the signed-out screens (`lib/tagline.ts`).
   const nonce = (await headers()).get('x-nonce') ?? undefined;
+  const tagline = pickTagline(rawList<string>((await getTranslations('signedOut')).raw('taglines')), nonce);
 
   return (
     /* This used to carry `data-visual="field"`, stamped on the SERVER from
