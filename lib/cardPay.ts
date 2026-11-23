@@ -114,6 +114,17 @@ export interface CardSurchargeSetting {
 export const MAX_CARD_LINES = 12;
 export const CURRENCY = 'cad';
 
+/**
+ * The club does not take American Express (Grant, 2026-11-23: "Can we just
+ * not take Amex?"; docs/plans/card-surcharge.md). Every card payment then
+ * follows Visa's and Mastercard's rules. Two spellings because Stripe uses
+ * two: a Checkout page blocks a brand by its Checkout name, and a card the
+ * fee form checks names its brand on the PaymentMethod.
+ */
+export const CHECKOUT_BLOCKED_BRANDS = ['american_express'] as const;
+export const REFUSED_CARD_BRANDS: readonly string[] = ['amex'];
+export const cardBrandRefused = (brand: string | null | undefined): boolean => REFUSED_CARD_BRANDS.includes((brand ?? '').toLowerCase());
+
 export class CardPayError extends Error {
   constructor(public code: 'club_not_connected' | 'club_not_ready' | 'nothing_to_pay' | 'unavailable') {
     super(code);
@@ -354,8 +365,10 @@ export async function startCardCheckout(
       client_reference_id: memberId,
       metadata,
       payment_intent_data: { metadata },
+      // Stripe's page refuses an Amex number as it is typed (CHECKOUT_BLOCKED_BRANDS).
+      payment_method_options: { card: { restrictions: { brands_blocked: [...CHECKOUT_BLOCKED_BRANDS] } } },
       ...back,
-    },
+    } as Stripe.Checkout.SessionCreateParams,
     { stripeAccount: settings.stripeAccountId, idempotencyKey: `bpm-checkout:${key}` },
   );
   if (!session.url) throw new CardPayError('unavailable');

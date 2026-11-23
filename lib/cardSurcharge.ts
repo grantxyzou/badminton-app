@@ -25,7 +25,7 @@
 import type Stripe from 'stripe';
 import { createHash } from 'crypto';
 import { groupScope } from './groupScope';
-import { CardPayError, CURRENCY, must, payableLines, readCardPay, type CardPaySettingsDoc, type CardSurchargeSetting } from './cardPay';
+import { CardPayError, CURRENCY, cardBrandRefused, must, payableLines, readCardPay, type CardPaySettingsDoc, type CardSurchargeSetting } from './cardPay';
 import { SURCHARGE_DEFAULT_BPS, surchargeableCard, surchargeCents, validSurchargeBps } from './surchargeMath';
 
 /** Stripe's surcharge fields exist only on this API version (public preview). */
@@ -41,7 +41,8 @@ export class SurchargeError extends Error {
       | 'changed_elsewhere'
       | 'not_yours'
       | 'already_done'
-      | 'not_ready',
+      | 'not_ready'
+      | 'brand_not_accepted',
   ) {
     super(code);
   }
@@ -145,6 +146,9 @@ export async function quoteCardPayment(groupId: string, memberId: string, paymen
 
   const pm = await stripe.paymentMethods.retrieve(paymentMethodId, {}, account);
   if (pm.type !== 'card' || !pm.card) throw new SurchargeError('not_ready');
+  // The club does not take Amex (`cardBrandRefused`): refused before any
+  // intent exists, so nothing is charged or held.
+  if (cardBrandRefused(pm.card.brand)) throw new SurchargeError('brand_not_accepted');
 
   // One intent per (member, lines, card) per ten minutes: a second tap on
   // "Continue" quotes the same intent instead of starting another.

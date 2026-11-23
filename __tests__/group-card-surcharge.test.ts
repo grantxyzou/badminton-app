@@ -240,15 +240,26 @@ describe('what a member sees before paying', () => {
     }
   });
 
-  it('Visa and Mastercard credit cards only: Amex and other brands pay no fee', async () => {
+  it('Visa and Mastercard credit cards only: other brands pay no fee', async () => {
     feeOn();
-    for (const [brand, fee] of [['visa', 64], ['mastercard', 64], ['amex', 0], ['discover', 0], ['unionpay', 0]] as const) {
+    for (const [brand, fee] of [['visa', 64], ['mastercard', 64], ['discover', 0], ['unionpay', 0]] as const) {
       resetIntents();
       card = { funding: 'credit', brand, last4: '0005' };
       surchargeDetail = { status: 'available', maximum_amount: 64 };
       const quote = await (await step({ step: 'quote', paymentMethodId: 'pm_card_1' })).json();
       expect([brand, quote.feeCents, quote.totalCents]).toEqual([brand, fee, 2700 + fee]);
     }
+  });
+});
+
+describe('American Express', () => {
+  it('is refused before anything is charged or held: the club does not take it', async () => {
+    feeOn();
+    card = { funding: 'credit', brand: 'amex', last4: '0005' };
+    const res = await step({ step: 'quote', paymentMethodId: 'pm_card_amex_1' });
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: 'brand_not_accepted' });
+    expect(fake.paymentIntents.create).not.toHaveBeenCalled();
   });
 });
 

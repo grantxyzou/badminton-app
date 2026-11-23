@@ -8,6 +8,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## The club no longer takes American Express (2026-11-23)
+
+- **Pay by card now takes Visa and Mastercard, not American Express** (`docs/plans/card-surcharge.md`). Stripe's payment page refuses an Amex number as it is typed, and the card-fee form says "We take Visa and Mastercard, not American Express" before anything is charged. The Amex logo is gone from the button. Members with only an Amex can pay by e-transfer or credit.
+
 ## The e-transfer message reads more plainly (2026-11-23)
 
 - **A finished racket now reads "Stringing service" in the e-transfer message**, after the nights: "BPM Core Nov 6, Nov 13, Stringing service - Lin". More than three nights read "& 2 more" instead of "+2" (`docs/plans/payment-order.md`).
