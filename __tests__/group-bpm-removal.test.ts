@@ -12,7 +12,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { NextRequest } from 'next/server';
 import {
   resetMockStore, seedMember, seedGroup, seedMembership, setupAdminPin, seedTestAdminMember, seedSession, seedPointer,
-  adminCookieValue, memberCookieValue, makeRequest, getStore,
+  adminCookieValue, memberCookieValue, makeRequest, getStore, seedDoc,
 } from './helpers';
 import { POST as signin } from '../app/api/auth/signin/route';
 import { DELETE as removeMember, PATCH as updateMember } from '../app/api/members/route';
@@ -385,5 +385,57 @@ describe('the third review (2026-11-25): a first PIN is on-behalf, and one rule 
     });
     expect((await removeFromGroup(req, { params: Promise.resolve({ memberId: lin.id }) })).status).toBe(200);
     expect(memberDoc(lin.id)?.role).toBe('member');
+  });
+});
+
+describe('the fourth review (2026-11-25): ids, not display names; ranks stay an organiser’s', () => {
+  it('an admin whose display name matches someone is not their owner: no first PIN for them', async () => {
+    await seedTestAdminMember();
+    seedGroup('bpm', { name: 'BPM Core' });
+    seedGroup('x', { name: 'Other Club', ownerMemberId: 'm-mallory' });
+    // The attacker picked the display name "Grant" and runs club X.
+    seedMember('Grant', { id: 'm-mallory' });
+    seedMembership('x', 'm-mallory', { name: 'Grant', role: 'owner' });
+    // The real Grant: BPM's admin, no PIN, joined X as "Grant Z".
+    const grant = seedMember('Grant', { id: 'm-grant', role: 'admin' });
+    seedMembership('bpm', grant.id, { name: 'Grant', role: 'admin' });
+    seedMembership('x', grant.id, { name: 'Grant Z' });
+    seedDoc('sessions', { id: 'x:session-2026-12-03', sessionId: 'x:session-2026-12-03', groupId: 'x', signupOpen: true });
+    seedDoc('sessions', { id: 'x:active-session-pointer', sessionId: 'x:active-session-pointer', activeSessionId: 'x:session-2026-12-03', groupId: 'x' });
+
+    const res = await createPlayer(makeRequest('POST', 'http://localhost/api/players', { name: 'Grant Z', pin: '4826', sessionSignup: false }, {
+      Cookie: `admin_session=${adminCookieValue({ groupId: 'x', memberId: 'm-mallory' })}; member_session=${memberCookieValue('Grant', 'm-mallory', 3600, 'x')}`,
+      'X-Client-IP': `r-${Math.random()}`,
+    }));
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toBe('other_club');
+    expect(memberDoc(grant.id)?.pinHash).toBeUndefined();
+  });
+
+  /** Alex: removed from BPM Core while groups were off, so still its admin on the list. */
+  async function alexStillListed() {
+    await seedTestAdminMember();
+    seedGroup('bpm', { name: 'BPM Core' });
+    const alex = seedMember('Alex', { id: 'm-alex', active: false, role: 'admin' });
+    seedMembership('bpm', alex.id, { name: 'Alex', role: 'admin' });
+    seedMember('Akane', { id: 'm-plain', role: 'admin' });
+    seedMembership('bpm', 'm-plain', { name: 'Akane', role: 'admin' });
+    return alex;
+  }
+
+  it('a plain admin cannot undo an admin’s removal', async () => {
+    const alex = await alexStillListed();
+    const res = await updateMember(makeRequest('PATCH', 'http://localhost/api/members', { id: alex.id, active: true }, {
+      Cookie: `admin_session=${adminCookieValue({ groupId: 'bpm', memberId: 'm-plain' })}`, 'X-Client-IP': `r-${Math.random()}`,
+    }));
+    expect(res.status).toBe(403);
+    expect(memberDoc(alex.id)?.active).toBe(false);
+  });
+
+  it('BPM’s organiser can', async () => {
+    const alex = await alexStillListed();
+    expect((await updateMember(asBpmAdmin('PATCH', { id: alex.id, active: true }))).status).toBe(200);
+    expect(memberDoc(alex.id)?.active).toBe(true);
+    expect(memberDoc(alex.id)?.role).toBe('admin');
   });
 });

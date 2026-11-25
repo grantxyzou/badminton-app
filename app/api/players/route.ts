@@ -448,12 +448,12 @@ export async function POST(req: NextRequest) {
        * owns the other case.
        */
       const claimAuth = existingMember ? await verifyLiveMemberAuth(req) : null;
-      const ownsExistingMember =
-        !!existingMember &&
-        !!claimAuth &&
-        (claimAuth.memberId === existingMember.id ||
-          (typeof existingMember.name === 'string' &&
-            claimAuth.name.toLowerCase() === existingMember.name.toLowerCase()));
+      // By ID only ("the id, never a name", .claude/rules/security.md). A
+      // cookie's `name` is the account's display name, which anyone chooses
+      // and nothing makes unique: an admin called "Grant" read as the owner
+      // of every account named Grant, skipped `onBehalfRefusal` below, and set
+      // that person's first PIN (fourth security review, 2026-11-25).
+      const ownsExistingMember = !!existingMember && !!claimAuth && claimAuth.memberId === existingMember.id;
       if (existingMember && !ownsExistingMember && !admin) {
         return NextResponse.json({ error: 'account_claim_needs_approval' }, { status: 403 });
       }

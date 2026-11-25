@@ -222,6 +222,10 @@ export async function PATCH(req: NextRequest) {
     const updates: Record<string, unknown> = {};
     const memberCopy = writesMemberCopy(auth.groupId);
     const revival = groupsOn() && body.active === true ? await revivalFor(auth.groupId, existing as Member) : null;
+    // Turning back on someone who is still BPM's ADMIN (removed while groups
+    // were off, which left the membership's rank) undoes an admin's removal,
+    // and removing an admin is an organiser's call (F20): so is undoing it.
+    if (revival && !revival.role && (existing as Member).role === 'admin' && !auth.organiser) return organiserOnly();
 
     // `active` FIRST, on the membership: a removal releases the roster name and
     // a restore reserves it again (`addMembership` rejoins a removed row), so
