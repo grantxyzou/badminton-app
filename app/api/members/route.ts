@@ -37,7 +37,9 @@ const groupsOn = () => isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
  * flag-off IS BPM: only BPM's admin (or the flag off) writes them. An admin of
  * another club writing `Member.role = 'admin'` onto a person who is also in
  * BPM would have minted a BPM admin for the day the flag came off, and
- * `Member.active = false` would have locked them out of every club at once.
+ * `Member.active = false` would have locked them out of every club at once —
+ * which is why, with groups on, a removal writes no Member copy from ANY club
+ * (BPM Core's included, since 2026-11-25; see DELETE).
  */
 const writesMemberCopy = (adminGroupId: string) => !groupsOn() || adminGroupId === BPM_GROUP_ID;
 const ownerImmutable = () => NextResponse.json({ error: 'owner_immutable' }, { status: 403 });
@@ -422,10 +424,20 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: 'Member not found' }, { status: 404 });
     }
     // With groups on, this is removal from THIS roster (status `removed`,
-    // name released). `Member.active` is the flag-off value and the rollback
-    // copy, written only by BPM's admin — see `writesMemberCopy`.
-    if (groupsOn() && !(await removeFromRoster(auth.groupId, id))) return ownerImmutable();
-    if (!writesMemberCopy(auth.groupId)) {
+    // name released), and nothing else: the ACCOUNT stays on, in every club.
+    //
+    // It used to write `Member.active = false` too when the club was BPM Core
+    // (the flag-off rollback copy). But every sign-in, and the admin check in
+    // every club, reads `Member.active` as "this account is on" — so a person
+    // removed from BPM Core who also belonged to, or ran, another club could
+    // no longer sign in there or act as its organiser, and nothing in that
+    // club could undo it (found by the E2E join journey, 2026-11-25,
+    // docs/plans/e2e-test-club.md). Leaving a club is not leaving the app;
+    // deleting the account is `DELETE /api/members/me`. The price: a flag-off
+    // rollback would show a person removed from BPM Core since this change on
+    // BPM's list again until an admin removes them there.
+    if (groupsOn()) {
+      if (!(await removeFromRoster(auth.groupId, id))) return ownerImmutable();
       return NextResponse.json(publicMember({ ...existing, active: false } as Record<string, unknown>));
     }
     const { resource: updated } = await container.items.upsert({ ...existing, active: false });

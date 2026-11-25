@@ -223,6 +223,23 @@ export async function adminAddToRoster(
     // A reservation whose person is gone (purged): free it and fall through.
     await releaseRosterName(groupId, trimmed);
   }
+  // A person REMOVED from this club (or who left it) under this name holds no
+  // reservation (leaving releases the name), so the lookup above cannot see them. Adding
+  // the name back means them: rejoin that account rather than make a second
+  // person — which used to happen, and then Restore on the first one failed
+  // because the duplicate held the name (2026-11-25). The latest to have
+  // joined wins; an account merged into another (`mergedInto`) is never
+  // brought back.
+  const removed = (await listMemberships(groupId, { includeInactive: true }))
+    .filter((m) => m.status !== 'active' && m.nameLower === trimmed.toLowerCase())
+    .sort((a, b) => String(b.joinedAt ?? '').localeCompare(String(a.joinedAt ?? '')));
+  for (const gone of removed) {
+    const { resource } = await container.item(gone.memberId, gone.memberId).read<Member>();
+    if (!resource || resource.mergedInto) continue;
+    const member = resource.active === true ? resource : ((await container.items.upsert({ ...resource, active: true })).resource as unknown as Member);
+    const membership = await addMembership({ groupId, memberId: gone.memberId, name: trimmed, joinedVia: 'admin', joinedAt: createdAt });
+    return { member, membership, created: false };
+  }
   const fresh: Member = {
     id: randomBytes(12).toString('hex'),
     name: trimmed,
