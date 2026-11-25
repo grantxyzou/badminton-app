@@ -328,8 +328,13 @@
 
 /* ── Light mode overrides ── */
 [data-theme="light"] {
-  --page-bg: #FAF8F5;
-  --text-primary: #1a2332;
+  /* MORNING GLASS (docs/plans/light-mode-glass.md, Grant 2026-11-25): a cool
+     near-white page lit by three soft blooms of each tab's colour, frosted
+     white glass cards over them, and deep inks that take the tab's hue. Every
+     ink below was measured on the page, on a card (white at 62% over the
+     strongest bloom) and on its tints; the lowest pair is 4.8:1. */
+  --page-bg: #F5F7F8;
+  --text-primary: #0b1720;
   /* SOLID ink, not black at an alpha: an alpha grey composites over whatever
      is behind it, so its contrast drifted by tab (muted measured 3.6:1 at the
      Home field's peak and read as faint in a bright room).
@@ -339,18 +344,20 @@
      it. These are Home's (green); the per-tab values sit just after this
      block. Every pair holds ≥7.4:1 / ≥5.5:1 on the page and ≥4.6:1 at its
      field's peak. --text-primary stays the brand ink. */
-  --text-secondary: #2f5a3f;
-  --text-muted: #4d6b57;
+  --text-secondary: #1b4a2f;
+  --text-muted: #2f5f42;
   /* Green-700, not 600. #16a34a was 3.1:1 as text on the page and 2.1:1 on
      the field — the accent carried links, labels and deltas it could not
      be read in. The deeper green also reads calmer beside the tab fields. */
-  --accent: #15803d;
-  --accent-dark: #166534;
-  /* Amber-700: #d97706 was 3.2:1 as a number on a white tile. */
-  --accent-amber: #b45309;
+  /* A deep green that holds 4.5:1 on its own tint and on a card over the
+     brightest bloom; green-700 (#15803d) did not. */
+  --accent: #066331;
+  --accent-dark: #044f26;
+  /* #b45309 (amber-700) drops under 4.5:1 over the warm blooms; this does not. */
+  --accent-amber: #8f4500;
   --color-scheme: light;
 
-  --aurora-bg: #FAF8F5;
+  --aurora-bg: #F5F7F8;
   --aurora-blob1: linear-gradient(180deg, #A8D5BA 0%, #E8F5E9 56%);
   --aurora-blob2: linear-gradient(180deg, #F5E6C8 0%, #FAF8F5 67%);
   --aurora-blob3: linear-gradient(180deg, #A8D5BA 0%, #C8E6C9 56%);
@@ -367,9 +374,10 @@
 
   /* White on #22c55e was 2.3:1 — the app's most important button failed its
      own label. Green-700 carries white at 5:1 and is the quieter green. */
-  --btn-primary-bg: linear-gradient(160deg, #1a8a47 0%, #15803d 100%);
-  --btn-primary-border: rgba(21, 128, 61, 0.45);
-  --btn-primary-shadow: 0 1px 2px rgba(21, 128, 61, 0.22), 0 2px 8px rgba(21, 128, 61, 0.14);
+  /* White on it is 7.4:1. */
+  --btn-primary-bg: #066331;
+  --btn-primary-border: #066331;
+  --btn-primary-shadow: 0 1px 2px rgba(6, 99, 49, 0.22), 0 2px 8px rgba(6, 99, 49, 0.14);
   --btn-primary-text: #fff;
   --btn-ghost-bg: linear-gradient(160deg, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.4) 100%);
   --btn-ghost-border: rgba(0, 0, 0, 0.1);
@@ -382,8 +390,9 @@
      light-nav language: #16a34a active (= light --nav-active-color),
      near-opaque white glass, hairline dark border. --rail-blur and
      --rail-indicator-radius inherit from :root (unchanged across themes). */
-  --rail-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.86) 0%, rgba(255, 255, 255, 0.95) 100%);
-  --rail-indicator-bg: linear-gradient(160deg, rgba(22, 163, 74, 0.16) 0%, rgba(22, 163, 74, 0.07) 100%);
+  --rail-bg: rgba(255, 255, 255, 0.62);
+  --rail-blur: blur(24px) saturate(180%);
+  --rail-indicator-bg: rgba(6, 99, 49, 0.14);
   /* Green-800, not the old green-600: #16a34a is 3.3:1 on the rail, and after
      the light ink pass darkened --rail-inactive the SELECTED tab was the least
      legible one on the bar (caught by review on #480). The selected tab must
@@ -395,20 +404,21 @@
 
   --input-bg: linear-gradient(160deg, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0.55) 100%);
   --input-border: rgba(0, 0, 0, 0.1);
-  --input-text: #1a2332;
+  --input-text: #0b1720;
   --input-placeholder: rgba(0, 0, 0, 0.35);
-  --input-focus-border: rgba(22, 163, 74, 0.5);
-  --input-focus-ring: rgba(22, 163, 74, 0.12);
+  --input-focus-border: rgba(6, 99, 49, 0.5);
+  --input-focus-ring: rgba(6, 99, 49, 0.12);
   --input-inset: rgba(255, 255, 255, 0.4);
   --select-option-bg: #ffffff;
-  --select-option-text: #1a2332;
+  --select-option-text: #0b1720;
 
-  --segment-bg: rgba(0, 0, 0, 0.05);
-  --segment-active-bg: rgba(21, 128, 61, 0.14);
-  /* #166534, not #15803d: accent on its own tint over cream measured 3.55:1 in
-     the browser (stringing audit 2026-10-11, A2); this reads 5.1:1. Pinned by
-     design-canary. */
-  --segment-active-text: #166534;
+  /* A frosted track with a near-white pill on the chosen tab. */
+  --segment-bg: rgba(255, 255, 255, 0.45);
+  --segment-active-bg: rgba(255, 255, 255, 0.95);
+  /* --accent-dark, not --accent: accent on a tint measured 3.55:1 in the
+     browser (stringing audit 2026-10-11, A2); this reads 9:1 on the pill.
+     Pinned by design-canary. */
+  --segment-active-text: #044f26;
   --segment-inactive-text: var(--text-muted);
 
   /* ── Release notes terminal — light ── */
@@ -416,7 +426,8 @@
   --terminal-titlebar-bg: #e5e7eb;
   /* #4b5563: 6.1:1 on the light title bar, where #6b7280 read 3.9:1. */
   --terminal-prompt: #4b5563;
-  --terminal-accent: #b8942d;
+  /* #b8942d was 2.9:1 on the white terminal; this gold is 6.5:1. */
+  --terminal-accent: #6f540c;
   --terminal-date: #6b7280;
   --terminal-title: #1a2332;
   --terminal-body: #374151;
@@ -427,7 +438,7 @@
   --banner-orange-border: rgba(251, 146, 60, 0.42);
   --banner-red-bg: rgba(239, 68, 68, 0.08);
   --banner-red-border: rgba(220, 38, 38, 0.40);
-  --banner-green-solid: #e3f5ea;
+  --banner-green-solid: #d4f1df;
   --banner-orange-solid: #fcefdc;
   --banner-red-solid: #fde8e8;
 
@@ -450,7 +461,11 @@
   --highlight-green: rgba(22, 163, 74, 0.06);
   --highlight-amber: rgba(217, 119, 6, 0.06);
 
-  --inner-card-bg: rgba(0, 0, 0, 0.02);
+  /* A card inside a card is tinted with its tab's colour (this is Home's
+     green; the per-tab values follow this block). White frost inside white
+     frost disappeared (Grant on the canvas: "the card lost its nested card").
+     Ink on it stays ≥ 5.4:1. */
+  --inner-card-bg: rgba(22, 163, 74, 0.09);
   --inner-card-border: rgba(0, 0, 0, 0.05);
   --press-bg: rgba(0, 0, 0, 0.06);
   /* Stats tiles and bars, quieter: see the dark block for why these are tokens. */
@@ -505,7 +520,7 @@
   --divider-dashed: rgba(0, 0, 0, 0.18);
   --thumb-tile: rgba(0, 0, 0, 0.045);
 
-  --pin-color: #dc2626;
+  --pin-color: #b91c1c;
 }
 
 /* Per-tab ink (light). Each tab's secondary/muted text is a deep shade of its
@@ -513,10 +528,10 @@
    `data-theme` both live on <html>, so this outranks the base light block;
    sheets portal into <body> and inherit it, matching their tab's field.
    Home is the base values (and the un-attributed first paint). */
-html[data-theme="light"][data-tab="stringing"] { --text-secondary: #5e4a2e; --text-muted: #76603f; }
-html[data-theme="light"][data-tab="skills"]  { --text-secondary: #334d70; --text-muted: #4c6386; }
-html[data-theme="light"][data-tab="profile"] { --text-secondary: #4a3f73; --text-muted: #62588a; }
-html[data-theme="light"][data-tab="admin"]   { --text-secondary: #6a4128; --text-muted: #825a42; }
+html[data-theme="light"][data-tab="stringing"] { --text-secondary: #523a10; --text-muted: #674a1c; --inner-card-bg: rgba(217, 119, 6, 0.10); }
+html[data-theme="light"][data-tab="skills"]  { --text-secondary: #1b3e69; --text-muted: #31527b; --inner-card-bg: rgba(59, 130, 246, 0.10); }
+html[data-theme="light"][data-tab="profile"] { --text-secondary: #3d2b73; --text-muted: #4f3c84; --inner-card-bg: rgba(124, 58, 237, 0.08); }
+html[data-theme="light"][data-tab="admin"]   { --text-secondary: #62300f; --text-muted: #773f1e; --inner-card-bg: rgba(234, 88, 12, 0.09); }
 
 /* ══════════════════════════════════════════════════════════
    Light mode Tailwind class overrides
@@ -529,7 +544,7 @@ html[data-theme="light"][data-tab="admin"]   { --text-secondary: #6a4128; --text
 [data-theme="light"] .text-gray-600 { color: #6b7280; }
 [data-theme="light"] .text-green-400 { color: var(--accent); }
 [data-theme="light"] .text-green-300 { color: #15803d; }
-[data-theme="light"] .text-amber-400 { color: #b45309; }
+[data-theme="light"] .text-amber-400 { color: #8f4500; }
 /* The warn banner's TITLE. #b45309 on --banner-orange-solid measured 4.43:1 in
    the browser (stringing audit 2026-10-11, A1); #9a4408 reads 5.8:1. The icon
    keeps -400: non-text, 3:1 is its bar and it clears it. Pinned by design-canary. */
@@ -538,11 +553,11 @@ html[data-theme="light"][data-tab="admin"]   { --text-secondary: #6a4128; --text
    this job"): accent on the tint measured 4.44:1 in light; accent-dark reads
    6.3:1 (pinned by design-canary). Light only — dark's accent clears it. */
 [data-theme="light"] .section-label-on-tint { color: var(--accent-dark); }
-[data-theme="light"] .text-orange-400 { color: #c2410c; }
-[data-theme="light"] .text-orange-300 { color: #c2410c; }
-[data-theme="light"] .text-red-400 { color: #dc2626; }
+[data-theme="light"] .text-orange-400 { color: #9a3412; }
+[data-theme="light"] .text-orange-300 { color: #9a3412; }
+[data-theme="light"] .text-red-400 { color: #b91c1c; }
 [data-theme="light"] .text-red-300 { color: #b91c1c; }
-[data-theme="light"] .text-blue-400 { color: #2563eb; }
+[data-theme="light"] .text-blue-400 { color: #1d4ed8; }
 [data-theme="light"] .bg-white\/5 { background: rgba(0, 0, 0, 0.03); }
 [data-theme="light"] .bg-white\/10 { background: rgba(0, 0, 0, 0.05); }
 [data-theme="light"] .bg-white\/20 { background: rgba(0, 0, 0, 0.08); }
@@ -558,7 +573,7 @@ html[data-theme="light"][data-tab="admin"]   { --text-secondary: #6a4128; --text
   [data-theme="light"] .hover\:bg-white\/10:hover { background: rgba(0, 0, 0, 0.05); }
   [data-theme="light"] .hover\:text-white:hover { color: var(--text-primary); }
   [data-theme="light"] .hover\:text-red-300:hover { color: #b91c1c; }
-  [data-theme="light"] .hover\:text-red-400:hover { color: #dc2626; }
+  [data-theme="light"] .hover\:text-red-400:hover { color: #b91c1c; }
   [data-theme="light"] .hover\:text-green-300:hover { color: #22c55e; }
   [data-theme="light"] .hover\:text-amber-300:hover { color: #b45309; }
   /* Gaps closed in the design-audit palette pass — these hover utilities were
@@ -622,16 +637,16 @@ html[data-theme="light"][data-tab="admin"]   { --text-secondary: #6a4128; --text
   --ease-out-quart: cubic-bezier(0.165, 0.84, 0.44, 1);
 }
 [data-theme="light"] {
-  --color-red: #dc2626;
-  --color-amber: #b45309;
+  --color-red: #b91c1c;
+  --color-amber: #8f4500;
   --border: rgba(0, 0, 0, 0.08);
   --border-subtle: rgba(0, 0, 0, 0.05);
-  --sev-warn: #b45309;
-  /* Light --sev-warn is a deep amber: white reads ~5.8:1 on it. */
+  --sev-warn: #8f4500;
+  /* Light --sev-warn is a deep amber: white reads 6.8:1 on it. */
   --on-warn: #fff;
   --bg-surface: #ffffff;
   --bg-elevated: #ffffff;
-  --sheet-footer-bg: rgba(250, 248, 245, 0.78);
+  --sheet-footer-bg: rgba(245, 247, 248, 0.78);
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -1053,12 +1068,14 @@ body {
   /* Half the dark mode's share. On a light page a hue at .30 is not a ground,
      it is a wash: Sign-Ups read amber-flooded and every card over it went
      muddy. The tab stays recognisable by hue; it no longer tints the ink. */
-  --field-home:      radial-gradient(120% 70% at 78% 4%, rgba(22, 163, 74, 0.16), transparent 70%);
-  --field-signups:   radial-gradient(120% 70% at 78% 4%, rgba(217, 119, 6, 0.13), transparent 70%);
-  --field-stats:     radial-gradient(120% 70% at 78% 4%, rgba(96, 165, 250, 0.18), transparent 70%);
-  --field-profile:   radial-gradient(120% 70% at 78% 4%, rgba(167, 139, 250, 0.16), transparent 70%);
-  --field-admin:     radial-gradient(120% 70% at 78% 4%, rgba(234, 88, 12, 0.12), transparent 70%);
-  --field-scrim:     linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, transparent 42%, rgba(255, 255, 255, 0.14) 100%);
+  /* Morning glass: three soft blooms per tab (top right, mid left, bottom
+     right) in the tab's family of colours, for the frosted cards to catch. */
+  --field-home:      radial-gradient(70% 42% at 88% 6%, rgba(134, 239, 172, 0.55), transparent 70%), radial-gradient(60% 38% at 0% 46%, rgba(103, 232, 249, 0.35), transparent 70%), radial-gradient(70% 40% at 88% 92%, rgba(217, 249, 157, 0.40), transparent 70%);
+  --field-signups:   radial-gradient(70% 42% at 88% 6%, rgba(253, 186, 116, 0.50), transparent 70%), radial-gradient(60% 38% at 0% 46%, rgba(253, 230, 138, 0.55), transparent 70%), radial-gradient(70% 40% at 88% 92%, rgba(254, 205, 211, 0.35), transparent 70%);
+  --field-stats:     radial-gradient(70% 42% at 88% 6%, rgba(147, 197, 253, 0.55), transparent 70%), radial-gradient(60% 38% at 0% 46%, rgba(165, 180, 252, 0.40), transparent 70%), radial-gradient(70% 40% at 88% 92%, rgba(153, 246, 228, 0.30), transparent 70%);
+  --field-profile:   radial-gradient(70% 42% at 88% 6%, rgba(196, 181, 253, 0.55), transparent 70%), radial-gradient(60% 38% at 0% 46%, rgba(249, 168, 212, 0.38), transparent 70%), radial-gradient(70% 40% at 88% 92%, rgba(186, 230, 253, 0.30), transparent 70%);
+  --field-admin:     radial-gradient(70% 42% at 88% 6%, rgba(253, 186, 116, 0.50), transparent 70%), radial-gradient(60% 38% at 0% 46%, rgba(252, 165, 165, 0.38), transparent 70%), radial-gradient(70% 40% at 88% 92%, rgba(253, 230, 138, 0.35), transparent 70%);
+  --field-scrim:     linear-gradient(180deg, rgba(255, 255, 255, 0.10) 0%, transparent 42%);
 
 
   /* ── Card materials ──
@@ -1074,10 +1091,12 @@ body {
      opaque fill, a 1px ink ring (an inset shadow, so layout does not move),
      and a SHORT shadow — a hairline paired with a wide soft shadow is the
      ghost-card look. */
-  --fcard-bg:         linear-gradient(160deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.90));
-  --fcard-blur:       blur(20px) saturate(120%);
-  --fcard-inset:      inset 0 1px 0 rgba(255, 255, 255, 0.90), inset 0 0 0 1px rgba(26, 35, 50, 0.10);
-  --fcard-shadow:     0 1px 2px rgba(26, 35, 50, 0.08), 0 3px 8px rgba(26, 35, 50, 0.06);
+  /* Frosted white glass: white at 74%→62% over the blooms, a real blur, a
+     bright top edge and a soft lift — no drawn ring (fill-only, DESIGN.md §9). */
+  --fcard-bg:         linear-gradient(160deg, rgba(255, 255, 255, 0.74), rgba(255, 255, 255, 0.62));
+  --fcard-blur:       blur(22px) saturate(180%);
+  --fcard-inset:      inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 -1px 0 rgba(255, 255, 255, 0.35);
+  --fcard-shadow:     0 8px 28px rgba(31, 41, 55, 0.10), 0 1px 3px rgba(31, 41, 55, 0.06);
   /* Quieter in light: one hue per tile at a muted depth, no gradient that
      runs through two hues (Mental went amber → red), and every stop dark
      enough for the white type on it (≥6:1). */
@@ -1217,7 +1236,7 @@ p[role='alert'] {
   --topbar-border-scrolled: rgba(255, 255, 255, 0.06);
 }
 [data-theme="light"] {
-  --topbar-bg-scrolled: rgba(248, 246, 240, 0.97);
+  --topbar-bg-scrolled: rgba(245, 247, 248, 0.92);
   --topbar-border-scrolled: rgba(20, 30, 50, 0.08);
 }
 
@@ -1685,7 +1704,7 @@ html[data-tab="stringing"] .court-bg::before {
 
 [data-theme="light"] html[data-tab="stringing"] .court-bg::before,
 html[data-tab="stringing"][data-theme="light"] .court-bg::before {
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 220'><g fill='none' stroke='%2316a34a' stroke-width='0.5' opacity='0.20' vector-effect='non-scaling-stroke'><rect x='0' y='0' width='100' height='220'/><line x1='7.54' y1='0' x2='7.54' y2='220'/><line x1='92.46' y1='0' x2='92.46' y2='220'/><line x1='0' y1='77.5' x2='100' y2='77.5'/><line x1='0' y1='142.5' x2='100' y2='142.5'/><line x1='0' y1='12.5' x2='100' y2='12.5'/><line x1='0' y1='207.5' x2='100' y2='207.5'/><line x1='50' y1='0' x2='50' y2='77.5'/><line x1='50' y1='142.5' x2='50' y2='220'/></g><line x1='0' y1='110' x2='100' y2='110' stroke='%2316a34a' stroke-width='0.9' stroke-dasharray='2 2' opacity='0.32' vector-effect='non-scaling-stroke'/></svg>");
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 220'><g fill='none' stroke='%238a5a0a' stroke-width='0.5' opacity='0.26' vector-effect='non-scaling-stroke'><rect x='0' y='0' width='100' height='220'/><line x1='7.54' y1='0' x2='7.54' y2='220'/><line x1='92.46' y1='0' x2='92.46' y2='220'/><line x1='0' y1='77.5' x2='100' y2='77.5'/><line x1='0' y1='142.5' x2='100' y2='142.5'/><line x1='0' y1='12.5' x2='100' y2='12.5'/><line x1='0' y1='207.5' x2='100' y2='207.5'/><line x1='50' y1='0' x2='50' y2='77.5'/><line x1='50' y1='142.5' x2='50' y2='220'/></g><line x1='0' y1='110' x2='100' y2='110' stroke='%238a5a0a' stroke-width='0.9' stroke-dasharray='2 2' opacity='0.36' vector-effect='non-scaling-stroke'/></svg>");
 }
 
 /* ── 05 Tempo Field — the Stats MOTIF ──
@@ -1713,7 +1732,7 @@ html[data-tab="skills"] .court-bg::before {
 [data-theme="light"] html[data-tab="skills"] .court-bg::before,
 html[data-tab="skills"][data-theme="light"] .court-bg::before {
   background-image:
-    radial-gradient(circle at 50% 50%, rgba(22, 163, 74, 0.18) 1.5px, transparent 2px);
+    radial-gradient(circle at 50% 50%, rgba(27, 62, 105, 0.20) 1.5px, transparent 2px);
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
@@ -1883,6 +1902,14 @@ html:root[data-tab="skills"] .court-bg {
 html:root[data-tab="skills"] .court-bg::before {
   background-image:
     radial-gradient(circle at 50% 50%, rgba(74, 222, 128, 0.14) 1.5px, transparent 2px);
+}
+/* Light: the dots in the Stats tab's own blue-grey ink. This has to sit AFTER
+   the rule above and outrank it: the base light dot rule earlier in the file
+   ties it on specificity and loses on order, so light Stats was showing the
+   dark mode's green dots. */
+html:root[data-theme="light"][data-tab="skills"] .court-bg::before {
+  background-image:
+    radial-gradient(circle at 50% 50%, rgba(27, 62, 105, 0.20) 1.5px, transparent 2px);
 }
 
 /* Profile and Admin had no per-tab override at all — they fell through to the
@@ -2277,6 +2304,12 @@ html:root[data-theme="light"] .rail-bar {
 
    Cards that are deliberately full-bleed (a list that should clip to the card
    edge) opt out with .is-flush rather than fighting this with an inline zero. */
+/* Light: the card is its frost and nothing else. The card rule above layers
+   a radial highlight over --fcard-bg, which in light mode is black at 7% and
+   read as a grey smudge in the middle of every card. */
+html:root[data-theme="light"] .glass-card {
+  background: var(--fcard-bg);
+}
 html:root .glass-card {
   padding: var(--fcard-pad);
 }

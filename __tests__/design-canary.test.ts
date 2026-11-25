@@ -494,7 +494,10 @@ describe('design-system canary: motion', () => {
  * by arithmetic over the CSS so a later tint change cannot slip back.
  */
 describe('light-theme ink on tints clears 4.5:1', () => {
-  const PAGE = '#faf8f5'; // --page-bg (light)
+  // --page-bg (light). Since Morning Glass (2026-11-25,
+  // docs/plans/light-mode-glass.md) the cards are white frost over this, so
+  // they are lighter than the page and the page is the darker ground.
+  const PAGE = '#f5f7f8';
 
   const hex = (h: string) => {
     const m = h.replace('#', '');
