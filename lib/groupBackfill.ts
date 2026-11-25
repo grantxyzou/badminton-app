@@ -138,10 +138,14 @@ export interface BackfillStatus {
     mismatched: number;
     /**
      * Accounts switched off (`active: false`, not merged into another) that
-     * still hold an ACTIVE membership in some club: they cannot sign in to it,
-     * or act as its admin. What a removal from BPM Core did before 2026-11-25
-     * to anyone in a second club. With groups on, a run turns them back on
-     * (`memberships.reactivated`). Additive.
+     * are off BPM Core's list and still hold an ACTIVE membership in another
+     * club: they cannot sign in to it, or act as its admin. What a removal
+     * from BPM Core did before 2026-11-25 to anyone in a second club. With
+     * groups on, a run turns them back on, without an admin rank on the
+     * rollback copy (`memberships.reactivated`). An account switched off
+     * while still on BPM's list (a removal made during a flag-off rollback)
+     * is not counted here: it is `mismatched`, for a person to reconcile.
+     * Additive.
      */
     lockedOut?: number;
   };
@@ -277,7 +281,15 @@ async function lockedOutAccounts(members: Member[]): Promise<Member[]> {
   for (const m of members) {
     if (m.active === true || m.mergedInto) continue;
     const memberships = await listMembershipsForMember(m.id);
-    if (memberships.some((ms) => ms.status === 'active')) out.push(m);
+    // The old removal's shape exactly: OFF BPM Core's list, ON another's. An
+    // account switched off while its BPM place is still active is something
+    // else — a removal made during a flag-off rollback, which writes only
+    // `Member.active` — and turning it on would undo a removal someone chose
+    // (security review, 2026-11-25). That one shows in `mismatched`, for a
+    // person to reconcile.
+    const onBpm = memberships.some((ms) => ms.groupId === BPM_GROUP_ID && ms.status === 'active');
+    const elsewhere = memberships.some((ms) => ms.groupId !== BPM_GROUP_ID && ms.status === 'active');
+    if (!onBpm && elsewhere) out.push(m);
   }
   return out;
 }
@@ -591,8 +603,10 @@ export async function runBackfill(opts: {
         const item = getContainer('members').item(m.id, m.id);
         const { resource } = await item.read<Member & { _etag?: string }>();
         if (!resource || resource.active === true || resource.mergedInto) continue;
+        // Not BPM's admin any more (they are off its list), so the rollback
+        // copy of the rank goes with the repair (lib/rollbackRank.ts).
         await item.replace(
-          { ...resource, active: true },
+          { ...resource, active: true, ...(resource.role === 'admin' ? { role: 'member' as const } : {}) },
           resource._etag ? { accessCondition: { type: 'IfMatch', condition: resource._etag } } : undefined,
         );
         summary.memberships.reactivated += 1;

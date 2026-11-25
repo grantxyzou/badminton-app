@@ -478,7 +478,15 @@ export async function POST(req: NextRequest) {
       // An admin creating a fresh account here is adding them to THIS roster:
       // with groups on the person and their membership come from one helper
       // (rejoining the name's holder here rather than minting a duplicate).
-      const base = groupsOn() && !existingMember ? (await adminAddToRoster(accountGroupId, trimmedName)).member : null;
+      const added = groupsOn() && !existingMember ? await adminAddToRoster(accountGroupId, trimmedName) : null;
+      // The holder of the name may be someone's EXISTING account that the
+      // lookup above could not see (switched off, so `resolveActiveMemberId`
+      // passed it by). Writing this PIN onto it would skip both guards above —
+      // `account_exists` and `onBehalfRefusal` — and let an admin sign in as
+      // them in every club (security review, 2026-11-25). This path makes NEW
+      // accounts; an existing one is refused like any other.
+      if (added && !added.created) return NextResponse.json({ error: 'account_exists' }, { status: 409 });
+      const base = added?.member ?? null;
       const { resource } = await membersContainer.items.upsert(base ? { ...base, ...memberDoc, id: base.id, createdAt: base.createdAt } : memberDoc);
       const safe = resource as Record<string, unknown> | undefined;
       // Audit C3: the upsert can return undefined (partial Cosmos response,
@@ -572,7 +580,12 @@ export async function POST(req: NextRequest) {
       // With groups on: rejoin the name's holder here, else a new person —
       // never the global reactivation scan below, which would resurrect
       // another club's soft-deleted person onto this roster.
-      matchedMember = (await adminAddToRoster(scope.groupId, trimmedName)).member as unknown as typeof matchedMember;
+      const added = await adminAddToRoster(scope.groupId, trimmedName);
+      matchedMember = added.member as unknown as typeof matchedMember;
+      // An existing account found by NAME (a holder the active lookup could
+      // not see) never gets a PIN from an admin's sign-up on their behalf:
+      // only an account made just now does (security review, 2026-11-25).
+      if (!added.created) pinHash = undefined;
     } else if (!matchedMember && admin) {
       const { resources: anyNamed } = await membersContainer.items
         .query({

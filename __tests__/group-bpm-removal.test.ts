@@ -11,12 +11,13 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { NextRequest } from 'next/server';
 import {
-  resetMockStore, seedMember, seedGroup, seedMembership, setupAdminPin, seedTestAdminMember,
+  resetMockStore, seedMember, seedGroup, seedMembership, setupAdminPin, seedTestAdminMember, seedSession, seedPointer,
   adminCookieValue, memberCookieValue, makeRequest, getStore,
 } from './helpers';
 import { POST as signin } from '../app/api/auth/signin/route';
 import { DELETE as removeMember, PATCH as updateMember } from '../app/api/members/route';
 import { POST as createPlayer } from '../app/api/players/route';
+import { DELETE as removeFromGroup } from '../app/api/groups/members/[memberId]/route';
 import { GET as current } from '../app/api/groups/current/route';
 import { reserveIdentity } from '../lib/authIdentity';
 import { hashPassword } from '../lib/passwordHash';
@@ -194,5 +195,113 @@ describe('the multi-club migration, with clubs on', () => {
     expect(memberDoc(merged.id)?.active).toBe(false);
     expect(memberDoc(gone.id)?.active).toBe(false);
     expect((await backfillStatus()).members.lockedOut).toBe(0);
+  });
+});
+
+describe('the second review (2026-11-25): no credential through a name, no half-done refusal', () => {
+  /** Someone the old BPM Core removal switched off while their place on the list stayed. */
+  async function lockedButListed() {
+    await seedTestAdminMember();
+    seedGroup('bpm', { name: 'BPM Core' });
+    const v = seedMember('Viktor', { id: 'm-v', active: false, pinHash: await hashPin('1111') });
+    seedMembership('bpm', v.id, { name: 'Viktor' }); // active, name reserved
+    return v;
+  }
+  /** A plain BPM admin: not an organiser. */
+  function plainAdmin() {
+    seedMember('Akane', { id: 'm-plain', role: 'admin' });
+    seedMembership('bpm', 'm-plain', { name: 'Akane', role: 'admin' });
+    return `admin_session=${adminCookieValue({ groupId: 'bpm', memberId: 'm-plain' })}`;
+  }
+  const post = (body: Record<string, unknown>, cookie = `admin_session=${adminCookieValue({ groupId: 'bpm' })}`) =>
+    createPlayer(makeRequest('POST', 'http://localhost/api/players', body, { Cookie: cookie, 'X-Client-IP': `r-${Math.random()}` }));
+
+  it('"create account" on a switched-off holder’s name is refused and writes no PIN', async () => {
+    const v = await lockedButListed();
+    const before = memberDoc(v.id)?.pinHash;
+    const res = await post({ name: 'Viktor', pin: '4821', sessionSignup: false });
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toBe('account_exists');
+    expect(memberDoc(v.id)?.pinHash).toBe(before);
+  });
+
+  it('an admin signing that name up for a night writes no PIN onto it either', async () => {
+    const v = await lockedButListed();
+    memberDoc(v.id)!.pinHash = undefined; // no PIN: the "first PIN" case
+    seedSession('session-2026-12-03', { signupOpen: true });
+    seedPointer('session-2026-12-03');
+    await post({ name: 'Viktor', pin: '4821' });
+    expect(memberDoc(v.id)?.pinHash).toBeUndefined();
+  });
+
+  it('a plain admin’s restore that names a rank is refused before anything is written', async () => {
+    await seedTestAdminMember();
+    seedGroup('bpm', { name: 'BPM Core' });
+    const lin = seedMember('Lin', { id: 'm-lin', active: false });
+    seedMembership('bpm', lin.id, { name: 'Lin', status: 'removed' });
+    const cookie = plainAdmin();
+    const res = await updateMember(makeRequest('PATCH', 'http://localhost/api/members', { id: lin.id, active: true, role: 'admin' }, { Cookie: cookie, 'X-Client-IP': `r-${Math.random()}` }));
+    expect(res.status).toBe(403);
+    expect((await readMembership('bpm', lin.id))?.status).toBe('removed');
+    expect(memberDoc(lin.id)?.active).toBe(false);
+  });
+
+  it('a rank named for someone off the list writes no admin onto the rollback copy', async () => {
+    await seedTestAdminMember();
+    seedGroup('bpm', { name: 'BPM Core' });
+    const lin = seedMember('Lin', { id: 'm-lin' });
+    seedMembership('bpm', lin.id, { name: 'Lin', status: 'removed' });
+    const cookie = plainAdmin();
+    await updateMember(makeRequest('PATCH', 'http://localhost/api/members', { id: lin.id, role: 'admin' }, { Cookie: cookie, 'X-Client-IP': `r-${Math.random()}` }));
+    expect(memberDoc(lin.id)?.role).toBe('member');
+  });
+
+  it('Restore of an account the old removal switched off drops a leftover admin rank', async () => {
+    await seedTestAdminMember();
+    seedGroup('bpm', { name: 'BPM Core' });
+    const lin = seedMember('Lin', { id: 'm-lin', active: false, role: 'admin' });
+    seedMembership('bpm', lin.id, { name: 'Lin', status: 'removed' });
+    await updateMember(asBpmAdmin('PATCH', { id: lin.id, active: true }));
+    expect(memberDoc(lin.id)?.active).toBe(true);
+    expect(memberDoc(lin.id)?.role).toBe('member'); // back as a member, not BPM's admin
+  });
+
+  it('the club-members route’s removal drops the rollback rank too', async () => {
+    const lin = await linInTwoClubs({ bpmAdmin: true });
+    const req = new NextRequest(`http://localhost/api/groups/members/${lin.id}`, {
+      method: 'DELETE',
+      headers: { cookie: `admin_session=${adminCookieValue({ groupId: 'bpm' })}`, 'x-client-ip': `r-${Math.random()}` },
+    });
+    expect((await removeFromGroup(req, { params: Promise.resolve({ memberId: lin.id }) })).status).toBe(200);
+    expect(memberDoc(lin.id)?.role).toBe('member');
+    expect(memberDoc(lin.id)?.active).toBe(true);
+  });
+
+  it('the migration leaves alone an account switched off while still on BPM’s list', async () => {
+    // A removal made during a flag-off rollback writes only Member.active:
+    // turning it back on would undo a removal someone chose.
+    await seedTestAdminMember();
+    seedGroup('bpm', { name: 'BPM Core' });
+    seedGroup('x', { name: 'Other Club', ownerMemberId: 'm-bob' });
+    const bob = seedMember('Bob', { id: 'm-bob', active: false });
+    seedMembership('bpm', bob.id, { name: 'Bob' });
+    seedMembership('x', bob.id, { name: 'Bob', role: 'owner' });
+
+    expect((await backfillStatus()).members.lockedOut).toBe(0);
+    const run = await runBackfill({ dryRun: false });
+    expect(run.memberships.reactivated).toBe(0);
+    expect(memberDoc(bob.id)?.active).toBe(false);
+  });
+
+  it('the migration’s repair drops a leftover admin rank', async () => {
+    await seedTestAdminMember();
+    seedGroup('bpm', { name: 'BPM Core' });
+    seedGroup('x', { name: 'Other Club', ownerMemberId: 'm-locked' });
+    const locked = seedMember('Lin', { id: 'm-locked', active: false, role: 'admin' });
+    seedMembership('bpm', locked.id, { name: 'Lin', status: 'removed' });
+    seedMembership('x', locked.id, { name: 'Lin', role: 'owner' });
+    await runBackfill({ dryRun: false });
+    expect(memberDoc(locked.id)?.active).toBe(true);
+    expect(memberDoc(locked.id)?.role).toBe('member');
   });
 });

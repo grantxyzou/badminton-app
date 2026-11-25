@@ -21,7 +21,7 @@ import {
 import { normalizeAvatar } from '@/lib/memberAvatar';
 import { onBehalfRefusal, onBehalfRefused } from '@/lib/onBehalfGuard';
 import { carryRosterRename } from '@/lib/rosterRename';
-import type { Member } from '@/lib/types';
+import { demoteRollbackRank } from '@/lib/rollbackRank';
 
 const groupsOn = () => isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
 
@@ -45,31 +45,6 @@ const groupsOn = () => isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
 const writesMemberCopy = (adminGroupId: string) => !groupsOn() || adminGroupId === BPM_GROUP_ID;
 const ownerImmutable = () => NextResponse.json({ error: 'owner_immutable' }, { status: 403 });
 
-/**
- * `Member.role = 'member'`, under `IfMatch` on a fresh read: the rollback copy
- * of a BPM admin's rank, dropped when BPM Core takes them off its list with
- * groups on (see DELETE). Nothing reads `Member.role` with groups on, so it
- * changes nothing until a flag-off rollback, where it stops a removed admin
- * being an admin again.
- */
-async function demoteRollbackRank(id: string): Promise<void> {
-  const container = getContainer('members');
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const { resource } = await container.item(id, id).read<Member & { _etag?: string }>();
-    if (!resource || resource.role !== 'admin') return;
-    try {
-      await container.item(id, id).replace(
-        { ...resource, role: 'member' },
-        resource._etag ? { accessCondition: { type: 'IfMatch', condition: resource._etag } } : undefined,
-      );
-      return;
-    } catch (err) {
-      if ((err as { code?: number }).code === 412) continue;
-      throw err;
-    }
-  }
-  throw new Error('demote rollback rank kept conflicting');
-}
 /** Ranks and the gift-card switch are an ORGANISER's to hand out (docs/plans/roles-v2.md). */
 const organiserOnly = () => NextResponse.json({ error: 'organiser_only' }, { status: 403 });
 
@@ -216,6 +191,20 @@ export async function PATCH(req: NextRequest) {
       if (refusal) return onBehalfRefused(refusal);
     }
 
+    // A rank change is an organiser's (the role step below). Decided HERE,
+    // before any write: the `active` step brings a removed membership back
+    // first, so a refusal made only in the role step left the person on the
+    // roster with the rest of the body unwritten (security review, 2026-11-25).
+    // `after` is the rank the membership will hold once the `active` step ran.
+    if (groupsOn() && membership && !auth.organiser && typeof body.role === 'string' && ['owner', 'admin', 'member'].includes(body.role)) {
+      const after = body.active === false
+        ? undefined
+        : membership.status === 'active'
+          ? membership.role
+          : body.active === true ? 'member' : undefined;
+      if (after && after !== 'owner' && after !== body.role) return organiserOnly();
+    }
+
     const container = getContainer('members');
     const { resource: existing } = await container.item(id, id).read();
     if (!existing) {
@@ -300,6 +289,10 @@ export async function PATCH(req: NextRequest) {
     }
     if (typeof body.role === 'string' && ['owner', 'admin', 'member'].includes(body.role)) {
       const role = body.role as 'owner' | 'admin' | 'member';
+      // With groups on, the Member copy follows only a rank this roster really
+      // holds: a body naming a rank for someone OFF the roster changes no
+      // membership, and must not write `admin` onto the rollback copy either.
+      let rankHeld = !groupsOn();
       if (groupsOn()) {
         // Re-read: the `active` step above may have removed or revived the row.
         // A removed membership keeps no role (a rejoin starts as member). An
@@ -309,6 +302,7 @@ export async function PATCH(req: NextRequest) {
         // organiser's to make — an admin saving a name edit sends the rank
         // unchanged and passes.
         const current = await readMembership(auth.groupId, id);
+        rankHeld = current?.status === 'active';
         if (current?.status === 'active') {
           if (current.role === 'owner') {
             if (role === 'member') return ownerImmutable();
@@ -323,7 +317,7 @@ export async function PATCH(req: NextRequest) {
         return NextResponse.json({ error: 'invalid_role' }, { status: 400 });
       }
       // The Member copy knows two roles: an organiser is an admin there.
-      if (memberCopy) updates.role = role === 'member' ? 'member' : 'admin';
+      if (memberCopy && rankHeld) updates.role = role === 'member' ? 'member' : 'admin';
     }
     // Taken off BPM Core's list with groups on: the account stays on (above),
     // so the rollback copy of the RANK must go, or a flag-off rollback would
@@ -332,6 +326,13 @@ export async function PATCH(req: NextRequest) {
     // old rank back would otherwise undo.
     if (groupsOn() && memberCopy && body.active === false && membership?.status === 'active') {
       updates.role = 'member';
+    }
+    // And an account turned back ON (the `active` step) keeps an admin copy
+    // only while it is really BPM's admin: one switched off by the old removal
+    // may still carry `admin` from before it.
+    if (groupsOn() && updates.active === true && (updates.role ?? existing.role) === 'admin') {
+      const bpm = await readMembership(BPM_GROUP_ID, id);
+      if (!(bpm?.status === 'active' && (bpm.role === 'admin' || bpm.role === 'owner'))) updates.role = 'member';
     }
     // Orthogonal to `role` on purpose — see Member.canString. Per club since
     // roles v2 PR 2 (the MEMBERSHIP is what the bench reads);

@@ -216,7 +216,15 @@ export async function adminAddToRoster(
   if (holderId) {
     const { resource } = await container.item(holderId, holderId).read<Member>();
     if (resource) {
-      const member = resource.active === true ? resource : ((await container.items.upsert({ ...resource, active: true })).resource as unknown as Member);
+      // An account MERGED into another stays off: that is what merging means.
+      // Any other switched-off holder is one the old BPM Core removal locked
+      // out while it kept this place, and comes back on. It comes back with no
+      // credential: `created: false` tells every caller this is someone's
+      // existing account, which a by-name add never writes a PIN onto
+      // (security review, 2026-11-25; app/api/players/route.ts).
+      const member = resource.active === true || resource.mergedInto
+        ? resource
+        : ((await container.items.upsert({ ...resource, active: true })).resource as unknown as Member);
       const membership = await addMembership({ groupId, memberId: holderId, name: trimmed, joinedVia: 'admin', joinedAt: createdAt });
       return { member, membership, created: false };
     }

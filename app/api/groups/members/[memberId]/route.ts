@@ -27,6 +27,8 @@ import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { readGroup, readMembership, removeFromRoster, setMembershipRole } from '@/lib/groups';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { groupsOn, featureOff, rateLimited } from '@/lib/groupRoutes';
+import { BPM_GROUP_ID } from '@/lib/groupScope';
+import { demoteRollbackRank } from '@/lib/rollbackRank';
 
 export const dynamic = 'force-dynamic';
 
@@ -105,6 +107,8 @@ export async function DELETE(req: NextRequest, { params }: Params) {
     }
     const removed = await removeFromRoster(checked.groupId!, memberId);
     if (!removed) return NextResponse.json({ error: 'not_on_roster' }, { status: 404 });
+    // BPM Core's rollback copy of the rank goes too (lib/rollbackRank.ts).
+    if (checked.groupId === BPM_GROUP_ID && checked.targetRole === 'admin') await demoteRollbackRank(memberId);
     return NextResponse.json({ memberId, status: removed.status });
   } catch (error) {
     console.error('DELETE /api/groups/members/[memberId]:', error);
