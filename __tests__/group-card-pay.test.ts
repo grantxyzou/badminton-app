@@ -539,7 +539,6 @@ describe('a card refund or chargeback on a night credit part-paid (docs/plans/pa
   const credit = async () => balanceOf(await ledgerFor(groupScope('bpm'), lin.id));
 
   beforeEach(async () => {
-    process.env.NEXT_PUBLIC_FLAG_STORE_CREDIT = 'true';
     connectClubAccount();
     seedDoc('ledger', { id: 'grant:pc', groupId: 'bpm', memberId: lin.id, account: 'member_credit', kind: 'credit_grant', amountCents: 1000, note: 'Birthday', createdAt: '2026-10-01T00:00:00Z', createdBy: 'admin' });
     // $10 of credit goes on the $12 night as a part; the card pays the $2 left and the $15 night.
@@ -550,9 +549,6 @@ describe('a card refund or chargeback on a night credit part-paid (docs/plans/pa
     expect(row(row1.id)).toMatchObject({ paid: true, paidAmount: 12, creditSpends: [`spend:${row1.id}:0`] });
   });
 
-  afterEach(() => {
-    delete process.env.NEXT_PUBLIC_FLAG_STORE_CREDIT;
-  });
 
   const livePayments = (rowId: string) => {
     const voided = new Set(ledger().filter((e) => e.kind === 'void').map((e) => e.id.slice('void:'.length)));

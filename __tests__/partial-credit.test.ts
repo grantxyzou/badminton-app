@@ -50,7 +50,7 @@ beforeEach(async () => {
   resetMockStore();
   setupAdminPin();
   grants = 0;
-  for (const f of ['NEXT_PUBLIC_FLAG_LEDGER_MIRROR', 'NEXT_PUBLIC_FLAG_STORE_CREDIT', 'NEXT_PUBLIC_FLAG_PAYMENTS_AUTO']) process.env[f] = 'true';
+  for (const f of ['NEXT_PUBLIC_FLAG_LEDGER_MIRROR']) process.env[f] = 'true';
   await seedTestAdminMember();
   seedPointer(SID);
   seedSession(SID, { costPerCourt: 30, courts: 2, datetime: '2026-10-01T19:00:00-04:00' });
@@ -62,7 +62,7 @@ beforeEach(async () => {
 
 afterEach(() => {
   vi.useRealTimers();
-  for (const f of ['NEXT_PUBLIC_FLAG_LEDGER_MIRROR', 'NEXT_PUBLIC_FLAG_STORE_CREDIT', 'NEXT_PUBLIC_FLAG_PAYMENTS_AUTO']) delete process.env[f];
+  for (const f of ['NEXT_PUBLIC_FLAG_LEDGER_MIRROR']) delete process.env[f];
 });
 
 describe('credit short of the bill', () => {

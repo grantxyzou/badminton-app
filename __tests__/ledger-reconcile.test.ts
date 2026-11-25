@@ -29,14 +29,13 @@ const row = (name: string, sessionId: string) => players().find((p) => p.name ==
 let lin: { id: string };
 let viktor: { id: string };
 let kento: { id: string };
-const flagsBefore = { stringing: process.env.NEXT_PUBLIC_FLAG_STRINGING, mirror: process.env.NEXT_PUBLIC_FLAG_LEDGER_MIRROR, payments: process.env.NEXT_PUBLIC_FLAG_PAYMENTS_AUTO };
+const flagsBefore = { stringing: process.env.NEXT_PUBLIC_FLAG_STRINGING, mirror: process.env.NEXT_PUBLIC_FLAG_LEDGER_MIRROR };
 
 beforeEach(async () => {
   resetMockStore();
   setupAdminPin();
   process.env.NEXT_PUBLIC_FLAG_LEDGER_MIRROR = 'true';
   process.env.NEXT_PUBLIC_FLAG_STRINGING = 'true';
-  process.env.NEXT_PUBLIC_FLAG_PAYMENTS_AUTO = 'true';
   await seedTestAdminMember();
   seedPointer('session-2026-10-08');
   seedSession('session-2026-10-08', { datetime: '2026-10-08T19:00:00-04:00', costPerCourt: 30, courts: 2 });
@@ -60,7 +59,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
-  for (const [k, v] of [['NEXT_PUBLIC_FLAG_STRINGING', flagsBefore.stringing], ['NEXT_PUBLIC_FLAG_LEDGER_MIRROR', flagsBefore.mirror], ['NEXT_PUBLIC_FLAG_PAYMENTS_AUTO', flagsBefore.payments]] as const) {
+  for (const [k, v] of [['NEXT_PUBLIC_FLAG_STRINGING', flagsBefore.stringing], ['NEXT_PUBLIC_FLAG_LEDGER_MIRROR', flagsBefore.mirror]] as const) {
     if (v === undefined) delete process.env[k]; else process.env[k] = v;
   }
 });

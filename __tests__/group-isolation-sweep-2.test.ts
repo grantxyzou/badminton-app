@@ -56,7 +56,6 @@ const A = 'club-a';
 const B = 'club-b';
 const ANA = 'm-ana';
 const FLAG = 'NEXT_PUBLIC_FLAG_MULTI_GROUP';
-const FLAGS_ON = ['NEXT_PUBLIC_FLAG_STORE_CREDIT', 'NEXT_PUBLIC_FLAG_PAYMENTS_AUTO'] as const;
 
 const PAST = '2026-08-27T19:00:00-07:00';
 const NEXT = new Date(Date.now() + 7 * 86_400_000).toISOString();
@@ -136,13 +135,11 @@ beforeEach(async () => {
   await seedTestAdminMember({ membership: false });
   seedMember('Ana', { id: ANA });
   process.env[FLAG] = 'true';
-  for (const f of FLAGS_ON) process.env[f] = 'true';
   a = seedClub(A, 'Alpha', 1);
   b = seedClub(B, 'Beta', 7);
 });
 afterEach(() => {
   delete process.env[FLAG];
-  for (const f of FLAGS_ON) delete process.env[f];
 });
 
 /** Run `check` as each club against the other: A vs B, then B vs A. */

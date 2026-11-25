@@ -1,5 +1,5 @@
 import { payloadFor, type PushContent } from '@/lib/push';
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 const { sendPushToMembers } = vi.hoisted(() => ({
   sendPushToMembers: vi.fn(async (ids: string[]) => ({ configured: true, sent: ids.length, failed: 0, removed: 0 })),
@@ -52,7 +52,6 @@ beforeEach(async () => {
   resetMockStore();
   setupAdminPin();
   sendPushToMembers.mockClear();
-  process.env.NEXT_PUBLIC_FLAG_PAYMENTS_AUTO = 'true';
   await seedTestAdminMember();
   seedPointer('session-2026-10-08');
   seedSession('session-2026-10-08', { datetime: '2026-10-08T19:00:00-04:00' });
@@ -61,9 +60,6 @@ beforeEach(async () => {
   lin = seedMember('Lin');
 });
 
-afterEach(() => {
-  delete process.env.NEXT_PUBLIC_FLAG_PAYMENTS_AUTO;
-});
 
 describe('reminderDue — the rules', () => {
   const line = (over: Partial<Parameters<typeof reminderDue>[0]> = {}) => ({

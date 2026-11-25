@@ -47,7 +47,6 @@ beforeEach(async () => {
   resetMockStore();
   setupAdminPin();
   moveAfterPricing = null;
-  process.env.NEXT_PUBLIC_FLAG_PAYMENTS_AUTO = 'true';
   process.env.NEXT_PUBLIC_FLAG_LEDGER_MIRROR = 'true';
   await seedTestAdminMember();
   seedPointer(SID);
@@ -61,7 +60,6 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
-  delete process.env.NEXT_PUBLIC_FLAG_PAYMENTS_AUTO;
   delete process.env.NEXT_PUBLIC_FLAG_LEDGER_MIRROR;
 });
 

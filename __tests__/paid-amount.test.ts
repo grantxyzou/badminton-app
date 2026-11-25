@@ -61,7 +61,7 @@ function seedTransfer(id: string, cents: number) {
 beforeEach(async () => {
   resetMockStore();
   setupAdminPin();
-  for (const f of ['NEXT_PUBLIC_FLAG_PAYMENTS_AUTO', 'NEXT_PUBLIC_FLAG_LEDGER_MIRROR', 'NEXT_PUBLIC_FLAG_STRINGING']) process.env[f] = 'true';
+  for (const f of ['NEXT_PUBLIC_FLAG_LEDGER_MIRROR', 'NEXT_PUBLIC_FLAG_STRINGING']) process.env[f] = 'true';
   await seedTestAdminMember();
   seedPointer('session-2026-10-08');
   seedSession('session-2026-10-08', { datetime: '2026-10-08T19:00:00-04:00', maxPlayers: 12 });
@@ -76,7 +76,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
-  for (const f of ['NEXT_PUBLIC_FLAG_PAYMENTS_AUTO', 'NEXT_PUBLIC_FLAG_LEDGER_MIRROR', 'NEXT_PUBLIC_FLAG_STRINGING']) delete process.env[f];
+  for (const f of ['NEXT_PUBLIC_FLAG_LEDGER_MIRROR', 'NEXT_PUBLIC_FLAG_STRINGING']) delete process.env[f];
 });
 
 describe('a $30 transfer assigned by hand to a $45 line', () => {
