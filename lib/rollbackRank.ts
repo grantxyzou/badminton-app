@@ -13,6 +13,24 @@ import { readMembership } from './groups';
 import { BPM_GROUP_ID } from './groupScope';
 import type { Member } from './types';
 
+/**
+ * Accounts whose rollback copy says `admin` while BPM Core's list does not
+ * (no active BPM membership ranked admin or organiser): a demotion or removal
+ * that wrote only the membership, from before 2026-11-25 or a `followRankDown`
+ * that failed. A flag-off rollback would make each of them BPM's admin. The
+ * migration counts them (`staleAdminCopies`) and its run drops them.
+ */
+export function staleAdminCopies<M extends { id: string; role?: string }>(
+  members: M[],
+  bpmMembershipOf: (memberId: string) => { status: string; role: string } | undefined,
+): M[] {
+  return members.filter((m) => {
+    if (m.role !== 'admin') return false;
+    const ms = bpmMembershipOf(m.id);
+    return !(ms?.status === 'active' && (ms.role === 'admin' || ms.role === 'owner'));
+  });
+}
+
 /** `Member.role = 'member'`, under `IfMatch` on a fresh read. A no-op for anyone not `admin`. */
 export async function demoteRollbackRank(memberId: string): Promise<void> {
   const item = getContainer('members').item(memberId, memberId);
@@ -68,5 +86,15 @@ export async function revivalFor(callerGroupId: string, member: Member): Promise
  * ranks never touch the Member: flag-off IS BPM.
  */
 export async function followRankDown(groupId: string, memberId: string, role: string): Promise<void> {
-  if (groupId === BPM_GROUP_ID && role === 'member') await demoteRollbackRank(memberId);
+  if (groupId !== BPM_GROUP_ID || role !== 'member') return;
+  // Best effort, and it never throws: it runs AFTER the rank change, which
+  // has happened. A throw would answer "failed" for a step-down that took
+  // effect (the person retries and is refused, being a member now) and skip
+  // the operator's audit record. A copy it could not drop is counted by the
+  // migration's status as `staleAdminCopies` and dropped by its run.
+  try {
+    await demoteRollbackRank(memberId);
+  } catch (err) {
+    console.error('[rollback-rank] could not drop the rollback copy for', memberId, err);
+  }
 }

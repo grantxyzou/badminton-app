@@ -66,7 +66,7 @@ import {
   RosterNameTakenError,
 } from './groups';
 import { isFlagOn } from './flags';
-import { revivalFor } from './rollbackRank';
+import { demoteRollbackRank, revivalFor, staleAdminCopies } from './rollbackRank';
 import { getAdminNames } from './auth';
 import type { Member, GroupSettings } from './types';
 
@@ -149,6 +149,13 @@ export interface BackfillStatus {
      * Additive.
      */
     lockedOut?: number;
+    /**
+     * With groups on: accounts whose rollback copy says `admin` while BPM
+     * Core's list does not (`staleAdminCopies`, lib/rollbackRank.ts) — a
+     * rollback would make them BPM's admin. A run drops them
+     * (`memberships.rankCopiesDropped`). Additive.
+     */
+    staleAdminCopies?: number;
   };
   /**
    * NAMES TWO PEOPLE WANT. A roster name is unique inside a club by
@@ -228,6 +235,8 @@ export interface BackfillSummary {
     stoodDown?: boolean;
     /** With groups on: locked-out accounts (see `BackfillStatus.members.lockedOut`) switched back on. Additive. */
     reactivated?: number;
+    /** With groups on: stale `admin` rollback copies dropped to member (see `BackfillStatus.members.staleAdminCopies`). Additive. */
+    rankCopiesDropped?: number;
     collisions: Array<{ name: string; memberIds: string[] }>;
   };
   stamped: Record<string, number>;
@@ -325,7 +334,12 @@ export async function backfillStatus(opts: { scanCap?: number } = {}): Promise<B
         if (groupsOnNow) return ms.status === 'active' && m.active !== true;
         return (ms.status === 'active') !== (m.active === true);
       }).length,
-      ...(groupsOnNow ? { lockedOut: (await lockedOutAccounts(members)).length } : {}),
+      ...(groupsOnNow
+        ? {
+            lockedOut: (await lockedOutAccounts(members)).length,
+            staleAdminCopies: staleAdminCopies(members, (id) => byMember.get(id)).length,
+          }
+        : {}),
     },
     names: nameConflicts(rosterNamesOf(members, byMember)),
     unstamped,
@@ -614,6 +628,24 @@ export async function runBackfill(opts: {
         summary.memberships.reactivated += 1;
       } catch (err) {
         summary.errors.push(`reactivate ${m.id}: ${(err as Error).message}`);
+      }
+    }
+    // Then the `admin` rollback copies BPM's list no longer backs
+    // (`staleAdminCopies`). `demoteRollbackRank` re-reads and writes under
+    // `IfMatch`; a rank raised since the list was read leaves the copy at
+    // member while the membership says admin, the safe way round.
+    const bpm = new Map((await listMemberships(BPM_GROUP_ID, { includeInactive: true })).map((ms) => [ms.memberId, ms]));
+    summary.memberships.rankCopiesDropped = 0;
+    for (const m of staleAdminCopies(members, (id) => bpm.get(id))) {
+      if (dryRun) {
+        summary.memberships.rankCopiesDropped += 1;
+        continue;
+      }
+      try {
+        await demoteRollbackRank(m.id);
+        summary.memberships.rankCopiesDropped += 1;
+      } catch (err) {
+        summary.errors.push(`rank copy ${m.id}: ${(err as Error).message}`);
       }
     }
   }
