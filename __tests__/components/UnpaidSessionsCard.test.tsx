@@ -266,10 +266,15 @@ describe('it re-reads when something else changes what is owed', () => {
         { status: 200 },
       );
 
-    const fetchSpy = vi
-      .spyOn(global, 'fetch')
-      .mockResolvedValueOnce(body(30))
-      .mockResolvedValueOnce(body(34));
+    // The card also reads the credit balance (store credit is always on since
+    // 2026-11-25); only the balance reads are counted here.
+    let balanceReads = 0;
+    const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(async (input) => {
+      const url = typeof input === 'string' ? input : (input as Request).url;
+      if (url.includes('/api/credit')) return new Response(JSON.stringify({ balanceCents: 0, entries: [] }), { status: 200 });
+      balanceReads += 1;
+      return body(balanceReads === 1 ? 30 : 34);
+    });
 
     wrap(<UnpaidSessionsCard name="Lin" variant="home" />);
     // Twice over: the stringing line and the total. Both must move.
@@ -277,7 +282,8 @@ describe('it re-reads when something else changes what is owed', () => {
 
     fireEvent(window, new CustomEvent(BALANCE_EVENT));
     await waitFor(() => expect(screen.getAllByText('$34')).toHaveLength(2));
-    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(balanceReads).toBe(2);
+    fetchSpy.mockRestore();
   });
 });
 
@@ -377,13 +383,5 @@ describe('<UnpaidSessionsCard variant="home" onRedeem />', () => {
     expect(screen.queryByRole('button', { name: 'Add a code' })).toBeNull();
     fireEvent.click(row);
     expect(await screen.findByRole('button', { name: 'Add a code' })).toBeTruthy();
-  });
-
-  it('is absent while store credit is off', async () => {
-    vi.stubEnv('NEXT_PUBLIC_FLAG_STORE_CREDIT', 'false');
-    owing();
-    wrap(<UnpaidSessionsCard name="Kento" variant="home" onDetails={vi.fn()} onRedeem={vi.fn()} />);
-    await screen.findByRole('button', { name: 'See details' });
-    expect(screen.queryByRole('button', { name: 'Add a code' })).toBeNull();
   });
 });

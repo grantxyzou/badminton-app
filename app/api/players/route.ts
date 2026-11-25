@@ -710,7 +710,7 @@ export async function POST(req: NextRequest) {
     // puts a sign-up on the waitlist instead of in a spot. Admins adding
     // someone bypass it; it fails open on a read error.
     const heldForUnpaid =
-      isFlagOn('NEXT_PUBLIC_FLAG_PAYMENTS_AUTO') && !admin && !!matchedMember
+      !admin && !!matchedMember
         ? await signupHeldForUnpaid(scope, matchedMember.id)
         : false;
     // Members first (docs/plans/members-first-window.md): while the window is
@@ -1318,7 +1318,7 @@ export async function PATCH(req: NextRequest) {
     }
     // A guest's payment is the host's (their balance is where it was owed).
     const paidBy = typeof existing.memberId === 'string' ? existing.memberId : typeof existing.guestOf === 'string' ? existing.guestOf : null;
-    if (updates.paid === true && isFlagOn('NEXT_PUBLIC_FLAG_PAYMENTS_AUTO') && paidBy) {
+    if (updates.paid === true && paidBy) {
       await releaseHoldIfSettled(scope, paidBy);
     }
     // The ledger mirror, on TRANSITIONS only (docs/plans/payments.md, Phase 2).

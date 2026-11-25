@@ -644,7 +644,7 @@ async function applyPaidSource(source: PaidSource, eventAccount: string | undefi
       await fileCardReview(groupId, { checkoutId: source.id, kind: 'payment', memberId, amountCents: refund, reason: 'card_unapplied_not_refunded', at: source.created ?? undefined });
     }
   }
-  if (applied > 0 && isFlagOn('NEXT_PUBLIC_FLAG_PAYMENTS_AUTO')) {
+  if (applied > 0) {
     await releaseHoldIfSettled(scope, memberId);
   }
   if (receipt.length > 0) {

@@ -9,15 +9,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { resolveGroupId } from '@/lib/groupContext';
-import { isFlagOn } from '@/lib/flags';
 import { mintPaymentsKey } from '@/lib/paymentsInbox';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_PAYMENTS_AUTO')) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  }
   if (!checkRateLimit(`admin-payments-key:${getClientIp(req)}`, 10, 60 * 60_000)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }

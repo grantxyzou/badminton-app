@@ -16,7 +16,6 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { isFlagOn } from '@/lib/flags';
 import { groupForPaymentsKey, ingestEmail } from '@/lib/paymentsInbox';
 
 export const dynamic = 'force-dynamic';
@@ -24,9 +23,6 @@ export const dynamic = 'force-dynamic';
 const str = (v: unknown, max: number): string | null => (typeof v === 'string' && v.length <= max ? v : null);
 
 export async function POST(req: NextRequest) {
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_PAYMENTS_AUTO')) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  }
   // Rate limit before auth (rule 4). Generous: a first run backfills a day of
   // mail, and Apps Script calls come from a shared pool of Google addresses.
   const ip = getClientIp(req);

@@ -7,13 +7,11 @@ import { requireGroupMember, unauthorized } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { resolveGroupId } from '@/lib/groupContext';
 import { groupScope } from '@/lib/groupScope';
-import { isFlagOn } from '@/lib/flags';
 import { balanceOf, creditLedgerFor, refundStaleSpends } from '@/lib/storeCredit';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_STORE_CREDIT')) return NextResponse.json({ error: 'not_found' }, { status: 404 });
   if (!checkRateLimit(`credit:${getClientIp(req)}`, 60, 60_000)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }

@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { isFlagOn } from '@/lib/flags';
 import { useOnline } from '@/lib/useOnline';
 
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
@@ -73,8 +72,6 @@ export default function CreditSection({ memberId }: { memberId: string }) {
       setBusy(false);
     }
   }
-
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_STORE_CREDIT')) return null;
 
   const label = {
     fontSize: 'var(--fs-xs)',

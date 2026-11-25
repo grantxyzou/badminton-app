@@ -116,12 +116,6 @@ describe('dailyRunDue — once a day, from 10 a.m. Vancouver', () => {
 });
 
 describe('the daily payments run on the tick', () => {
-  it('flag off: does nothing and stamps nothing', async () => {
-    process.env.NEXT_PUBLIC_FLAG_PAYMENTS_AUTO = 'false';
-    expect(await call()).toEqual({});
-    expect((await readPaymentsSettings('bpm'))?.lastReminderRunAt).toBeUndefined();
-  });
-
   it('OFF by default: sends nothing, but stamps the day', async () => {
     seedPlayer('session-2026-09-24', 'Lin', { memberId: lin.id, owedAmount: 12, settledAt: ago(4) });
     expect(await call()).toEqual({ ran: 1 });

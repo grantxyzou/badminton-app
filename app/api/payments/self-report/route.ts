@@ -16,7 +16,6 @@ import { requireGroupMember, unauthorized } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { resolveGroupId } from '@/lib/groupContext';
 import { groupScope } from '@/lib/groupScope';
-import { isFlagOn } from '@/lib/flags';
 import { resolveIdentity } from '@/lib/playerIdentity';
 import { computeOwed } from '@/lib/owedBalance';
 import type { Player } from '@/lib/types';
@@ -24,9 +23,6 @@ import type { Player } from '@/lib/types';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_PAYMENTS_AUTO')) {
-    return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  }
   if (!checkRateLimit(`self-report:${getClientIp(req)}`, 10, 60_000)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }

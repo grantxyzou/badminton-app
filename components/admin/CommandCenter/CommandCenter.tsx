@@ -69,8 +69,7 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
   // rather than open a screen that refuses every read. Groups off, every admin
   // is an organiser.
   const { group: currentGroup } = useCurrentGroup();
-  const giftCardsOn = isFlagOn('NEXT_PUBLIC_FLAG_STORE_CREDIT')
-    && (!isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP') || currentGroup?.role === 'owner');
+  const giftCardsOn = !isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP') || currentGroup?.role === 'owner';
   // How this club runs (lib/clubRun.ts). Money surfaces hide only on a KNOWN
   // "off": while the club is still being read they render as they always did.
   const { run, known: runKnown } = useClubRun();
@@ -139,10 +138,8 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
       cancelled = true;
     };
   }, [composedRefresh]);
-  const paymentsAutoOn = isFlagOn('NEXT_PUBLIC_FLAG_PAYMENTS_AUTO');
   const [inbox, setInbox] = useState<{ configured: boolean; waiting: number } | null>(null);
   useEffect(() => {
-    if (!paymentsAutoOn) return;
     let cancelled = false;
     // The count form: the full inbox also reads every member's balance for its
     // previews, which this row never shows (2026-10-25: the slowest request on
@@ -160,7 +157,7 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
     return () => {
       cancelled = true;
     };
-  }, [paymentsAutoOn, composedRefresh]);
+  }, [composedRefresh]);
   const lockedTrailing = lockedOut && lockedOut > 0 ? `${lockedOut} locked out` : undefined;
   // Something waiting for a person wins over "Set up": a card payment Stripe
   // sent that could not be applied (lib/cardPay.ts) waits in the same queue
@@ -254,9 +251,7 @@ export default function CommandCenter({ refreshKey, setView, onExit, onOpenDorma
       rows: moneyOff ? [] : [
         { icon: 'receipt_long', label: 'Ledger', onClick: () => setView('ledger'), selected: openView === 'ledger' },
         // The inbox, reminders, the unpaid hold and the ledger check.
-        ...(paymentsAutoOn
-          ? [{ icon: 'receipt_long', label: 'E-transfers', meta: inboxTrailing, accent: (inbox?.waiting ?? 0) > 0, onClick: () => setView('etransfers'), selected: openView === 'etransfers' }]
-          : []),
+        { icon: 'receipt_long', label: 'E-transfers', meta: inboxTrailing, accent: (inbox?.waiting ?? 0) > 0, onClick: () => setView('etransfers'), selected: openView === 'etransfers' },
         ...(giftCardsOn ? [{ icon: 'payments', label: 'Credit codes', onClick: () => setView('gift-cards'), selected: openView === 'gift-cards' }] : []),
         { icon: 'payments', label: 'E-transfer recipient', onClick: () => setView('etransfer'), selected: openView === 'etransfer' },
       ],

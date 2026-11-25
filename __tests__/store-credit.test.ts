@@ -62,13 +62,6 @@ afterEach(() => {
 });
 
 describe('gates', () => {
-  it('everything 404s with the flag off', async () => {
-    process.env.NEXT_PUBLIC_FLAG_STORE_CREDIT = 'false';
-    expect((await myCredit(makeRequest('GET', `${BASE}/credit`, undefined, asLin()))).status).toBe(404);
-    expect((await giveLin(1000)).status).toBe(404);
-    expect((await mint(makeAdminRequest('POST', `${BASE}/admin/giftcards`, { amountCents: 1000 }))).status).toBe(404);
-  });
-
   it('giving credit and minting cards are admin-only; reading and spending need a member', async () => {
     expect((await grant(makeRequest('POST', `${BASE}/admin/credit`, { memberId: lin.id, amountCents: 1000 }))).status).toBe(401);
     expect((await mint(makeRequest('POST', `${BASE}/admin/giftcards`, { amountCents: 1000 }))).status).toBe(401);
@@ -261,10 +254,8 @@ describe('gift cards', () => {
     // Taking the rank away takes the ability with it, at once.
     await patchMember(makeAdminRequest('PATCH', `${BASE}/members`, { id: zach.id, role: 'member' }));
     expect((await mintAsMember(makeRequest('POST', `${BASE}/giftcards`, { amountCents: 500 }, asZach))).status).toBe(403);
-    // Signed out, or the flag off: nothing.
+    // Signed out: nothing.
     expect((await myCards(makeRequest('GET', `${BASE}/giftcards`))).status).toBe(401);
-    process.env.NEXT_PUBLIC_FLAG_STORE_CREDIT = 'false';
-    expect((await myCards(makeRequest('GET', `${BASE}/giftcards`, undefined, asZach))).status).toBe(404);
   });
 
   it('normalizeGiftCode / newGiftCode', () => {

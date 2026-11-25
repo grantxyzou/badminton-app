@@ -5,7 +5,6 @@ import CardHeader from '@/components/primitives/CardHeader';
 import ListRow from '@/components/primitives/ListRow';
 import StateCard, { StateLink } from '@/components/primitives/StateCard';
 import { BottomSheet, BottomSheetHeader, BottomSheetBody, BottomSheetFooter } from '@/components/BottomSheet';
-import { isFlagOn } from '@/lib/flags';
 import { useOnline } from '@/lib/useOnline';
 import type { EtransferPayment, PaymentAllocation } from '@/lib/types';
 import { useRevealReady } from '@/components/primitives/Reveal';
@@ -73,8 +72,7 @@ function ago(iso: string | null): string {
 }
 
 /**
- * The e-transfer inbox (docs/plans/payments.md). Renders nothing with the flag
- * off. Set up → a one-line status plus anything waiting for a person; not set
+ * The e-transfer inbox (docs/plans/payments.md). Set up → a one-line status plus anything waiting for a person; not set
  * up → the invitation to set it up. A failed load is an explicit error: "0
  * waiting" is exactly the answer that would let a payment sit unseen.
  */
@@ -88,7 +86,6 @@ export default function PaymentsInboxCard({
   /** On its own page (Admin → Money → E-transfers, 2026-10-21) it holds its place while loading. */
   standalone?: boolean;
 }) {
-  const enabled = isFlagOn('NEXT_PUBLIC_FLAG_PAYMENTS_AUTO');
   const [data, setData] = useState<Inbox | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
@@ -106,13 +103,12 @@ export default function PaymentsInboxCard({
   }, []);
 
   useEffect(() => {
-    if (enabled) void load();
-  }, [enabled, load, refreshKey]);
+    void load();
+  }, [load, refreshKey]);
 
   // The console's RevealSlot holds this place until the inbox has answered.
-  useRevealReady(!enabled || data !== null || loadError);
+  useRevealReady(data !== null || loadError);
 
-  if (!enabled) return null;
   const title = 'E-transfers';
 
   if (loadError) {

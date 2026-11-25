@@ -98,14 +98,6 @@ describe('Sign-in readiness and E-transfers are menu rows', () => {
     await waitFor(() => expect(row.textContent).toMatch(/1 waiting/));
     expect(row.textContent).not.toMatch(/Set up/);
   });
-
-  it('with the payments flag off there is no E-transfers row', async () => {
-    delete process.env.NEXT_PUBLIC_FLAG_PAYMENTS_AUTO;
-    stubFetch(() => ({}));
-    renderConsole();
-    await screen.findByRole('button', { name: /Sign-in readiness/ });
-    expect(screen.queryByRole('button', { name: /E-transfers/ })).toBeNull();
-  });
 });
 
 describe('Sign-in readiness on its own page', () => {
