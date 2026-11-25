@@ -23,7 +23,7 @@ If, by the review date, the share of nights paid by card has grown while e-trans
 
 - Making a memo proof of who paid. A name in the memo stays a weak clue (`.claude/rules/security.md`, F18): it names who to suggest in Needs a look and never pays a line on its own.
 - A per-member reference code. A code only that member knows would be stronger proof than a name, but it changes how payments are matched and is its own decision.
-- The Interac logo. It waits for the club's trademark licence and Interac's own file.
+- The Interac logo. Decided against (Grant, 2026-11-25: "skip the Interac logo"): the button names Interac e-Transfer in plain text, spelled as Interac spells it, and the mark would need Interac's trademark licence and its own artwork for no gain in clarity.
 
 ## Decisions
 
