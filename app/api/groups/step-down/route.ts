@@ -23,6 +23,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clearAdminCookie, isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { stepDown } from '@/lib/groups';
+import { followRankDown } from '@/lib/rollbackRank';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { groupsOn, featureOff, rateLimited } from '@/lib/groupRoutes';
 
@@ -48,6 +49,7 @@ export async function POST(req: NextRequest) {
     const result = await stepDown(auth.groupId, auth.memberId, to);
     if (result.outcome === 'not_owner') return NextResponse.json({ error: 'organiser_only' }, { status: 403 });
     if (result.outcome === 'last_member') return NextResponse.json({ error: 'last_member' }, { status: 409 });
+    await followRankDown(auth.groupId, auth.memberId, result.role);
     const res = NextResponse.json({ role: result.role, handedTo: result.handedTo ?? null });
     // A player holds no admin cookie. The async check would refuse it on the
     // next request anyway; clearing it keeps the sync, signature-only reads

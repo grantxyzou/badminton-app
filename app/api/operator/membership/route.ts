@@ -23,6 +23,7 @@ import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { MIGRATION_KEY_HEADER, migrationKeyConfigured, migrationKeyMatches } from '@/lib/migrationKey';
 import { isOperator, recordOperatorAction } from '@/lib/operator';
 import { readGroup, readMembership, setMembershipRole, stepDown } from '@/lib/groups';
+import { followRankDown } from '@/lib/rollbackRank';
 import { groupsOn, featureOff, rateLimited, isGroupIdShape } from '@/lib/groupRoutes';
 import type { MembershipRole } from '@/lib/types';
 
@@ -66,6 +67,7 @@ export async function POST(req: NextRequest) {
       } else if (!(await setMembershipRole(groupId, memberId, to))) {
         return NextResponse.json({ error: 'update_failed' }, { status: 500 });
       }
+      await followRankDown(groupId, memberId, to);
     }
     // Recorded AFTER the write and awaited: an override that succeeded but
     // could not be written down answers 500, so the operator knows to look.
