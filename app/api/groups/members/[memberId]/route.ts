@@ -28,7 +28,7 @@ import { readGroup, readMembership, removeFromRoster, setMembershipRole } from '
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { groupsOn, featureOff, rateLimited } from '@/lib/groupRoutes';
 import { BPM_GROUP_ID } from '@/lib/groupScope';
-import { demoteRollbackRank } from '@/lib/rollbackRank';
+import { demoteRollbackRank, followRankDown } from '@/lib/rollbackRank';
 
 export const dynamic = 'force-dynamic';
 
@@ -86,6 +86,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     const updated = await setMembershipRole(checked.groupId!, memberId, role);
     if (!updated) return NextResponse.json({ error: 'not_on_roster' }, { status: 404 });
+    await followRankDown(checked.groupId!, memberId, updated.role);
     return NextResponse.json({ memberId, role: updated.role, rosterName: updated.name });
   } catch (error) {
     console.error('PATCH /api/groups/members/[memberId]:', error);

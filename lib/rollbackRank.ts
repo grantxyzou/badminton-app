@@ -57,3 +57,16 @@ export async function revivalFor(callerGroupId: string, member: Member): Promise
   const bpmAdmin = onBpm && (bpm.role === 'admin' || bpm.role === 'owner');
   return { active: true, ...(member.role === 'admin' && !bpmAdmin ? { role: 'member' as const } : {}) };
 }
+
+/**
+ * A BPM Core rank lowered to MEMBER takes the rollback copy with it: the
+ * organiser's rank change (`PATCH /api/groups/members/[id]`), stepping down,
+ * and the operator's override all write only the membership, so `Member.role`
+ * kept saying `admin` and a flag-off rollback would make the person an admin
+ * again (security review, 2026-11-25). A rank raised writes nothing here:
+ * a rollback then reads them as a member, the safe direction. Another club's
+ * ranks never touch the Member: flag-off IS BPM.
+ */
+export async function followRankDown(groupId: string, memberId: string, role: string): Promise<void> {
+  if (groupId === BPM_GROUP_ID && role === 'member') await demoteRollbackRank(memberId);
+}
