@@ -8,6 +8,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Light mode is morning glass (2026-11-25)
+
+- **Light mode has its own design now**, instead of being dark mode turned inside out (`docs/plans/light-mode-glass.md`). Each tab is lit by soft blooms of its colour (green Home, amber Stringing, blue Stats, violet Profile, orange Admin), and the cards are frosted white glass over them.
+- **Easier to read in a bright room.** Text takes a deep shade of its tab's colour, and every text colour clears 4.5:1 on the page and on the cards. Dark mode is unchanged.
+
 ## The racket in a stringing email no longer sits in a black box (2026-11-23)
 
 - **Gmail showed every racket picture in a stringing email or invoice on a black rectangle** inside the green tile (Grant's inbox). Gmail re-encodes the pictures it shows and drops the see-through background of the app's racket pictures. Emails now use a copy of each racket made for email, with the tile's green built in, so there is nothing to lose (`docs/plans/branded-emails.md`).
