@@ -22,7 +22,7 @@
  * bank.
  */
 import { APP_NAME } from './brand';
-import { gmailTransport } from './mailTransport';
+import { gmailTransport, mailFrom, type MailSender } from './mailTransport';
 import { outboundOriginOrNull } from './appOrigin';
 import { button, clubChip, codeBox, emailHtml, heading, linkLine, muted, para } from './emailLayout';
 
@@ -54,7 +54,7 @@ function logUnsentLinkInDev(kind: string, to: string, url: string): void {
   console.info(`[dev] ${kind} email NOT sent (no SMTP). Link for ${to}:\n  ${url}`);
 }
 
-async function send(to: string, copy: Composed): Promise<AuthMailResult> {
+async function send(to: string, copy: Composed, sender: MailSender = { kind: 'app' }): Promise<AuthMailResult> {
   const user = process.env.GMAIL_USER;
   const pass = process.env.GMAIL_APP_PASSWORD;
   if (!user || !pass || !to) return { sent: false };
@@ -62,7 +62,7 @@ async function send(to: string, copy: Composed): Promise<AuthMailResult> {
   const transport = await gmailTransport(user, pass);
 
   await transport.sendMail({
-    from: `${APP_NAME} <${user}>`,
+    from: mailFrom(sender, user),
     to,
     subject: copy.subject,
     text: copy.text,
@@ -183,7 +183,7 @@ export function composeJoinedEmail(name: string, club: string, url: string | nul
 }
 
 export async function sendJoinedEmail(to: string, name: string, club: string, url: string | null): Promise<AuthMailResult> {
-  return send(to, composeJoinedEmail(name, club, url, origin()));
+  return send(to, composeJoinedEmail(name, club, url, origin()), { kind: 'club', club });
 }
 
 export function composePasswordResetEmail(name: string, url: string, from: string | null = null): Composed {

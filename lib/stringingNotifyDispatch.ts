@@ -121,7 +121,7 @@ export async function notifyPlayerOfStage(job: StringingJob): Promise<NotifyOutc
        written before the backfill, which reads as BPM and is correct for
        them. */
     const club = job.groupId ? (await readGroup(job.groupId))?.name : undefined;
-    const { sent } = await sendStringingNotice(notice, member.email, member.name, club);
+    const { sent } = await sendStringingNotice(notice, member.email, member.name, club, job.stringerName);
     return sent
       ? { attempted: true, emailSent: true, pushSent }
       : { attempted: true, emailSent: false, pushSent, reason: 'send_failed' };
