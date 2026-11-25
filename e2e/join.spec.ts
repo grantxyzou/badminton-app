@@ -67,7 +67,8 @@ test('a new person asks through the club link and is let in', async ({ browser }
 
     await test.step('the joiner opens the club link and asks to join', async () => {
       await page.goto(`${baseUrl()}/j/${token}`);
-      const form = page.locator('[data-page="join-name"]');
+      // AuthStage renders its `data-page` prop as `data-auth-page`.
+      const form = page.locator('[data-auth-page="join-name"]');
       await expect(form, 'the link opens the club’s join page').toBeVisible({ timeout: 20_000 });
       await shot(joiner, 'join-page', testInfo);
       const field = form.getByRole('textbox').first();
@@ -75,7 +76,7 @@ test('a new person asks through the club link and is let in', async ({ browser }
       await field.fill('');
       await page.keyboard.type(JOINER_NAME);
       await form.locator('.auth-btn--primary').tap();
-      await expect(page.locator('[data-page="request-sent"]'), 'the request was sent').toBeVisible({ timeout: 20_000 });
+      await expect(page.locator('[data-auth-page="request-sent"]'), 'the request was sent').toBeVisible({ timeout: 20_000 });
       await shot(joiner, 'request-sent', testInfo);
     });
 
