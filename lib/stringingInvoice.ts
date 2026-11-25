@@ -14,7 +14,7 @@
 import { getContainer } from './cosmos';
 import { sendPushToMembers } from './push';
 import { buildInvoicePayload, buildInvoiceReminderPayload } from './pushMessages';
-import { gmailTransport } from './mailTransport';
+import { gmailTransport, mailFrom, type MailSender } from './mailTransport';
 import { button, emailHtml, heading, muted, para, racketCard } from './emailLayout';
 import { racketPictureFor } from './emailRacket';
 import { outboundOriginOrNull } from './appOrigin';
@@ -94,13 +94,13 @@ export function composeInvoiceEmail(
   return { subject, text, html };
 }
 
-async function sendEmail(to: string, copy: { subject: string; text: string; html: string }): Promise<boolean> {
+async function sendEmail(to: string, copy: { subject: string; text: string; html: string }, sender: MailSender): Promise<boolean> {
   const user = process.env.GMAIL_USER;
   const pass = process.env.GMAIL_APP_PASSWORD;
   if (!user || !pass) return false;
   try {
     const transport = await gmailTransport(user, pass);
-    await transport.sendMail({ from: `${APP_NAME} <${user}>`, to, subject: copy.subject, text: copy.text, html: copy.html });
+    await transport.sendMail({ from: mailFrom(sender, user), to, subject: copy.subject, text: copy.text, html: copy.html });
     return true;
   } catch (err) {
     console.error('[stringing] invoice email failed (the invoice is saved):', err);
@@ -127,11 +127,12 @@ export function invoiceAppUrl(): string | null {
 export async function deliverInvoice(job: StringingJob, opts: { reminder?: boolean; days?: number } = {}): Promise<InvoiceDelivery> {
   try {
     const club = await clubNameOf(job.groupId);
+    const from: MailSender = { kind: 'stringer', stringer: job.stringerName, club };
     const origin = outboundOriginOrNull();
     const pictures = { origin, racket: await racketPictureFor(job.racketLabel, origin) };
     if (isWalkUpJob(job)) {
       const to = walkUpEmailOf(job);
-      const email = to ? await sendEmail(to, composeInvoiceEmail(job, { clubName: club, walkUp: true, reminder: opts.reminder, ...pictures })) : false;
+      const email = to ? await sendEmail(to, composeInvoiceEmail(job, { clubName: club, walkUp: true, reminder: opts.reminder, ...pictures }), from) : false;
       return { push: 0, email, reached: email };
     }
 
@@ -150,7 +151,7 @@ export async function deliverInvoice(job: StringingJob, opts: { reminder?: boole
     try {
       const { resource: member } = await getContainer('members').item(job.memberId, job.memberId).read<Member>();
       if (member?.email) {
-        email = await sendEmail(member.email, composeInvoiceEmail(job, { clubName: club, appUrl: invoiceAppUrl(), reminder: opts.reminder, ...pictures }));
+        email = await sendEmail(member.email, composeInvoiceEmail(job, { clubName: club, appUrl: invoiceAppUrl(), reminder: opts.reminder, ...pictures }), from);
       }
     } catch (err) {
       console.error('[stringing] invoice email lookup failed (the invoice is saved):', err);

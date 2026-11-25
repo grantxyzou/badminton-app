@@ -20,7 +20,7 @@
  * browser — and is translated properly.
  */
 import type { PlayerNotice } from './stringingNotify';
-import { gmailTransport } from './mailTransport';
+import { gmailTransport, mailFrom, type MailSender } from './mailTransport';
 import { APP_NAME } from './brand';
 import { outboundOriginOrNull } from './appOrigin';
 import { emailHtml, heading, para, racketCard, signoff } from './emailLayout';
@@ -36,7 +36,7 @@ export interface MailResult {
  * exporting that one: this path must never be able to send an auth email, and
  * sharing a transport is how a subject line ends up on the wrong template.
  */
-async function send(to: string, subject: string, text: string, html: string): Promise<MailResult> {
+async function send(to: string, subject: string, text: string, html: string, sender: MailSender): Promise<MailResult> {
   const user = process.env.GMAIL_USER;
   const pass = process.env.GMAIL_APP_PASSWORD;
   // No SMTP configured (local dev, tests) is NOT a failure — the whole feature
@@ -47,7 +47,7 @@ async function send(to: string, subject: string, text: string, html: string): Pr
   // The SENDER is the product: one mailbox serves every club, and the From
   // name is what a mail client shows in the inbox list. The sign-off inside
   // the body is the CLUB — see `composeEmail`.
-  await transport.sendMail({ from: `${APP_NAME} <${user}>`, to, subject, text, html });
+  await transport.sendMail({ from: mailFrom(sender, user), to, subject, text, html });
   return { sent: true };
 }
 
@@ -120,13 +120,15 @@ export async function sendStringingNotice(
    * that — it names the software the person is using, which is true.
    */
   clubName?: string,
+  /** The job's stringer, for the sender line ("Lin · BPM Core"); none reads as the club. */
+  stringerName?: string | null,
 ): Promise<MailResult> {
   if (!to || !notice.channels.includes('email')) return { sent: false };
   try {
     const origin = outboundOriginOrNull();
     const copy = composeEmail(notice, playerName, clubName ?? APP_NAME, { origin, racket: await racketPictureFor(notice.racketLabel, origin) });
     if (!copy) return { sent: false };
-    return await send(to, copy.subject, copy.text, copy.html);
+    return await send(to, copy.subject, copy.text, copy.html, { kind: 'stringer', stringer: stringerName, club: clubName });
   } catch (err) {
     console.error('stringing notice email failed:', err);
     return { sent: false };

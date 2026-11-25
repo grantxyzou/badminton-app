@@ -34,7 +34,7 @@
  * ENGLISH, like the member's stringing email: the request that triggers it is
  * the stringer's, and a walk-up has no stored language at all.
  */
-import { gmailTransport } from './mailTransport';
+import { gmailTransport, mailFrom } from './mailTransport';
 import { outboundOriginOrNull } from './appOrigin';
 import { emailHtml, heading, para, racketCard, type CardCost } from './emailLayout';
 import { racketPictureFor } from './emailRacket';
@@ -142,7 +142,7 @@ export async function sendWalkUpEmail(kind: WalkUpEmailKind, job: StringingJob, 
     const origin = outboundOriginOrNull();
     const copy = composeWalkUpEmail(kind, job, clubName ?? APP_NAME, { origin, racket: await racketPictureFor(job.racketLabel, origin) });
     const transport = await gmailTransport(user, pass);
-    await transport.sendMail({ from: `${APP_NAME} <${user}>`, to, subject: copy.subject, text: copy.text, html: copy.html });
+    await transport.sendMail({ from: mailFrom({ kind: 'stringer', stringer: job.stringerName, club: clubName }, user), to, subject: copy.subject, text: copy.text, html: copy.html });
     return true;
   } catch (err) {
     console.error(`[stringing] walk-up ${kind} email failed (the job is saved):`, err);

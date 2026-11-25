@@ -17,7 +17,7 @@
  * message's own line breaks.
  */
 import { APP_NAME, APP_SHORT_NAME } from './brand';
-import { gmailTransport } from './mailTransport';
+import { gmailTransport, mailFrom } from './mailTransport';
 import { outboundOriginOrNull } from './appOrigin';
 import { detailList, emailHtml, heading, messageBox } from './emailLayout';
 
@@ -72,7 +72,7 @@ export async function notifyReport(report: ReportNotification): Promise<{ sent: 
   const copy = composeReportEmail(report, outboundOriginOrNull());
 
   await transport.sendMail({
-    from: `${APP_NAME} <${user}>`,
+    from: mailFrom({ kind: 'app' }, user),
     to,
     subject: copy.subject,
     text: copy.text,
