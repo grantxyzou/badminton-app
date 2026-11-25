@@ -9,7 +9,10 @@ import Stripe from 'stripe';
  */
 
 const sendMail = vi.fn(async () => ({}));
-vi.mock('@/lib/mailTransport', () => ({ gmailTransport: async () => ({ sendMail }) }));
+vi.mock('@/lib/mailTransport', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/mailTransport')>()),
+  gmailTransport: async () => ({ sendMail }),
+}));
 
 import { POST as checkout } from '@/app/api/payments/card/checkout/route';
 import { POST as webhook } from '@/app/api/payments/card/webhook/route';
@@ -26,6 +29,7 @@ import {
   memberCookieValue,
   setupAdminPin,
   seedTestAdminMember,
+  seedGroup,
 } from './helpers';
 
 const BASE = 'http://localhost:3000/api';
@@ -91,6 +95,7 @@ beforeEach(async () => {
   process.env.GMAIL_APP_PASSWORD = 'app-password';
   fake = makeFake();
   _setStripeForTests(fake as unknown as Stripe);
+  seedGroup('bpm', { name: 'BPM Core' });
   await seedTestAdminMember();
   seedPointer('session-2026-10-08');
   seedSession('session-2026-10-08', { datetime: '2026-10-08T19:00:00-04:00' });
@@ -126,6 +131,8 @@ describe('the receipt a card payment sends', () => {
     expect(sendMail).toHaveBeenCalledTimes(1);
     const [msg] = sendMail.mock.calls[0] as unknown as [{ to: string; subject: string; text: string; html: string }];
     expect(msg.to).toBe('lin@example.test');
+    // From the club that was paid, on the app's one address.
+    expect((msg as unknown as { from: unknown }).from).toEqual({ name: 'BPM Core', address: 'club@example.test' });
     expect(msg.subject).toMatch(/^Payment received — .+: \$27$/);
     expect(msg.text).toContain('Badminton · Sep 24: $12');
     expect(msg.text).toContain('Badminton · Oct 1: $15');

@@ -16,7 +16,7 @@
  * MONEY IS ALLOWED HERE: an email is not a lock-screen banner. Only a push
  * body carries no amount, and nothing here pushes.
  */
-import { gmailTransport } from './mailTransport';
+import { gmailTransport, mailFrom } from './mailTransport';
 import { outboundOriginOrNull } from './appOrigin';
 import { getContainer } from './cosmos';
 import { readGroup } from './groups';
@@ -127,14 +127,15 @@ export async function sendCardReceipt(
     if (!user || !pass) return false;
     const { resource: member } = await getContainer('members').item(memberId, memberId).read<Member>();
     if (!member?.email) return false;
-    const club = (await readGroup(groupId))?.name?.trim() || APP_NAME;
+    const groupName = (await readGroup(groupId))?.name?.trim();
+    const club = groupName || APP_NAME;
     const origin = outboundOriginOrNull();
     const copy = composeCardReceiptEmail(
       { name: member.name, club, lines, feeCents, refundedCents, paidAt, appUrl: origin ? `${origin}/bpm/?tab=home` : null },
       origin,
     );
     const transport = await gmailTransport(user, pass);
-    await transport.sendMail({ from: `${APP_NAME} <${user}>`, to: member.email, subject: copy.subject, text: copy.text, html: copy.html });
+    await transport.sendMail({ from: mailFrom({ kind: 'club', club: groupName }, user), to: member.email, subject: copy.subject, text: copy.text, html: copy.html });
     return true;
   } catch (err) {
     console.error('[card-pay] receipt email failed (the payment is applied):', err);

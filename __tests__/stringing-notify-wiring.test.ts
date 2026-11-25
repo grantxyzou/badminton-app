@@ -18,7 +18,8 @@ import type { StringingStatus } from '@/lib/stringing';
 const sendMail = vi.fn(async () => {
   throw new Error('smtp unavailable (faked)');
 });
-vi.mock('@/lib/mailTransport', () => ({
+vi.mock('@/lib/mailTransport', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/mailTransport')>()),
   gmailTransport: async () => ({ sendMail }),
 }));
 

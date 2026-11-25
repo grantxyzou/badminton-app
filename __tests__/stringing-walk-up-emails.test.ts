@@ -25,7 +25,8 @@ import type { StringingJob } from '../lib/types';
  * stringing email tests use (`stringing-notify-wiring.test.ts`).
  */
 const sendMail = vi.fn(async (_msg: { to: string; subject: string; text: string; html?: string }) => ({}));
-vi.mock('@/lib/mailTransport', () => ({
+vi.mock('@/lib/mailTransport', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/mailTransport')>()),
   gmailTransport: async () => ({ sendMail }),
 }));
 
@@ -102,6 +103,12 @@ describe('the spec email, when the job is saved', () => {
     expect(msg.subject).toBe("Your racket is with BPM Core's stringer (J-0001)");
     expect(msg.text).toContain('Hi Lee,');
     expect(msg.text).toContain('$34, pay at pickup');
+    // From the racket's stringer, on the app's one address (a job no one has
+    // taken yet reads as its club).
+    expect((msg as unknown as { from: unknown }).from).toEqual({
+      name: job.stringerName ? `${job.stringerName} · BPM Core` : 'BPM Core',
+      address: 'club@example.com',
+    });
 
     expect(job.walkUpEmails?.spec?.ok).toBe(true);
     expect(stored(job.id).walkUpEmails?.spec?.ok).toBe(true);
