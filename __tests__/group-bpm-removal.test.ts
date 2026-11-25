@@ -15,10 +15,12 @@ import {
   adminCookieValue, memberCookieValue, makeRequest, getStore,
 } from './helpers';
 import { POST as signin } from '../app/api/auth/signin/route';
-import { DELETE as removeMember, POST as addMember } from '../app/api/members/route';
+import { DELETE as removeMember, PATCH as updateMember } from '../app/api/members/route';
+import { POST as createPlayer } from '../app/api/players/route';
 import { GET as current } from '../app/api/groups/current/route';
 import { reserveIdentity } from '../lib/authIdentity';
 import { hashPassword } from '../lib/passwordHash';
+import { hashPin } from '../lib/recoveryHash';
 import { isAdminAuthedWithMember } from '../lib/auth';
 import { readMembership } from '../lib/groups';
 import { backfillStatus, runBackfill } from '../lib/groupBackfill';
@@ -38,24 +40,27 @@ afterEach(() => {
   else process.env[FLAG] = prev;
 });
 
-const members = () => getStore()['members'] as Array<{ id: string; name?: string; active?: boolean; mergedInto?: string }>;
+const members = () => getStore()['members'] as Array<{ id: string; name?: string; active?: boolean; role?: string; pinHash?: string; mergedInto?: string }>;
 const memberDoc = (id: string) => members().find((m) => m.id === id);
 
-/** Lin: in BPM Core, and the organiser of a second club. */
-async function linInTwoClubs() {
+/** Lin: in BPM Core (an admin there if asked), and the organiser of a second club. */
+async function linInTwoClubs(opts: { bpmAdmin?: boolean } = {}) {
   await seedTestAdminMember(); // BPM Core's admin
   seedGroup('bpm', { name: 'BPM Core' });
   seedGroup('x', { name: 'Other Club', ownerMemberId: 'm-lin' });
-  const lin = seedMember('Lin', { id: 'm-lin', email: 'lin@example.com', passwordHash: await hashPassword(PASSWORD) });
+  const lin = seedMember('Lin', {
+    id: 'm-lin', email: 'lin@example.com', passwordHash: await hashPassword(PASSWORD),
+    ...(opts.bpmAdmin ? { role: 'admin' } : {}),
+  });
   await reserveIdentity('email', 'lin@example.com', lin.id);
-  seedMembership('bpm', lin.id, { name: 'Lin' });
+  seedMembership('bpm', lin.id, { name: 'Lin', ...(opts.bpmAdmin ? { role: 'admin' } : {}) });
   seedMembership('x', lin.id, { name: 'Lin', role: 'owner' });
   return lin;
 }
 
 const signIn = () =>
   signin(makeRequest('POST', 'http://localhost/api/auth/signin', { email: 'lin@example.com', password: PASSWORD }, { 'X-Client-IP': `r-${Math.random()}` }));
-const asBpmAdmin = (method: 'DELETE' | 'POST', body: Record<string, unknown>) =>
+const asBpmAdmin = (method: 'DELETE' | 'PATCH', body: Record<string, unknown>) =>
   makeRequest(method, 'http://localhost/api/members', body, { Cookie: `admin_session=${adminCookieValue({ groupId: 'bpm' })}`, 'X-Client-IP': `r-${Math.random()}` });
 
 describe('removing someone from BPM Core, with clubs on', () => {
@@ -81,27 +86,59 @@ describe('removing someone from BPM Core, with clubs on', () => {
     expect((await isAdminAuthedWithMember(asOrganiser)).authed).toBe(true);
   });
 
-  it('adding their name back brings back the same account, not a second one', async () => {
-    const lin = await linInTwoClubs();
-    await removeMember(asBpmAdmin('DELETE', { id: lin.id }));
+  it('the Roster sheet’s “Active” box does the same, and drops the rollback rank', async () => {
+    const lin = await linInTwoClubs({ bpmAdmin: true });
+    const res = await updateMember(asBpmAdmin('PATCH', { id: lin.id, name: 'Lin', role: 'admin', active: false }));
+    expect(res.status).toBe(200);
 
-    const back = await addMember(asBpmAdmin('POST', { name: 'Lin' }));
-    expect(back.status).toBe(200); // rejoined, not 201 added
-    expect((await back.json()).id).toBe(lin.id);
-    expect(members().filter((m) => m.name === 'Lin')).toHaveLength(1);
-    expect((await readMembership('bpm', lin.id))?.status).toBe('active');
+    expect((await readMembership('bpm', lin.id))?.status).toBe('removed');
+    expect(memberDoc(lin.id)?.active).toBe(true);
+    // The sheet sent the old rank back; a flag-off rollback must not read it.
+    expect(memberDoc(lin.id)?.role).toBe('member');
     expect((await signIn()).status).toBe(200);
+    expect((await readMembership('x', lin.id))?.role).toBe('owner');
   });
 
-  it('never brings back an account that was merged into another', async () => {
+  it('removing a BPM Core admin drops the rollback rank too', async () => {
+    const lin = await linInTwoClubs({ bpmAdmin: true });
+    expect((await removeMember(asBpmAdmin('DELETE', { id: lin.id }))).status).toBe(200);
+    expect(memberDoc(lin.id)?.role).toBe('member');
+    expect(memberDoc(lin.id)?.active).toBe(true);
+  });
+
+  it('Restore turns back on an account the old removal switched off, but never a merged one', async () => {
     await seedTestAdminMember();
     seedGroup('bpm', { name: 'BPM Core' });
-    const merged = seedMember('Kento', { id: 'm-old', active: false, mergedInto: 'm-new' });
+    const locked = seedMember('Lin', { id: 'm-locked', active: false });
+    seedMembership('bpm', locked.id, { name: 'Lin', status: 'removed' });
+    const merged = seedMember('Kento', { id: 'm-merged', active: false, mergedInto: 'm-locked' });
     seedMembership('bpm', merged.id, { name: 'Kento', status: 'removed' });
 
-    const res = await addMember(asBpmAdmin('POST', { name: 'Kento' }));
-    expect(res.status).toBe(201); // a new person; the merged one stays off
-    expect(memberDoc('m-old')?.active).toBe(false);
+    expect((await updateMember(asBpmAdmin('PATCH', { id: locked.id, active: true }))).status).toBe(200);
+    expect(memberDoc(locked.id)?.active).toBe(true);
+    expect((await readMembership('bpm', locked.id))?.status).toBe('active');
+
+    await updateMember(asBpmAdmin('PATCH', { id: merged.id, active: true }));
+    expect(memberDoc(merged.id)?.active).toBe(false);
+  });
+
+  it('adding a removed person’s name with a PIN makes a new account and never touches theirs', async () => {
+    // Security review, 2026-11-25: a rejoin-by-name here let any club admin
+    // remove someone, "create" their name with a PIN of the admin's choosing,
+    // and sign in as them in every club they belong to.
+    const lin = await linInTwoClubs();
+    const theirPin = await hashPin('1111');
+    memberDoc(lin.id)!.pinHash = theirPin;
+    await removeMember(asBpmAdmin('DELETE', { id: lin.id }));
+
+    const res = await createPlayer(
+      makeRequest('POST', 'http://localhost/api/players', { name: 'Lin', pin: '4821', sessionSignup: false }, {
+        Cookie: `admin_session=${adminCookieValue({ groupId: 'bpm' })}`, 'X-Client-IP': `r-${Math.random()}`,
+      }),
+    );
+    expect(res.status).toBeLessThan(500);
+    expect(memberDoc(lin.id)?.pinHash).toBe(theirPin);
+    expect((await readMembership('bpm', lin.id))?.status).toBe('removed');
   });
 });
 

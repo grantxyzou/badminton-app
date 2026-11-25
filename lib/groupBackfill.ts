@@ -584,8 +584,17 @@ export async function runBackfill(opts: {
         summary.memberships.reactivated += 1;
         continue;
       }
+      // A fresh read and `replace` under `IfMatch`, never an upsert of the doc
+      // read at the start of the run: anything written to it since would be
+      // lost. A doc changed under us is reported and left for the next run.
       try {
-        await getContainer('members').items.upsert({ ...m, active: true });
+        const item = getContainer('members').item(m.id, m.id);
+        const { resource } = await item.read<Member & { _etag?: string }>();
+        if (!resource || resource.active === true || resource.mergedInto) continue;
+        await item.replace(
+          { ...resource, active: true },
+          resource._etag ? { accessCondition: { type: 'IfMatch', condition: resource._etag } } : undefined,
+        );
         summary.memberships.reactivated += 1;
       } catch (err) {
         summary.errors.push(`reactivate ${m.id}: ${(err as Error).message}`);

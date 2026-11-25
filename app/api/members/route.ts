@@ -21,6 +21,7 @@ import {
 import { normalizeAvatar } from '@/lib/memberAvatar';
 import { onBehalfRefusal, onBehalfRefused } from '@/lib/onBehalfGuard';
 import { carryRosterRename } from '@/lib/rosterRename';
+import type { Member } from '@/lib/types';
 
 const groupsOn = () => isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
 
@@ -43,6 +44,32 @@ const groupsOn = () => isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
  */
 const writesMemberCopy = (adminGroupId: string) => !groupsOn() || adminGroupId === BPM_GROUP_ID;
 const ownerImmutable = () => NextResponse.json({ error: 'owner_immutable' }, { status: 403 });
+
+/**
+ * `Member.role = 'member'`, under `IfMatch` on a fresh read: the rollback copy
+ * of a BPM admin's rank, dropped when BPM Core takes them off its list with
+ * groups on (see DELETE). Nothing reads `Member.role` with groups on, so it
+ * changes nothing until a flag-off rollback, where it stops a removed admin
+ * being an admin again.
+ */
+async function demoteRollbackRank(id: string): Promise<void> {
+  const container = getContainer('members');
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { resource } = await container.item(id, id).read<Member & { _etag?: string }>();
+    if (!resource || resource.role !== 'admin') return;
+    try {
+      await container.item(id, id).replace(
+        { ...resource, role: 'member' },
+        resource._etag ? { accessCondition: { type: 'IfMatch', condition: resource._etag } } : undefined,
+      );
+      return;
+    } catch (err) {
+      if ((err as { code?: number }).code === 412) continue;
+      throw err;
+    }
+  }
+  throw new Error('demote rollback rank kept conflicting');
+}
 /** Ranks and the gift-card switch are an ORGANISER's to hand out (docs/plans/roles-v2.md). */
 const organiserOnly = () => NextResponse.json({ error: 'organiser_only' }, { status: 403 });
 
@@ -260,7 +287,17 @@ export async function PATCH(req: NextRequest) {
     }
     if (typeof body.stage === 'number') updates.stage = Math.max(1, Math.min(4, body.stage));
     if (body.stage === null) updates.stage = undefined;
-    if (memberCopy && typeof body.active === 'boolean') updates.active = body.active;
+    // The ACCOUNT switch. Flag off, BPM's list IS the account, so the sheet's
+    // "Active" box writes it. With groups on, unticking it is removal from
+    // THIS roster (above) and nothing more — the same rule as DELETE, which
+    // says why (a BPM Core removal used to lock the person out of every club).
+    // A restore turns back on an account the old removal switched off; one
+    // merged into another stays off, since that is what merging means.
+    if (!groupsOn()) {
+      if (typeof body.active === 'boolean') updates.active = body.active;
+    } else if (body.active === true && existing.active !== true && !existing.mergedInto) {
+      updates.active = true;
+    }
     if (typeof body.role === 'string' && ['owner', 'admin', 'member'].includes(body.role)) {
       const role = body.role as 'owner' | 'admin' | 'member';
       if (groupsOn()) {
@@ -287,6 +324,14 @@ export async function PATCH(req: NextRequest) {
       }
       // The Member copy knows two roles: an organiser is an admin there.
       if (memberCopy) updates.role = role === 'member' ? 'member' : 'admin';
+    }
+    // Taken off BPM Core's list with groups on: the account stays on (above),
+    // so the rollback copy of the RANK must go, or a flag-off rollback would
+    // make a removed BPM admin an admin again (`isAdminAuthedWithMember` reads
+    // `Member.role` there). After the role step, which a sheet that sends the
+    // old rank back would otherwise undo.
+    if (groupsOn() && memberCopy && body.active === false && membership?.status === 'active') {
+      updates.role = 'member';
     }
     // Orthogonal to `role` on purpose — see Member.canString. Per club since
     // roles v2 PR 2 (the MEMBERSHIP is what the bench reads);
@@ -433,12 +478,22 @@ export async function DELETE(req: NextRequest) {
     // no longer sign in there or act as its organiser, and nothing in that
     // club could undo it (found by the E2E join journey, 2026-11-25,
     // docs/plans/e2e-test-club.md). Leaving a club is not leaving the app;
-    // deleting the account is `DELETE /api/members/me`. The price: a flag-off
-    // rollback would show a person removed from BPM Core since this change on
-    // BPM's list again until an admin removes them there.
+    // deleting the account is `DELETE /api/members/me`.
+    //
+    // The rollback copy of the RANK does go: a BPM admin taken off the list
+    // gets `Member.role = 'member'`, or a flag-off rollback (which reads
+    // `Member.role` and `Member.active`) would make them an admin again. The
+    // price that remains: after a rollback, a person removed from BPM Core
+    // since this change is a member of BPM again, able to sign in and read its
+    // data, until an admin removes them there.
+    //
+    // The answer's `active: false` is this roster's state (as the admin roster
+    // reads it), not the account's.
     if (groupsOn()) {
       if (!(await removeFromRoster(auth.groupId, id))) return ownerImmutable();
-      return NextResponse.json(publicMember({ ...existing, active: false } as Record<string, unknown>));
+      const demote = auth.groupId === BPM_GROUP_ID && existing.role === 'admin';
+      if (demote) await demoteRollbackRank(id);
+      return NextResponse.json(publicMember({ ...existing, ...(demote ? { role: 'member' } : {}), active: false } as Record<string, unknown>));
     }
     const { resource: updated } = await container.items.upsert({ ...existing, active: false });
     return NextResponse.json(publicMember(updated as Record<string, unknown> | undefined));
