@@ -61,9 +61,12 @@ import {
   rosterNameHolder,
   removeFromRoster,
   listMemberships,
+  listMembershipsForMember,
   updateGroupSettings,
   RosterNameTakenError,
 } from './groups';
+import { isFlagOn } from './flags';
+import { revivalFor } from './rollbackRank';
 import { getAdminNames } from './auth';
 import type { Member, GroupSettings } from './types';
 
@@ -127,8 +130,25 @@ export interface BackfillStatus {
      * A membership ROW is not the gate — one that says `removed` for a person
      * who was restored flag-off leaves them unresolvable the moment the flag
      * goes on, and `withoutMembership: 0` cannot see it. Re-run to reconcile.
+     *
+     * With groups ON only the harmful direction counts — on BPM's roster with
+     * the account switched off — because a person removed from BPM Core now
+     * keeps their account on (2026-11-25), so "account on, BPM membership
+     * removed" is the ordinary state of someone who left, not drift.
      */
     mismatched: number;
+    /**
+     * Accounts switched off (`active: false`, not merged into another) that
+     * are off BPM Core's list and still hold an ACTIVE membership in another
+     * club: they cannot sign in to it, or act as its admin. What a removal
+     * from BPM Core did before 2026-11-25 to anyone in a second club. With
+     * groups on, a run turns them back on, without an admin rank on the
+     * rollback copy (`memberships.reactivated`). An account switched off
+     * while still on BPM's list (a removal made during a flag-off rollback)
+     * is not counted here: it is `mismatched`, for a person to reconcile.
+     * Additive.
+     */
+    lockedOut?: number;
   };
   /**
    * NAMES TWO PEOPLE WANT. A roster name is unique inside a club by
@@ -199,6 +219,15 @@ export interface BackfillSummary {
     rejoined: number;
     /** Existing `active` memberships taken off the roster, because the Member was soft-deleted. */
     deactivated: number;
+    /**
+     * With groups ON, step 2 stands down: the membership is the truth, and
+     * re-deriving it from `Member.active` would put back on BPM's roster
+     * everyone BPM Core has removed since the cutover, and add every account
+     * made in another club. `true` says it stood down. Additive.
+     */
+    stoodDown?: boolean;
+    /** With groups on: locked-out accounts (see `BackfillStatus.members.lockedOut`) switched back on. Additive. */
+    reactivated?: number;
     collisions: Array<{ name: string; memberIds: string[] }>;
   };
   stamped: Record<string, number>;
@@ -243,8 +272,32 @@ async function unstampedRows(container: ContainerName, cap: number): Promise<{ r
   return { rows: all.slice(0, cap), more: all.length > cap };
 }
 
+/**
+ * Switched-off accounts that still hold an active membership somewhere (see
+ * `BackfillStatus.members.lockedOut`). An account merged into another stays
+ * off: that is what merging means.
+ */
+async function lockedOutAccounts(members: Member[]): Promise<Member[]> {
+  const out: Member[] = [];
+  for (const m of members) {
+    if (m.active === true || m.mergedInto) continue;
+    const memberships = await listMembershipsForMember(m.id);
+    // The old removal's shape exactly: OFF BPM Core's list, ON another's. An
+    // account switched off while its BPM place is still active is something
+    // else — a removal made during a flag-off rollback, which writes only
+    // `Member.active` — and turning it on would undo a removal someone chose
+    // (security review, 2026-11-25). That one shows in `mismatched`, for a
+    // person to reconcile.
+    const onBpm = memberships.some((ms) => ms.groupId === BPM_GROUP_ID && ms.status === 'active');
+    const elsewhere = memberships.some((ms) => ms.groupId !== BPM_GROUP_ID && ms.status === 'active');
+    if (!onBpm && elsewhere) out.push(m);
+  }
+  return out;
+}
+
 export async function backfillStatus(opts: { scanCap?: number } = {}): Promise<BackfillStatus> {
   const scanCap = opts.scanCap ?? DEFAULT_SCAN_CAP;
+  const groupsOnNow = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
   const [group, members, memberships] = await Promise.all([
     readGroup(BPM_GROUP_ID),
     allMembers(),
@@ -268,8 +321,11 @@ export async function backfillStatus(opts: { scanCap?: number } = {}): Promise<B
       withoutMembership: members.filter((m) => !withMembership.has(m.id)).length,
       mismatched: members.filter((m) => {
         const ms = byMember.get(m.id);
-        return ms !== undefined && (ms.status === 'active') !== (m.active === true);
+        if (ms === undefined) return false;
+        if (groupsOnNow) return ms.status === 'active' && m.active !== true;
+        return (ms.status === 'active') !== (m.active === true);
       }).length,
+      ...(groupsOnNow ? { lockedOut: (await lockedOutAccounts(members)).length } : {}),
     },
     names: nameConflicts(rosterNamesOf(members, byMember)),
     unstamped,
@@ -530,7 +586,39 @@ export async function runBackfill(opts: {
     if (c) c.memberIds.push(...memberIds.filter((id) => !c.memberIds.includes(id)));
     else summary.memberships.collisions.push({ name: key, memberIds });
   };
-  for (const m of [...members].sort((a, b) => String(a.createdAt ?? '').localeCompare(String(b.createdAt ?? '')))) {
+  // With groups ON this step stands down (see `memberships.stoodDown`) and
+  // repairs locked-out accounts instead.
+  const groupsOnNow = isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
+  if (groupsOnNow) {
+    summary.memberships.stoodDown = true;
+    summary.memberships.reactivated = 0;
+    for (const m of await lockedOutAccounts(members)) {
+      if (dryRun) {
+        summary.memberships.reactivated += 1;
+        continue;
+      }
+      // A fresh read and `replace` under `IfMatch`, never an upsert of the doc
+      // read at the start of the run: anything written to it since would be
+      // lost. A doc changed under us is reported and left for the next run.
+      try {
+        const item = getContainer('members').item(m.id, m.id);
+        const { resource } = await item.read<Member & { _etag?: string }>();
+        const revival = resource ? await revivalFor(BPM_GROUP_ID, resource) : null;
+        if (!resource || !revival) continue;
+        // `revivalFor` (lib/rollbackRank.ts): off BPM's list here, so the
+        // rollback copy of an admin rank goes with the repair.
+        await item.replace(
+          { ...resource, ...revival },
+          resource._etag ? { accessCondition: { type: 'IfMatch', condition: resource._etag } } : undefined,
+        );
+        summary.memberships.reactivated += 1;
+      } catch (err) {
+        summary.errors.push(`reactivate ${m.id}: ${(err as Error).message}`);
+      }
+    }
+  }
+  const step2 = groupsOnNow ? [] : [...members].sort((a, b) => String(a.createdAt ?? '').localeCompare(String(b.createdAt ?? '')));
+  for (const m of step2) {
     const key = m.name.trim().toLowerCase();
     const wantActive = m.active === true;
     const roleFor = () => (owner && m.id === owner.id ? 'owner' : m.role === 'admin' ? 'admin' : 'member');

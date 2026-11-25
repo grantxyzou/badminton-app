@@ -1,5 +1,5 @@
 import { lateCancelHoursOf, lateCancelVerdict } from '@/lib/cancelPolicy';
-import { readGroup, readMembership } from '@/lib/groups';
+import { readGroup, readMembership, rosterNameHolder } from '@/lib/groups';
 import { NextRequest, NextResponse } from 'next/server';
 import { claimPinAttempt, notePinSuccess } from '@/lib/pinLockout';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
@@ -448,12 +448,12 @@ export async function POST(req: NextRequest) {
        * owns the other case.
        */
       const claimAuth = existingMember ? await verifyLiveMemberAuth(req) : null;
-      const ownsExistingMember =
-        !!existingMember &&
-        !!claimAuth &&
-        (claimAuth.memberId === existingMember.id ||
-          (typeof existingMember.name === 'string' &&
-            claimAuth.name.toLowerCase() === existingMember.name.toLowerCase()));
+      // By ID only ("the id, never a name", .claude/rules/security.md). A
+      // cookie's `name` is the account's display name, which anyone chooses
+      // and nothing makes unique: an admin called "Grant" read as the owner
+      // of every account named Grant, skipped `onBehalfRefusal` below, and set
+      // that person's first PIN (fourth security review, 2026-11-25).
+      const ownsExistingMember = !!existingMember && !!claimAuth && claimAuth.memberId === existingMember.id;
       if (existingMember && !ownsExistingMember && !admin) {
         return NextResponse.json({ error: 'account_claim_needs_approval' }, { status: 403 });
       }
@@ -478,7 +478,24 @@ export async function POST(req: NextRequest) {
       // An admin creating a fresh account here is adding them to THIS roster:
       // with groups on the person and their membership come from one helper
       // (rejoining the name's holder here rather than minting a duplicate).
-      const base = groupsOn() && !existingMember ? (await adminAddToRoster(accountGroupId, trimmedName)).member : null;
+      // Refused BEFORE anything is written: `adminAddToRoster` would switch a
+      // holder back on, or bring back their membership, and only then would
+      // the refusal below be seen.
+      if (groupsOn() && !existingMember) {
+        const holderId = await rosterNameHolder(accountGroupId, trimmedName);
+        if (holderId && (await membersContainer.item(holderId, holderId).read()).resource) {
+          return NextResponse.json({ error: 'account_exists' }, { status: 409 });
+        }
+      }
+      const added = groupsOn() && !existingMember ? await adminAddToRoster(accountGroupId, trimmedName) : null;
+      // The holder of the name may be someone's EXISTING account that the
+      // lookup above could not see (switched off, so `resolveActiveMemberId`
+      // passed it by). Writing this PIN onto it would skip both guards above —
+      // `account_exists` and `onBehalfRefusal` — and let an admin sign in as
+      // them in every club (security review, 2026-11-25). This path makes NEW
+      // accounts; an existing one is refused like any other.
+      if (added && !added.created) return NextResponse.json({ error: 'account_exists' }, { status: 409 });
+      const base = added?.member ?? null;
       const { resource } = await membersContainer.items.upsert(base ? { ...base, ...memberDoc, id: base.id, createdAt: base.createdAt } : memberDoc);
       const safe = resource as Record<string, unknown> | undefined;
       // Audit C3: the upsert can return undefined (partial Cosmos response,
@@ -572,7 +589,12 @@ export async function POST(req: NextRequest) {
       // With groups on: rejoin the name's holder here, else a new person —
       // never the global reactivation scan below, which would resurrect
       // another club's soft-deleted person onto this roster.
-      matchedMember = (await adminAddToRoster(scope.groupId, trimmedName)).member as unknown as typeof matchedMember;
+      const added = await adminAddToRoster(scope.groupId, trimmedName);
+      matchedMember = added.member as unknown as typeof matchedMember;
+      // An existing account found by NAME (a holder the active lookup could
+      // not see) never gets a PIN from an admin's sign-up on their behalf:
+      // only an account made just now does (security review, 2026-11-25).
+      if (!added.created) pinHash = undefined;
     } else if (!matchedMember && admin) {
       const { resources: anyNamed } = await membersContainer.items
         .query({
@@ -630,6 +652,19 @@ export async function POST(req: NextRequest) {
      */
     if (matchedMember && typeof matchedMember.pinHash === 'string' && matchedMember.pinHash.length > 0) {
       pinHash = undefined;
+    }
+
+    // An ADMIN giving someone else's EXISTING account its first PIN here is
+    // acting on that person's credentials, the same move as the account-only
+    // path above and `PATCH /api/players`: the same rule (lib/onBehalfGuard.ts,
+    // F1). Without it a sign-up carrying `pin` set the first PIN of any
+    // PIN-less account on the admin's roster — an organiser's, or someone's
+    // who is BPM's admin and joined the admin's own club — and `POST /api/admin`
+    // then signed the admin in as them (third security review, 2026-11-25).
+    // PINs are being phased out, so most accounts have none.
+    if (pinHash && matchedMember && adminAuth.authed && matchedMember.id !== adminAuth.memberId) {
+      const refusal = await onBehalfRefusal(adminAuth, matchedMember.id);
+      if (refusal) return onBehalfRefused(refusal);
     }
 
     // A FIRST PIN on an existing member needs proof, and the gate above is
