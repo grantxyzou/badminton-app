@@ -14,6 +14,7 @@
  * `rosterMembers` overlays it so the roster reads the way the group knows
  * its people.
  */
+import { revivalFor } from './rollbackRank';
 import { randomBytes } from 'crypto';
 import { getContainer } from './cosmos';
 import { isFlagOn } from './flags';
@@ -216,15 +217,16 @@ export async function adminAddToRoster(
   if (holderId) {
     const { resource } = await container.item(holderId, holderId).read<Member>();
     if (resource) {
-      // An account MERGED into another stays off: that is what merging means.
-      // Any other switched-off holder is one the old BPM Core removal locked
-      // out while it kept this place, and comes back on. It comes back with no
+      // A switched-off holder comes back on only where `revivalFor` says (never
+      // a merged account, never one BPM removed during a rollback unless this
+      // is BPM), without a leftover admin rank. It comes back with no
       // credential: `created: false` tells every caller this is someone's
       // existing account, which a by-name add never writes a PIN onto
       // (security review, 2026-11-25; app/api/players/route.ts).
-      const member = resource.active === true || resource.mergedInto
-        ? resource
-        : ((await container.items.upsert({ ...resource, active: true })).resource as unknown as Member);
+      const revival = await revivalFor(groupId, resource);
+      const member = revival
+        ? ((await container.items.upsert({ ...resource, ...revival })).resource as unknown as Member)
+        : resource;
       const membership = await addMembership({ groupId, memberId: holderId, name: trimmed, joinedVia: 'admin', joinedAt: createdAt });
       return { member, membership, created: false };
     }

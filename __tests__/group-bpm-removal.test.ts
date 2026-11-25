@@ -25,6 +25,7 @@ import { hashPin } from '../lib/recoveryHash';
 import { isAdminAuthedWithMember } from '../lib/auth';
 import { readMembership } from '../lib/groups';
 import { backfillStatus, runBackfill } from '../lib/groupBackfill';
+import { adminAddToRoster } from '../lib/roster';
 
 const FLAG = 'NEXT_PUBLIC_FLAG_MULTI_GROUP';
 const PASSWORD = 'a good long password';
@@ -223,6 +224,7 @@ describe('the second review (2026-11-25): no credential through a name, no half-
     expect(res.status).toBe(409);
     expect((await res.json()).error).toBe('account_exists');
     expect(memberDoc(v.id)?.pinHash).toBe(before);
+    expect(memberDoc(v.id)?.active).toBe(false); // refused before anything was written
   });
 
   it('an admin signing that name up for a night writes no PIN onto it either', async () => {
@@ -234,16 +236,19 @@ describe('the second review (2026-11-25): no credential through a name, no half-
     expect(memberDoc(v.id)?.pinHash).toBeUndefined();
   });
 
-  it('a plain admin’s restore that names a rank is refused before anything is written', async () => {
+  it('a plain admin restores a former admin as a MEMBER: the stale rank is set aside, not refused', async () => {
     await seedTestAdminMember();
     seedGroup('bpm', { name: 'BPM Core' });
-    const lin = seedMember('Lin', { id: 'm-lin', active: false });
-    seedMembership('bpm', lin.id, { name: 'Lin', status: 'removed' });
+    const lin = seedMember('Lin', { id: 'm-lin', active: false, role: 'admin' });
+    seedMembership('bpm', lin.id, { name: 'Lin', status: 'removed', role: 'admin' });
     const cookie = plainAdmin();
     const res = await updateMember(makeRequest('PATCH', 'http://localhost/api/members', { id: lin.id, active: true, role: 'admin' }, { Cookie: cookie, 'X-Client-IP': `r-${Math.random()}` }));
-    expect(res.status).toBe(403);
-    expect((await readMembership('bpm', lin.id))?.status).toBe('removed');
-    expect(memberDoc(lin.id)?.active).toBe(false);
+    expect(res.status).toBe(200);
+    const back = await readMembership('bpm', lin.id);
+    expect(back?.status).toBe('active');
+    expect(back?.role).toBe('member');
+    expect(memberDoc(lin.id)?.active).toBe(true);
+    expect(memberDoc(lin.id)?.role).toBe('member');
   });
 
   it('a rank named for someone off the list writes no admin onto the rollback copy', async () => {
@@ -303,5 +308,82 @@ describe('the second review (2026-11-25): no credential through a name, no half-
     await runBackfill({ dryRun: false });
     expect(memberDoc(locked.id)?.active).toBe(true);
     expect(memberDoc(locked.id)?.role).toBe('member');
+  });
+});
+
+describe('the third review (2026-11-25): a first PIN is on-behalf, and one rule for turning an account on', () => {
+  it('an admin’s sign-up carrying a PIN cannot set an admin’s first PIN', async () => {
+    await seedTestAdminMember();
+    seedGroup('bpm', { name: 'BPM Core' });
+    seedMember('Akane', { id: 'm-plain', role: 'admin' });
+    seedMembership('bpm', 'm-plain', { name: 'Akane', role: 'admin' });
+    const carolina = seedMember('Carolina', { id: 'm-car', role: 'admin' }); // no PIN: signs in with Google
+    seedMembership('bpm', carolina.id, { name: 'Carolina', role: 'admin' });
+    seedSession('session-2026-12-03', { signupOpen: true });
+    seedPointer('session-2026-12-03');
+
+    const res = await createPlayer(makeRequest('POST', 'http://localhost/api/players', { name: 'Carolina', pin: '5839' }, {
+      Cookie: `admin_session=${adminCookieValue({ groupId: 'bpm', memberId: 'm-plain' })}`, 'X-Client-IP': `r-${Math.random()}`,
+    }));
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toBe('organiser_only');
+    expect(memberDoc(carolina.id)?.pinHash).toBeUndefined();
+  });
+
+  /** Alex: removed from BPM Core while groups were OFF (account off, still on BPM's list as admin), and in club X. */
+  function removedDuringRollback() {
+    seedGroup('bpm', { name: 'BPM Core' });
+    seedGroup('x', { name: 'Other Club', ownerMemberId: 'm-xorg' });
+    seedMember('Kento', { id: 'm-xorg' });
+    seedMembership('x', 'm-xorg', { name: 'Kento', role: 'owner' });
+    const alex = seedMember('Alex', { id: 'm-alex', active: false, role: 'admin' });
+    seedMembership('bpm', alex.id, { name: 'Alex', role: 'admin' });
+    seedMembership('x', alex.id, { name: 'Alex' });
+    return alex;
+  }
+
+  it('another club’s Restore cannot turn back on someone BPM removed during a rollback', async () => {
+    await seedTestAdminMember();
+    const alex = removedDuringRollback();
+    const res = await updateMember(makeRequest('PATCH', 'http://localhost/api/members', { id: alex.id, active: true }, {
+      Cookie: `admin_session=${adminCookieValue({ groupId: 'x', memberId: 'm-xorg' })}`, 'X-Client-IP': `r-${Math.random()}`,
+    }));
+    expect(res.status).toBe(200);
+    expect(memberDoc(alex.id)?.active).toBe(false);
+    expect(memberDoc(alex.id)?.role).toBe('admin'); // untouched: still BPM's call
+  });
+
+  it('nor can another club adding the name', async () => {
+    await seedTestAdminMember();
+    const alex = removedDuringRollback();
+    await adminAddToRoster('x', 'Alex');
+    expect(memberDoc(alex.id)?.active).toBe(false);
+  });
+
+  it('adding the name of someone the old removal locked out turns them on without the old admin rank', async () => {
+    await seedTestAdminMember();
+    seedGroup('bpm', { name: 'BPM Core' });
+    seedGroup('x', { name: 'Other Club', ownerMemberId: 'm-xorg' });
+    const lin = seedMember('Lin', { id: 'm-lin', active: false, role: 'admin' });
+    seedMembership('bpm', lin.id, { name: 'Lin', status: 'removed', role: 'admin' });
+    seedMembership('x', lin.id, { name: 'Lin' });
+    const { created } = await adminAddToRoster('x', 'Lin');
+    expect(created).toBe(false);
+    expect(memberDoc(lin.id)?.active).toBe(true);
+    expect(memberDoc(lin.id)?.role).toBe('member');
+  });
+
+  it('the club-members route drops a rollback rank the membership no longer shows', async () => {
+    await seedTestAdminMember();
+    seedGroup('bpm', { name: 'BPM Core' });
+    // Demoted on the membership earlier, which never touched Member.role.
+    const lin = seedMember('Lin', { id: 'm-lin', role: 'admin' });
+    seedMembership('bpm', lin.id, { name: 'Lin', role: 'member' });
+    const req = new NextRequest(`http://localhost/api/groups/members/${lin.id}`, {
+      method: 'DELETE',
+      headers: { cookie: `admin_session=${adminCookieValue({ groupId: 'bpm' })}`, 'x-client-ip': `r-${Math.random()}` },
+    });
+    expect((await removeFromGroup(req, { params: Promise.resolve({ memberId: lin.id }) })).status).toBe(200);
+    expect(memberDoc(lin.id)?.role).toBe('member');
   });
 });

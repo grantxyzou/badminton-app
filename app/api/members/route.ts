@@ -21,7 +21,8 @@ import {
 import { normalizeAvatar } from '@/lib/memberAvatar';
 import { onBehalfRefusal, onBehalfRefused } from '@/lib/onBehalfGuard';
 import { carryRosterRename } from '@/lib/rosterRename';
-import { demoteRollbackRank } from '@/lib/rollbackRank';
+import { demoteRollbackRank, revivalFor } from '@/lib/rollbackRank';
+import type { Member } from '@/lib/types';
 
 const groupsOn = () => isFlagOn('NEXT_PUBLIC_FLAG_MULTI_GROUP');
 
@@ -196,6 +197,13 @@ export async function PATCH(req: NextRequest) {
     // first, so a refusal made only in the role step left the person on the
     // roster with the rest of the body unwritten (security review, 2026-11-25).
     // `after` is the rank the membership will hold once the `active` step ran.
+    // A removed person comes back as a MEMBER: the rank their sheet still
+    // shows is not a choice a non-organiser is making, so it is set aside
+    // rather than refused (Restore of a former admin used to be impossible
+    // for a plain admin).
+    if (groupsOn() && membership && !auth.organiser && body.active === true && membership.status !== 'active') {
+      delete body.role;
+    }
     if (groupsOn() && membership && !auth.organiser && typeof body.role === 'string' && ['owner', 'admin', 'member'].includes(body.role)) {
       const after = body.active === false
         ? undefined
@@ -213,6 +221,7 @@ export async function PATCH(req: NextRequest) {
 
     const updates: Record<string, unknown> = {};
     const memberCopy = writesMemberCopy(auth.groupId);
+    const revival = groupsOn() && body.active === true ? await revivalFor(auth.groupId, existing as Member) : null;
 
     // `active` FIRST, on the membership: a removal releases the roster name and
     // a restore reserves it again (`addMembership` rejoins a removed row), so
@@ -280,11 +289,12 @@ export async function PATCH(req: NextRequest) {
     // "Active" box writes it. With groups on, unticking it is removal from
     // THIS roster (above) and nothing more — the same rule as DELETE, which
     // says why (a BPM Core removal used to lock the person out of every club).
-    // A restore turns back on an account the old removal switched off; one
-    // merged into another stays off, since that is what merging means.
+    // A restore turns back on an account the old removal switched off, where
+    // `revivalFor` allows (lib/rollbackRank.ts) — decided BEFORE the `active`
+    // step, from the state the admin saw.
     if (!groupsOn()) {
       if (typeof body.active === 'boolean') updates.active = body.active;
-    } else if (body.active === true && existing.active !== true && !existing.mergedInto) {
+    } else if (body.active === true && revival) {
       updates.active = true;
     }
     if (typeof body.role === 'string' && ['owner', 'admin', 'member'].includes(body.role)) {

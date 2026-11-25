@@ -1,5 +1,5 @@
 import { lateCancelHoursOf, lateCancelVerdict } from '@/lib/cancelPolicy';
-import { readGroup, readMembership } from '@/lib/groups';
+import { readGroup, readMembership, rosterNameHolder } from '@/lib/groups';
 import { NextRequest, NextResponse } from 'next/server';
 import { claimPinAttempt, notePinSuccess } from '@/lib/pinLockout';
 import { getContainer, getActiveSessionId } from '@/lib/cosmos';
@@ -478,6 +478,15 @@ export async function POST(req: NextRequest) {
       // An admin creating a fresh account here is adding them to THIS roster:
       // with groups on the person and their membership come from one helper
       // (rejoining the name's holder here rather than minting a duplicate).
+      // Refused BEFORE anything is written: `adminAddToRoster` would switch a
+      // holder back on, or bring back their membership, and only then would
+      // the refusal below be seen.
+      if (groupsOn() && !existingMember) {
+        const holderId = await rosterNameHolder(accountGroupId, trimmedName);
+        if (holderId && (await membersContainer.item(holderId, holderId).read()).resource) {
+          return NextResponse.json({ error: 'account_exists' }, { status: 409 });
+        }
+      }
       const added = groupsOn() && !existingMember ? await adminAddToRoster(accountGroupId, trimmedName) : null;
       // The holder of the name may be someone's EXISTING account that the
       // lookup above could not see (switched off, so `resolveActiveMemberId`
@@ -643,6 +652,19 @@ export async function POST(req: NextRequest) {
      */
     if (matchedMember && typeof matchedMember.pinHash === 'string' && matchedMember.pinHash.length > 0) {
       pinHash = undefined;
+    }
+
+    // An ADMIN giving someone else's EXISTING account its first PIN here is
+    // acting on that person's credentials, the same move as the account-only
+    // path above and `PATCH /api/players`: the same rule (lib/onBehalfGuard.ts,
+    // F1). Without it a sign-up carrying `pin` set the first PIN of any
+    // PIN-less account on the admin's roster — an organiser's, or someone's
+    // who is BPM's admin and joined the admin's own club — and `POST /api/admin`
+    // then signed the admin in as them (third security review, 2026-11-25).
+    // PINs are being phased out, so most accounts have none.
+    if (pinHash && matchedMember && adminAuth.authed && matchedMember.id !== adminAuth.memberId) {
+      const refusal = await onBehalfRefusal(adminAuth, matchedMember.id);
+      if (refusal) return onBehalfRefused(refusal);
     }
 
     // A FIRST PIN on an existing member needs proof, and the gate above is

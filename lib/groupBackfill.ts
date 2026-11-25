@@ -66,6 +66,7 @@ import {
   RosterNameTakenError,
 } from './groups';
 import { isFlagOn } from './flags';
+import { revivalFor } from './rollbackRank';
 import { getAdminNames } from './auth';
 import type { Member, GroupSettings } from './types';
 
@@ -602,11 +603,12 @@ export async function runBackfill(opts: {
       try {
         const item = getContainer('members').item(m.id, m.id);
         const { resource } = await item.read<Member & { _etag?: string }>();
-        if (!resource || resource.active === true || resource.mergedInto) continue;
-        // Not BPM's admin any more (they are off its list), so the rollback
-        // copy of the rank goes with the repair (lib/rollbackRank.ts).
+        const revival = resource ? await revivalFor(BPM_GROUP_ID, resource) : null;
+        if (!resource || !revival) continue;
+        // `revivalFor` (lib/rollbackRank.ts): off BPM's list here, so the
+        // rollback copy of an admin rank goes with the repair.
         await item.replace(
-          { ...resource, active: true, ...(resource.role === 'admin' ? { role: 'member' as const } : {}) },
+          { ...resource, ...revival },
           resource._etag ? { accessCondition: { type: 'IfMatch', condition: resource._etag } } : undefined,
         );
         summary.memberships.reactivated += 1;
