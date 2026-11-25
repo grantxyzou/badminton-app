@@ -10,8 +10,9 @@ import type { CatalogItem } from '@/lib/types';
 /** A resolved recommendation for one category: the catalog row plus the
  *  why-this lines the engine produced for it. */
 /** One reason as the fit engine emits it: an i18n key under `stats.gear`
- *  plus params. `useGearPicks` translates these at render, in the member's locale; the
- *  server's `reasons: string[]` is the English fallback for the legacy path. */
+ *  plus params. `useGearPicks` translates these at render, in the member's
+ *  locale, into `reasons` / `warnings` / `differsByText` below. Only the
+ *  string engine still sends sentences of its own. */
 export interface PickReasonKey {
   key: string;
   params?: Record<string, string | number>;
@@ -28,7 +29,7 @@ export interface PickAlternative {
 export interface GearPick {
   item: CatalogItem;
   reasons: string[];
-  /** Fit-engine additions (Phase 2+). All optional so legacy picks type-check. */
+  /** The fit engine's keys. Absent on a string pick, which carries sentences. */
   reasonKeys?: PickReasonKey[];
   warningKeys?: PickReasonKey[];
   alternatives?: PickAlternative[];

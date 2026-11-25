@@ -8,6 +8,14 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Old code out: one racket engine, one way to say a reason (2026-11-25)
+
+Nothing here changes what you see. It removes four leftovers the "replace in place" rule named.
+
+- **The older racket recommender is deleted.** Nothing had called it since October; the fit engine is the only one.
+- **A racket pick's reasons travel one way.** The server used to send every reason twice, once as a key and once as an English sentence the app had stopped reading. It now sends the key only, and the app says it in your language, as it already did.
+- **Two storage names from the app's first months are no longer read** on a phone, and the Stats tab's label has a key named for what it says.
+
 ## Emails say who they are from (2026-11-25)
 
 - **The sender name in the inbox now says who an email is from** (`docs/plans/branded-emails.md`). Account emails (confirm your email, sign-in code, password reset) come from "BPM admin". "You're in" and the card receipt come from the club, for example "BPM Six Feathers" or "BPM Core". Stringing emails and invoices come from the racket's stringer and club, for example "Lin · BPM Core". The address underneath is still the app's one mail account.

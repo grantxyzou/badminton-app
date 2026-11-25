@@ -113,8 +113,11 @@ describe('GET /api/recommend?category=', () => {
       makeGetRequest('http://localhost:3000/api/recommend?name=Lin&category=racket', true),
     );
     const body = await res.json();
-    expect(body.reasons.length).toBeGreaterThan(0);
-    expect(body.reasons.join(' ')).not.toMatch(/working on|this week's focus/i);
+    // A racket's reasons are keys from the fit engine's own list: there is
+    // no key a drill could arrive under.
+    expect(body.reasonKeys.length).toBeGreaterThan(0);
+    for (const r of body.reasonKeys) expect(r.key).toMatch(/^(reason|warn|diff)\./);
+    expect(JSON.stringify(body.reasonKeys)).not.toMatch(/working on|this week's focus|drill/i);
   });
 
   // The catch around the club read in the route is deliberate and narrow: a
@@ -143,7 +146,8 @@ describe('GET /api/recommend?category=', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.item).toBeTruthy();
-    expect(Array.isArray(body.reasons)).toBe(true);
+    expect(Array.isArray(body.reasonKeys)).toBe(true);
+    expect(JSON.stringify(body.reasonKeys)).not.toContain('reason.clubPlays');
 
     vi.restoreAllMocks();
   });

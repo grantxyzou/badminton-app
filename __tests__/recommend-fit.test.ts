@@ -62,15 +62,18 @@ describe('GET /api/recommend — the fit engine', () => {
     expect(body.item.category).toBe('racket');
     expect(Array.isArray(body.reasonKeys)).toBe(true);
     expect(body.reasonKeys.length).toBeGreaterThan(0);
-    // The English strings are the keys rendered, in the same order, with the club line allowed last.
-    expect(typeof body.reason).toBe('string');
-    expect(body.reasons[0]).not.toMatch(/^reason\./);
+    // Keys and params only: the client says them in the member's language,
+    // so the server sends no sentence of its own beside them.
+    expect(body.reason).toBeUndefined();
+    expect(body.reasons).toBeUndefined();
+    expect(body.warnings).toBeUndefined();
     expect(body.alternatives).toHaveLength(2);
     for (const alt of body.alternatives) {
       expect(alt.item.id).not.toBe(ASTROX);
       expect(alt.item.id).not.toBe(body.item.id);
       expect(alt.differsBy.length).toBeGreaterThan(0);
-      expect(alt.differsByText.length).toBe(alt.differsBy.length);
+      expect(alt.differsByText).toBeUndefined();
+      expect(alt.reasons).toBeUndefined();
     }
   });
 
@@ -105,11 +108,9 @@ describe('GET /api/recommend — the fit engine', () => {
     const body = await (await ask()).json();
     // 'happy' next to a Stiff head-heavy anchor targets head-heavy, which an
     // often-sore arm caps at Even — so the head-heavy winner carries the
-    // warning rather than vanishing, and the English list mirrors the keys.
+    // warning rather than vanishing.
     expect(body.item).toBeTruthy();
     expect(Array.isArray(body.warningKeys)).toBe(true);
-    expect(Array.isArray(body.warnings)).toBe(true);
-    expect(body.warnings.length).toBe(body.warningKeys.length);
     expect(JSON.stringify(body.warningKeys)).toContain('warn.headHeavyWithSoreArm');
   });
 
@@ -156,6 +157,5 @@ describe('GET /api/recommend — the fit engine', () => {
     expect(keys.length).toBeLessThanOrEqual(3);
     expect(keys[keys.length - 1]).toBe('reason.clubPlays');
     expect(body.reasonKeys[keys.length - 1].params).toEqual({ count: 3 });
-    expect(body.reasons[keys.length - 1]).toBe('3 people in the club already play it.');
   });
 });

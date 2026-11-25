@@ -1,14 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { isOffered } from '../lib/catalogOffer';
 import { recommendFit, type FitInput } from '../lib/racketFit';
-import { recommendRackets } from '../lib/racketRecommend';
-import type { PlayerProfile } from '../lib/racketProfile';
 import type { CatalogItem } from '../lib/types';
 import catalogSeed from '../scripts/data/equipment-catalog.json';
 
 /**
  * `attributes.unlisted` withdraws a catalog row from being OFFERED — picked by
- * either engine, or listed to add — while the row stays resolvable for anyone
+ * the fit engine, or listed to add — while the row stays resolvable for anyone
  * whose bag already points at it. Added with the catalog check of 2026-09-14,
  * which found rows that are not real rackets (docs/catalog-check-2026-09-14.md).
  */
@@ -26,14 +24,6 @@ const GHOST = racket('ghost', { balance: 'Head-heavy', flex: 'Stiff', unlisted: 
 
 function input(over: Partial<FitInput> = {}): FitInput {
   return { anchor: null, ownedIds: new Set(), ownedLabels: new Set(), format: 'both', level: 'Intermediate', hasRatings: true, ...over };
-}
-
-function profile(): PlayerProfile {
-  return {
-    serves: 3, net_play: 3, clears: 3, drops: 3, drives: 3, smashes: 3, grip: 3,
-    footwork: 3, court_coverage: 3, stamina: 3, game_reading: 3, consistency: 3, rules: 3, mindset: 3,
-    format: 'both', ratedKeys: [],
-  };
 }
 
 describe('unlisted catalog rows', () => {
@@ -55,11 +45,6 @@ describe('unlisted catalog rows', () => {
     const r = recommendFit(input({ anchor: GHOST, ownedIds: new Set(['ghost']) }), [GHOST, LISTED]);
     expect(r.fitState.startsWith('anchored')).toBe(true);
     expect(r.top?.item.id).toBe('listed');
-  });
-
-  it('the older recommender skips an unlisted row too', () => {
-    const out = recommendRackets(profile(), [GHOST, LISTED]);
-    expect(out.map((o) => o.item.id)).toEqual(['listed']);
   });
 
   it('the catalog withdraws exactly the rows the check found, each with a known reason', () => {

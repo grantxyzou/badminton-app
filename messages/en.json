@@ -801,7 +801,7 @@
   "nav": {
     "home": "Home",
     "stringing": "Stringing",
-    "skills": "Stats",
+    "stats": "Stats",
     "admin": "Admin",
     "profile": "Profile"
   },

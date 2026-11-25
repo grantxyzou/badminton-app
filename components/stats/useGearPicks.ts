@@ -111,9 +111,9 @@ export function useGearPicks(
   const t = useTranslations('stats.gear');
   // Reason KEYS are translated at RENDER, in the member's locale — the point
   // of the fit engine speaking in keys. State holds what the server sent
-  // (keys AND the legacy English strings); the view below derives the
-  // sentences, so a language toggle re-renders them with no refetch and the
-  // fetch effect does not depend on `t`.
+  // (keys for a racket; the string engine's own sentences for a string); the
+  // view below derives the sentences, so a language toggle re-renders them
+  // with no refetch and the fetch effect does not depend on `t`.
   const say = useCallback((keys: PickReasonKey[] | undefined, fallback: string[]): string[] => {
     if (!Array.isArray(keys) || keys.length === 0) return fallback;
     return keys.map((k) => t(k.key, k.params as Record<string, string | number>));
@@ -139,8 +139,8 @@ export function useGearPicks(
           warnings: say(pick.warningKeys, pick.warnings ?? []),
           alternatives: pick.alternatives?.map((a) => ({
             ...a,
-            reasons: say(a.reasonKeys, a.reasons),
-            differsByText: say(a.differsBy, a.differsByText ?? []),
+            reasons: say(a.reasonKeys, []),
+            differsByText: say(a.differsBy, []),
           })),
         },
       } : { status, pick };
@@ -369,22 +369,19 @@ export function useGearPicks(
               status: 'ready',
               pick: {
                 item: d.item as CatalogItem,
-                // The route sends a `reasons` array; the singular `reason` is
-                // read only as a fallback, so a pick never reaches the sheet
-                // — whose whole job is explaining it — with no why.
-                reasons: Array.isArray(d.reasons)
-                  ? d.reasons
-                  : (typeof d.reason === 'string' && d.reason ? [d.reason] : []),
+                // A string pick's sentences. A racket pick sends none: its
+                // keys below are said by the view.
+                reasons: Array.isArray(d.reasons) ? d.reasons : [],
                 warnings: Array.isArray(d.warnings) ? d.warnings : [],
                 reasonKeys: Array.isArray(d.reasonKeys) ? d.reasonKeys : undefined,
                 warningKeys: Array.isArray(d.warningKeys) ? d.warningKeys : undefined,
                 alternatives: Array.isArray(d.alternatives)
-                  ? d.alternatives.map((a: { item: CatalogItem; reasons?: string[]; reasonKeys?: PickReasonKey[]; differsBy?: PickReasonKey[]; differsByText?: string[] }) => ({
+                  ? d.alternatives.map((a: { item: CatalogItem; reasonKeys?: PickReasonKey[]; differsBy?: PickReasonKey[] }) => ({
                       item: a.item,
-                      reasons: Array.isArray(a.reasons) ? a.reasons : [],
+                      // Said from the keys by the view above, never sent.
+                      reasons: [],
                       reasonKeys: a.reasonKeys,
                       differsBy: Array.isArray(a.differsBy) ? a.differsBy : [],
-                      differsByText: Array.isArray(a.differsByText) ? a.differsByText : [],
                     }))
                   : undefined,
                 fitState: typeof d.fitState === 'string' ? d.fitState : undefined,

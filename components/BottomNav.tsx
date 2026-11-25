@@ -21,8 +21,11 @@ type NavItem = { id: Tab; label: string; icon: string };
  * weight) because colour alone is not a signal. Styling lives in `.rail-*` /
  * `--rail-*` in globals.css.
  *
- * The four `Tab` ids are `home · stringing · skills · profile` — `skills`
- * renders "Stats" via the `nav.skills` key, kept for backcompat. Slot count is
+ * The four `Tab` ids are `home · stringing · skills · profile`. The Stats
+ * tab's ID is `skills` and stays so: it is in `bpm://open?tab=skills` inside
+ * the widgets of every installed store build, in shared links and in the
+ * usage events already stored, none of which a web deploy can rewrite. Its
+ * LABEL is `nav.stats`. Slot count is
  * 4, or 3 in a club with stringing switched off (`hideStringing`; the
  * indicator reads the count as `--rn`). Admin is reached via Profile →
  * "Admin tools →" or `?tab=admin`, never from here.
@@ -38,7 +41,7 @@ export default function BottomNav({ activeTab, onTabChange, hideStringing = fals
   const allTabs: NavItem[] = [
     { id: 'home',    label: t('home'),    icon: 'home' },
     { id: 'stringing', label: t('stringing'), icon: 'grid_4x4' },
-    { id: 'skills',  label: t('skills'),  icon: 'bar_chart' },
+    { id: 'skills',  label: t('stats'),   icon: 'bar_chart' },
     { id: 'profile', label: t('profile'), icon: 'person' },
   ];
   const visibleTabs = hideStringing ? allTabs.filter((tb) => tb.id !== 'stringing') : allTabs;

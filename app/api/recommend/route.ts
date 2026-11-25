@@ -9,7 +9,6 @@ import { getClientIp, checkRateLimit } from '@/lib/rateLimit';
 import { verifyMemberAuth, nameOwnership, requireMember, isAdminAuthedWithMember } from '@/lib/auth';
 import { buildProfile } from '@/lib/racketProfile';
 import { recommendFit, comfortTensionDeltaLb, FIT_ENGINE_VERSION } from '@/lib/racketFit';
-import { fitReasonTexts } from '@/lib/fitReasonText';
 import { pairString } from '@/lib/stringPair';
 import { buildPickReasons, buildPickReasonKeys } from '@/lib/pickReasons';
 import { tallyClubGear, type ClubGearEntry } from '@/lib/clubGear';
@@ -113,7 +112,7 @@ export async function GET(req: NextRequest) {
   // swapping rackets a few times broke the card for a minute.
   const ip = getClientIp(req);
   if (!checkRateLimit(`recommend:${ip}`, 30, 60 * 1000)) {
-    return NextResponse.json({ item: null, reason: null });
+    return NextResponse.json({ item: null });
   }
   // Members only. The name-ownership gate below additionally demands the
   // caller own the name (or be an admin).
@@ -156,7 +155,7 @@ export async function GET(req: NextRequest) {
       // renders its parked card from this, and shoes/shuttles are a
       // data-sourcing problem, not a request-shape problem. Checked before
       // any profile/catalog work so an unsupported category is cheap.
-      return NextResponse.json({ item: null, reason: null, unavailable: 'no_engine' });
+      return NextResponse.json({ item: null, unavailable: 'no_engine' });
     }
 
     await ensureCatalogSeeded();
@@ -196,13 +195,13 @@ export async function GET(req: NextRequest) {
     // ladder (a racket in the bag, or a check-in, or goal + swing) and
     // answers `needsFit` itself, so only the string branch keeps this gate.
     if (!profile && category !== 'racket') {
-      return NextResponse.json({ item: null, reason: null, needsCheckIn: true });
+      return NextResponse.json({ item: null, needsCheckIn: true });
     }
 
     const catalogItems = await catalogByCategory(category);
 
     if (catalogItems.length === 0) {
-      return NextResponse.json({ item: null, reason: null, unavailable: 'no_catalog' });
+      return NextResponse.json({ item: null, unavailable: 'no_catalog' });
     }
 
     // Pairing needs frames as well as strings, and `category` only fetched
@@ -214,7 +213,7 @@ export async function GET(req: NextRequest) {
     if (category === 'string') {
       // The string engine reads skill dimensions, so it keeps the D5 gate
       // even when the fit flag lifted it for rackets above.
-      if (!profile) return NextResponse.json({ item: null, reason: null, needsCheckIn: true });
+      if (!profile) return NextResponse.json({ item: null, needsCheckIn: true });
       // D1 ladder. The frame is resolved HERE rather than taken from the
       // client: a racketId in the query string would let any caller pair
       // against any frame, and the gear doc that answers rung one is already
@@ -238,7 +237,7 @@ export async function GET(req: NextRequest) {
       }
       // No frame from either rung means the racket catalog is empty or
       // unscorable — a catalog problem, the same one the racket card reports.
-      if (!frame) return NextResponse.json({ item: null, reason: null, unavailable: 'no_catalog' });
+      if (!frame) return NextResponse.json({ item: null, unavailable: 'no_catalog' });
 
       // A sore arm lowers the tension a pound or two inside the frame's
       // rated window — the one comfort effect the evidence supports. The
@@ -251,7 +250,7 @@ export async function GET(req: NextRequest) {
       const pairing = pairString(frame, catalogItems as CatalogItem[], profile, tensionDelta, gear?.fitSwing);
       // Every candidate rejected by the tension gate. Not a failure and not
       // a catalog gap: this frame genuinely has no compatible string here.
-      if (!pairing) return NextResponse.json({ item: null, reason: null, unavailable: 'no_catalog' });
+      if (!pairing) return NextResponse.json({ item: null, unavailable: 'no_catalog' });
 
       // This branch's "deliberately no drill grounding" note is now the
       // general rule for every category — see lib/pickReasons.ts.
@@ -263,7 +262,6 @@ export async function GET(req: NextRequest) {
 
       return NextResponse.json({
         item: pairing.item,
-        reason: reasons[0] ?? null,
         reasons,
         warnings: pairing.warnings,
         // Distinct from `warnings` all the way to the sheet — the caveat
@@ -275,14 +273,15 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // The fit engine. Reasons are KEYS; the English strings alongside
-    // are transitional (`lib/fitReasonText.ts`) for the client that still
-    // reads `reasons: string[]`. Everything new is additive.
+    // The fit engine. Reasons, warnings and "differs by" are KEYS with
+    // params, and nothing else: `useGearPicks` says them in the member's
+    // language. (The server wrote an English copy beside each until
+    // 2026-11-25, for a client that had stopped reading it.)
     const fit = recommendFit(buildFitInput(gear, ratings, catalogItems as CatalogItem[]), catalogItems as CatalogItem[]);
     if (fit.fitState === 'needsFit') {
-      return NextResponse.json({ item: null, reason: null, needsFit: true, engineVersion: FIT_ENGINE_VERSION, fitState: fit.fitState });
+      return NextResponse.json({ item: null, needsFit: true, engineVersion: FIT_ENGINE_VERSION, fitState: fit.fitState });
     }
-    if (!fit.top) return NextResponse.json({ item: null, reason: null, unavailable: 'no_catalog' });
+    if (!fit.top) return NextResponse.json({ item: null, unavailable: 'no_catalog' });
     const [, clubEntries] = await Promise.all([
       ownsName && member
         ? recordServed(resolveGroupId(req), subject.memberId, member.name, fit.top.item.id, FIT_ENGINE_VERSION)
@@ -292,20 +291,14 @@ export async function GET(req: NextRequest) {
     // The club line keeps its reserved last slot on the engine path too —
     // as a KEY, so the rail can say it in the member's locale.
     const reasonKeys = buildPickReasonKeys({ item: fit.top.item, engineReasons: fit.top.reasons, clubEntries });
-    const reasons = fitReasonTexts(reasonKeys);
     return NextResponse.json({
       item: fit.top.item,
-      reason: reasons[0] ?? null,
-      reasons,
-      warnings: fitReasonTexts(fit.top.warnings),
       reasonKeys,
       warningKeys: fit.top.warnings,
       alternatives: fit.alternatives.map((a) => ({
         item: a.item,
-        reasons: fitReasonTexts(a.reasons),
         reasonKeys: a.reasons,
         differsBy: a.differsBy ?? [],
-        differsByText: fitReasonTexts(a.differsBy ?? []),
       })),
       engineVersion: FIT_ENGINE_VERSION,
       fitState: fit.fitState,

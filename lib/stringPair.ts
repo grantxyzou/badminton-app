@@ -1,6 +1,6 @@
 import type { CatalogItem } from './types';
 import type { PlayerProfile } from './racketProfile';
-import { overall, skillLevel } from './racketRecommend';
+import { overall, skillLevel } from './racketFit';
 import { USD_TO_CAD } from './catalogPrice';
 import { SWING_TENSION_BAND, type SwingSpeed } from './tension';
 
@@ -90,7 +90,7 @@ function toAceScale(v: number): number {
  * V2. The four dimensions the scorers use INDIVIDUALLY, on the reference's
  * 1-6 scale. `defence` and `serve` are omitted deliberately: the reference
  * reaches them only through its own six-dimension `overall`, which V2 replaces
- * with `racketRecommend`'s fourteen-skill `overall()` so that no rated skill is
+ * with `racketFit`'s fourteen-skill `overall()` so that no rated skill is
  * silently dropped from the average.
  */
 interface AceDims {
