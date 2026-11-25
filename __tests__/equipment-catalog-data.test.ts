@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import catalog from '../scripts/data/equipment-catalog.json';
-import { isScorable } from '../lib/racketRecommend';
+import { isScorable } from '../lib/racketFit';
 import type { CatalogItem } from '../lib/types';
 
 const items = catalog.items as unknown as CatalogItem[];
@@ -109,7 +109,7 @@ describe('equipment catalog data', () => {
   });
 
   /* ── Vocabulary ─────────────────────────────────────────────────────────
-     The failure this guards is invisible at runtime: `recommendRackets` skips
+     The failure this guards is invisible at runtime: the fit engine skips
      a row it cannot score honestly, and a skipped row looks exactly like a row
      that scored badly. Nothing errors, nothing logs, the rail still renders a
      confident pick — from a smaller catalog than anyone thinks.

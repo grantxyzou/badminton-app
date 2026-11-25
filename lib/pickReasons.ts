@@ -74,7 +74,7 @@ export function buildPickReasons(input: PickReasonInput): string[] {
 /**
  * The same two-source, club-last rule for reason KEYS (the fit engine). One
  * function per representation rather than one that returns either: the
- * string form is the legacy engine's and retires with it in Phase 4.
+ * string form is the string engine's, which still writes English sentences.
  */
 export interface PickReasonKey { key: string; params?: Record<string, string | number> }
 

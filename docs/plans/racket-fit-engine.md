@@ -324,7 +324,7 @@ because they are correct regardless of uptake.
 | PATCH validation, GET strip of the comfort field | `app/api/equipment/gear/route.ts` |
 | Fit questionnaire | `components/stats/GearFitSheet.tsx` |
 | Engine (pure) | `lib/racketFit.ts` — `GOAL_DELTA` is the tuning table |
-| Transitional English reasons | `lib/fitReasonText.ts` (deleted in Phase 4) |
+| Transitional English reasons | deleted 2026-11-25 with the older engine (`recommendRackets`), ahead of the rest of Phase 4: the route sends keys only |
 | Route: fitState, alternatives, `pick_served` | `app/api/recommend/route.ts` |
 | Alternatives + feedback controls | `components/stats/GearPickSheet.tsx` |
 | Golden set + harness | `__tests__/fixtures/fit-golden.json`, `__tests__/fit-golden.test.ts` |

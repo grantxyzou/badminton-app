@@ -20,7 +20,7 @@ describe('GET /api/recommend rate limit', () => {
       const body = await (await GET(fixed())).json();
       expect(body.unavailable ?? body.needsCheckIn ?? body.item ?? body.error).toBeDefined();
     }
-    expect(await (await GET(fixed())).json()).toEqual({ item: null, reason: null });
+    expect(await (await GET(fixed())).json()).toEqual({ item: null });
   });
 });
 
@@ -86,8 +86,8 @@ describe('/api/recommend', () => {
     const body = await (await GET(getAs('Lin'))).json();
     expect(body.needsCheckIn).toBeFalsy();
     expect(body.item).toBeTruthy();
-    expect(Array.isArray(body.reasons)).toBe(true);
-    expect(body.reasons.length).toBeGreaterThan(0);
+    expect(Array.isArray(body.reasonKeys)).toBe(true);
+    expect(body.reasonKeys.length).toBeGreaterThan(0);
   });
 
   // Controller override on the brief's sketch: a 404 gear read means "no gear

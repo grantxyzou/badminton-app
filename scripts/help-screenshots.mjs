@@ -98,7 +98,7 @@ async function main() {
     await save(locale, 'stringing-request', await shoot(p.locator('[data-tab-panel="stringing"] .glass-card, .glass-card').filter({ visible: true }).nth(0)), sizes);
 
     // Stats: the three tiles at the top (the comparison question dismissed first).
-    await tab('skills').click();
+    await tab('stats').click();
     await p.waitForTimeout(3000);
     const keep = p.getByRole('button', { name: m(locale, 'stats.consent.no') });
     if (await keep.count()) await keep.first().click().catch(() => {});

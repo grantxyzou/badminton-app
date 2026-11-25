@@ -162,8 +162,8 @@ export default function GearPickSheet({ open, onClose, category, pick, owned, ge
     ? (gear.gear?.items ?? []).some((i) => i && !i.retiredAt && i.catalogId === shownAlt.item.id)
     : owned;
 
-  // The engine's headline reason IS the plain-language line (it's the same
-  // string `/api/recommend` returns as `reason`), so the reason list below it
+  // The engine's headline reason IS the plain-language line (the first of
+  // the pick's reasons), so the reason list below it
   // shows what's left rather than repeating it back one line lower.
   // An alternative's own reasons lead; with none, its "differs by" line
   // becomes the headline ("softer · $41 less than our pick") — a name and a

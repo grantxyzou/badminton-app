@@ -8,7 +8,7 @@ import type { PlayerProfile } from './racketProfile';
  * Design: `docs/superpowers/specs/2026-09-07-racket-fit-design.md`.
  *
  * A DISTANCE MODEL against a target spec, not rule scorers. The seven scorers
- * it replaces (`lib/racketRecommend.ts`) inferred fit from fourteen skill
+ * it replaced (deleted 2026-11-25) inferred fit from fourteen skill
  * self-ratings, read the same attribute in two of them, and each emitted its
  * own English sentence. Here there is one place per axis, weights that sum
  * visibly, and reasons derived from the smallest distances.
@@ -162,7 +162,7 @@ export interface FitResult {
 }
 
 // ---------------------------------------------------------------------------
-// Helpers shared with the string engine (moved here from racketRecommend.ts)
+// Helpers shared with the string engine
 // ---------------------------------------------------------------------------
 
 /** Case- and separator-tolerant vocabulary compare. A backstop: the catalog
@@ -179,13 +179,13 @@ export function isScorable(item: CatalogItem): boolean {
   return typeof a.balance === 'string' && typeof a.flex === 'string' && typeof a.tier === 'string';
 }
 
-export function technical(p: PlayerProfile): number {
+function technical(p: PlayerProfile): number {
   return (p.serves + p.net_play + p.clears + p.drops + p.drives + p.smashes + p.grip) / 7;
 }
-export function physical(p: PlayerProfile): number {
+function physical(p: PlayerProfile): number {
   return (p.footwork + p.court_coverage + p.stamina) / 3;
 }
-export function mental(p: PlayerProfile): number {
+function mental(p: PlayerProfile): number {
   return (p.game_reading + p.consistency + p.rules + p.mindset) / 4;
 }
 /** The fourteen-skill average the string engine shares (spec V2). */
@@ -197,14 +197,6 @@ export function skillLevel(p: PlayerProfile): FitLevel {
   if (o < 2.5) return 'Beginner';
   if (o < 3.75) return 'Intermediate';
   return 'Advanced';
-}
-/** Consistency + grip technique bound how much stiffness a player can use. */
-export function maxFlexDemand(p: PlayerProfile): 2 | 3 | 4 | 5 {
-  const technique = (p.consistency + p.grip + p.smashes) / 3;
-  if (technique <= 2.0) return 2;
-  if (technique <= 3.0) return 3;
-  if (technique <= 4.0) return 4;
-  return 5;
 }
 
 const SKILL_FIELDS = [

@@ -116,7 +116,7 @@ describe('GET /api/recommend?category=string', () => {
     expect(plain.reasons.some((r: string) => /swing/i.test(r))).toBe(false);
     // The one line that says why sits in the reasons; the headline stays the string's.
     expect(slow.reasons.some((r: string) => /relaxed swing/i.test(r))).toBe(true);
-    expect(/swing/i.test(slow.reason)).toBe(false);
+    expect(/swing/i.test(slow.reasons[0])).toBe(false);
   });
 
   it('falls back to the recommended racket, and says so', async () => {

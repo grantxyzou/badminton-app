@@ -80,11 +80,11 @@ What survived that arrangement, and the rules that came with it:
 - **The catalog's vocabulary is pinned by a test.** Every racket row must pass
   `isScorable` and carry `balance`/`flex`/`playStyle`/`tier` values from the
   controlled vocabulary (`__tests__/equipment-catalog-data.test.ts`). The
-  failure mode is invisible — `recommendRackets` silently skips a row it cannot
+  failure mode is invisible — the fit engine silently skips a row it cannot
   score, and a skipped row looks exactly like one that scored badly. It has cost
   this catalog twice: 50 of 71 rows in production, and 11 rows in the seed file
   itself (lowercase `"head-heavy"`, a sentence where `playStyle` takes a word)
-  until they were normalized on 2026-08-21. `racketRecommend`'s comparisons are
+  until they were normalized on 2026-08-21. The engine's comparisons (`canon`) are
   case-tolerant as a backstop, but the data is the fix. Tension ceilings are the
   one field deliberately left absent on those 11 frames — `scoreTension` has an
   honest branch for it, and a range invented from series convention would be a

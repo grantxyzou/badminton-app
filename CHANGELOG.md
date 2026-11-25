@@ -8,6 +8,14 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Old code out: one racket engine, one way to say a reason (2026-11-25)
+
+Nothing here changes what you see. It removes four leftovers the "replace in place" rule named.
+
+- **The older racket recommender is deleted.** Nothing had called it since October; the fit engine is the only one.
+- **A racket pick's reasons travel one way.** The server used to send every reason twice, once as a key and once as an English sentence the app had stopped reading. It now sends the key only, and the app says it in your language, as it already did.
+- **Two storage names from the app's first months are no longer read** on a phone, and the Stats tab's label has a key named for what it says.
+
 ## Light mode is morning glass (2026-11-25)
 
 - **Light mode has its own design now**, instead of being dark mode turned inside out (`docs/plans/light-mode-glass.md`). Each tab is lit by soft blooms of its colour (green Home, amber Stringing, blue Stats, violet Profile, orange Admin), and the cards are frosted white glass over them.

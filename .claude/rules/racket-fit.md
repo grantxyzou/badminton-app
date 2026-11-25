@@ -3,7 +3,6 @@ paths:
   - "components/stats/**"
   - "lib/racketFit*.ts"
   - "lib/fit*.ts"
-  - "lib/racketRecommend.ts"
   - "lib/recommend.ts"
   - "lib/racketProfile.ts"
   - "lib/racketModel.ts"
@@ -55,15 +54,15 @@ paths:
 - **Reasons are KEYS** (`stats.gear.reason.*`, `warn.*`, `diff.*`) with
   params; `FIT_REASON_KEYS` is exported and `__tests__/racket-fit.test.ts`
   asserts every key exists in both locales, because `check-i18n-keys.mjs`
-  cannot see a dynamic `t(reason.key)`. `lib/fitReasonText.ts` renders them
-  to English on the server for the client that still reads `reasons:
-  string[]` — TRANSITIONAL, deleted in Phase 4 once the rail translates keys.
+  cannot see a dynamic `t(reason.key)`. The route sends the keys and nothing
+  beside them (the server-side English copy and the duplicate singular
+  `reason` were deleted on 2026-11-25): `useGearPicks` says them.
 - **Top pick + two alternatives**, diversity-selected on the (balance, flex,
   tier) triple with a rank-order fallback, each with a `differsBy` of at most
   two fragments. Order is score → distance → price → id: deterministic, never
   catalog order.
-- **Phase 3 (2026-09-09) — the sheet and the loop.** `GearPickRail` stores
-  what the server sent (keys AND the legacy English strings) and TRANSLATES
+- **Phase 3 (2026-09-09) — the sheet and the loop.** `useGearPicks` (the
+  rail's reader, extracted 2026-09-14) stores the keys the server sent and TRANSLATES
   `reasonKeys` / `warningKeys` / `differsBy` at RENDER (a `useMemo` view over
   state), so a language toggle re-renders the reasons in place with no
   refetch and the fetch effect does not depend on `t`. The club-tally line
@@ -101,15 +100,13 @@ paths:
   case (g01, 2026-10-09) and two `pending` drafts the harness reports without
   asserting; Phase 4 raises the guard to five rated cases.
 - `canon`, `isScorable`, `overall`, `skillLevel` and the derived-profile
-  helpers MOVED here; `lib/racketRecommend.ts` re-exports them until it
-  retires. `maxFlexDemand` is still exported for that legacy path only — the
-  fit engine no longer reads it.
+  helpers live here, and the string engine imports them from here.
 
-### Racket recommender — off the route since the flag above retired (2026-10-24); `recommendRackets` stays for Phase 4. Its own flag `NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER` retired 2026-11-21, taking the stage-derived fallback pick with it
+### The pick route, its profile and its reasons. The older skill-scored racket engine (seven weighted scorers) left the route when the flag above retired (2026-10-24) and was deleted on 2026-11-25; its flag `NEXT_PUBLIC_FLAG_GEAR_RECOMMENDER` retired 2026-11-21, taking the stage-derived fallback pick with it
 
-Scores the **fourteen check-in skill ratings** rather than the old
-`Member.stage` (optional, rarely set — so it showed nearly everyone the same
-racket and never excluded what they owned).
+What follows is what the string engine and the route still share with that
+history. `docs/superpowers/reference/recommend_racket.py` is the deleted
+engine's source, kept as reference only.
 
 - `lib/racketProfile.ts` — `buildProfile(ratings, gear)`. Owns the 14-key rename
   table between the app's assessment keys and the engine's field names; a wrong
@@ -117,17 +114,14 @@ racket and never excluded what they owned).
   map is keyed by `string`. Unrated skills default to 3 (partial ratings are
   normal — `validateRatings` accepts any subset). Returns **`null` when there
   are no ratings at all**, which is what drives `needsCheckIn`.
-- `lib/racketRecommend.ts` — pure, no I/O or clock. Seven weighted scorers
-  ported from `docs/superpowers/reference/recommend_racket.py`, which stays the
-  source of truth for thresholds. Two deliberate divergences: **budget never
-  hard-filters** (prices are USD-derived and go stale; a silent exclusion is
-  invisible when the price is wrong), and rows missing normalized
-  `balance`/`flex`/`tier` are **skipped, not scored on invented values**.
-  Takes a `category` parameter (default `'racket'`) so `/api/recommend`'s
-  per-category ask doesn't hardcode the one it was written for.
-- **No assessment → no recommendation.** With no ratings the engine would score
-  fourteen 3s and emit a confident, meaningless pick. The rail's `racket` card
-  parks with "do the check-in" copy instead (`needsCheckIn`).
+- **Two rules both engines keep**: budget never hard-filters (prices are
+  USD-derived and go stale; a silent exclusion is invisible when the price is
+  wrong), and a row missing normalized `balance`/`flex`/`tier` is skipped, not
+  scored on invented values (`isScorable`).
+- **No assessment → no string pairing.** With no ratings the string engine
+  would score fourteen 3s and emit a confident, meaningless pick, so the
+  route answers `needsCheckIn`. A racket pick has its own honest states
+  (`needsFit`, above).
 - **`lib/pickReasons.ts`'s `buildPickReasons`** grounds a pick's "why this"
   list in two sources, priority order: the engine's own equipment-derived
   reasons, then the club tally (`lib/clubGear.ts`, re-guarded here even though
@@ -143,13 +137,6 @@ racket and never excluded what they owned).
   you trying to fix", and nothing computes a relationship between the two.
   Don't re-add it. The string branch of `/api/recommend` had already reached
   this conclusion independently and passed `drills: []`.
-- **Reason ORDER is play-style first.** `lib/racketRecommend.ts`'s
-  `REASON_PRIORITY` presents balance → style → format → flex → tier → weight →
-  budget, which is deliberately NOT the order the scorers run in: execution
-  order put `flex` first, making "Medium-Stiff shaft matches your technique
-  level" the near-universal headline. It is a separate list rather than a
-  reordering of `scorers` because `total` is a float sum and reassociating it
-  can flip a tie. Scores are untouched by it.
 - **String reasons speak in play, not in spec math.** `lib/stringPair.ts`'s
   reason copy branches on format and attacking intent ("Quick off the strings
   for flat doubles exchanges…") instead of reporting indices. The numbers live
