@@ -91,11 +91,6 @@ afterEach(() => {
 });
 
 describe('POST /api/payments/etransfer — the gate', () => {
-  it('404s with the flag off', async () => {
-    process.env.NEXT_PUBLIC_FLAG_PAYMENTS_AUTO = 'false';
-    expect((await post(email('Lin', '12.00'))).status).toBe(404);
-  });
-
   it('401s with no key, a wrong key, or a key naming another club', async () => {
     expect((await post(email('Lin', '12.00'), null)).status).toBe(401);
     expect((await post(email('Lin', '12.00'), `bpm.${'0'.repeat(48)}`)).status).toBe(401);
@@ -410,11 +405,6 @@ describe('the soft hold', () => {
       rowById(row1.id).selfReportedPaid = true;
       expect(await holdCount(groupScope('bpm'), lin.id)).toBe(1);
       expect(await signupHeldForUnpaid(groupScope('bpm'), lin.id)).toBe(false);
-    });
-
-    it('flag off: no hold', async () => {
-      process.env.NEXT_PUBLIC_FLAG_PAYMENTS_AUTO = 'false';
-      expect(await (await signUpLin()).json()).toMatchObject({ waitlisted: false });
     });
 
     it('paying releases the hold and takes the spot', async () => {

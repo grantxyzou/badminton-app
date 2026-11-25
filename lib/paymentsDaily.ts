@@ -51,7 +51,6 @@ export function dailyRunDue(lastRunAt: string | undefined, now: number): boolean
 
 /** One club's daily run. Counts only: the tick's answer names nobody. */
 export async function runPaymentsDaily(groupId: string, now: number): Promise<TickJobResult> {
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_PAYMENTS_AUTO')) return {};
   const settings = await readPaymentsSettings(groupId);
   if (!dailyRunDue(settings?.lastReminderRunAt, now)) return {};
   await notePaymentsSettings(groupId, { lastReminderRunAt: new Date(now).toISOString() });

@@ -11,7 +11,6 @@ import { useTranslations, useFormatter } from 'next-intl';
 import ErrorState from './primitives/ErrorState';
 import EmptyState from './primitives/EmptyState';
 import CardHeader from './primitives/CardHeader';
-import { isFlagOn } from '@/lib/flags';
 import { useOnline } from '@/lib/useOnline';
 import Collapse from './primitives/Collapse';
 import { useRevealReady } from './primitives/Reveal';
@@ -141,13 +140,11 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
   // e-transfer itself is what the inbox marks paid. Remembered per mount only;
   // the admin sees the tag on their side.
   const [sent, setSent] = useState<'idle' | 'busy' | 'done' | 'error'>('idle');
-  const canSayPaid = isFlagOn('NEXT_PUBLIC_FLAG_PAYMENTS_AUTO');
 
   // Store credit (docs/plans/payments.md): the balance, and "Pay with
   // credit", which pays the oldest lines it covers IN FULL. Shown only when
   // there is credit — a "$0 credit" line would be clutter on every Home.
   const tCredit = useTranslations('home.credit');
-  const creditOn = isFlagOn('NEXT_PUBLIC_FLAG_STORE_CREDIT');
   const [creditCents, setCreditCents] = useState<number | null>(null);
   const [spend, setSpend] = useState<'idle' | 'busy' | 'notEnough' | 'error'>('idle');
   const [card, setCard] = useState<'idle' | 'busy' | 'error'>('idle');
@@ -155,7 +152,7 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
   // "Pay by Interac e-Transfer" opens to the copy rows (docs/plans/payment-order.md).
   const [etransferOpen, setEtransferOpen] = useState(false);
   useEffect(() => {
-    if (!creditOn || !name) return;
+    if (!name) return;
     let cancelled = false;
     sharedFetch(CREDIT_PATH)
       .then((r) => (r.ok ? r.json() : null))
@@ -170,7 +167,7 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
     return () => {
       cancelled = true;
     };
-  }, [creditOn, name, refreshNonce]);
+  }, [name, refreshNonce]);
   async function payWithCredit() {
     setSpend('busy');
     try {
@@ -186,7 +183,7 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
       setSpend('error');
     }
   }
-  const hasCredit = creditOn && (creditCents ?? 0) > 0;
+  const hasCredit = (creditCents ?? 0) > 0;
   // What "Pay with credit" would use, by the server's own walk: whole frozen
   // lines first, then a part of a session (docs/plans/partial-credit.md).
   // Short of everything frozen, the button says how much it will use.
@@ -547,7 +544,7 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
             // The server's answer first; the build-time env only for a
             // response from before `payTo` existed.
             const email = data.payTo?.email ?? (data.payTo === undefined ? process.env.NEXT_PUBLIC_ETRANSFER_EMAIL || null : null);
-            const sentIt = canSayPaid && (
+            const sentIt = (
               sent === 'done' ? (
                 <p className="fs-sm motion-fade" role="status" style={{ margin: '0', color: 'var(--text-secondary)' }}>
                   {tPay('sentItDone')}
@@ -623,7 +620,7 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
         beside the credit it adds to. Filled secondary buttons with a glyph
         (Grant, 2026-11-17: "a more well thought link button design"), quieter
         than any way to pay. Absent while the card cannot say what is owed. */}
-    {!forbidden && !loadError && (onDetails || (onRedeem && creditOn)) && (
+    {!forbidden && !loadError && (onDetails || onRedeem) && (
       <div className="balance-actions">
         {onDetails && (
           <button type="button" className="balance-action" onClick={onDetails}>
@@ -631,7 +628,7 @@ export default function UnpaidSessionsCard({ name, variant = 'profile', onSignIn
             {tBal('details')}
           </button>
         )}
-        {onRedeem && creditOn && (
+        {onRedeem && (
           <button type="button" className="balance-action" onClick={onRedeem}>
             <span className="material-icons icon-md" aria-hidden="true">redeem</span>
             {tBal('redeem')}

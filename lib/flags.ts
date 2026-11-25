@@ -20,8 +20,6 @@ export type FlagName =
   | 'NEXT_PUBLIC_FLAG_STRINGING'
   | 'NEXT_PUBLIC_FLAG_NATIVE_MIGRATE'
   | 'NEXT_PUBLIC_FLAG_MULTI_GROUP'
-  | 'NEXT_PUBLIC_FLAG_PAYMENTS_AUTO'
-  | 'NEXT_PUBLIC_FLAG_STORE_CREDIT'
   | 'NEXT_PUBLIC_FLAG_LEDGER_MIRROR'
   | 'NEXT_PUBLIC_FLAG_CARD_PAY'
   | 'NEXT_PUBLIC_FLAG_STRINGING_INVOICE'
@@ -82,13 +80,6 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     plannedRemoval: '2026-12-05',
     note: 'Retire once the reconcile (stage 2) has run clean for four weeks and stage 4 (ledger as truth) is planned — the off branch is only the no-op.',
   },
-  NEXT_PUBLIC_FLAG_STORE_CREDIT: {
-    description:
-      'Store credit and gift cards (docs/plans/payments.md, the first slice of the Phase 2 ledger): admins give credit and mint single-use gift codes; members redeem codes and "Pay with credit" from the Home balance. Read SERVER-side by /api/credit/* and /api/admin/credit, /api/admin/giftcards; off, those 404 and the UI hides.',
-    owner: 'grant',
-    plannedRemoval: '2026-11-21',
-    note: 'Retire together with NEXT_PUBLIC_FLAG_PAYMENTS_AUTO after the 2026-11-07 review.',
-  },
   NEXT_PUBLIC_FLAG_CARD_PAY: {
     description:
       'Card payments (docs/plans/card-pay-prototype.md; docs/plans/payments.md Phase 3; ROADMAP non-goal lifted 2026-11-12). An organiser connects the club\'s own Stripe account (Connect, Accounts v2, direct charges), and a member pays their SETTLED session lines by card through Stripe Checkout; a signed webhook marks the rows paid (paidVia "card") and un-pays them when a refund made in Stripe says which. Read SERVER-side by /api/admin/card-pay and /api/payments/card/*, which 404 while it is off, and inert without STRIPE_SECRET_KEY. Turned on once the live key and webhook secret are in Azure App Settings.',
@@ -102,13 +93,6 @@ export const FLAGS: Record<FlagName, FlagMeta> = {
     owner: 'grant',
     plannedRemoval: '2026-12-31',
     note: 'Ship + 2 weeks once on in production. Retiring it deletes the creation-time check only: billOn on a job is the record, not the flag.',
-  },
-  NEXT_PUBLIC_FLAG_PAYMENTS_AUTO: {
-    description:
-      'E-transfer auto-detection (docs/plans/payments.md, Phase 1): the admin\'s Apps Script forwards Interac emails to POST /api/payments/etransfer, which marks matched rows paid and queues the rest; the "I\'ve sent it" button; and the soft hold (2+ unpaid settled sessions → sign-up lands on the waitlist). Read SERVER-side by every payments route and by the hold in POST /api/players; off, those routes 404 and sign-up is unchanged.',
-    owner: 'grant',
-    plannedRemoval: '2026-11-21',
-    note: 'On in production since 2026-10-03 (Grant). Ship date + 2 weeks is not enough here: the kill criterion reads four weeks of matches (Review on 2026-11-07 in the plan). Retiring it deletes the 404 guards and the hold\'s off branch.',
   },
   NEXT_PUBLIC_FLAG_VOICE_SCORE: {
     description:
@@ -129,10 +113,6 @@ function readFlag(name: FlagName): string | undefined {
       return process.env.NEXT_PUBLIC_FLAG_NATIVE_MIGRATE;
     case 'NEXT_PUBLIC_FLAG_MULTI_GROUP':
       return process.env.NEXT_PUBLIC_FLAG_MULTI_GROUP;
-    case 'NEXT_PUBLIC_FLAG_PAYMENTS_AUTO':
-      return process.env.NEXT_PUBLIC_FLAG_PAYMENTS_AUTO;
-    case 'NEXT_PUBLIC_FLAG_STORE_CREDIT':
-      return process.env.NEXT_PUBLIC_FLAG_STORE_CREDIT;
     case 'NEXT_PUBLIC_FLAG_LEDGER_MIRROR':
       return process.env.NEXT_PUBLIC_FLAG_LEDGER_MIRROR;
     case 'NEXT_PUBLIC_FLAG_CARD_PAY':

@@ -53,6 +53,8 @@ export function useCredit(enabled: boolean): UseCredit {
       })
       .then((d) => {
         if (!live) return;
+        // A body without a balance is a failed read, never a $0 or a crash.
+        if (!d || typeof d.balanceCents !== 'number') throw new Error('bad_shape');
         setBalance(d.balanceCents);
         setEntries(d.entries ?? []);
         setLoadError(false);

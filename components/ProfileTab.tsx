@@ -221,9 +221,8 @@ export default function ProfileTab({
   // takes null when there is nobody to read for.
   const methodsState = useSignInMethods(!!identity);
   // Store credit (docs/plans/payments.md): read once here so the MONEY row's
-  // figure and the Gift cards & credit page agree. Flag off, nothing is read.
-  const creditOn = isFlagOn('NEXT_PUBLIC_FLAG_STORE_CREDIT');
-  const credit = useCredit(!!identity && creditOn);
+  // figure and the Gift cards & credit page agree.
+  const credit = useCredit(!!identity);
   // What this member owes: the SAME read as Home's balance card (spec §4), so
   // the MONEY row, the Account balance page and Home cannot disagree.
   const balanceState = useBalance(identity?.name ?? null);
@@ -307,7 +306,7 @@ export default function ProfileTab({
   // `{ canGift: false }` for everyone else, so a 'no' and a failed read both
   // leave the row hidden — there is nothing to act on either way.
   useEffect(() => {
-    if (!identity || !isFlagOn('NEXT_PUBLIC_FLAG_STORE_CREDIT')) {
+    if (!identity) {
       setCanGift(false);
       return;
     }
@@ -823,7 +822,7 @@ export default function ProfileTab({
   }
 
   if (v === 'balance') {
-    return <AccountBalancePage balance={balanceState} credit={creditOn ? credit : null} onBack={() => setView('root')} />;
+    return <AccountBalancePage balance={balanceState} credit={credit} onBack={() => setView('root')} />;
   }
 
   if (v === 'give-gift') {
@@ -1003,22 +1002,20 @@ export default function ProfileTab({
         />
       </ProfileGroup>
 
-      {/* MONEY (spec §1.5): Gift cards & credit while store credit is on;
+      {/* MONEY (spec §1.5): Gift cards & credit;
           Account balance for everyone (the detailed view of Home's card);
           Give a gift card for an organiser. A figure is absent until it
           is KNOWN — never a $0 off a failed read. */}
       <ProfileGroup id="profile-group-money" label={tSettings('moneyGroup')}>
         <SettingsList
           rows={[
-            ...(creditOn
-              ? [{
-                  icon: 'payments',
-                  label: tSettings('giftCards'),
-                  meta: credit.loadError || credit.balanceCents === null ? undefined : fmtCents(credit.balanceCents),
-                  onClick: () => setView('gift-cards'),
-                  selected: isOpen('gift-cards'),
-                }]
-              : []),
+            {
+              icon: 'payments',
+              label: tSettings('giftCards'),
+              meta: credit.loadError || credit.balanceCents === null ? undefined : fmtCents(credit.balanceCents),
+              onClick: () => setView('gift-cards'),
+              selected: isOpen('gift-cards'),
+            },
             {
               icon: 'receipt_long',
               label: tSettings('accountBalance'),

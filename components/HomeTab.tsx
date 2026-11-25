@@ -246,7 +246,7 @@ export default function HomeTab({ onTabChange, onTitleTap, devOverrides, initial
       // refetch finds the cards mounted and reading for themselves.
       if (memberName) {
         primeFetch(unpaidPath(memberName));
-        if (isFlagOn('NEXT_PUBLIC_FLAG_STORE_CREDIT')) primeFetch(CREDIT_PATH);
+        primeFetch(CREDIT_PATH);
         primeFetch(levelPath(memberName));
       }
     }

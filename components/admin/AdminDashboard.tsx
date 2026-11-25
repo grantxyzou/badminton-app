@@ -286,7 +286,7 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
         </div>
       );
     }
-    if (v === 'etransfers' && isFlagOn('NEXT_PUBLIC_FLAG_PAYMENTS_AUTO')) {
+    if (v === 'etransfers') {
       return (
         <div className={pane ? 'space-y-3' : 'animate-slideInRight space-y-3'}>
           <AdminBackHeader onBack={goBack} title="E-transfers" />

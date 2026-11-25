@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from 'react';
 import CardHeader from '@/components/primitives/CardHeader';
 import StateCard, { StateLink } from '@/components/primitives/StateCard';
 import Collapse from '@/components/primitives/Collapse';
-import { isFlagOn } from '@/lib/flags';
 import { useOnline } from '@/lib/useOnline';
 import { markExternalExcursion } from '@/lib/excursion';
 import { useRevealReady } from '@/components/primitives/Reveal';
@@ -44,7 +43,6 @@ const who = (p: Person | null) => (p ? p.name ?? 'a deleted account' : '—');
  * "remaining" is the share of their balance this card still accounts for.
  */
 export default function GiftCardsCard({ refreshKey = 0, bare = false }: { refreshKey?: number; bare?: boolean }) {
-  const enabled = isFlagOn('NEXT_PUBLIC_FLAG_STORE_CREDIT');
   const online = useOnline();
   const [cards, setCards] = useState<Card[] | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -69,14 +67,13 @@ export default function GiftCardsCard({ refreshKey = 0, bare = false }: { refres
   }, []);
 
   useEffect(() => {
-    if (enabled) void load();
-  }, [enabled, load, refreshKey]);
+    void load();
+  }, [load, refreshKey]);
 
   // The console reveals its cards in order (the loading cascade): hold this
-  // slot until the list or its error is in, and release it at once when off.
-  useRevealReady(!enabled || cards !== null || loadError);
+  // slot until the list or its error is in.
+  useRevealReady(cards !== null || loadError);
 
-  if (!enabled) return null;
   const title = 'Credit codes';
 
   if (loadError) {

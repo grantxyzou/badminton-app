@@ -110,15 +110,6 @@ describe('ProfileTab — MONEY', () => {
     expect(row.textContent).not.toMatch(/\$/);
   });
 
-  it('with store credit off, Money holds Account balance alone', async () => {
-    delete process.env.NEXT_PUBLIC_FLAG_STORE_CREDIT;
-    mockFetch({ canGift: true });
-    await renderSignedIn();
-    expect(screen.getByText('Money')).toBeTruthy();
-    expect(screen.getByRole('button', { name: /Account balance/ })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: /^Credit\b/ })).toBeNull();
-  });
-
   it('Report a problem opens its page, and Back returns to Profile', async () => {
     mockFetch({ canGift: false });
     await renderSignedIn();

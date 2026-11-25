@@ -28,7 +28,6 @@ import type { MembershipRole } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
-const off = () => NextResponse.json({ error: 'not_found' }, { status: 404 });
 
 /**
  * An organiser of the club the cookie names. The role is the one
@@ -43,7 +42,6 @@ function canGift(role: MembershipRole): boolean {
 }
 
 export async function GET(req: NextRequest) {
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_STORE_CREDIT')) return off();
   if (!checkRateLimit(`giftcards:${getClientIp(req)}`, 60, 60_000)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
@@ -60,7 +58,6 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!isFlagOn('NEXT_PUBLIC_FLAG_STORE_CREDIT')) return off();
   if (!checkRateLimit(`giftcards-mint:${getClientIp(req)}`, 20, 60 * 60_000)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }

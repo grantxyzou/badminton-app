@@ -9,7 +9,6 @@ import ErrorState from '@/components/primitives/ErrorState';
 import EmptyState from '@/components/primitives/EmptyState';
 import { BottomSheet, BottomSheetBody, BottomSheetFooter, BottomSheetHeader } from '@/components/BottomSheet';
 import { announceBalanceChanged } from '@/lib/balanceRefresh';
-import { isFlagOn } from '@/lib/flags';
 import { showTopToast } from '@/lib/topToast';
 import { useOnline } from '@/lib/useOnline';
 import { fmtCents } from './GiftCardsPage';
@@ -53,7 +52,6 @@ export default function AccountBalancePage({ balance, credit, onBack }: Props) {
   const [sent, setSent] = useState<'idle' | 'busy' | 'done' | 'error'>('idle');
   // "N days ago" counts from when the page opened, read once (render stays pure).
   const [now] = useState(() => Date.now());
-  const canSayPaid = isFlagOn('NEXT_PUBLIC_FLAG_PAYMENTS_AUTO');
 
   const day = (iso: string) =>
     format.dateTime(new Date(iso), { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'America/Vancouver' });
@@ -200,7 +198,7 @@ export default function AccountBalancePage({ balance, credit, onBack }: Props) {
             <EtransferCopy email={payTo.email} name={payTo.name} memo={data?.memo} />
           )}
         </BottomSheetBody>
-        {payTo && canSayPaid && (
+        {payTo && (
           <BottomSheetFooter>
             <div className="flex flex-col gap-4">
               {sent === 'error' && <p className="field-error" role="alert" style={{ margin: '0' }}>{t('etransfer.sentError')}</p>}
