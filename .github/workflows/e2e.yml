@@ -39,6 +39,9 @@ permissions:
 
 jobs:
   mock:
+    permissions:
+      contents: read
+      issues: write
     if: >-
       github.event_name == 'schedule' ||
       (github.event_name == 'workflow_dispatch' && inputs.target != 'prod')
@@ -88,7 +91,24 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
 
+      # One issue per stretch of red (e2e/issue.sh). Only for main: a run
+      # started from a branch is someone checking their own change.
+      - name: Open or update the failure issue
+        if: failure() && github.ref == 'refs/heads/main'
+        run: bash e2e/issue.sh mock failure
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Close the failure issue
+        if: success() && github.ref == 'refs/heads/main'
+        run: bash e2e/issue.sh mock success
+        env:
+          GH_TOKEN: ${{ github.token }}
+
   prod:
+    permissions:
+      contents: read
+      issues: write
     if: >-
       github.event_name == 'schedule' ||
       (github.event_name == 'workflow_dispatch' && inputs.target != 'mock') ||
@@ -150,3 +170,15 @@ jobs:
           path: e2e-results/
           retention-days: 14
           if-no-files-found: ignore
+
+      - name: Open or update the failure issue
+        if: failure() && steps.ready.outputs.ok == 'true' && github.ref == 'refs/heads/main'
+        run: bash e2e/issue.sh prod failure
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Close the failure issue
+        if: success() && steps.ready.outputs.ok == 'true' && github.ref == 'refs/heads/main'
+        run: bash e2e/issue.sh prod success
+        env:
+          GH_TOKEN: ${{ github.token }}

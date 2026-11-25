@@ -7,6 +7,8 @@
  * any of them runs, so on production all of it happens inside the E2E test
  * club and to its test members.
  */
+import { existsSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { MOCK_CAST } from './personas';
 import { target } from './target';
 import { api, type Actor } from './journey';
@@ -29,6 +31,9 @@ export function shiftIsoDays(iso: string, days: number): string {
  */
 export async function ensureMockCast(org: Actor): Promise<void> {
   if (target() !== 'mock') return;
+  // Once per run: every spec asks, and each pass sets PINs (a limited write).
+  const marker = process.env.E2E_AUTH_DIR ? join(process.env.E2E_AUTH_DIR, 'mock-cast-ready') : null;
+  if (marker && existsSync(marker)) return;
   for (const member of Object.values(MOCK_CAST)) {
     const added = await api<{ id?: string }>(org, 'POST', '/api/members', { name: member.name }, (s) => s < 300 || s === 409);
     let id = added.data?.id;
@@ -40,6 +45,7 @@ export async function ensureMockCast(org: Actor): Promise<void> {
     await api(org, 'PATCH', '/api/members/me', { name: member.name, newPin: member.pin }, (s) => s < 300 || s === 401);
     if (member.stringer) await api(org, 'PATCH', '/api/members', { id, canString: true });
   }
+  if (marker) writeFileSync(marker, '');
 }
 
 interface SessionDoc {
@@ -106,4 +112,32 @@ export async function clearJobs(org: Actor, names: string[]): Promise<void> {
     if (!names.includes(job.memberName)) continue;
     await api(org, 'DELETE', `/api/stringing/jobs/${encodeURIComponent(job.id)}`, { confirm: true, memberId: job.memberId }, (s) => s < 300 || s === 404);
   }
+}
+
+/**
+ * The join journey's reset: the named person off the club's roster (a soft
+ * removal, which an approval later reverses), and any request to join under
+ * that name declined, so a crashed run leaves neither a member nor a waiting
+ * ask behind.
+ */
+export async function removeFromClub(org: Actor, name: string): Promise<void> {
+  const roster = await api<Array<{ id: string; name: string; active?: boolean }>>(org, 'GET', '/api/members');
+  for (const m of roster.data) {
+    if (m.name !== name || m.active === false) continue;
+    await api(org, 'DELETE', '/api/members', { id: m.id }, (s) => s < 300 || s === 404);
+  }
+  const asks = await api<{ joins?: Array<{ joinRequestId: string; name: string }> }>(org, 'GET', '/api/admin/access-requests');
+  for (const j of asks.data.joins ?? []) {
+    if (j.name !== name) continue;
+    await api(org, 'POST', '/api/admin/access-requests', { joinRequestId: j.joinRequestId, decision: 'decline' }, (s) => s < 300 || s === 404);
+  }
+}
+
+/** The club's link token, read as the organiser; made once if the club has none. */
+export async function clubLinkToken(org: Actor): Promise<string> {
+  const read = await api<{ link?: { token?: string } | null }>(org, 'GET', '/api/groups/claim-link');
+  if (read.data.link?.token) return read.data.link.token;
+  const made = await api<{ link?: { token?: string } }>(org, 'POST', '/api/groups/claim-link');
+  if (!made.data.link?.token) throw new Error('the club has no link and none could be made');
+  return made.data.link.token;
 }

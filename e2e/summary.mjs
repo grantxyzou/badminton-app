@@ -53,7 +53,7 @@ const walk = (suite) => {
         findings.get(key).add(a.description ?? '');
       }
       const stopped = res.status !== 'passed' && errors === 0 ? (res.errors?.[0]?.message ?? '').split('\n')[0] : '';
-      rows.push(`| ${cell(spec.title)} | ${res.status === 'passed' ? '✅ passed' : '❌ ' + res.status} | ${errors} | ${warnings} | ${Math.round((res.duration ?? 0) / 1000)}s | ${cell(stopped.slice(0, 160))} |`);
+      rows.push(`| ${cell(spec.title)} | ${res.status === 'passed' ? '✅ passed' : res.status === 'skipped' ? '⏭️ skipped' : '❌ ' + res.status} | ${errors} | ${warnings} | ${Math.round((res.duration ?? 0) / 1000)}s | ${cell(stopped.slice(0, 160))} |`);
     }
   }
   for (const child of suite.suites ?? []) walk(child);

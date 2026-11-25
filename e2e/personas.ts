@@ -76,16 +76,19 @@ export function tourPersonas(): Persona[] {
  *
  * On the mock store the organiser (Grant) makes them on first use
  * (`ensureMockCast` in `e2e/cast.ts`): a name on the roster and a fixed PIN,
- * which the mock's in-memory store forgets on restart.
+ * which the mock's in-memory store forgets on restart. The mock has no joiner:
+ * the join journey is production-only (e2e/join.spec.ts says why).
  */
-export const CAST_LABELS = ['organiser', 'player1', 'player2', 'player3', 'stringer'] as const;
+export const CAST_LABELS = ['organiser', 'player1', 'player2', 'player3', 'stringer', 'joiner'] as const;
 export type CastLabel = (typeof CAST_LABELS)[number];
 
-export const MOCK_CAST: Record<Exclude<CastLabel, 'organiser'>, { name: string; pin: string; stringer?: true }> = {
+export const MOCK_CAST: Record<Exclude<CastLabel, 'organiser' | 'joiner'>, { name: string; pin: string; stringer?: true }> = {
   player1: { name: 'E2E Player 1', pin: '2581' },
   player2: { name: 'E2E Player 2', pin: '3692' },
   player3: { name: 'E2E Player 3', pin: '4703' },
   stringer: { name: 'E2E Stringer', pin: '5814', stringer: true },
+  // Made on the roster like the rest, then taken off it by the join journey's
+  // reset, so it starts every run in no club.
 };
 
 export function cast(labels: readonly CastLabel[]): { members: Partial<Record<CastLabel, Persona>>; missing: CastLabel[] } {
@@ -99,7 +102,8 @@ export function cast(labels: readonly CastLabel[]): { members: Partial<Record<Ca
   } else {
     for (const l of labels) {
       if (l === 'organiser') members[l] = MOCK_PERSONAS[0];
-      else members[l] = { label: l, kind: 'pin', name: MOCK_CAST[l].name, pin: MOCK_CAST[l].pin };
+      // No mock joiner: see e2e/join.spec.ts for why that journey is production-only.
+      else if (l !== 'joiner') members[l] = { label: l, kind: 'pin', name: MOCK_CAST[l].name, pin: MOCK_CAST[l].pin };
     }
   }
   return { members, missing: labels.filter((l) => !members[l]) };

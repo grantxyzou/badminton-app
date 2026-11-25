@@ -10,11 +10,14 @@
  *
  * WARNINGS are reported but do not fail, until a few runs show which are
  * noise: console errors, 4xx answers, a "Couldn't load" state, a skeleton
- * still showing after the screen should have settled.
+ * still showing after the screen should have settled, and an accessibility
+ * problem axe rates serious or critical against WCAG 2 A/AA (one finding per
+ * rule per screen, `a11y:<rule>`).
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Page, TestInfo } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
 import { baseUrl, target } from './target';
 
 /**
@@ -108,10 +111,31 @@ export class Recorder {
       return { keys, loadFailures, skeletons, overflow };
     }, Array.from(NAMESPACES));
 
+    await this.accessibility();
     for (const k of new Set(seen.keys)) this.add('error', 'i18n-key-on-screen', k);
     if (seen.overflow > 1) this.add('error', 'horizontal-overflow', `page is ${seen.overflow}px wider than the screen`);
     for (const t of new Set(seen.loadFailures)) this.add('warning', 'error-state', t);
     if (seen.skeletons > 0) this.add('warning', 'still-loading', `${seen.skeletons} skeleton line(s) still showing`);
+  }
+
+  /**
+   * axe on the screen as it stands. Serious and critical only: the moderate
+   * and minor rules are mostly best-practice, and a list nobody acts on
+   * teaches people to skip the section. A failure to RUN axe is itself a
+   * warning, never a silent pass.
+   */
+  private async accessibility(): Promise<void> {
+    try {
+      const result = await new AxeBuilder({ page: this.page }).withTags(['wcag2a', 'wcag2aa']).analyze();
+      for (const v of result.violations) {
+        if (v.impact !== 'serious' && v.impact !== 'critical') continue;
+        const first = v.nodes[0]?.target?.join(' ') ?? '';
+        const more = v.nodes.length > 1 ? ` (+${v.nodes.length - 1} more)` : '';
+        this.add('warning', `a11y:${v.id}`, `${v.help} — ${first}${more}`.slice(0, 300));
+      }
+    } catch (err) {
+      this.add('warning', 'a11y:not-run', String(err).slice(0, 200));
+    }
   }
 
   async attach(testInfo: TestInfo): Promise<void> {

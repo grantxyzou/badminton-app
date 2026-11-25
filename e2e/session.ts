@@ -113,3 +113,18 @@ export async function clubGuard(page: Page, persona: Persona): Promise<SignedIn>
   const role: ClubRole = current.role === 'owner' || current.role === 'admin' ? current.role : 'member';
   return { groupId: String(current.id ?? ''), role, privileged: role !== 'member', rosterName: String(current.rosterName ?? '') };
 }
+
+/**
+ * The JOINER's guard, before they ask to join: they must belong to no club
+ * at all. A joiner is the one persona the club guard cannot cover (it wants
+ * exactly one club), and the join journey only ever lets them into the E2E
+ * test club, so "none" is the only safe starting point. After the organiser
+ * approves, the ordinary `clubGuard` takes over.
+ */
+export async function joinerGuard(page: Page, persona: Persona): Promise<void> {
+  const mine = await readMine(page, persona);
+  const clubs = mine.groups ?? [];
+  if (clubs.length !== 0) {
+    throw new Error(`joiner guard refused persona "${persona.label}": belongs to ${clubs.length} club(s), must be in none before asking`);
+  }
+}

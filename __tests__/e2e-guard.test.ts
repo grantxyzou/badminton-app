@@ -12,7 +12,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Page } from '@playwright/test';
-import { clubGuard, E2E_CLUB_NAME } from '../e2e/session';
+import { clubGuard, E2E_CLUB_NAME, joinerGuard } from '../e2e/session';
 import { isJoiner, parseAccounts } from '../e2e/personas';
 import { assertMockIsLocal, baseUrl, PROD_BASE, target } from '../e2e/target';
 
@@ -122,6 +122,21 @@ describe('clubGuard on production', () => {
   });
 });
 
+describe('joinerGuard', () => {
+  it('passes a joiner in no club', async () => {
+    const page = fakePage({ groups: [], currentGroupId: 'bpm' }, () => ({}));
+    await expect(joinerGuard(page, persona)).resolves.toBeUndefined();
+  });
+
+  it('refuses a joiner who is in any club, the E2E club included', async () => {
+    for (const groups of [[E2E], [{ id: 'bpm', name: 'BPM Core' }]]) {
+      const page = fakePage({ groups, currentGroupId: groups[0].id }, () => ({}));
+      await expect(joinerGuard(page, persona)).rejects.toThrow(/must be in none/);
+      expect(page.switches).toEqual([]);
+    }
+  });
+});
+
 describe('E2E_ACCOUNTS parsing', () => {
   it('reads label → email and password', () => {
     const list = parseAccounts(JSON.stringify({ organiser: { email: 'a@x.com', password: 'pw1' }, joiner: { email: 'b@x.com', password: 'pw2' } }));
@@ -178,11 +193,12 @@ describe('every sign-in in the tour passes the guard', () => {
     expect(callers.length).toBeGreaterThan(0);
   });
 
-  it.each(files)('%s calls clubGuard right after every signIn', (file) => {
+  it.each(files)('%s calls a guard right after every signIn', (file) => {
     const src = readFileSync(join(dir, file), 'utf8');
     const calls = src.match(/await signIn\([^)]*\);[^\n]*\n[^\n]*/g) ?? [];
     for (const call of calls) {
-      expect(call, `${file} signs in without the club guard`).toMatch(/\n\s*(?:(?:const|let)\s+)?(?:\w+\s*=\s*)?await clubGuard\(/);
+      // The joiner's own guard (no club at all) counts: it is stricter.
+      expect(call, `${file} signs in without the club guard`).toMatch(/\n\s*(?:(?:const|let)\s+)?(?:\w+\s*=\s*)?await (?:clubGuard|joinerGuard)\(/);
     }
   });
 
