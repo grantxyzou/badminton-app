@@ -11,7 +11,7 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 ## Stringing earnings: past months stay put, and nothing is $0 in silence (2026-11-26)
 
 - **A racket's string is costed at the reel price on the day it was strung.** Before, every job used today's price, so logging a dearer reel changed After string cost for months that were already over.
-- **Earnings says when a figure is short**: "1 job not priced" under Work done, and "2 jobs: string cost unknown" under After string cost (a string not on the shelf, a hybrid, or a string with no purchase logged).
+- **Earnings says when a figure is short**: "1 job not priced" under Work done, and "2 jobs: cost unknown" under After string cost (a string not on the shelf, a hybrid, or a string with no purchase logged).
 - **Earnings now re-checks that you are still an admin on every load**, like the string stock: a demoted admin's old sign-in could read it before.
 
 ## Old code out: one racket engine, one way to say a reason (2026-11-25)

@@ -30,7 +30,7 @@ const fold = (jobs: EarningsJob[], purchases: StringPurchase[] = [purchase()], o
   const stock = summarizeStringStock({
     offered, links: {}, purchases, catalog: new Map(),
     // As `loadStringStock` hands them over: each job's history folded to `strungAt`.
-    jobs: jobs.map((j) => countedJob({ id: j.id, stringLabel: j.stringLabel, status: j.status, archivedAt: undefined, ownString: j.ownString, history: j.history })),
+    jobs: jobs.map((j) => countedJob({ id: j.id, stringLabel: j.stringLabel, status: j.status, archivedAt: undefined, ownString: j.ownString, history: j.history, createdAt: j.createdAt })),
   });
   return summarizeEarnings({ jobs, stock, now: NOW });
 };
@@ -114,6 +114,12 @@ describe('summarizeEarnings', () => {
     expect(s.strings.find((x) => x.key === 's:BG80')!.costPerSetCents).toBe(1200);
     // And September is the same before the second reel exists.
     expect(fold(jobs, [reels[0]]).months.find((m) => m.month === '2026-09')!.stringCostCents).toBe(800);
+  });
+
+  it('a job with no strung entry is costed on the day it was made, not at today’s price', () => {
+    const old = job({ id: 'old', history: [], createdAt: '2026-09-10T20:00:00Z' });
+    const reels = [purchase({ totalCostCents: 16000, date: '2026-08-01' }), purchase({ totalCostCents: 24000, date: '2026-11-20' })];
+    expect(fold([old], reels).months.find((m) => m.month === '2026-09')!.stringCostCents).toBe(800);
   });
 
   it('counts what it cannot price instead of calling it zero', () => {

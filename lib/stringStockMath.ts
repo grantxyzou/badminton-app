@@ -144,7 +144,8 @@ export interface StringStockSummary {
   jobLines?: Record<string, string>;
   /**
    * Job id → what its set cost, in cents, AT THE PRICE OF THE DAY IT WAS
-   * STRUNG (`priceOn`), for every job in `jobLines`; `null` when no purchase
+   * STRUNG (`priceOn`; the day it was made when it has no strung entry), for
+   * every job in `jobLines`; `null` when no purchase
    * of that string was ever logged. A line's `costPerSetCents` is today's
    * price, right for the shelf's value and wrong for a past month: a dearer
    * reel logged in November re-priced every set strung since the summer
@@ -199,7 +200,7 @@ export function summarizeStringStock(input: {
   /** `stringColor` is optional: a job read without it counts in the mixed pool.
    *  `ownString`: the player brought the string, so the job uses no set.
    *  `strungAt`: when its string went in (`strungAtOf`), for the usage rate. */
-  jobs: readonly (Pick<StringingJob, 'stringLabel' | 'status' | 'archivedAt' | 'stringColor' | 'ownString'> & { strungAt?: string; id?: string })[];
+  jobs: readonly (Pick<StringingJob, 'stringLabel' | 'status' | 'archivedAt' | 'stringColor' | 'ownString'> & { strungAt?: string; id?: string; createdAt?: string })[];
   /** The moment the usage rate is measured to; without it there is no rate. */
   now?: Date;
   /** Saved stocktakes; each string starts from its latest one. */
@@ -373,9 +374,11 @@ export function summarizeStringStock(input: {
     if (line) {
       if (j.id) {
         jobLines[j.id] = line.label;
-        // Its set at the price of the day it went in; a job with no strung
-        // date (made before the history existed) takes today's.
-        const perMetre = priceOn(pricePoints.get(key) ?? [], dayOf(j.strungAt));
+        // Its set at the price of the day it went in. A job with no strung
+        // date (made before the history existed) is costed on the day it was
+        // made, the day Earnings counts it in; only one with neither takes
+        // today's price.
+        const perMetre = priceOn(pricePoints.get(key) ?? [], dayOf(j.strungAt ?? j.createdAt));
         jobCosts[j.id] = perMetre === undefined ? null : Math.round(perMetre * line.setMetres);
       }
       line.usedSets += 1;

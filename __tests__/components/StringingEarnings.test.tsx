@@ -106,7 +106,7 @@ describe('nothing is zero in silence', () => {
     const short: EarningsData = { ...data, months: [...data.months.slice(0, 3), { ...data.months[3], unpricedJobs: 1, unknownCostJobs: 2 }] };
     wrap(<StringingEarningsPage data={short} error={false} onRetry={() => {}} />);
     expect(screen.getByTestId('earn-unpriced').textContent).toBe('1 job not priced');
-    expect(screen.getByTestId('earn-unknown-cost').textContent).toBe('2 jobs: string cost unknown');
+    expect(screen.getByTestId('earn-unknown-cost').textContent).toBe('2 jobs: cost unknown');
   });
 
   it('says nothing when every job is priced and costed', () => {
