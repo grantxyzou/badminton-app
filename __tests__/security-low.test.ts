@@ -20,12 +20,14 @@ import { GET as sessionsList } from '@/app/api/sessions/route';
 import { GET as sessionCosts } from '@/app/api/sessions/costs/route';
 import { GET as sessionsRecent } from '@/app/api/sessions/recent/route';
 import { GET as memberHistory } from '@/app/api/members/[id]/history/route';
+import { GET as unpaid } from '@/app/api/players/unpaid/route';
 import { GET as owedAudit } from '@/app/api/admin/owed-audit/route';
 import { GET as stock } from '@/app/api/stringing/stock/route';
 import { GET as jobs } from '@/app/api/stringing/jobs/route';
 import { POST as mintReportsKey } from '@/app/api/admin/reports/key/route';
 import { verifyRecoveryCode } from '@/lib/memberRecoveryCode';
 import { hashPin } from '@/lib/recoveryHash';
+import * as cosmos from '@/lib/cosmos';
 import { getContainer, ensureContainer } from '@/lib/cosmos';
 import { __resetCatalogSeedForTests } from '@/lib/catalogSeed';
 import { _resetCalibrationCache } from '@/lib/levelStore';
@@ -307,6 +309,9 @@ const MONEY_READS: [string, () => Promise<Response>][] = [
   ['members/[id]/history', () => memberHistory(makeAdminRequest('GET', 'http://x/api/members/member-lin/history'), { params: Promise.resolve({ id: 'member-lin' }) })],
 ];
 
+/** The admin arm of the balance read: the admin cookie alone, asking about Lin. */
+const othersBalance = () => unpaid(makeAdminRequest('GET', 'http://x/api/players/unpaid?name=Lin') as NextRequest);
+
 describe('F23, F25: money and cost reads re-check the admin', () => {
   beforeEach(() => {
     process.env[STRINGING] = 'true';
@@ -324,6 +329,11 @@ describe('F23, F25: money and cost reads re-check the admin', () => {
   it.each(MONEY_READS)('GET /api/%s', async (_path, read) => {
     expect((await read()).status).toBe(401);
   });
+  // The admin arm of the owner-or-admin balance read: what a named member owes.
+  it('GET /api/players/unpaid, asked about someone else', async () => {
+    seedMember('Lin', { id: 'member-lin' });
+    expect((await othersBalance()).status).toBe(403);
+  });
   it('GET /api/stringing/stock', async () => {
     expect((await stock(makeAdminRequest('GET', 'http://x/api/stringing/stock'))).status).toBe(401);
   });
@@ -340,10 +350,59 @@ describe('the same reads still answer an admin who is one', () => {
   it.each(MONEY_READS)('GET /api/%s', async (_path, read) => {
     expect((await read()).status).toBe(200);
   });
+  it('GET /api/players/unpaid, asked about someone else', async () => {
+    expect((await othersBalance()).status).toBe(200);
+  });
 
   it.each(MONEY_READS)('GET /api/%s refuses a cookie minted before "Sign out everywhere"', async (_path, read) => {
     seedAdminMember({ sessionsNotBefore: new Date(Date.now() + 60_000).toISOString() });
     expect((await read()).status).toBe(401);
+  });
+  it('GET /api/players/unpaid refuses that cookie too', async () => {
+    seedAdminMember({ sessionsNotBefore: new Date(Date.now() + 60_000).toISOString() });
+    expect((await othersBalance()).status).toBe(403);
+  });
+
+  // The check fails CLOSED: with the whole store down it cannot re-read the
+  // admin, so it answers 401, never a 200. (Each route's own 503 is tested
+  // with `members` up, where the request reaches the read.)
+  it.each(MONEY_READS)('GET /api/%s answers 401, not a 200, when the admin cannot be re-read', async (_path, read) => {
+    const down = vi.spyOn(cosmos, 'getContainer').mockImplementation(() => { throw new Error('cosmos down'); });
+    try {
+      expect((await read()).status).toBe(401);
+    } finally {
+      down.mockRestore();
+    }
+  });
+});
+
+describe('and with groups on, the rank is the membership’s in the club the cookie names', () => {
+  // Production runs with groups on, where `Member.role` is not what admits an
+  // admin: the membership is. The cases above run the rollback branch.
+  const asRank = (role: 'member' | 'admin' | 'owner') => {
+    process.env[GROUPS] = 'true';
+    seedGroup(BPM);
+    seedAdminMember(); // still `role: 'admin'` on the account: the stale copy
+    seedMembership(BPM, ADMIN_MEMBER_ID, { name: getTestAdminName(), role });
+    seedMember('Lin', { id: 'member-lin' });
+    seedMembership(BPM, 'member-lin', { name: 'Lin' });
+  };
+
+  it.each(MONEY_READS)('GET /api/%s refuses an admin demoted to player', async (_path, read) => {
+    asRank('member');
+    expect((await read()).status).toBe(401);
+  });
+  it.each(MONEY_READS)('GET /api/%s answers an admin', async (_path, read) => {
+    asRank('admin');
+    expect((await read()).status).toBe(200);
+  });
+  it('GET /api/players/unpaid, asked about someone else, follows the same rank', async () => {
+    asRank('member');
+    expect((await othersBalance()).status).toBe(403);
+    resetMockStore();
+    setupAdminPin();
+    asRank('owner');
+    expect((await othersBalance()).status).toBe(200);
   });
 });
 

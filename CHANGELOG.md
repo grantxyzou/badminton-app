@@ -10,9 +10,9 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ## A removed admin stops seeing the club's money at once (2026-11-26)
 
-- **Nine admin pages' reads now re-check that you are still an admin on every load**: the ledger's list of entries, club expenses, the Metrics page (it shows what the string shelf cost), the e-transfer names, the shuttle purchases, the sessions list and recent sessions (court costs and who has paid), the recent court prices, and a member's payment history.
-- Before, an admin who was demoted, removed, or signed out everywhere could keep opening these for up to 30 days, until their old sign-in ran out. Changing anything was already refused; this closes the reading.
-- Nothing changes for a current admin.
+- **Ten admin reads now re-check that you are still an admin on every load**: the ledger's list of entries, club expenses, the Metrics page (it shows what the string shelf cost), the e-transfer names, the shuttle purchases, the sessions list and recent sessions (court costs and who has paid), the recent court prices, a member's payment history, and what a named member owes.
+- Before, an admin who was demoted, removed, or signed out everywhere could keep opening these for up to 30 days, until their old sign-in ran out. Changing anything was already refused.
+- Nothing changes for a current admin, or for a member reading their own balance.
 
 ## Old code out: one racket engine, one way to say a reason (2026-11-25)
 
