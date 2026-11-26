@@ -10,7 +10,7 @@ import type { EarningsMonth } from '@/lib/stringingEarnings';
 
 const m = (month: string, workCents: number, o: Partial<EarningsMonth> = {}): EarningsMonth => ({
   month, jobs: 1, workCents, collectedCents: workCents, owedCents: 0, notInvoicedCents: 0,
-  stringCostCents: 500, sets: 1, strings: [{ key: 's:BG80', jobs: 1, sets: 1, workCents, costCents: 500 }], waiting: [], ...o,
+  stringCostCents: 500, sets: 1, unpricedJobs: 0, unknownCostJobs: 0, strings: [{ key: 's:BG80', jobs: 1, sets: 1, workCents, costCents: 500 }], waiting: [], ...o,
 });
 
 const months = [m('2025-11', 1000), m('2025-12', 2000), m('2026-01', 3000), m('2026-02', 4000)];

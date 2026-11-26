@@ -2724,6 +2724,8 @@
           "vs": "{amount} vs {month}",
           "jobs": "{n, plural, one {# job} other {# jobs}}",
           "margin": "{pct}% margin",
+          "unpriced": "{n, plural, one {# job not priced} other {# jobs not priced}}",
+          "unknownCost": "{n, plural, one {# job: string cost unknown} other {# jobs: string cost unknown}}",
           "whereTitle": "Where it is",
           "pileCollected": "Collected",
           "pileOwed": "Owed",

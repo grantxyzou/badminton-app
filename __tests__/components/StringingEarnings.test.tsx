@@ -16,7 +16,7 @@ afterEach(cleanup);
 
 const month = (m: string, o: Partial<EarningsMonth> = {}): EarningsMonth => ({
   month: m, jobs: 0, workCents: 0, collectedCents: 0, owedCents: 0, notInvoicedCents: 0,
-  stringCostCents: 0, sets: 0, strings: [], waiting: [], ...o,
+  stringCostCents: 0, sets: 0, unpricedJobs: 0, unknownCostJobs: 0, strings: [], waiting: [], ...o,
 });
 
 const data: EarningsData = {
@@ -98,6 +98,21 @@ describe('StringingEarningsPage', () => {
     fireEvent.click(within(rows[0]).getByRole('button', { name: 'One dollar more' }));
     expect(within(rows[0]).getByText('$63')).toBeTruthy(); // 3 jobs at $31 less $30 of string
     expect(within(rows[0]).getByText('simulated')).toBeTruthy();
+  });
+});
+
+describe('nothing is zero in silence', () => {
+  it('says how many jobs have no price and how many have no known string cost', () => {
+    const short: EarningsData = { ...data, months: [...data.months.slice(0, 3), { ...data.months[3], unpricedJobs: 1, unknownCostJobs: 2 }] };
+    wrap(<StringingEarningsPage data={short} error={false} onRetry={() => {}} />);
+    expect(screen.getByTestId('earn-unpriced').textContent).toBe('1 job not priced');
+    expect(screen.getByTestId('earn-unknown-cost').textContent).toBe('2 jobs: string cost unknown');
+  });
+
+  it('says nothing when every job is priced and costed', () => {
+    wrap(<StringingEarningsPage data={data} error={false} onRetry={() => {}} />);
+    expect(screen.queryByTestId('earn-unpriced')).toBeNull();
+    expect(screen.queryByTestId('earn-unknown-cost')).toBeNull();
   });
 });
 
