@@ -28,13 +28,11 @@ function stubFetch(byUrl: (url: string) => unknown) {
 
 beforeEach(() => {
   vi.stubGlobal('navigator', { ...global.navigator, onLine: true });
-  process.env.NEXT_PUBLIC_FLAG_PAYMENTS_AUTO = 'true';
 });
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
-  delete process.env.NEXT_PUBLIC_FLAG_PAYMENTS_AUTO;
 });
 
 function renderConsole(setView = vi.fn()) {

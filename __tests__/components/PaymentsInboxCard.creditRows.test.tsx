@@ -53,14 +53,12 @@ function serve() {
 
 describe('<PaymentsInboxCard /> — credit review rows', () => {
   beforeEach(() => {
-    process.env.NEXT_PUBLIC_FLAG_PAYMENTS_AUTO = 'true';
     sent = [];
     serve();
   });
   afterEach(() => {
     cleanup();
     global.fetch = originalFetch;
-    delete process.env.NEXT_PUBLIC_FLAG_PAYMENTS_AUTO;
   });
 
   it('lists "Credit · Lin" with the reason; the sheet offers Return and Keep only, and Return sends return_credit', async () => {

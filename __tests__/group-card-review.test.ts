@@ -104,7 +104,6 @@ beforeEach(async () => {
   setupAdminPin();
   process.env.NEXT_PUBLIC_FLAG_CARD_PAY = 'true';
   process.env.NEXT_PUBLIC_FLAG_LEDGER_MIRROR = 'true';
-  process.env.NEXT_PUBLIC_FLAG_PAYMENTS_AUTO = 'true';
   process.env.STRIPE_WEBHOOK_SECRET = SECRET;
   listedSession = null;
   refundList = [];
@@ -127,7 +126,7 @@ beforeEach(async () => {
 
 afterEach(() => {
   _setStripeForTests(undefined);
-  for (const k of ['NEXT_PUBLIC_FLAG_CARD_PAY', 'NEXT_PUBLIC_FLAG_LEDGER_MIRROR', 'NEXT_PUBLIC_FLAG_PAYMENTS_AUTO', 'STRIPE_WEBHOOK_SECRET']) delete process.env[k];
+  for (const k of ['NEXT_PUBLIC_FLAG_CARD_PAY', 'NEXT_PUBLIC_FLAG_LEDGER_MIRROR', 'STRIPE_WEBHOOK_SECRET']) delete process.env[k];
 });
 
 describe('a Checkout the webhook could not apply is filed under Needs a look', () => {

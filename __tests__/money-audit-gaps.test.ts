@@ -42,7 +42,7 @@ const live = (refId: string) => {
 };
 const codes = async () => (await runReconcile('bpm')).mismatches.map((m) => [m.code, m.ref.kind, m.ledgerCents, m.liveCents]);
 
-const flags = ['NEXT_PUBLIC_FLAG_LEDGER_MIRROR', 'NEXT_PUBLIC_FLAG_STRINGING', 'NEXT_PUBLIC_FLAG_STRINGING_INVOICE', 'NEXT_PUBLIC_FLAG_STORE_CREDIT'] as const;
+const flags = ['NEXT_PUBLIC_FLAG_LEDGER_MIRROR', 'NEXT_PUBLIC_FLAG_STRINGING', 'NEXT_PUBLIC_FLAG_STRINGING_INVOICE'] as const;
 const before: Record<string, string | undefined> = {};
 
 let lin: { id: string };
@@ -268,7 +268,6 @@ describe('GAP 5 — a job CREATED already finished and priced gets no charge unt
 
 describe('GAP 6 — FIXED: an organiser un-ticks a row paid with store credit through a review', () => {
   it('the un-tick is refused; filed for review it changes nothing, and the next balance read cannot re-pay it', async () => {
-    process.env.NEXT_PUBLIC_FLAG_STORE_CREDIT = 'true';
     await doSettle();
     const id = String(rowOf('Lin').id);
     seedDoc('ledger', {

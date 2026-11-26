@@ -38,7 +38,6 @@ beforeEach(async () => {
   process.env.NEXT_PUBLIC_FLAG_STRINGING = 'true';
   process.env.NEXT_PUBLIC_FLAG_LEDGER_MIRROR = 'true';
   process.env.NEXT_PUBLIC_FLAG_CARD_PAY = 'true';
-  process.env.NEXT_PUBLIC_FLAG_STORE_CREDIT = 'true';
   await seedTestAdminMember();
   seedPointer(SID);
   seedSession(SID, { datetime: '2026-10-08T19:00:00-04:00' });
@@ -56,7 +55,7 @@ beforeEach(async () => {
 
 afterEach(() => {
   _setStripeForTests(undefined);
-  for (const k of ['NEXT_PUBLIC_FLAG_STRINGING', 'NEXT_PUBLIC_FLAG_LEDGER_MIRROR', 'NEXT_PUBLIC_FLAG_CARD_PAY', 'NEXT_PUBLIC_FLAG_STORE_CREDIT']) delete process.env[k];
+  for (const k of ['NEXT_PUBLIC_FLAG_STRINGING', 'NEXT_PUBLIC_FLAG_LEDGER_MIRROR', 'NEXT_PUBLIC_FLAG_CARD_PAY']) delete process.env[k];
 });
 
 describe('each way a job is paid stamps how', () => {
