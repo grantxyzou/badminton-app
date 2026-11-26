@@ -11,6 +11,15 @@ import { PATCH as membersPatch, DELETE as membersDelete } from '@/app/api/member
 import { GET as slice0 } from '@/app/api/admin/slice0/route';
 import { POST as migrateMemberId } from '@/app/api/admin/migrate-memberId/route';
 import { GET as ledger } from '@/app/api/admin/ledger/route';
+import { GET as ledgerEntries } from '@/app/api/admin/ledger/entries/route';
+import { GET as expenses } from '@/app/api/admin/expenses/route';
+import { GET as metrics } from '@/app/api/admin/metrics/route';
+import { GET as aliases } from '@/app/api/aliases/route';
+import { GET as birds } from '@/app/api/birds/route';
+import { GET as sessionsList } from '@/app/api/sessions/route';
+import { GET as sessionCosts } from '@/app/api/sessions/costs/route';
+import { GET as sessionsRecent } from '@/app/api/sessions/recent/route';
+import { GET as memberHistory } from '@/app/api/members/[id]/history/route';
 import { GET as owedAudit } from '@/app/api/admin/owed-audit/route';
 import { GET as stock } from '@/app/api/stringing/stock/route';
 import { GET as jobs } from '@/app/api/stringing/jobs/route';
@@ -285,6 +294,19 @@ describe('F22, F26: deployment-wide powers are the operator’s', () => {
   });
 });
 
+/** Each read as the test admin's cookie asks it; `member-lin` is the history's subject. */
+const MONEY_READS: [string, () => Promise<Response>][] = [
+  ['admin/ledger/entries', () => ledgerEntries(makeAdminRequest('GET', 'http://x/api/admin/ledger/entries'))],
+  ['admin/expenses', () => expenses(makeAdminRequest('GET', 'http://x/api/admin/expenses'))],
+  ['admin/metrics', () => metrics(makeAdminRequest('GET', 'http://x/api/admin/metrics'))],
+  ['aliases', () => aliases(makeAdminRequest('GET', 'http://x/api/aliases'))],
+  ['birds', () => birds(makeAdminRequest('GET', 'http://x/api/birds'))],
+  ['sessions', () => sessionsList(makeAdminRequest('GET', 'http://x/api/sessions'))],
+  ['sessions/costs', () => sessionCosts(makeAdminRequest('GET', 'http://x/api/sessions/costs'))],
+  ['sessions/recent', () => sessionsRecent(makeAdminRequest('GET', 'http://x/api/sessions/recent'))],
+  ['members/[id]/history', () => memberHistory(makeAdminRequest('GET', 'http://x/api/members/member-lin/history'), { params: Promise.resolve({ id: 'member-lin' }) })],
+];
+
 describe('F23, F25: money and cost reads re-check the admin', () => {
   beforeEach(() => {
     process.env[STRINGING] = 'true';
@@ -297,8 +319,31 @@ describe('F23, F25: money and cost reads re-check the admin', () => {
   it('GET /api/admin/owed-audit', async () => {
     expect((await owedAudit(makeAdminRequest('GET', 'http://x/api/admin/owed-audit?name=Lin'))).status).toBe(401);
   });
+  // The same rule on the reads the scan's fixes left on the cookie-only check
+  // (found 2026-11-26): each names money, a cost, or the name someone banks under.
+  it.each(MONEY_READS)('GET /api/%s', async (_path, read) => {
+    expect((await read()).status).toBe(401);
+  });
   it('GET /api/stringing/stock', async () => {
     expect((await stock(makeAdminRequest('GET', 'http://x/api/stringing/stock'))).status).toBe(401);
+  });
+});
+
+describe('the same reads still answer an admin who is one', () => {
+  // The other half of the 401s above: without it they would pass on a route
+  // that refused everybody.
+  beforeEach(() => {
+    seedAdminMember();
+    seedMember('Lin', { id: 'member-lin' });
+  });
+
+  it.each(MONEY_READS)('GET /api/%s', async (_path, read) => {
+    expect((await read()).status).toBe(200);
+  });
+
+  it.each(MONEY_READS)('GET /api/%s refuses a cookie minted before "Sign out everywhere"', async (_path, read) => {
+    seedAdminMember({ sessionsNotBefore: new Date(Date.now() + 60_000).toISOString() });
+    expect((await read()).status).toBe(401);
   });
 });
 

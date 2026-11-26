@@ -199,8 +199,12 @@ describe('Birds API', () => {
     });
 
     it('returns 503 when the read throws (not a lying 200 + zero stock)', async () => {
-      vi.spyOn(cosmos, 'getContainer').mockImplementation(() => {
-        throw new Error('cosmos down');
+      // Everything but `members` is down: the admin is re-read first, and
+      // that read has to succeed for the request to reach the birds query.
+      const realGetContainer = cosmos.getContainer;
+      vi.spyOn(cosmos, 'getContainer').mockImplementation((name: string) => {
+        if (name !== 'members') throw new Error('cosmos down');
+        return realGetContainer(name);
       });
       try {
         const res = await GET(makeAdminRequest('GET', 'http://localhost:3000/api/birds'));

@@ -6,7 +6,7 @@ import { GET as getReleases } from '@/app/api/releases/route';
 import { GET as getAliases } from '@/app/api/aliases/route';
 import { GET as getCosts } from '@/app/api/sessions/costs/route';
 import { NextRequest } from 'next/server';
-import { resetMockStore, seedPointer, seedSession, setupAdminPin, makeGetRequest, seedMember, memberCookieValue } from './helpers';
+import { resetMockStore, seedPointer, seedSession, setupAdminPin, makeGetRequest, seedMember, seedAdminMember, memberCookieValue } from './helpers';
 
 /**
  * Audit remediation (silent-failure cluster): a data-store failure on a read
@@ -72,10 +72,20 @@ describe('read routes surface load failures instead of a lying empty state', () 
     expect(body.error).toBeTruthy();
   });
 
-  it('GET /api/aliases returns 503 when the query throws (not 200 + [])', async () => {
-    vi.spyOn(cosmos, 'getContainer').mockImplementation(() => {
-      throw new Error('cosmos down');
+  // The two below re-read the admin before they read anything (they name
+  // money), so everything but `members` is down: that read has to succeed for
+  // the request to reach the query under test.
+  const downButMembers = () => {
+    seedAdminMember();
+    const realGetContainer = cosmos.getContainer;
+    vi.spyOn(cosmos, 'getContainer').mockImplementation((name: string) => {
+      if (name !== 'members') throw new Error('cosmos down');
+      return realGetContainer(name);
     });
+  };
+
+  it('GET /api/aliases returns 503 when the query throws (not 200 + [])', async () => {
+    downButMembers();
     const res = await getAliases(makeGetRequest('http://localhost/api/aliases', true));
     expect(res.status).toBe(503);
     const body = await res.json();
@@ -83,9 +93,7 @@ describe('read routes surface load failures instead of a lying empty state', () 
   });
 
   it('GET /api/sessions/costs returns 503 when the query throws (not 200 + empty)', async () => {
-    vi.spyOn(cosmos, 'getContainer').mockImplementation(() => {
-      throw new Error('cosmos down');
-    });
+    downButMembers();
     const res = await getCosts(makeGetRequest('http://localhost/api/sessions/costs', true));
     expect(res.status).toBe(503);
     const body = await res.json();

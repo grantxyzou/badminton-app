@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getContainer } from '@/lib/cosmos';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
-import { isAdminAuthed, unauthorized } from '@/lib/auth';
+import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { costSplit, type SplitPlayer } from '@/lib/sessionCost';
 import { expandAliasNames } from '@/lib/playerIdentity';
 import type { Member, Player, Session } from '@/lib/types';
@@ -28,7 +28,10 @@ interface LifetimeStats {
 }
 
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
-  if (!isAdminAuthed(req)) return unauthorized();
+  // The FRESH check: this is one member's nights with what each cost and
+  // whether they paid, and the cookie alone kept answering a demoted or
+  // removed admin for its 30 days.
+  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
 
   const { id: memberId } = await context.params;
 

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { randomBytes } from 'crypto';
-import { isAdminAuthed, isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
+import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import {
   isAdjustment,
   normalizeBirdUsages,
@@ -26,7 +26,10 @@ function validPurchaseTubes(tubes: number): string | null {
 }
 
 export async function GET(req: NextRequest) {
-  if (!isAdminAuthed(req)) return unauthorized();
+  // The FRESH check on the read too: every purchase carries what the club
+  // paid (`totalCost`, `costPerTube`), and the cookie alone kept answering a
+  // demoted or removed admin for its 30 days.
+  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
 
   try {
     const scope = groupScope(resolveGroupId(req));

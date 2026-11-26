@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
-import { isAdminAuthed, unauthorized } from '@/lib/auth';
+import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { sessionCostTotals } from '@/lib/sessionCost';
 import type { Session } from '@/lib/types';
 
@@ -20,7 +20,10 @@ interface RecentSessionSummary {
 }
 
 export async function GET(req: NextRequest) {
-  if (!isAdminAuthed(req)) return unauthorized();
+  // The FRESH check: each summary carries the night's total cost and how much
+  // of it is paid, and the cookie alone kept answering a demoted or removed
+  // admin for its 30 days.
+  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
 
   const params = new URL(req.url).searchParams;
   const requested = parseInt(params.get('limit') ?? '', 10);

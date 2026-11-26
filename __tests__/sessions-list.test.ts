@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { resetMockStore, setupAdminPin, seedSession, seedPointer, seedTestAdminMember, makeGetRequest } from './helpers';
+import { resetMockStore, setupAdminPin, seedSession, seedPointer, seedTestAdminMember, seedAdminMember, makeGetRequest } from './helpers';
 import { SESSION_CALENDAR_LIMIT } from '@/lib/sessionCalendar';
 
 /**
@@ -46,6 +46,7 @@ describe('GET /api/sessions — bounded projection', () => {
   beforeEach(() => {
     resetMockStore();
     setupAdminPin();
+    seedAdminMember(); // the list re-reads the admin: its rows carry costs
     sessionQueries.length = 0;
   });
   afterEach(() => vi.restoreAllMocks());
