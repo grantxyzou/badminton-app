@@ -47,6 +47,12 @@ const vancouverAt = (hour: number) => {
 };
 const NOON = vancouverAt(12);
 const call = (now = NOON) => runPaymentsDaily('bpm', now);
+/** Days before the run's own clock. The daily-run cases pass NOON as "now",
+ *  and NOON can sit up to half a day either side of the real time, so a row
+ *  seeded from `Date.now()` came out half a day younger or older than the case
+ *  meant: a line "3.5 days old" was under the 3-day mark when the suite ran
+ *  late in the Vancouver evening, and a deploy failed on it (2026-11-27). */
+const beforeNoon = (days: number) => new Date(NOON - days * DAY).toISOString();
 
 beforeEach(async () => {
   resetMockStore();
@@ -113,7 +119,7 @@ describe('dailyRunDue — once a day, from 10 a.m. Vancouver', () => {
 
 describe('the daily payments run on the tick', () => {
   it('OFF by default: sends nothing, but stamps the day', async () => {
-    seedPlayer('session-2026-09-24', 'Lin', { memberId: lin.id, owedAmount: 12, settledAt: ago(4) });
+    seedPlayer('session-2026-09-24', 'Lin', { memberId: lin.id, owedAmount: 12, settledAt: beforeNoon(4) });
     expect(await call()).toEqual({ ran: 1 });
     expect(sendPushToMembers).not.toHaveBeenCalled();
     expect((await readPaymentsSettings('bpm'))?.lastReminderRunAt).toBe(new Date(NOON).toISOString());
@@ -130,8 +136,8 @@ describe('the daily payments run on the tick', () => {
     });
 
     it('nudges once per person, stamps every due line, and does not run again the same day', async () => {
-      const a = seedPlayer('session-2026-09-24', 'Lin', { memberId: lin.id, owedAmount: 12, settledAt: ago(4) });
-      const b = seedPlayer('session-2026-10-01', 'Lin', { memberId: lin.id, owedAmount: 15, settledAt: ago(3.5) });
+      const a = seedPlayer('session-2026-09-24', 'Lin', { memberId: lin.id, owedAmount: 12, settledAt: beforeNoon(4) });
+      const b = seedPlayer('session-2026-10-01', 'Lin', { memberId: lin.id, owedAmount: 15, settledAt: beforeNoon(3.5) });
       expect(await call()).toEqual({ ran: 1, reminded: 1, sent: 1 });
       expect(sendPushToMembers).toHaveBeenCalledTimes(1);
       // The payload is built per reader's language; read it in English.
@@ -148,7 +154,7 @@ describe('the daily payments run on the tick', () => {
 
     it('an organiser who turns reminders off mid-run is not overruled', async () => {
       process.env.NEXT_PUBLIC_FLAG_LEDGER_MIRROR = 'true';
-      seedPlayer('session-2026-09-24', 'Lin', { memberId: lin.id, owedAmount: 12, settledAt: ago(4) });
+      seedPlayer('session-2026-09-24', 'Lin', { memberId: lin.id, owedAmount: 12, settledAt: beforeNoon(4) });
       const check = vi.spyOn(ledgerReconcile, 'reconcileAndRecord').mockImplementation(async () => {
         await notePaymentsSettings('bpm', { remindersOn: false });
         return { checked: 0, mismatches: [] } as unknown as Awaited<ReturnType<typeof ledgerReconcile.reconcileAndRecord>>;
@@ -163,12 +169,12 @@ describe('the daily payments run on the tick', () => {
     });
 
     it('skips the paid, the self-reported, the too-recent and the too-old', async () => {
-      seedPlayer('session-2026-09-24', 'Lin', { memberId: lin.id, owedAmount: 12, settledAt: ago(4), paid: true });
-      seedPlayer('session-2026-10-01', 'Lin', { memberId: lin.id, owedAmount: 15, settledAt: ago(4), selfReportedPaid: true });
+      seedPlayer('session-2026-09-24', 'Lin', { memberId: lin.id, owedAmount: 12, settledAt: beforeNoon(4), paid: true });
+      seedPlayer('session-2026-10-01', 'Lin', { memberId: lin.id, owedAmount: 15, settledAt: beforeNoon(4), selfReportedPaid: true });
       const v = seedMember('Viktor');
-      seedPlayer('session-2026-10-01', 'Viktor', { memberId: v.id, owedAmount: 15, settledAt: ago(1) });
+      seedPlayer('session-2026-10-01', 'Viktor', { memberId: v.id, owedAmount: 15, settledAt: beforeNoon(1) });
       const k = seedMember('Kento');
-      seedPlayer('session-2026-09-24', 'Kento', { memberId: k.id, owedAmount: 12, settledAt: ago(45) });
+      seedPlayer('session-2026-09-24', 'Kento', { memberId: k.id, owedAmount: 12, settledAt: beforeNoon(45) });
       expect(await call()).toEqual({ ran: 1, reminded: 0, sent: 0 });
     });
   });
@@ -198,7 +204,7 @@ describe('notePaymentsSettings — under the etag', () => {
 
 describe('the admin card', () => {
   it('previews who would be nudged before it is on', async () => {
-    seedPlayer('session-2026-09-24', 'Lin', { memberId: lin.id, owedAmount: 12, settledAt: ago(4) });
+    seedPlayer('session-2026-09-24', 'Lin', { memberId: lin.id, owedAmount: 12, settledAt: beforeNoon(4) });
     const inbox = await (await inboxGet(makeAdminRequest('GET', `${BASE}/admin/payments`))).json();
     expect(inbox.reminders).toEqual({ on: false, lastRunAt: null, wouldRemind: ['Lin'] });
   });
@@ -206,7 +212,7 @@ describe('the admin card', () => {
   it('the preview and the hold list come from ONE roster read, never the per-person path', async () => {
     // The regression: each preview walked the roster through computeOwed —
     // ~4 serial round trips a member, twice, on every Command Center open.
-    seedPlayer('session-2026-09-24', 'Lin', { memberId: lin.id, owedAmount: 12, settledAt: ago(4) });
+    seedPlayer('session-2026-09-24', 'Lin', { memberId: lin.id, owedAmount: 12, settledAt: beforeNoon(4) });
     const roster = vi.spyOn(owedBalance, 'computeOwedForRoster');
     const person = vi.spyOn(owedBalance, 'computeOwed');
     const inbox = await (await inboxGet(makeAdminRequest('GET', `${BASE}/admin/payments`))).json();
