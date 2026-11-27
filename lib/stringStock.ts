@@ -188,18 +188,19 @@ export async function readStringUses(scope: GroupScope): Promise<StringUse[]> {
   return rows.filter((r) => r.kind === STRING_USE_KIND);
 }
 
-type CountedJob = Pick<StringingJob, 'id' | 'stringLabel' | 'status' | 'archivedAt' | 'stringColor' | 'ownString'> & { strungAt?: string };
+type CountedJob = Pick<StringingJob, 'id' | 'stringLabel' | 'status' | 'archivedAt' | 'stringColor' | 'ownString'> & { strungAt?: string; createdAt?: string };
 
 /**
  * The ONE projection the stock reads take from `stringingJobs`: what the count
  * needs (label, status, colour, own string) and `history` for the day each
- * string went in (the usage rate). A reader that drops a field here silently
+ * string went in (the usage rate), and `createdAt` so a job with no strung
+ * entry still has a day to be costed on. A reader that drops a field here silently
  * changes the count, so every stock reader goes through it.
  */
-export const STOCK_JOB_SELECT = 'c.id, c.stringLabel, c.status, c.archivedAt, c.stringColor, c.ownString, c.history';
+export const STOCK_JOB_SELECT = 'c.id, c.stringLabel, c.status, c.archivedAt, c.stringColor, c.ownString, c.history, c.createdAt';
 
 /** A projected job as the stock counts it: its history folded to `strungAt`. */
-export function countedJob(row: Pick<StringingJob, 'id' | 'stringLabel' | 'status' | 'archivedAt' | 'stringColor' | 'ownString'> & { history?: unknown }): CountedJob {
+export function countedJob(row: Pick<StringingJob, 'id' | 'stringLabel' | 'status' | 'archivedAt' | 'stringColor' | 'ownString'> & { history?: unknown; createdAt?: string }): CountedJob {
   const { history: _h, ...rest } = row;
   const strungAt = strungAtOf(row);
   return { ...rest, ...(strungAt ? { strungAt } : {}) };

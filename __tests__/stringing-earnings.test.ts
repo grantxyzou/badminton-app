@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { summarizeStringStock } from '@/lib/stringStock';
+import { countedJob, summarizeStringStock } from '@/lib/stringStock';
 import { summarizeEarnings, type EarningsJob } from '@/lib/stringingEarnings';
 import type { StringPurchase } from '@/lib/types';
 
@@ -29,7 +29,8 @@ const job = (o: Partial<EarningsJob> & { strungAt?: string } = {}): EarningsJob 
 const fold = (jobs: EarningsJob[], purchases: StringPurchase[] = [purchase()], offered = ['BG80']) => {
   const stock = summarizeStringStock({
     offered, links: {}, purchases, catalog: new Map(),
-    jobs: jobs.map((j) => ({ id: j.id, stringLabel: j.stringLabel, status: j.status, archivedAt: undefined, ownString: j.ownString })),
+    // As `loadStringStock` hands them over: each job's history folded to `strungAt`.
+    jobs: jobs.map((j) => countedJob({ id: j.id, stringLabel: j.stringLabel, status: j.status, archivedAt: undefined, ownString: j.ownString, history: j.history, createdAt: j.createdAt })),
   });
   return summarizeEarnings({ jobs, stock, now: NOW });
 };
@@ -92,6 +93,47 @@ describe('summarizeEarnings', () => {
     expect(by['x:aerobite']).toMatchObject({ jobs: 1, sets: 1, costCents: 0 });
     const bg80 = s.strings.find((x) => x.key === 's:BG80')!;
     expect(bg80).toMatchObject({ costPerSetCents: 1000, purchasedCostCents: 20000, allTimeWorkCents: 6000, remainingSets: 18 });
+  });
+
+  it('costs a set at the price of the day it was strung, so a new reel moves no past month', () => {
+    // A $160 reel in August ($8 a set), a $240 one on 20 November ($12).
+    const jobs = [
+      job({ id: 'sep', strungAt: '2026-09-10T20:00:00Z' }),
+      job({ id: 'early-nov', strungAt: '2026-11-10T20:00:00Z' }),
+      job({ id: 'late-nov', strungAt: '2026-11-21T20:00:00Z' }),
+      // Strung before the first reel was ever logged: the first one's price.
+      job({ id: 'july', strungAt: '2026-07-10T20:00:00Z' }),
+    ];
+    const reels = [purchase({ totalCostCents: 16000, date: '2026-08-01' }), purchase({ totalCostCents: 24000, date: '2026-11-20' })];
+    const s = fold(jobs, reels);
+    const cost = (month: string) => s.months.find((m) => m.month === month)!.stringCostCents;
+    expect(cost('2026-07')).toBe(800);
+    expect(cost('2026-09')).toBe(800);
+    expect(cost('2026-11')).toBe(800 + 1200);
+    // The shelf still says today's price.
+    expect(s.strings.find((x) => x.key === 's:BG80')!.costPerSetCents).toBe(1200);
+    // And September is the same before the second reel exists.
+    expect(fold(jobs, [reels[0]]).months.find((m) => m.month === '2026-09')!.stringCostCents).toBe(800);
+  });
+
+  it('a job with no strung entry is costed on the day it was made, not at today’s price', () => {
+    const old = job({ id: 'old', history: [], createdAt: '2026-09-10T20:00:00Z' });
+    const reels = [purchase({ totalCostCents: 16000, date: '2026-08-01' }), purchase({ totalCostCents: 24000, date: '2026-11-20' })];
+    expect(fold([old], reels).months.find((m) => m.month === '2026-09')!.stringCostCents).toBe(800);
+  });
+
+  it('counts what it cannot price instead of calling it zero', () => {
+    const s = fold([
+      job(),
+      job({ priceCents: null }), // strung, never priced
+      job({ stringLabel: 'BG80 / BG65' }), // a hybrid: no shelf line
+      job({ stringLabel: 'Aerobite' }), // not on the shelf
+      job({ ownString: true }), // the player's own: nothing to know
+    ]);
+    expect(nov(s)).toMatchObject({ jobs: 5, unpricedJobs: 1, unknownCostJobs: 2, stringCostCents: 2000 });
+    // A shelf string nobody ever bought has no price either.
+    const none = fold([job()], []);
+    expect(nov(none)).toMatchObject({ unknownCostJobs: 1, stringCostCents: 0 });
   });
 
   it('lists a shelf string nobody strung this month, at nothing', () => {

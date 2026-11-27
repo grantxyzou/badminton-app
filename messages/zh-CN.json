@@ -2719,6 +2719,8 @@
         "vs": "比{month} {amount}",
         "jobs": "{n} 单",
         "margin": "利润率 {pct}%",
+        "unpriced": "{n} 单未定价",
+        "unknownCost": "{n} 单线材成本未知",
         "whereTitle": "钱在哪里",
         "pileCollected": "已收",
         "pileOwed": "待收",

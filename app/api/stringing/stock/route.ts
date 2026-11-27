@@ -49,8 +49,8 @@ export async function GET(req: NextRequest) {
     });
     // `aliases` rides here, on the admin read, so the bench can show and undo
     // them (docs/plans/bench-redesign.md); the public strings read omits them.
-    // `jobLines` is the earnings page's (job ids); the shelf has no use for it.
-    const { jobLines: _jl, ...stock } = summary;
+    // `jobLines` and `jobCosts` are the earnings page's (job ids); the shelf has no use for them.
+    const { jobLines: _jl, jobCosts: _jc, ...stock } = summary;
     return NextResponse.json({ ...stock, purchases, aliases: offered.aliases, customColours: offered.customColours });
   } catch (err) {
     console.error('GET /api/stringing/stock failed', { step }, err);

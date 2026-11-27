@@ -21,6 +21,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 - Before, an admin who was demoted, removed, or signed out everywhere could keep opening these for up to 30 days, until their old sign-in ran out. Changing anything was already refused.
 - Nothing changes for a current admin, or for a member reading their own balance.
 
+## Stringing earnings: past months stay put, and nothing is $0 in silence (2026-11-26)
+
+- **A racket's string is costed at the reel price on the day it was strung.** Before, every job used today's price, so logging a dearer reel changed After string cost for months that were already over.
+- **Earnings says when a figure is short**: "1 job not priced" under Work done, and "2 jobs: cost unknown" under After string cost (a string not on the shelf, a hybrid, or a string with no purchase logged).
+- **Earnings now re-checks that you are still an admin on every load**, like the string stock: a demoted admin's old sign-in could read it before.
+
 ## Old code out: one racket engine, one way to say a reason (2026-11-25)
 
 Nothing here changes what you see. It removes four leftovers the "replace in place" rule named.

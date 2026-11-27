@@ -23,6 +23,7 @@ import { GET as memberHistory } from '@/app/api/members/[id]/history/route';
 import { GET as unpaid } from '@/app/api/players/unpaid/route';
 import { GET as owedAudit } from '@/app/api/admin/owed-audit/route';
 import { GET as stock } from '@/app/api/stringing/stock/route';
+import { GET as earnings } from '@/app/api/stringing/earnings/route';
 import { GET as jobs } from '@/app/api/stringing/jobs/route';
 import { POST as mintReportsKey } from '@/app/api/admin/reports/key/route';
 import { verifyRecoveryCode } from '@/lib/memberRecoveryCode';
@@ -336,6 +337,11 @@ describe('F23, F25: money and cost reads re-check the admin', () => {
   });
   it('GET /api/stringing/stock', async () => {
     expect((await stock(makeAdminRequest('GET', 'http://x/api/stringing/stock'))).status).toBe(401);
+  });
+  // The same rule, found on the earnings read on 2026-11-26: it is the club's
+  // money, and it shipped a day after F25 on the cookie-only check.
+  it('GET /api/stringing/earnings', async () => {
+    expect((await earnings(makeAdminRequest('GET', 'http://x/api/stringing/earnings'))).status).toBe(401);
   });
 });
 

@@ -42,7 +42,7 @@ export function foldMonths(key: string, months: readonly EarningsMonth[]): Earni
   const strings = new Map<string, EarningsStringMonth>();
   const out: EarningsMonth = {
     month: key, jobs: 0, workCents: 0, collectedCents: 0, owedCents: 0, notInvoicedCents: 0,
-    stringCostCents: 0, sets: 0, strings: [], waiting: [],
+    stringCostCents: 0, sets: 0, unpricedJobs: 0, unknownCostJobs: 0, strings: [], waiting: [],
   };
   for (const m of months) {
     out.jobs += m.jobs;
@@ -52,6 +52,8 @@ export function foldMonths(key: string, months: readonly EarningsMonth[]): Earni
     out.notInvoicedCents += m.notInvoicedCents;
     out.stringCostCents += m.stringCostCents;
     out.sets += m.sets;
+    out.unpricedJobs += m.unpricedJobs ?? 0;
+    out.unknownCostJobs += m.unknownCostJobs ?? 0;
     for (const s of m.strings) {
       const row = strings.get(s.key) ?? { key: s.key, jobs: 0, sets: 0, workCents: 0, costCents: 0 };
       row.jobs += s.jobs;
