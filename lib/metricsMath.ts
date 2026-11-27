@@ -13,7 +13,7 @@
  * nobody activated" is not a 0% activation rate, and a page that drew it as
  * one would be the lying empty state with a percent sign.
  */
-import type { StringShelfReport } from './stringStockReport';
+import type { StringEarningsReport, StringShelfReport } from './stringStockReport';
 
 export interface MetricsSession {
   id: string;
@@ -181,6 +181,12 @@ export interface ClubMetrics {
    * ADDITIVE and optional, so the pure `computeClubMetrics` never sets it.
    */
   stringShelf?: StringShelfReport | null;
+  /**
+   * What the bench earned, month by month (docs/plans/stringing-earnings.md):
+   * the Earnings page's own fold as totals, no names. `null` for a club that
+   * does not string. Attached by `clubMetrics()`.
+   */
+  stringEarnings?: StringEarningsReport | null;
 }
 
 /**

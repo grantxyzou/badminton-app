@@ -6,7 +6,7 @@ import { PATCH as jobPATCH, DELETE as jobDELETE } from '@/app/api/stringing/jobs
 import { __resetCatalogSeedForTests } from '@/lib/catalogSeed';
 import { resetShelfCache } from '@/lib/stringShelfRead';
 import { summarizeStringStock, strungAtOf, stringReorder, RATE_WINDOW_WEEKS } from '@/lib/stringStock';
-import { buildStringShelfReport, readStringShelfReport } from '@/lib/stringStockReport';
+import { buildStringShelfReport, readStringReports } from '@/lib/stringStockReport';
 import type { StringPurchase, StringingJob } from '@/lib/types';
 import { resetMockStore, getStore, seedMember, makeAdminRequest, setupAdminPin, seedTestAdminMember } from './helpers';
 
@@ -160,7 +160,7 @@ describe('through the routes', () => {
     const use = ((getStore()['clubSettings'] ?? []) as Array<{ kind?: string; strungAt?: string }>).find((r) => r.kind === 'stringUse');
     expect(typeof use?.strungAt).toBe('string');
 
-    const report = await readStringShelfReport('bpm', new Date());
+    const { stringShelf: report } = await readStringReports('bpm', new Date());
     expect(report).not.toBeNull();
     const bg80 = report!.lines.find((l) => l.label === 'BG80')!;
     expect(bg80.usedSets).toBe(2);
@@ -174,6 +174,6 @@ describe('through the routes', () => {
 
   it('is null for a deployment without stringing', async () => {
     delete process.env.NEXT_PUBLIC_FLAG_STRINGING;
-    expect(await readStringShelfReport('bpm', new Date())).toBeNull();
+    expect(await readStringReports('bpm', new Date())).toEqual({ stringShelf: null, stringEarnings: null });
   });
 });

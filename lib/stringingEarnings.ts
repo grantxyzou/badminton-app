@@ -10,18 +10,25 @@
  *   owed           — `isBillable` (finished, priced, unpaid, invoiced when it
  *                    bills on an invoice);
  *   not invoiced   — priced and unpaid and not billable yet.
- * Its string costs what a set of its shelf line cost ON THE DAY IT WAS STRUNG
- * (`jobCosts`), through the line the stock count itself matched it to
- * (`jobLines`), never a second matcher and never today's price: a month that
- * is over must not move when the next reel is bought.
+ * Its string costs what the stock count says it took off the shelf, at the
+ * price ON THE DAY IT WAS STRUNG (`jobParts`): never a second matcher and
+ * never today's price, so a month that is over does not move when the next
+ * reel is bought. A HYBRID is two parts (half a set of each string off a
+ * reel, a whole packet otherwise), and its price is shared equally between
+ * the two strings' rows, so each row shows what its string made.
  *
  * Nothing is zero in silence. A job with no price adds no work, and a job
- * whose string cost nobody can know (a string not on the shelf, a hybrid, a
- * string never bought) adds no cost — and each is COUNTED (`unpricedJobs`,
+ * with a string whose cost nobody can know (not on the shelf, or never
+ * bought) adds no cost for it — and each is COUNTED (`unpricedJobs`,
  * `unknownCostJobs`), so the page can say the figure is short.
+ *
+ * A DELETED job that was PAID still counts (`deletedPaidJobs`): the money
+ * came in, and the ledger keeps it, so the month it was strung in keeps it
+ * too. A deleted job that was never paid owes nothing and is not here.
  */
 import type { StringingJob } from './types';
 import { STRUNG_STATUSES, strungAtOf, type StringStockSummary } from './stringStockMath';
+import type { StringUse } from './stringStock';
 import { awaitingInvoice, isBillable } from './stringingBilling';
 import { lastMonths, monthOf } from './memberPayments';
 
@@ -64,8 +71,9 @@ export interface EarningsWaiting {
 
 export interface EarningsStringMonth {
   key: string;
+  /** Rackets; a hybrid counts as half a racket on each of its two strings. */
   jobs: number;
-  /** Sets off the shelf (own-string jobs use none). */
+  /** Sets off the shelf (own-string jobs use none; a hybrid's side may be half a set). */
   sets: number;
   workCents: number;
   costCents: number;
@@ -157,9 +165,36 @@ const ordinal = (month: string): number => {
 const counted = (j: EarningsJob): boolean => STRUNG_STATUSES.has(j.status) && !(j.cancelledAt && !isPaid(j));
 const monthOfJob = (j: EarningsJob): string | null => monthOf(strungAtOf(j) ?? j.createdAt);
 
+/**
+ * The deleted jobs that still count: those PAID when they left (Grant,
+ * 2026-11-27: "Keep delete"). A deleted job's `stringUse` row carries its
+ * price and when it was paid since then; a row with neither (an unpaid job,
+ * or one deleted before the row carried money) is the shelf's alone. A job
+ * still stored is never taken from its row.
+ */
+export function deletedPaidJobs(uses: readonly StringUse[], live: ReadonlySet<string>): EarningsJob[] {
+  return uses.flatMap((u) => {
+    if (live.has(u.jobId) || typeof u.paidAt !== 'string' || !u.paidAt) return [];
+    if (typeof u.priceCents !== 'number' || u.priceCents <= 0) return [];
+    return [{
+      id: u.jobId, jobNo: '', memberName: '', status: 'picked_up' as const,
+      priceCents: u.priceCents, paidAt: u.paidAt, stringLabel: u.stringLabel,
+      createdAt: u.createdAt ?? u.strungAt ?? u.deletedAt,
+      ...(u.ownString ? { ownString: true as const } : {}),
+      history: u.strungAt ? [{ status: 'strung', at: u.strungAt }] : [],
+    }];
+  });
+}
+
+/** `total` shared over `n` rows in whole cents: the first rows take the odd ones. */
+function shareOut(total: number, n: number): number[] {
+  const base = Math.floor(total / n);
+  return Array.from({ length: n }, (_, i) => base + (i < total - base * n ? 1 : 0));
+}
+
 export function summarizeEarnings(input: {
   jobs: readonly EarningsJob[];
-  stock: Pick<StringStockSummary, 'lines' | 'jobLines' | 'jobCosts'>;
+  stock: Pick<StringStockSummary, 'lines' | 'jobParts'>;
   now: Date;
   /** A fixed window instead of "since the first job". */
   months?: number;
@@ -182,9 +217,7 @@ export function summarizeEarnings(input: {
   }]));
   const stringRows = new Map<string, Map<string, EarningsStringMonth>>(window.map((m) => [m, new Map()]));
 
-  const lineByLabel = new Map(input.stock.lines.map((l) => [l.label, l]));
-  const jobLines = input.stock.jobLines ?? {};
-  const jobCosts = input.stock.jobCosts ?? {};
+  const jobParts = input.stock.jobParts ?? {};
   const strings = new Map<string, EarningsString>();
   for (const l of input.stock.lines) {
     strings.set(`s:${l.label}`, {
@@ -201,45 +234,50 @@ export function summarizeEarnings(input: {
     const strungAt = strungAtOf(j);
     const month = monthOfJob(j);
     const own = j.ownString === true;
-    const lineLabel = own ? undefined : jobLines[j.id];
-    const line = lineLabel ? lineByLabel.get(lineLabel) : undefined;
-    let key: string;
-    if (own) key = OWN;
-    else if (line) key = `s:${line.label}`;
-    else key = `x:${(j.stringLabel ?? '').trim().toLowerCase() || '?'}`;
-    if (!strings.has(key)) {
-      strings.set(key, {
-        key, label: own ? '' : (j.stringLabel ?? '').trim(), catalogId: null, own,
+    // What it took off the shelf, as the stock count read it: one part, or a
+    // hybrid's two. Own string takes nothing; a job the count never saw (no
+    // string named) is one part nobody can cost.
+    const label = (j.stringLabel ?? '').trim();
+    const parts: Array<{ key: string; label: string; sets: number; costCents: number | null }> = own
+      ? [{ key: OWN, label: '', sets: 0, costCents: 0 }]
+      : (jobParts[j.id] ?? [{ line: null, label, sets: 1, costCents: null }]).map((p) => ({
+        key: p.line ? `s:${p.line}` : `x:${p.label.toLowerCase() || '?'}`, label: p.label, sets: p.sets, costCents: p.costCents,
+      }));
+    for (const p of parts) {
+      if (strings.has(p.key)) continue;
+      strings.set(p.key, {
+        key: p.key, label: p.label, catalogId: null, own,
         costPerSetCents: null, remainingSets: null, purchasedCostCents: 0, allTimeWorkCents: 0,
       });
     }
     const work = priced(j);
-    strings.get(key)!.allTimeWorkCents += work;
+    // A hybrid's price is shared equally between its two strings.
+    const shares = shareOut(work, parts.length);
+    parts.forEach((p, k) => { strings.get(p.key)!.allTimeWorkCents += shares[k]; });
 
     const m = month ? byMonth.get(month) : undefined;
     if (!m) continue;
-    const sets = own ? 0 : 1;
-    // The day's price; a summary built without `jobCosts` falls back to the line's.
-    const known = line ? (j.id in jobCosts ? jobCosts[j.id] : line.costPerSetCents) : null;
-    const cost = known ?? 0;
     m.jobs += 1;
     if (work === 0) m.unpricedJobs += 1;
-    if (!own && known === null) m.unknownCostJobs += 1;
+    if (parts.some((p) => p.costCents === null)) m.unknownCostJobs += 1;
     m.workCents += work;
-    m.sets += sets;
-    m.stringCostCents += cost;
     if (isPaid(j)) m.collectedCents += work;
     else if (isBillable(j)) m.owedCents += work;
     else m.notInvoicedCents += work;
     const w = waitingOf(j, strungAt);
     if (w) m.waiting.push(w);
     const rows = stringRows.get(m.month)!;
-    const row = rows.get(key) ?? { key, jobs: 0, sets: 0, workCents: 0, costCents: 0 };
-    row.jobs += 1;
-    row.sets += sets;
-    row.workCents += work;
-    row.costCents += cost;
-    rows.set(key, row);
+    parts.forEach((p, k) => {
+      const cost = p.costCents ?? 0;
+      m.sets += p.sets;
+      m.stringCostCents += cost;
+      const row = rows.get(p.key) ?? { key: p.key, jobs: 0, sets: 0, workCents: 0, costCents: 0 };
+      row.jobs += 1 / parts.length;
+      row.sets += p.sets;
+      row.workCents += shares[k];
+      row.costCents += cost;
+      rows.set(p.key, row);
+    });
   }
 
   const months = window.map((month) => {

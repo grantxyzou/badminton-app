@@ -26,7 +26,7 @@ import { emailWalkUp } from '@/lib/stringingWalkUpEmail';
 import { notifyStringerOfAssignment } from '@/lib/stringingRequestNotify';
 import { isArchived } from '@/lib/stringingOrder';
 import { mirrorStringingChanged, mirrorStringingDeleted } from '@/lib/ledgerMirror';
-import { recordStringUse, usesASet } from '@/lib/stringStock';
+import { leavesAUse, recordStringUse } from '@/lib/stringStock';
 import { forgetShelfExtras } from '@/lib/stringShelfRead';
 import type { StringingJob, PendingEdit, WalkUpEmailStamp } from '@/lib/types';
 import { toStringerJob } from '../route';
@@ -661,9 +661,10 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: stri
       return NextResponse.json({ error: 'not_archived' }, { status: 409 });
     }
 
-    // Its set stays used: stock is counted from jobs, so the job's string
-    // leaves a row behind BEFORE the job goes (a failed write stops the delete).
-    if (usesASet(job)) await recordStringUse(scope, job);
+    // Its set stays used, and a PAID job's money stays earned: stock and
+    // earnings are counted from jobs, so the job leaves a row behind BEFORE
+    // it goes (a failed write stops the delete).
+    if (leavesAUse(job)) await recordStringUse(scope, job);
     const removed = await scope.remove('stringingJobs', id, memberId);
     if (!removed) return NextResponse.json({ error: 'not_found' }, { status: 404 });
     await mirrorStringingDeleted(scope, job);

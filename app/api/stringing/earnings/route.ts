@@ -3,18 +3,14 @@
  * re-checked on every call:
  * a stringer who is not an admin sees no money anywhere (`toStringerJob`).
  *
- * The shelf comes through `loadStringStock`, the one stock loader, so a job's
- * string cost is the line the stock count matched it to (`jobLines`); the
- * jobs' money fields come from a projection of their own.
+ * The read itself is `loadStringEarnings`, shared with the club report.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { resolveGroupId } from '@/lib/groupContext';
-import { groupScope } from '@/lib/groupScope';
 import { isFlagOn } from '@/lib/flags';
-import { loadStringStock } from '@/lib/stringStocktake';
-import { EARNINGS_JOB_SELECT, summarizeEarnings, type EarningsJob } from '@/lib/stringingEarnings';
+import { loadStringEarnings } from '@/lib/stringingEarningsRead';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,14 +28,11 @@ export async function GET(req: NextRequest) {
   try {
     const groupId = resolveGroupId(req);
     const now = new Date();
-    const [stock, jobs] = await Promise.all([
-      loadStringStock(groupId, { now, at }).catch((err) => {
-        if ((err as { step?: string }).step) step = (err as { step: string }).step;
-        throw err;
-      }),
-      at('earnings-jobs', groupScope(groupId).query<EarningsJob>('stringingJobs', { select: EARNINGS_JOB_SELECT })),
-    ]);
-    return NextResponse.json({ ...summarizeEarnings({ jobs, stock: stock.summary, now }), now: now.toISOString() });
+    const { earnings } = await loadStringEarnings(groupId, { now, at }).catch((err) => {
+      if ((err as { step?: string }).step) step = (err as { step: string }).step;
+      throw err;
+    });
+    return NextResponse.json({ ...earnings, now: now.toISOString() });
   } catch (err) {
     console.error('GET /api/stringing/earnings failed', { step }, err);
     return NextResponse.json({ error: 'read_failed', step }, { status: 503 });

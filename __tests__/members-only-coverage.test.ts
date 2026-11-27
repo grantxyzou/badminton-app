@@ -109,7 +109,7 @@ const ROUTES: Record<string, Entry> = {
   'admin/card-pay': admin('isAdminAuthedWithMember'),
   'admin/settings': admin('isAdminAuthedWithMember'),
   'admin/slice0': admin(),
-  'admin/metrics': admin(),
+  'admin/metrics': admin('isAdminAuthedWithMember'),
   'admin/reports/key': admin(),
   'reports/metrics': { kind: 'authed', helper: 'groupForReportsKey' },
   'reports/feedback': { kind: 'authed', helper: 'groupForReportsKey' },

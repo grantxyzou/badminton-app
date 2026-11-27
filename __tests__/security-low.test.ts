@@ -14,6 +14,7 @@ import { GET as ledger } from '@/app/api/admin/ledger/route';
 import { GET as owedAudit } from '@/app/api/admin/owed-audit/route';
 import { GET as stock } from '@/app/api/stringing/stock/route';
 import { GET as earnings } from '@/app/api/stringing/earnings/route';
+import { GET as adminMetrics } from '@/app/api/admin/metrics/route';
 import { GET as jobs } from '@/app/api/stringing/jobs/route';
 import { POST as mintReportsKey } from '@/app/api/admin/reports/key/route';
 import { verifyRecoveryCode } from '@/lib/memberRecoveryCode';
@@ -305,6 +306,10 @@ describe('F23, F25: money and cost reads re-check the admin', () => {
   // money, and it shipped a day after F25 on the cookie-only check.
   it('GET /api/stringing/earnings', async () => {
     expect((await earnings(makeAdminRequest('GET', 'http://x/api/stringing/earnings'))).status).toBe(401);
+  });
+  // The Metrics read carries the earnings totals since 2026-11-27.
+  it('GET /api/admin/metrics', async () => {
+    expect((await adminMetrics(makeAdminRequest('GET', 'http://x/api/admin/metrics'))).status).toBe(401);
   });
 });
 
