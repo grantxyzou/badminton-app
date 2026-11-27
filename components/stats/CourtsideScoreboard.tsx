@@ -316,7 +316,7 @@ export default function CourtsideScoreboard({ open, onClose, onSave }: Props) {
       <section className="courtside-board" aria-live="polite">
         <div className="courtside-sides">
           {(['a', 'b'] as const).map((s) => (
-            <div key={s} className="courtside-side" data-serving={server === s} data-winner={state.winner === s}>
+            <div key={s} className="courtside-side" data-side={s} data-serving={server === s} data-winner={state.winner === s}>
               <span className="courtside-side-label">{sideName(s)}</span>
               {/* Keyed on the value: a new number fades in (the Appear
                   recipe) rather than flicking — content arriving into a
@@ -350,7 +350,7 @@ export default function CourtsideScoreboard({ open, onClose, onSave }: Props) {
                 <p className="courtside-voice-line">{t('voice.serveTitle')}</p>
                 <div className="courtside-voice-serve">
                   {(['a', 'b'] as const).map((s) => (
-                    <button key={s} type="button" className="cc-btn cc-btn-primary" onClick={() => chooseServer(s)}>
+                    <button key={s} type="button" className="cc-btn cc-btn-primary" data-side={s} onClick={() => chooseServer(s)}>
                       {t('voice.serveSide', { side: sideName(s) })}
                     </button>
                   ))}
@@ -377,7 +377,7 @@ export default function CourtsideScoreboard({ open, onClose, onSave }: Props) {
                 <p className="courtside-voice-line">{t('voice.askTitle', { score: heardText(ask) })}</p>
                 <div className="courtside-voice-choices">
                   {(['a', 'b'] as const).map((s) => (
-                    <button key={s} type="button" className="cc-btn cc-btn-primary" onClick={() => point(s)}>
+                    <button key={s} type="button" className="cc-btn cc-btn-primary" data-side={s} onClick={() => point(s)}>
                       {t('voice.askSide', { side: sideName(s) })}
                     </button>
                   ))}
@@ -404,6 +404,7 @@ export default function CourtsideScoreboard({ open, onClose, onSave }: Props) {
               key={s}
               type="button"
               className="courtside-point"
+              data-side={s}
               disabled={state.over}
               onClick={() => point(s)}
               aria-label={t('point', { side: sideName(s) })}
