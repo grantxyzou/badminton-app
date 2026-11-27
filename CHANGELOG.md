@@ -15,6 +15,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 - **At a tied score the board flashes "Which side won?"** When the score was level, "6-5" is the same call whichever side won, so the phone cannot know. The score half lights up orange on A's side and violet on B's, and the two +1 buttons with it, until you tap a side (`docs/plans/voice-score.md`).
 - **Each side has its own colour.** A side is orange and B side is violet, on its name, its +1 button and the buttons that answer for it.
 
+## Stringing earnings: past months stay put, and nothing is $0 in silence (2026-11-26)
+
+- **A racket's string is costed at the reel price on the day it was strung.** Before, every job used today's price, so logging a dearer reel changed After string cost for months that were already over.
+- **Earnings says when a figure is short**: "1 job not priced" under Work done, and "2 jobs: cost unknown" under After string cost (a string not on the shelf, a hybrid, or a string with no purchase logged).
+- **Earnings now re-checks that you are still an admin on every load**, like the string stock: a demoted admin's old sign-in could read it before.
+
 ## Old code out: one racket engine, one way to say a reason (2026-11-25)
 
 Nothing here changes what you see. It removes four leftovers the "replace in place" rule named.

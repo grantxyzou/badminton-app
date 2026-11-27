@@ -270,6 +270,11 @@ function Tiles({ cur, prevTotal, prevLabel }: { cur: EarningsMonth; prevTotal: E
         ) : (
           <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{t('jobs', { n: cur.jobs })}</span>
         )}
+        {/* Never $0 in silence: a strung racket with no price is work done
+            that this figure does not hold yet. */}
+        {(cur.unpricedJobs ?? 0) > 0 && (
+          <span className="fs-sm earn-warn" data-testid="earn-unpriced">{t('unpriced', { n: cur.unpricedJobs })}</span>
+        )}
       </div>
       <div className="glass-card earn-tile">
         <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>{t('afterCost')}</span>
@@ -277,6 +282,10 @@ function Tiles({ cur, prevTotal, prevLabel }: { cur: EarningsMonth; prevTotal: E
         <span className="fs-sm" style={{ color: 'var(--text-muted)' }}>
           {cur.workCents > 0 ? t('margin', { pct: Math.round((kept / cur.workCents) * 100) }) : t('jobs', { n: cur.jobs })}
         </span>
+        {/* A set nobody can price came off at $0, so this figure is high by it. */}
+        {(cur.unknownCostJobs ?? 0) > 0 && (
+          <span className="fs-sm earn-warn" data-testid="earn-unknown-cost">{t('unknownCost', { n: cur.unknownCostJobs })}</span>
+        )}
       </div>
     </div>
   );

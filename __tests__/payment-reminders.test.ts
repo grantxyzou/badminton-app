@@ -131,7 +131,12 @@ describe('the daily payments run on the tick', () => {
 
     it('nudges once per person, stamps every due line, and does not run again the same day', async () => {
       const a = seedPlayer('session-2026-09-24', 'Lin', { memberId: lin.id, owedAmount: 12, settledAt: ago(4) });
-      const b = seedPlayer('session-2026-10-01', 'Lin', { memberId: lin.id, owedAmount: 15, settledAt: ago(3.5) });
+      // 3.75 days, not 3.5: `NOON` is the Vancouver noon within half a day
+      // of now, so in the hour after midnight there it is exactly 12 hours
+      // back, and a line 3.5 days old read as 3 days less a few milliseconds:
+      // not due yet, one line nudged, and this test failed for that one hour
+      // of every day (found 2026-11-27, 07:30 UTC).
+      const b = seedPlayer('session-2026-10-01', 'Lin', { memberId: lin.id, owedAmount: 15, settledAt: ago(3.75) });
       expect(await call()).toEqual({ ran: 1, reminded: 1, sent: 1 });
       expect(sendPushToMembers).toHaveBeenCalledTimes(1);
       // The payload is built per reader's language; read it in English.

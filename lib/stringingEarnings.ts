@@ -10,8 +10,15 @@
  *   owed           — `isBillable` (finished, priced, unpaid, invoiced when it
  *                    bills on an invoice);
  *   not invoiced   — priced and unpaid and not billable yet.
- * Its string costs the shelf line's `costPerSetCents`, through the line the
- * stock count itself matched it to (`jobLines`), never a second matcher.
+ * Its string costs what a set of its shelf line cost ON THE DAY IT WAS STRUNG
+ * (`jobCosts`), through the line the stock count itself matched it to
+ * (`jobLines`), never a second matcher and never today's price: a month that
+ * is over must not move when the next reel is bought.
+ *
+ * Nothing is zero in silence. A job with no price adds no work, and a job
+ * whose string cost nobody can know (a string not on the shelf, a hybrid, a
+ * string never bought) adds no cost — and each is COUNTED (`unpricedJobs`,
+ * `unknownCostJobs`), so the page can say the figure is short.
  */
 import type { StringingJob } from './types';
 import { STRUNG_STATUSES, strungAtOf, type StringStockSummary } from './stringStockMath';
@@ -74,6 +81,10 @@ export interface EarningsMonth {
   notInvoicedCents: number;
   stringCostCents: number;
   sets: number;
+  /** Counted jobs with no price: they are work done that adds $0 here. */
+  unpricedJobs: number;
+  /** Club-string jobs whose set has no known cost, so it came off as $0. */
+  unknownCostJobs: number;
   strings: EarningsStringMonth[];
   /** Oldest first. */
   waiting: EarningsWaiting[];
@@ -148,7 +159,7 @@ const monthOfJob = (j: EarningsJob): string | null => monthOf(strungAtOf(j) ?? j
 
 export function summarizeEarnings(input: {
   jobs: readonly EarningsJob[];
-  stock: Pick<StringStockSummary, 'lines' | 'jobLines'>;
+  stock: Pick<StringStockSummary, 'lines' | 'jobLines' | 'jobCosts'>;
   now: Date;
   /** A fixed window instead of "since the first job". */
   months?: number;
@@ -167,12 +178,13 @@ export function summarizeEarnings(input: {
   const window = lastMonths(Math.max(1, Math.min(EARNINGS_MAX_MONTHS, span)), input.now);
   const byMonth = new Map<string, EarningsMonth>(window.map((month) => [month, {
     month, jobs: 0, workCents: 0, collectedCents: 0, owedCents: 0, notInvoicedCents: 0,
-    stringCostCents: 0, sets: 0, strings: [], waiting: [],
+    stringCostCents: 0, sets: 0, unpricedJobs: 0, unknownCostJobs: 0, strings: [], waiting: [],
   }]));
   const stringRows = new Map<string, Map<string, EarningsStringMonth>>(window.map((m) => [m, new Map()]));
 
   const lineByLabel = new Map(input.stock.lines.map((l) => [l.label, l]));
   const jobLines = input.stock.jobLines ?? {};
+  const jobCosts = input.stock.jobCosts ?? {};
   const strings = new Map<string, EarningsString>();
   for (const l of input.stock.lines) {
     strings.set(`s:${l.label}`, {
@@ -207,8 +219,12 @@ export function summarizeEarnings(input: {
     const m = month ? byMonth.get(month) : undefined;
     if (!m) continue;
     const sets = own ? 0 : 1;
-    const cost = line && line.costPerSetCents !== null ? line.costPerSetCents : 0;
+    // The day's price; a summary built without `jobCosts` falls back to the line's.
+    const known = line ? (j.id in jobCosts ? jobCosts[j.id] : line.costPerSetCents) : null;
+    const cost = known ?? 0;
     m.jobs += 1;
+    if (work === 0) m.unpricedJobs += 1;
+    if (!own && known === null) m.unknownCostJobs += 1;
     m.workCents += work;
     m.sets += sets;
     m.stringCostCents += cost;

@@ -142,6 +142,48 @@ export interface StringStockSummary {
    * second time: a rule added to this matcher must reach both. ADDITIVE.
    */
   jobLines?: Record<string, string>;
+  /**
+   * Job id → what its set cost, in cents, AT THE PRICE OF THE DAY IT WAS
+   * STRUNG (`priceOn`; the day it was made when it has no strung entry), for
+   * every job in `jobLines`; `null` when no purchase
+   * of that string was ever logged. A line's `costPerSetCents` is today's
+   * price, right for the shelf's value and wrong for a past month: a dearer
+   * reel logged in November re-priced every set strung since the summer
+   * (Grant, 2026-11-26: "It must be accurate end to end"). ADDITIVE.
+   */
+  jobCosts?: Record<string, number | null>;
+}
+
+/** One purchase as a price: what a metre cost, and when. */
+export interface PricePoint { date: string; perMetre: number; paid: boolean; reel: boolean }
+
+const DAY_FMT = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Vancouver', year: 'numeric', month: '2-digit', day: '2-digit' });
+/** `YYYY-MM-DD` in Vancouver, the zone a purchase's own date is written in. */
+function dayOf(iso: string | undefined): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? null : DAY_FMT.format(d);
+}
+
+/**
+ * What a metre of a string cost on a day: the ONE price rule, for today's
+ * shelf and for a past job alike. Of the purchases made on or before `day`
+ * (all of them when `day` is null: today's price), the latest PAID REEL wins,
+ * else the latest paid purchase of any kind, else the latest purchase — a
+ * single retail set or a gifted reel does not re-price every set
+ * (docs/plans/string-stock-audit-fixes.md). A job strung BEFORE the string's
+ * first logged purchase takes the earliest one by the same order: its set
+ * came off some reel, and the first one logged is the nearest known.
+ * `points` is oldest first. `undefined` with no purchase at all.
+ */
+export function priceOn(points: readonly PricePoint[], day: string | null): number | undefined {
+  if (points.length === 0) return undefined;
+  const upTo = day === null ? points : points.filter((p) => p.date <= day);
+  if (upTo.length > 0) {
+    const last = (ok: (p: PricePoint) => boolean) => { for (let i = upTo.length - 1; i >= 0; i--) if (ok(upTo[i])) return upTo[i]; return undefined; };
+    return (last((p) => p.paid && p.reel) ?? last((p) => p.paid) ?? upTo[upTo.length - 1]).perMetre;
+  }
+  return (points.find((p) => p.paid && p.reel) ?? points.find((p) => p.paid) ?? points[0]).perMetre;
 }
 
 export function summarizeStringStock(input: {
@@ -158,7 +200,7 @@ export function summarizeStringStock(input: {
   /** `stringColor` is optional: a job read without it counts in the mixed pool.
    *  `ownString`: the player brought the string, so the job uses no set.
    *  `strungAt`: when its string went in (`strungAtOf`), for the usage rate. */
-  jobs: readonly (Pick<StringingJob, 'stringLabel' | 'status' | 'archivedAt' | 'stringColor' | 'ownString'> & { strungAt?: string; id?: string })[];
+  jobs: readonly (Pick<StringingJob, 'stringLabel' | 'status' | 'archivedAt' | 'stringColor' | 'ownString'> & { strungAt?: string; id?: string; createdAt?: string })[];
   /** The moment the usage rate is measured to; without it there is no rate. */
   now?: Date;
   /** Saved stocktakes; each string starts from its latest one. */
@@ -210,9 +252,7 @@ export function summarizeStringStock(input: {
   // reel, or a gifted reel logged last, used to set the price of every set.
   // Purchases sorted by date then createdAt, so the last write per map wins.
   const sorted = input.purchases.slice().sort((a, b) => (a.date + a.createdAt < b.date + b.createdAt ? -1 : 1));
-  const reelPerMetre = new Map<string, number>();
-  const paidPerMetre = new Map<string, number>();
-  const anyPerMetre = new Map<string, number>();
+  const pricePoints = new Map<string, PricePoint[]>();
   // An offered label is renamed more often than a reel changes: "BG65" on the
   // shelf becomes "Yonex BG65 white" and every purchase logged under the old
   // spelling would read as a different string, leaving the new one "unknown".
@@ -276,12 +316,9 @@ export function summarizeStringStock(input: {
     line.purchases += 1;
     line.purchaseIds.push(p.id);
     if (metres > 0) {
-      const perMetre = p.totalCostCents / metres;
-      anyPerMetre.set(key, perMetre);
-      if (p.totalCostCents > 0) {
-        paidPerMetre.set(key, perMetre);
-        if (p.unit === 'reel') reelPerMetre.set(key, perMetre);
-      }
+      const points = pricePoints.get(key) ?? [];
+      points.push({ date: p.date, perMetre: p.totalCostCents / metres, paid: p.totalCostCents > 0, reel: p.unit === 'reel' });
+      pricePoints.set(key, points);
     }
     // A purchase logged before the string's latest count is already in it.
     const counted = countByKey.get(key);
@@ -322,6 +359,7 @@ export function summarizeStringStock(input: {
   const strungMsByKey = new Map<string, number[]>();
   let firstStrungMs = Infinity;
   const jobLines: Record<string, string> = {};
+  const jobCosts: Record<string, number | null> = {};
   for (const j of input.jobs) {
     if (!STRUNG_STATUSES.has(j.status)) continue;
     // The player's own string went in, not the club's (the request sheet's
@@ -334,7 +372,15 @@ export function summarizeStringStock(input: {
     const key = byKey.has(own) ? own : renamed.get(own) ?? byOtherName(j.stringLabel) ?? own;
     const line = byKey.get(key);
     if (line) {
-      if (j.id) jobLines[j.id] = line.label;
+      if (j.id) {
+        jobLines[j.id] = line.label;
+        // Its set at the price of the day it went in. A job with no strung
+        // date (made before the history existed) is costed on the day it was
+        // made, the day Earnings counts it in; only one with neither takes
+        // today's price.
+        const perMetre = priceOn(pricePoints.get(key) ?? [], dayOf(j.strungAt ?? j.createdAt));
+        jobCosts[j.id] = perMetre === undefined ? null : Math.round(perMetre * line.setMetres);
+      }
       line.usedSets += 1;
       if (Number.isFinite(strungMs)) strungMsByKey.set(key, [...(strungMsByKey.get(key) ?? []), strungMs]);
       // Strung before the latest count (or with no date to tell): its set was
@@ -397,7 +443,7 @@ export function summarizeStringStock(input: {
     // exactly what it always was: bought less used, never below zero.
     const remainingMetres = [...colourLeft.values()].reduce((a, b) => a + b, mixedLeft);
     const key = labelKey(line.label);
-    const perMetre = reelPerMetre.get(key) ?? paidPerMetre.get(key) ?? anyPerMetre.get(key);
+    const perMetre = priceOn(pricePoints.get(key) ?? [], null);
     const costPerSetCents = perMetre === undefined ? null : Math.round(perMetre * s);
     const setsPerWeek = windowStartMs === null || windowWeeks === null
       ? null
@@ -435,7 +481,7 @@ export function summarizeStringStock(input: {
     }),
     { purchasedCostCents: 0, usedSets: 0, usedCostCents: 0, remainingValueCents: 0, overdrawnSets: 0 },
   );
-  return { lines, unmatched: [...unmatched.values()].sort((a, b) => b.usedSets - a.usedSets), totals, jobLines };
+  return { lines, unmatched: [...unmatched.values()].sort((a, b) => b.usedSets - a.usedSets), totals, jobLines, jobCosts };
 }
 
 export function numberAttr(item: CatalogItem | undefined, key: string): number | null {

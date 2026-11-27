@@ -1,5 +1,6 @@
 /**
- * What the bench earned (docs/plans/stringing-earnings.md). Admin read only:
+ * What the bench earned (docs/plans/stringing-earnings.md). Admin read only,
+ * re-checked on every call:
  * a stringer who is not an admin sees no money anywhere (`toStringerJob`).
  *
  * The shelf comes through `loadStringStock`, the one stock loader, so a job's
@@ -7,7 +8,7 @@
  * jobs' money fields come from a projection of their own.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { isAdminAuthed, unauthorized } from '@/lib/auth';
+import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { resolveGroupId } from '@/lib/groupContext';
 import { groupScope } from '@/lib/groupScope';
@@ -22,7 +23,10 @@ export async function GET(req: NextRequest) {
   if (!checkRateLimit(`stringing-earnings-read:${getClientIp(req)}`, 60, 60_000)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
-  if (!isAdminAuthed(req)) return unauthorized();
+  // A FRESH check: this read is the club's money, and the cookie alone keeps
+  // answering a demoted or removed admin for its 30 days (security rule
+  // "Fresh admin check wherever a read names money", as the stock route).
+  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
   let step = 'start';
   const at = <T,>(name: string, p: Promise<T>): Promise<T> => p.catch((err) => { step = name; throw err; });
   try {
