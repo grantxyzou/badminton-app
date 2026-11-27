@@ -4,6 +4,8 @@ import { DELETE as jobDELETE } from '@/app/api/stringing/jobs/[id]/route';
 import { GET as reportGET } from '@/app/api/reports/metrics/route';
 import { GET as adminMetricsGET } from '@/app/api/admin/metrics/route';
 import { mintReportsKey } from '@/lib/reportsAccess';
+import { purgeMember } from '@/lib/memberPurge';
+import { GET as stockGET } from '@/app/api/stringing/stock/route';
 import { __resetCatalogSeedForTests } from '@/lib/catalogSeed';
 import { resetMockStore, getStore, seedDoc, seedMember, makeRequest, makeAdminRequest, setupAdminPin, seedTestAdminMember, memberCookieValue } from './helpers';
 
@@ -70,7 +72,7 @@ describe('stringing earnings', () => {
     shelf();
     const base = { groupId: 'bpm', memberId: lin.id, memberName: 'Lin', stringLabel: 'BG80', status: 'picked_up', createdAt: at, archivedAt: at, history };
     seedDoc('stringingJobs', { ...base, id: 'job-paid', jobNo: 'J-0001', priceCents: 3000, paidAt: at });
-    seedDoc('stringingJobs', { ...base, id: 'job-own', jobNo: 'J-0002', priceCents: 1500, paidAt: at, ownString: true });
+    seedDoc('stringingJobs', { ...base, id: 'job-own', jobNo: 'J-0002', priceCents: 1500, paidAt: at, ownString: true, stringLabel: 'Lin’s lucky string', stringColor: 'Red' });
     seedDoc('stringingJobs', { ...base, id: 'job-unpaid', jobNo: 'J-0003', priceCents: 2800, paidAt: null });
     const before = await earned();
     expect(before).toEqual({ jobs: 3, workCents: 7300, collectedCents: 4500, stringCostCents: 2000 });
@@ -87,7 +89,34 @@ describe('stringing earnings', () => {
     expect(uses.map((u) => u.jobId).sort()).toEqual(['job-own', 'job-paid', 'job-unpaid']);
     expect(uses.find((u) => u.jobId === 'job-paid')).toMatchObject({ priceCents: 3000, paidAt: at });
     expect(uses.find((u) => u.jobId === 'job-unpaid')).not.toHaveProperty('priceCents');
+    // The player's own string keeps no name: it was never the club's, and an
+    // empty label is what an older build skips instead of counting a set.
+    const own = uses.find((u) => u.jobId === 'job-own')!;
+    expect(own).toMatchObject({ ownString: true, stringLabel: '', priceCents: 1500 });
+    expect(own).not.toHaveProperty('stringColor');
     expect(JSON.stringify(uses)).not.toMatch(/Lin|memberId|J-000/);
+  });
+
+  it('an account deletion keeps a paid restring in Earnings and its set off the shelf', async () => {
+    const lin = seedMember('Lin');
+    const at = strungNow();
+    const history = [{ status: 'strung', at }, { status: 'ready', at }, { status: 'picked_up', at }];
+    shelf();
+    seedDoc('stringingJobs', { id: 'job-lin', groupId: 'bpm', memberId: lin.id, jobNo: 'J-0001', memberName: 'Lin', stringLabel: 'BG80', status: 'picked_up', priceCents: 3000, paidAt: at, createdAt: at, history });
+    const usedSets = async () => (await (await stockGET(makeAdminRequest('GET', `${BASE}/stringing/stock`))).json()).lines[0].usedSets;
+    expect(await earned()).toMatchObject({ jobs: 1, collectedCents: 3000, stringCostCents: 1000 });
+    expect(await usedSets()).toBe(1);
+
+    const summary = await purgeMember(lin.id, 'Lin');
+    expect(summary.failed).toEqual([]);
+    expect(getStore()['stringingJobs'] ?? []).toHaveLength(0);
+
+    expect(await earned()).toEqual({ jobs: 1, workCents: 3000, collectedCents: 3000, stringCostCents: 1000 });
+    expect(await usedSets()).toBe(1);
+    // The row that keeps it says nothing about who.
+    const uses = (getStore()['clubSettings'] as Array<Record<string, unknown>>).filter((r) => r.kind === 'stringUse');
+    expect(uses).toHaveLength(1);
+    expect(JSON.stringify(uses)).not.toMatch(new RegExp(`Lin|${lin.id}|J-0001`));
   });
 
   it('the club report and the admin Metrics read carry the same totals as the page, and no name', async () => {

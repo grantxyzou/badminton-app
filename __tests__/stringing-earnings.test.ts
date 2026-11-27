@@ -196,6 +196,16 @@ describe('summarizeEarnings', () => {
       expect(nov(s).strings).toEqual([{ key: 's:BG80', jobs: 2, sets: 2, workCents: 6000, costCents: 2000 }]);
     });
 
+    it('two names for ONE shelf string is one set, never a packet a side', () => {
+      const stock = summarizeStringStock({
+        offered: ['BG80'], links: {}, aliases: { 'Yonex BG80': 'BG80' }, catalog: new Map(),
+        purchases: [purchase({ unit: 'set', units: 3, metresPerUnit: 10, totalCostCents: 3600 })],
+        jobs: [{ id: 'h', stringLabel: 'BG80 / Yonex BG80', status: 'picked_up', strungAt: '2026-11-10T03:00:00Z' }],
+      });
+      expect(stock.lines[0]).toMatchObject({ usedSets: 1 });
+      expect(stock.jobParts!.h).toEqual([{ line: 'BG80', label: 'BG80', sets: 1, costCents: 1200 }]);
+    });
+
     it('comes off the shelf: half a set a side', () => {
       const stock = summarizeStringStock({
         offered: shelf, links: {}, purchases: [purchase(), bg65()], catalog: new Map(),

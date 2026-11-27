@@ -409,7 +409,11 @@ export function summarizeStringStock(input: {
     // (`splitSides`, the reading the bench row draws).
     let sides: Array<{ label: string; colour: ReelColourId | null; side: boolean }>;
     const split = byKey.has(resolve(whole)) ? null : splitSides(whole, j.stringColor, input.customColours);
-    if (split?.hybrid) {
+    // Two names for ONE shelf string ("BG80 / Yonex BG80") is not a hybrid:
+    // it is one set of that string, never a packet a side.
+    const twoStrings = split?.hybrid === true
+      && !(byKey.has(resolve(split.mains.string)) && resolve(split.mains.string) === resolve(split.crosses.string));
+    if (split && twoStrings) {
       sides = [
         { label: split.mains.string, colour: split.mains.colour, side: true },
         { label: split.crosses.string, colour: split.crosses.colour, side: true },

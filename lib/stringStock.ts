@@ -168,7 +168,13 @@ export interface StringUse {
   paidAt?: string;
   /** When the job was made: the day Earnings counts it on when it has no strung entry. */
   createdAt?: string;
-  /** The player's own string: the row is here for the money, and no set came off the shelf. */
+  /**
+   * The player's own string: the row is here for the money, and no set came
+   * off the shelf. Such a row keeps NO label (`stringLabel: ''`) and no
+   * colour: the name of a string the club never stocked is the player's own
+   * words, and an empty label is also what makes a build from before this
+   * field skip the row instead of taking a set off the shelf for it.
+   */
   ownString?: true;
 }
 
@@ -194,19 +200,20 @@ export async function recordStringUse(
 ): Promise<void> {
   await ensureClubSettings();
   const strungAt = strungAtOf(job);
+  const own = job.ownString === true;
   const doc: StringUse = {
     id: `su-${job.id}`,
     kind: STRING_USE_KIND,
     jobId: job.id,
-    stringLabel: job.stringLabel,
-    ...(job.stringColor ? { stringColor: job.stringColor } : {}),
+    stringLabel: own ? '' : job.stringLabel,
+    ...(!own && job.stringColor ? { stringColor: job.stringColor } : {}),
     ...(strungAt ? { strungAt } : {}),
     deletedAt: new Date().toISOString(),
     ...(typeof job.paidAt === 'string' && job.paidAt && typeof job.priceCents === 'number' && job.priceCents > 0
       ? { priceCents: job.priceCents, paidAt: job.paidAt }
       : {}),
     ...(job.createdAt ? { createdAt: job.createdAt } : {}),
-    ...(job.ownString === true ? { ownString: true as const } : {}),
+    ...(own ? { ownString: true as const } : {}),
   };
   await scope.upsert('clubSettings', doc);
 }
