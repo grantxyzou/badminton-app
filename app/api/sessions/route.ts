@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
-import { isAdminAuthed, unauthorized } from '@/lib/auth';
+import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { SESSION_CALENDAR_LIMIT } from '@/lib/sessionCalendar';
 import type { Session } from '@/lib/types';
 
@@ -32,9 +32,13 @@ const SESSION_LIST_SELECT =
  * owing dots read under (`/api/sessions/history?counts=1`), so the two
  * agree on which sessions exist. The JS sort + slice stays because the mock
  * store ignores ORDER BY / LIMIT (same contract as sessions/recent).
+ *
+ * The admin is re-read on every call: each row carries what a court cost, the
+ * organiser's fee and the e-transfer address, and the cookie alone kept
+ * answering a demoted or removed admin for its 30 days.
  */
 export async function GET(req: NextRequest) {
-  if (!isAdminAuthed(req)) return unauthorized();
+  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
 
   try {
     // The accessor excludes the group's pointer doc and BPM's legacy

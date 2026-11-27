@@ -8,11 +8,12 @@ export const dynamic = 'force-dynamic';
 
 /**
  * The admin Metrics page's one read (docs/plans/usage-metrics.md). Totals and
- * rates only — `lib/metricsMath.ts` returns no names. It carries the club's
- * stringing earnings (`stringEarnings`) since 2026-11-27, so the admin is
- * re-checked on every call: the cookie alone keeps answering a demoted or
- * removed admin for its 30 days (security rule "Fresh admin check wherever a
- * read names money").
+ * rates only — `lib/metricsMath.ts` returns no names — but `clubMetrics` also
+ * attaches the string shelf and what the bench earned
+ * (`lib/stringStockReport.ts`): what a set costs, what the shelf is worth and
+ * the months' income. That is the club's money, so the admin is re-read on
+ * every call (`isAdminAuthedWithMember`), as the stock route beside it; the
+ * cookie alone kept answering a demoted or removed admin for its 30 days.
  *
  * `?sessions=8|12|26` sets how many recent sessions the table covers;
  * anything else reads as 8.

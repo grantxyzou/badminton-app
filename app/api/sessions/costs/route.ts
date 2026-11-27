@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
-import { isAdminAuthed, unauthorized } from '@/lib/auth';
+import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
-/** Returns deduplicated recent costPerCourt values (admin-only). */
+/**
+ * Returns deduplicated recent costPerCourt values (admin-only). What the club
+ * pays for a court, so the admin is re-read on every call: the cookie alone
+ * kept answering a demoted or removed admin for its 30 days.
+ */
 export async function GET(req: NextRequest) {
-  if (!isAdminAuthed(req)) return unauthorized();
+  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
 
   try {
     const resources = await groupScope(resolveGroupId(req)).query<{ costPerCourt: number }>('sessions', {

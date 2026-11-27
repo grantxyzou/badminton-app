@@ -14,7 +14,6 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 - **A hybrid's price is split evenly between its two strings** in "Breakdown by string type", so each string shows what it made and the rows still add up.
 - **Deleting a paid job no longer removes it from Earnings.** The job's price and paid date are kept (nothing about the player), so the month it was strung in stays the same. The same holds when a member deletes their account: their paid restrings stay in Earnings, and their sets stay off the shelf. A paid job deleted before this change is not brought back: only the ledger remembers it.
 - **The club report carries the earnings totals** (work done, collected, owed, not invoiced, string cost, per month and in total; no names), so the page can be checked against the report.
-- **The admin Metrics page re-checks that you are still an admin on every load**, because it now carries those totals.
 
 ## Keeping score by voice: who serves, then "zero zero" (2026-11-27)
 
@@ -22,6 +21,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 - **Say "zero zero" to start the game.** Nothing is scored before that, so another court's call cannot open your game. After it, call the score after each rally as before.
 - **At a tied score the board flashes "Which side won?"** When the score was level, "6-5" is the same call whichever side won, so the phone cannot know. The score half lights up orange on A's side and violet on B's, and the two +1 buttons with it, until you tap a side (`docs/plans/voice-score.md`).
 - **Each side has its own colour.** A side is orange and B side is violet, on its name, its +1 button and the buttons that answer for it.
+
+## A removed admin stops seeing the club's money at once (2026-11-26)
+
+- **Ten admin reads now re-check that you are still an admin on every load**: the ledger's list of entries, club expenses, the Metrics page (it shows what the string shelf cost), the e-transfer names, the shuttle purchases, the sessions list and recent sessions (court costs and who has paid), the recent court prices, a member's payment history, and what a named member owes.
+- Before, an admin who was demoted, removed, or signed out everywhere could keep opening these for up to 30 days, until their old sign-in ran out. Changing anything was already refused.
+- Nothing changes for a current admin, or for a member reading their own balance.
 
 ## Stringing earnings: past months stay put, and nothing is $0 in silence (2026-11-26)
 

@@ -11,11 +11,12 @@
  *   DELETE — `{ id }` → a `void:<id>` entry. Never a delete: the ledger is
  *            append-only, and a double tap 409s into "already reversed".
  *
- * Mutations use the async admin check (a demoted admin must stop at once);
- * the read is the sync one — this list carries no member data.
+ * Every method re-reads the admin (`isAdminAuthedWithMember`): a demoted
+ * admin must stop at once, and the read is what the club spent, which the
+ * cookie alone kept answering for its 30 days.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { isAdminAuthed, isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
+import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { resolveGroupId } from '@/lib/groupContext';
 import { groupScope } from '@/lib/groupScope';
@@ -58,7 +59,7 @@ export async function GET(req: NextRequest) {
   if (!checkRateLimit(`expenses-read:${getClientIp(req)}`, 60, 60_000)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
-  if (!isAdminAuthed(req)) return unauthorized();
+  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
   try {
     return NextResponse.json({ expenses: (await liveExpenses(resolveGroupId(req))).map(shape) });
   } catch (error) {

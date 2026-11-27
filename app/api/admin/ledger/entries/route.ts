@@ -4,12 +4,14 @@
  * entry in the window, newest first, with who, what, how, and whether a later
  * entry reversed it. Read-only.
  *
- * Admin of the club the cookie names (the sync check, as the Ledger page's own
- * read): it names who paid what. 503 `read_failed` on any read that throws —
- * an empty statement would read as "no money moved".
+ * Admin of the club the cookie names, re-read on every call
+ * (`isAdminAuthedWithMember`, as the Ledger page's own read): it names who
+ * paid what, and the cookie alone kept answering a demoted or removed admin
+ * for its 30 days. 503 `read_failed` on any read that throws — an empty
+ * statement would read as "no money moved".
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { isAdminAuthed, unauthorized } from '@/lib/auth';
+import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
 import { resolveGroupId } from '@/lib/groupContext';
 import { groupScope } from '@/lib/groupScope';
@@ -24,7 +26,7 @@ export async function GET(req: NextRequest) {
   if (!checkRateLimit(`ledger-entries:${getClientIp(req)}`, 60, 60_000)) {
     return NextResponse.json({ error: 'rate_limited' }, { status: 429 });
   }
-  if (!isAdminAuthed(req)) return unauthorized();
+  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
   const asked = req.nextUrl.searchParams.get('range') as RangeKey | null;
   const range: RangeKey = asked && RANGES.has(asked) ? asked : '12w';
   try {
