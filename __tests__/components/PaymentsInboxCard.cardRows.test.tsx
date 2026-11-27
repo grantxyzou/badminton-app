@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach, beforeEach } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import PaymentsInboxCard from '@/components/admin/CommandCenter/PaymentsInboxCard';
 import type { EtransferPayment } from '@/lib/types';
@@ -53,13 +53,9 @@ function serve(review: EtransferPayment[], configured: boolean) {
 }
 
 describe('<PaymentsInboxCard /> — card review rows', () => {
-  beforeEach(() => {
-    process.env.NEXT_PUBLIC_FLAG_PAYMENTS_AUTO = 'true';
-  });
   afterEach(() => {
     cleanup();
     global.fetch = originalFetch;
-    delete process.env.NEXT_PUBLIC_FLAG_PAYMENTS_AUTO;
   });
 
   it('lists a card row as "Card · payer" with its reason, and its sheet marks paid BY CARD with no alias to remember', async () => {

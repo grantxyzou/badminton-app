@@ -44,6 +44,7 @@ const NOT_LADDER = [
   'splash-failsafe', // a 10s timer that lifts the launch screen if JS never arrives
   'ss-[\\w-]+', // the stringing demo: one scripted 12s timeline, every `ss-` keyframe
   'courtside-voice-pulse', // the listening pulse, infinite
+  'courtside-ask-flash', // the board asking which side won, until answered
 ];
 const exempt = new RegExp(`^(?:${NOT_LADDER.join('|')})$`);
 

@@ -119,7 +119,6 @@ describe('<UnpaidSessionsCard />', () => {
   });
 
   it('the ways to pay read credit, then e-transfer, then card', async () => {
-    vi.stubEnv('NEXT_PUBLIC_FLAG_STORE_CREDIT', 'true');
     vi.spyOn(global, 'fetch').mockImplementation(async (input: RequestInfo | URL) =>
       String(input).includes('/api/credit')
         ? new Response(JSON.stringify({ balanceCents: 1000 }), { status: 200 })
@@ -197,7 +196,6 @@ describe('<UnpaidSessionsCard />', () => {
   /* Option A (Grant, 2026-11-17: "outstanding balance priority"): what is owed
      leads, and credit is a chip beside it, never the paid-up card's content. */
   it('home variant leads with what is owed, credit as a chip beside it', async () => {
-    vi.stubEnv('NEXT_PUBLIC_FLAG_STORE_CREDIT', 'true');
     vi.spyOn(global, 'fetch').mockImplementation(async (input: RequestInfo | URL) =>
       String(input).includes('/api/credit')
         ? new Response(JSON.stringify({ balanceCents: 1000 }), { status: 200 })
@@ -226,7 +224,6 @@ describe('<UnpaidSessionsCard />', () => {
     [5000, true, 'Pay with credit'],
     [1000, false, null],
   ])('credit %i with a settled bill %s: the button reads %s', async (creditCents, settled, label) => {
-    vi.stubEnv('NEXT_PUBLIC_FLAG_STORE_CREDIT', 'true');
     vi.spyOn(global, 'fetch').mockImplementation(async (input: RequestInfo | URL) =>
       String(input).includes('/api/credit')
         ? new Response(JSON.stringify({ balanceCents: creditCents }), { status: 200 })
@@ -360,7 +357,6 @@ describe('<UnpaidSessionsCard variant="home" onRedeem />', () => {
   });
 
   it('offers "Add a code" with store credit on, and hands the tap to Home', async () => {
-    vi.stubEnv('NEXT_PUBLIC_FLAG_STORE_CREDIT', 'true');
     owing();
     const onRedeem = vi.fn();
     wrap(<UnpaidSessionsCard name="Kento" variant="home" onDetails={vi.fn()} onRedeem={onRedeem} />);
@@ -371,7 +367,6 @@ describe('<UnpaidSessionsCard variant="home" onRedeem />', () => {
   });
 
   it('offers it on a paid-up card too, once the card is opened: a gift card is not only for paying a debt', async () => {
-    vi.stubEnv('NEXT_PUBLIC_FLAG_STORE_CREDIT', 'true');
     vi.spyOn(global, 'fetch').mockImplementation(async (input: RequestInfo | URL) =>
       String(input).includes('/api/credit')
         ? new Response(JSON.stringify({ balanceCents: 0 }), { status: 200 })

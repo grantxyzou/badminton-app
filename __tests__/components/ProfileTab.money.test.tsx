@@ -53,7 +53,6 @@ async function renderSignedIn(waitForList = true) {
 describe('ProfileTab — MONEY', () => {
   beforeEach(() => {
     localStorage.clear();
-    process.env.NEXT_PUBLIC_FLAG_STORE_CREDIT = 'true';
   });
   afterEach(() => {
     cleanup();

@@ -835,6 +835,16 @@ body {
      a phone propped on the bench, so sized by the screen, not the type scale.
      The one display size in the app that is not a fixed pixel. */
   --court-digit: clamp(64px, 24vmin, 220px);
+  /* The two sides of the courtside scoreboard (Grant, 2026-11-27: "A and B
+     side should have a representing colour too"): orange and violet, neither
+     of them the app's green or the Stats field's blue. `-fill` is the
+     saturated one the board flashes when it asks which side won; the plain
+     one is the text shade, re-set for light mode below. */
+  --court-a: #ffa257;
+  --court-b: #c4a1ff;
+  --court-on-fill: #ffffff;
+  --court-a-fill: #ff6a00;
+  --court-b-fill: #8b3dff;
   /* Icon glyph-size ladder — token mirror of the .icon-xs..xl utility classes
      (below), so inline `.material-icons` styles use a token instead of a raw px.
      Same values as the classes; these exist for the inline-style call sites the
@@ -1061,6 +1071,8 @@ body {
    already overrides) and --ink-button / --ink-button-fg (constant by design).
    ══════════════════════════════════════════════════════════════════════════ */
 [data-theme="light"] {
+  --court-a: #b84300;
+  --court-b: #6527d9;
   --auth-field-bg: rgba(0, 0, 0, 0.05);
   --auth-field-active-bg: rgba(22, 163, 74, 0.16);
   --auth-step-off: rgba(0, 0, 0, 0.14);
@@ -10287,6 +10299,74 @@ html:root .courtside {
   display: grid;
   grid-template-columns: 1fr 1fr auto;
   gap: var(--space-3);
+}
+.courtside-voice-serve {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+/* Each side wears its colour everywhere it is named: the label over its
+   digit, its +1 button, and the buttons that answer for it. */
+.courtside [data-side='a'] {
+  --court-side: var(--court-a);
+  --court-side-fill: var(--court-a-fill);
+}
+.courtside [data-side='b'] {
+  --court-side: var(--court-b);
+  --court-side-fill: var(--court-b-fill);
+}
+.courtside-side[data-side] .courtside-side-label,
+.courtside-side[data-side][data-serving='true'] .courtside-side-label::after,
+.courtside-point[data-side] .courtside-point-label {
+  color: var(--court-side);
+}
+.courtside-point[data-side] {
+  /* The side's tint laid over the glass (a gradient, so it cannot be mixed). */
+  background: linear-gradient(color-mix(in srgb, var(--court-side-fill) 16%, transparent) 0 0), var(--glass-bg);
+}
+.courtside .cc-btn[data-side] {
+  color: var(--court-side);
+  border-color: color-mix(in srgb, var(--court-side-fill) 55%, transparent);
+  background: color-mix(in srgb, var(--court-side-fill) 16%, transparent);
+}
+/* A level-score call either side could have won (Grant, 2026-11-27: "light up
+   the screen flashing ask which side", then "something more saturated other
+   than green"): the half facing the court lights up split down the middle,
+   each side in its own colour, and the two +1 buttons with it, until someone
+   answers. Lit is the resting state and the animation only takes it away and
+   back, so under reduced motion the board stays lit and still. */
+.courtside-board {
+  position: relative;
+  isolation: isolate;
+}
+.courtside[data-ask='true'] .courtside-board::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(90deg, var(--court-a-fill) 50%, var(--court-b-fill) 50%);
+  animation: courtside-ask-flash 0.9s ease-in-out infinite;
+}
+.courtside[data-ask='true'] .courtside-point[data-side] {
+  background: var(--court-side-fill);
+  animation: courtside-ask-flash 0.9s ease-in-out infinite;
+}
+/* On the lit board everything reads in white: the side colours would vanish
+   into their own fill. */
+.courtside[data-ask='true'] .courtside-board,
+.courtside[data-ask='true'] .courtside-board .courtside-side-label,
+.courtside[data-ask='true'] .courtside-board .courtside-side-label::after,
+.courtside[data-ask='true'] .courtside-status,
+.courtside[data-ask='true'] .courtside-point[data-side] .courtside-point-label,
+.courtside[data-ask='true'] .courtside-point[data-side] .courtside-point-score {
+  color: var(--court-on-fill);
+}
+/* The winner's digit takes its side's colour, not the app's green. */
+.courtside-side[data-side][data-winner='true'] .courtside-digit {
+  color: var(--court-side);
+}
+@keyframes courtside-ask-flash {
+  50% { opacity: 0.25; }
 }
 @media (prefers-reduced-motion: reduce) {
   .courtside,

@@ -40,11 +40,7 @@ const mint = (headers: Record<string, string>, note = 'Here') =>
 beforeEach(async () => {
   resetMockStore();
   setupAdminPin();
-  process.env.NEXT_PUBLIC_FLAG_STORE_CREDIT = 'true';
   await seedTestAdminMember();
-});
-afterEach(() => {
-  delete process.env.NEXT_PUBLIC_FLAG_STORE_CREDIT;
 });
 
 describe('gift cards, groups off: an admin is the organiser', () => {

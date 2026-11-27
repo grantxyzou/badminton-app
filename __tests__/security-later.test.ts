@@ -58,15 +58,11 @@ describe('F18: a roster name equal to the bank name is not proof of who paid', (
   beforeEach(async () => {
     resetMockStore();
     setupAdminPin();
-    process.env.NEXT_PUBLIC_FLAG_PAYMENTS_AUTO = 'true';
     await seedTestAdminMember();
     seedPointer('session-2026-10-08');
     seedSession(S1, { settled: settled(), datetime: '2026-09-24T19:00:00-04:00' });
     seedSession('session-2026-10-08', { datetime: '2026-10-08T19:00:00-04:00' });
     key = await mintPaymentsKey('bpm');
-  });
-  afterEach(() => {
-    delete process.env.NEXT_PUBLIC_FLAG_PAYMENTS_AUTO;
   });
 
   it('a member renamed to someone else’s bank name does not get their transfer', async () => {

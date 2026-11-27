@@ -58,6 +58,15 @@ function renderBoard() {
   );
 }
 
+/** The new opening: say who serves (that tap turns the mic on), then "zero zero". */
+function chooseServer(side: 'A' | 'B' = 'A') {
+  fireEvent.click(screen.getByRole('button', { name: `${side} side serves` }));
+}
+function startByVoice(side: 'A' | 'B' = 'A') {
+  chooseServer(side);
+  say('zero zero');
+}
+
 const scoreA = () => screen.getByTestId('score-a').textContent;
 const scoreB = () => screen.getByTestId('score-b').textContent;
 const UA = navigator.userAgent;
@@ -99,7 +108,7 @@ describe('CourtsideScoreboard voice (Preview)', () => {
 
   it('listens hands-free in English and scores a call that is one rally on', () => {
     renderBoard();
-    fireEvent.click(screen.getByRole('button', { name: /Listen for the score/ }));
+    chooseServer();
     const rec = latest();
     expect(rec.started).toBe(true);
     // One phrase per session: Chrome's own continuous mode stopped after the
@@ -107,6 +116,9 @@ describe('CourtsideScoreboard voice (Preview)', () => {
     expect(rec.continuous).toBe(false);
     expect(rec.lang).toBe('en-US');
     expect(screen.getByText('Listening…')).toBeTruthy();
+    expect(screen.getByTestId('voice-hint').textContent).toBe('Say “zero zero” to start the game.');
+    say('zero zero');
+    expect(screen.getByText('Game on · A side serving')).toBeTruthy();
     // At love all either side's first point is "1 0".
     expect(screen.getByTestId('voice-hint').textContent).toBe('If A side wins, say “1 0”. If B side wins, say “1 0”.');
 
@@ -127,7 +139,7 @@ describe('CourtsideScoreboard voice (Preview)', () => {
 
   it('another court\'s call is shown and never scored', () => {
     renderBoard();
-    fireEvent.click(screen.getByRole('button', { name: /Listen for the score/ }));
+    startByVoice();
     say('fourteen twelve');
     expect(scoreA()).toBe('0');
     expect(scoreB()).toBe('0');
@@ -136,7 +148,7 @@ describe('CourtsideScoreboard voice (Preview)', () => {
 
   it('tries the recogniser\'s other guesses when the first is not a score', () => {
     renderBoard();
-    fireEvent.click(screen.getByRole('button', { name: /Listen for the score/ }));
+    startByVoice();
     say('one love');
     fireEvent.click(screen.getByRole('button', { name: 'B side won' }));
     say('two heaven', 'two love');
@@ -145,7 +157,7 @@ describe('CourtsideScoreboard voice (Preview)', () => {
 
   it('"Neither" dismisses the question and scores nothing', () => {
     renderBoard();
-    fireEvent.click(screen.getByRole('button', { name: /Listen for the score/ }));
+    startByVoice();
     say('one love');
     fireEvent.click(screen.getByRole('button', { name: 'Neither' }));
     expect(screen.queryByText(/Who won the rally/)).toBeNull();
@@ -155,7 +167,7 @@ describe('CourtsideScoreboard voice (Preview)', () => {
 
   it('keeps scoring call after call, each in a fresh session (the Fold report, 2026-11-17)', () => {
     renderBoard();
-    fireEvent.click(screen.getByRole('button', { name: /Listen for the score/ }));
+    startByVoice();
     const spy = vi.spyOn(Date, 'now');
     let t = Date.now();
     const call = (text: string) => {
@@ -185,7 +197,7 @@ describe('CourtsideScoreboard voice (Preview)', () => {
     vi.useFakeTimers();
     try {
       renderBoard();
-      fireEvent.click(screen.getByRole('button', { name: /Listen for the score/ }));
+      chooseServer();
       const hung = latest();
       act(() => {
         vi.advanceTimersByTime(SESSION_WATCHDOG_MS + 10);
@@ -196,6 +208,7 @@ describe('CourtsideScoreboard voice (Preview)', () => {
       // The hung session's late end changes nothing.
       act(() => hung.onend?.());
       expect(screen.getByRole('button', { name: 'Stop listening' })).toBeTruthy();
+      say('zero zero');
       say('one love');
       expect(screen.getByText('Heard 1–0. Who won the rally?')).toBeTruthy();
     } finally {
@@ -205,7 +218,7 @@ describe('CourtsideScoreboard voice (Preview)', () => {
 
   it('hands-free starts again after the silence that ends it, and stops when asked', () => {
     renderBoard();
-    fireEvent.click(screen.getByRole('button', { name: /Listen for the score/ }));
+    chooseServer();
     const first = latest();
     // A session that ran a while before ending: silence, not a failure.
     vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 10_000);
@@ -220,7 +233,7 @@ describe('CourtsideScoreboard voice (Preview)', () => {
 
   it('a session that keeps ending at once drops to tap-to-speak', () => {
     renderBoard();
-    fireEvent.click(screen.getByRole('button', { name: /Listen for the score/ }));
+    chooseServer();
     end();
     end();
     end();
@@ -230,9 +243,9 @@ describe('CourtsideScoreboard voice (Preview)', () => {
   it('on an iPhone one tap hears one call', () => {
     setUserAgent('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1');
     renderBoard();
-    fireEvent.click(screen.getByRole('button', { name: 'Tap, then call the score' }));
+    chooseServer();
     expect(latest().continuous).toBe(false);
-    say('one love');
+    say('zero zero');
     end();
     // No restart: the next call is the next tap.
     expect(FakeRecognition.instances.length).toBe(1);
@@ -241,23 +254,26 @@ describe('CourtsideScoreboard voice (Preview)', () => {
 
   it('a miss shows the words it heard, so the person can see what the phone understood', () => {
     renderBoard();
-    fireEvent.click(screen.getByRole('button', { name: /Listen for the score/ }));
+    startByVoice();
     say('great rally');
     expect(screen.getByText('Heard “great rally”: no score in that')).toBeTruthy();
   });
 
   it('"10" from Chrome is heard as one love', () => {
     renderBoard();
-    fireEvent.click(screen.getByRole('button', { name: /Listen for the score/ }));
+    startByVoice();
     say('10');
     expect(screen.getByText('Heard 1–0. Who won the rally?')).toBeTruthy();
   });
 
   it('says how to call the score before the mic is on, and the exact next calls while it listens', () => {
     renderBoard();
-    expect(screen.getByTestId('voice-hint').textContent).toMatch(/winner's points first: “one zero”/);
+    expect(screen.getByTestId('voice-hint').textContent).toMatch(/Pick the serving side/);
+    // A tapped point starts the game too: no question, and the mic is offered.
     for (let i = 0; i < 3; i++) fireEvent.click(screen.getByRole('button', { name: '+1 A side' }));
     for (let i = 0; i < 2; i++) fireEvent.click(screen.getByRole('button', { name: '+1 B side' }));
+    expect(screen.queryByText('Which side serves first?')).toBeNull();
+    expect(screen.getByTestId('voice-hint').textContent).toMatch(/winner's points first: “one zero”/);
     fireEvent.click(screen.getByRole('button', { name: /Listen for the score/ }));
     // 3–2: A winning makes it 4 2; B winning makes it 3 all.
     expect(screen.getByTestId('voice-hint').textContent).toBe('If A side wins, say “4 2”. If B side wins, say “3 all”.');
@@ -265,7 +281,7 @@ describe('CourtsideScoreboard voice (Preview)', () => {
 
   it('a blocked microphone says so', () => {
     renderBoard();
-    fireEvent.click(screen.getByRole('button', { name: /Listen for the score/ }));
+    chooseServer();
     act(() => latest().onerror?.({ error: 'not-allowed' }));
     end();
     expect(screen.getByText(/The microphone is blocked/)).toBeTruthy();
@@ -273,10 +289,64 @@ describe('CourtsideScoreboard voice (Preview)', () => {
 
   it('the +1 buttons still work, and clear a pending question', () => {
     renderBoard();
-    fireEvent.click(screen.getByRole('button', { name: /Listen for the score/ }));
+    startByVoice();
     say('one love');
     fireEvent.click(screen.getByRole('button', { name: '+1 B side' }));
     expect(screen.queryByText(/Who won the rally/)).toBeNull();
     expect(scoreB()).toBe('1');
+  });
+
+  describe('the opening: who serves, then "zero zero" (Grant, 2026-11-27)', () => {
+    it('asks which side serves before the mic is offered, and shows the server on the board', () => {
+      renderBoard();
+      expect(screen.getByText('Which side serves first?')).toBeTruthy();
+      expect(screen.queryByRole('button', { name: /Listen for the score/ })).toBeNull();
+      chooseServer('B');
+      expect(latest().started).toBe(true);
+      expect(screen.getByText('B side serving')).toBeTruthy();
+      expect(screen.getByRole('button', { name: 'Stop listening' })).toBeTruthy();
+    });
+
+    it('nothing scores before "zero zero": another court\'s "one zero" cannot open the game', () => {
+      renderBoard();
+      chooseServer();
+      say('one zero');
+      expect(scoreA()).toBe('0');
+      expect(screen.queryByText(/Who won the rally/)).toBeNull();
+      expect(screen.getByText('Heard “one zero”. Say “zero zero” to start.')).toBeTruthy();
+      say('love all');
+      expect(screen.getByText('Game on · A side serving')).toBeTruthy();
+    });
+
+    it('"service over" at love all is scored without asking: the board knows who served', () => {
+      renderBoard();
+      startByVoice('A');
+      say('service over, one zero');
+      expect(scoreB()).toBe('1');
+      expect(screen.queryByText(/Who won the rally/)).toBeNull();
+    });
+
+    it('a level-score call flashes the whole board and keeps the buttons', () => {
+      renderBoard();
+      startByVoice();
+      const board = screen.getByRole('dialog');
+      expect(board.getAttribute('data-ask')).toBe('false');
+      say('one zero');
+      expect(board.getAttribute('data-ask')).toBe('true');
+      expect(screen.getByText('Which side won?')).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: 'B side won' }));
+      expect(scoreB()).toBe('1');
+      expect(board.getAttribute('data-ask')).toBe('false');
+    });
+
+    it('New game asks who serves again and turns the mic off until it is answered', () => {
+      renderBoard();
+      startByVoice();
+      say('one zero');
+      fireEvent.click(screen.getByRole('button', { name: 'A side won' }));
+      fireEvent.click(screen.getByRole('button', { name: 'New game' }));
+      expect(latest().aborted).toBe(true);
+      expect(screen.getByText('Which side serves first?')).toBeTruthy();
+    });
   });
 });

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as cosmos from '@/lib/cosmos';
 import { GET as myCredit } from '@/app/api/credit/route';
 import { POST as redeem } from '@/app/api/credit/redeem/route';
@@ -46,7 +46,6 @@ const balance = async () => (await (await myCredit(makeRequest('GET', `${BASE}/c
 beforeEach(async () => {
   resetMockStore();
   setupAdminPin();
-  process.env.NEXT_PUBLIC_FLAG_STORE_CREDIT = 'true';
   await seedTestAdminMember();
   seedPointer('session-2026-10-08');
   seedSession('session-2026-10-08', { datetime: '2026-10-08T19:00:00-04:00' });
@@ -57,9 +56,6 @@ beforeEach(async () => {
   row2 = seedPlayer('session-2026-10-01', 'Lin', { memberId: lin.id, owedAmount: 15, settledAt: '2026-10-02T00:00:00Z' });
 });
 
-afterEach(() => {
-  delete process.env.NEXT_PUBLIC_FLAG_STORE_CREDIT;
-});
 
 describe('gates', () => {
   it('giving credit and minting cards are admin-only; reading and spending need a member', async () => {

@@ -42,7 +42,6 @@ beforeEach(async () => {
   setupAdminPin();
   _resetMirrorFailures();
   process.env.NEXT_PUBLIC_FLAG_LEDGER_MIRROR = 'true';
-  process.env.NEXT_PUBLIC_FLAG_STORE_CREDIT = 'true';
   process.env.NEXT_PUBLIC_FLAG_STRINGING = 'true';
   await seedTestAdminMember();
   seedPointer(SID);
@@ -54,7 +53,6 @@ beforeEach(async () => {
 
 afterEach(() => {
   delete process.env.NEXT_PUBLIC_FLAG_LEDGER_MIRROR;
-  delete process.env.NEXT_PUBLIC_FLAG_STORE_CREDIT;
   delete process.env.NEXT_PUBLIC_FLAG_STRINGING;
 });
 

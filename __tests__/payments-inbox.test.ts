@@ -70,7 +70,6 @@ const rowById = (id: string) => players().find((p) => p.id === id)!;
 beforeEach(async () => {
   resetMockStore();
   setupAdminPin();
-  process.env.NEXT_PUBLIC_FLAG_PAYMENTS_AUTO = 'true';
   await seedTestAdminMember();
   seedPointer(ACTIVE);
   seedSession(S1, { settled: settled(), datetime: '2026-09-24T19:00:00-04:00' });
@@ -86,7 +85,6 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
-  delete process.env.NEXT_PUBLIC_FLAG_PAYMENTS_AUTO;
   delete process.env.NEXT_PUBLIC_FLAG_STRINGING;
 });
 
