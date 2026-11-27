@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { countedJob, summarizeStringStock } from '@/lib/stringStock';
-import { summarizeEarnings, type EarningsJob } from '@/lib/stringingEarnings';
+import { deletedPaidJobs, summarizeEarnings, type EarningsJob } from '@/lib/stringingEarnings';
+import { withDeletedUses, type StringUse } from '@/lib/stringStock';
+import { buildStringEarningsReport } from '@/lib/stringStockReport';
 import type { StringPurchase } from '@/lib/types';
 
 /**
@@ -126,14 +128,168 @@ describe('summarizeEarnings', () => {
     const s = fold([
       job(),
       job({ priceCents: null }), // strung, never priced
-      job({ stringLabel: 'BG80 / BG65' }), // a hybrid: no shelf line
+      job({ stringLabel: 'BG80 / BG65' }), // a hybrid: BG80 is on the shelf, BG65 is not
       job({ stringLabel: 'Aerobite' }), // not on the shelf
       job({ ownString: true }), // the player's own: nothing to know
     ]);
-    expect(nov(s)).toMatchObject({ jobs: 5, unpricedJobs: 1, unknownCostJobs: 2, stringCostCents: 2000 });
+    // Two whole sets of BG80 and the hybrid's half: $10 + $10 + $5.
+    expect(nov(s)).toMatchObject({ jobs: 5, unpricedJobs: 1, unknownCostJobs: 2, stringCostCents: 2500 });
     // A shelf string nobody ever bought has no price either.
     const none = fold([job()], []);
     expect(nov(none)).toMatchObject({ unknownCostJobs: 1, stringCostCents: 0 });
+  });
+
+  describe('a hybrid', () => {
+    const bg65 = (o: Partial<StringPurchase> = {}) => purchase({ label: 'BG65', totalCostCents: 14000, ...o });
+    const shelf = ['BG80', 'BG65'];
+
+    it('takes half a set of each string off a reel, and shares its price between the two', () => {
+      const s = fold([job({ stringLabel: 'BG80 / BG65', priceCents: 3000 })], [purchase(), bg65()], shelf);
+      // Half of a $10 set and half of a $7 set.
+      expect(nov(s)).toMatchObject({ jobs: 1, sets: 1, workCents: 3000, stringCostCents: 850, unknownCostJobs: 0 });
+      expect(nov(s).strings).toEqual([
+        { key: 's:BG80', jobs: 0.5, sets: 0.5, workCents: 1500, costCents: 500 },
+        { key: 's:BG65', jobs: 0.5, sets: 0.5, workCents: 1500, costCents: 350 },
+      ]);
+      expect(s.strings.map((x) => [x.key, x.allTimeWorkCents])).toEqual([['s:BG80', 1500], ['s:BG65', 1500]]);
+    });
+
+    it('takes a whole packet for a string that only comes in packets', () => {
+      // BG65 bought as single $9 packets: the packet is opened for this racket.
+      const packets = bg65({ unit: 'set', units: 2, metresPerUnit: 10, totalCostCents: 1800 });
+      const s = fold([job({ stringLabel: 'BG80 / BG65' })], [purchase(), packets], shelf);
+      expect(nov(s)).toMatchObject({ sets: 1.5, stringCostCents: 500 + 900 });
+      expect(nov(s).strings.find((r) => r.key === 's:BG65')).toMatchObject({ jobs: 0.5, sets: 1, costCents: 900 });
+      // Two packet strings: two whole packets.
+      const both = fold(
+        [job({ stringLabel: 'BG80 / BG65' })],
+        [purchase({ unit: 'set', units: 1, metresPerUnit: 10, totalCostCents: 1200 }), packets], shelf,
+      );
+      expect(nov(both)).toMatchObject({ sets: 2, stringCostCents: 1200 + 900 });
+    });
+
+    it('a reel bought only AFTER the job does not make its side half a set', () => {
+      const packets = bg65({ unit: 'set', units: 1, metresPerUnit: 10, totalCostCents: 900, date: '2026-10-01' });
+      const laterReel = bg65({ date: '2026-11-15' });
+      const s = fold([job({ stringLabel: 'BG80 / BG65', strungAt: '2026-11-10T20:00:00Z' })], [purchase(), packets, laterReel], shelf);
+      expect(nov(s).strings.find((r) => r.key === 's:BG65')).toMatchObject({ sets: 1, costCents: 900 });
+    });
+
+    it('keeps the odd cent on the first string, so the two rows add up to the job', () => {
+      const s = fold([job({ stringLabel: 'BG80 / BG65', priceCents: 3001 })], [purchase(), bg65()], shelf);
+      expect(nov(s).strings.map((r) => r.workCents)).toEqual([1501, 1500]);
+      expect(nov(s).workCents).toBe(3001);
+    });
+
+    it('costs the side the shelf knows and counts the job as short for the other', () => {
+      const s = fold([job({ stringLabel: 'BG80 / Aerobite' })]);
+      expect(nov(s)).toMatchObject({ jobs: 1, unknownCostJobs: 1, stringCostCents: 500 });
+      expect(nov(s).strings).toEqual([
+        { key: 's:BG80', jobs: 0.5, sets: 0.5, workCents: 1500, costCents: 500 },
+        { key: 'x:aerobite', jobs: 0.5, sets: 1, workCents: 1500, costCents: 0 },
+      ]);
+    });
+
+    it('the same string named twice, or a colour typed after it, is one whole set', () => {
+      const s = fold([job({ stringLabel: 'BG80 / BG80' }), job({ stringLabel: 'BG80 · White' })]);
+      expect(nov(s)).toMatchObject({ jobs: 2, sets: 2, stringCostCents: 2000, unknownCostJobs: 0 });
+      expect(nov(s).strings).toEqual([{ key: 's:BG80', jobs: 2, sets: 2, workCents: 6000, costCents: 2000 }]);
+    });
+
+    it('two names for ONE shelf string is one set, never a packet a side', () => {
+      const stock = summarizeStringStock({
+        offered: ['BG80'], links: {}, aliases: { 'Yonex BG80': 'BG80' }, catalog: new Map(),
+        purchases: [purchase({ unit: 'set', units: 3, metresPerUnit: 10, totalCostCents: 3600 })],
+        jobs: [{ id: 'h', stringLabel: 'BG80 / Yonex BG80', status: 'picked_up', strungAt: '2026-11-10T03:00:00Z' }],
+      });
+      expect(stock.lines[0]).toMatchObject({ usedSets: 1 });
+      expect(stock.jobParts!.h).toEqual([{ line: 'BG80', label: 'BG80', sets: 1, costCents: 1200 }]);
+    });
+
+    it('comes off the shelf: half a set a side', () => {
+      const stock = summarizeStringStock({
+        offered: shelf, links: {}, purchases: [purchase(), bg65()], catalog: new Map(),
+        jobs: [
+          { id: 'h', stringLabel: 'BG80 / BG65', status: 'picked_up', strungAt: '2026-11-10T03:00:00Z' },
+          { id: 'p', stringLabel: 'BG80', status: 'picked_up', strungAt: '2026-11-10T03:00:00Z' },
+        ],
+      });
+      const line = (label: string) => stock.lines.find((l) => l.label === label)!;
+      expect(line('BG80')).toMatchObject({ usedSets: 1.5, usedMetres: 15, remainingMetres: 185 });
+      expect(line('BG65')).toMatchObject({ usedSets: 0.5, usedMetres: 5, remainingMetres: 195 });
+      expect(stock.unmatched).toEqual([]);
+    });
+  });
+
+  describe('a deleted job', () => {
+    const use = (o: Partial<StringUse> = {}): StringUse => ({
+      id: 'su-gone', kind: 'stringUse', jobId: 'gone', stringLabel: 'BG80',
+      strungAt: '2026-10-20T20:00:00Z', deletedAt: '2026-11-12T00:00:00Z', createdAt: '2026-10-18T00:00:00Z', ...o,
+    });
+    const foldWith = (jobs: EarningsJob[], uses: StringUse[]) => {
+      const stock = summarizeStringStock({
+        offered: ['BG80'], links: {}, purchases: [purchase()], catalog: new Map(),
+        jobs: withDeletedUses(
+          jobs.map((j) => countedJob({ id: j.id, stringLabel: j.stringLabel, status: j.status, archivedAt: undefined, ownString: j.ownString, history: j.history, createdAt: j.createdAt })),
+          uses,
+        ),
+      });
+      return summarizeEarnings({ jobs: [...jobs, ...deletedPaidJobs(uses, new Set(jobs.map((j) => j.id)))], stock, now: NOW });
+    };
+
+    it('still counts when it was paid: in the month it was strung, as collected, with its string cost', () => {
+      const s = foldWith([job()], [use({ priceCents: 2800, paidAt: '2026-10-22T00:00:00Z' })]);
+      expect(s.months.find((m) => m.month === '2026-10')).toMatchObject({
+        jobs: 1, workCents: 2800, collectedCents: 2800, owedCents: 0, notInvoicedCents: 0, stringCostCents: 1000, sets: 1, waiting: [],
+      });
+      expect(nov(s)).toMatchObject({ jobs: 1, workCents: 3000 });
+    });
+
+    it('is the shelf’s alone when it was never paid, or deleted before the row kept money', () => {
+      const s = foldWith([job()], [use(), use({ id: 'su-old', jobId: 'old', priceCents: 2800 })]);
+      expect(s.months.map((m) => m.month)).toEqual(['2026-11']);
+      expect(nov(s)).toMatchObject({ jobs: 1, workCents: 3000 });
+    });
+
+    it('with the player’s own string keeps its money and takes no set', () => {
+      const s = foldWith([], [use({ ownString: true, priceCents: 1500, paidAt: '2026-10-22T00:00:00Z' })]);
+      const oct = s.months.find((m) => m.month === '2026-10')!;
+      expect(oct).toMatchObject({ jobs: 1, workCents: 1500, collectedCents: 1500, stringCostCents: 0, sets: 0, unknownCostJobs: 0 });
+      expect(oct.strings).toEqual([{ key: 'own', jobs: 1, sets: 0, workCents: 1500, costCents: 0 }]);
+    });
+
+    it('is never counted twice while the job is still stored', () => {
+      const live = job({ id: 'gone', paidAt: '2026-11-12T00:00:00Z' });
+      const s = foldWith([live], [use({ priceCents: 3000, paidAt: '2026-11-12T00:00:00Z' })]);
+      expect(s.months.reduce((n, m) => n + m.jobs, 0)).toBe(1);
+    });
+  });
+
+  describe('the report', () => {
+    it('carries the page’s months as totals, and no name', () => {
+      const s = fold([
+        job({ paidAt: '2026-11-12T00:00:00Z' }),
+        job({ priceCents: 2800 }),
+        job({ stringLabel: 'Aerobite for Viktor', priceCents: 2000 }),
+        job({ ownString: true, priceCents: 1500, stringLabel: 'Viktor’s own' }),
+        job({ strungAt: '2026-10-10T20:00:00Z', paidAt: '2026-10-12T00:00:00Z' }),
+      ]);
+      const report = buildStringEarningsReport(s);
+      expect(report.months.map((m) => m.month)).toEqual(['2026-10', '2026-11']);
+      expect(report.months[1]).toMatchObject({
+        jobs: 4, workCents: 9300, collectedCents: 3000, owedCents: 6300, notInvoicedCents: 0,
+        stringCostCents: 2000, afterStringCostCents: 7300, sets: 3, unpricedJobs: 0, unknownCostJobs: 1, waitingJobs: 3,
+      });
+      expect(report.months[1].strings).toEqual([
+        { label: 'BG80', jobs: 2, sets: 2, workCents: 5800, costCents: 2000 },
+        { label: 'offShelf', jobs: 1, sets: 1, workCents: 2000, costCents: 0 },
+        { label: 'ownString', jobs: 1, sets: 0, workCents: 1500, costCents: 0 },
+      ]);
+      expect(report.totals).toMatchObject({ jobs: 5, workCents: 12300, collectedCents: 6000, stringCostCents: 3000, afterStringCostCents: 9300 });
+      // No player, no job number, no label somebody typed.
+      const text = JSON.stringify(report);
+      expect(text).not.toMatch(/Lin|Viktor|J-|Aerobite/);
+    });
   });
 
   it('lists a shelf string nobody strung this month, at nothing', () => {

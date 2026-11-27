@@ -8,6 +8,13 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Stringing earnings: hybrids, deleted paid jobs, and totals in the report (2026-11-27)
+
+- **A hybrid now takes string off both strings and costs what it used.** Before, a job written "BG80 / BG66" matched nothing on the shelf: no string came off and its string cost was $0. Each side now takes half a set when you buy that string by the reel, and a whole packet when you only buy it in packets, at the price on the day it was strung. The stock count, the usage rate and Earnings all take the same amounts.
+- **A hybrid's price is split evenly between its two strings** in "Breakdown by string type", so each string shows what it made and the rows still add up.
+- **Deleting a paid job no longer removes it from Earnings.** The job's price and paid date are kept (nothing about the player), so the month it was strung in stays the same. The same holds when a member deletes their account: their paid restrings stay in Earnings, and their sets stay off the shelf. A paid job deleted before this change is not brought back: only the ledger remembers it.
+- **The club report carries the earnings totals** (work done, collected, owed, not invoiced, string cost, per month and in total; no names), so the page can be checked against the report.
+
 ## Keeping score by voice: who serves, then "zero zero" (2026-11-27)
 
 - **The scoreboard asks which side serves first** (Stats → Play → Keep score, in a browser with a microphone). Tapping the side turns the mic on, so there is no separate "Listen" tap, and the board shows who is serving from the first rally.

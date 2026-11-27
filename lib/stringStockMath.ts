@@ -1,6 +1,7 @@
 import type { CatalogItem, StringingJob, StringPurchase } from './types';
 import { colourIdOf, isReelColourId, isStringColourId, STRING_PALETTE, type CustomColour, type ReelColourId } from './stringPalette';
 import type { StringCount } from './stringStocktakeMath';
+import { splitSides } from './stringingSides';
 
 /**
  * The string inventory's ARITHMETIC — client-safe, no I/O (the sheet and
@@ -136,22 +137,29 @@ export interface StringStockSummary {
   unmatched: Array<{ label: string; usedSets: number }>;
   totals: { purchasedCostCents: number; usedSets: number; usedCostCents: number; remainingValueCents: number; overdrawnSets: number };
   /**
-   * Job id → the shelf line its set came off, for every counted job that
-   * carried an id and matched a line (docs/plans/stringing-earnings.md). The
-   * earnings page prices a job's string from it rather than matching labels a
-   * second time: a rule added to this matcher must reach both. ADDITIVE.
+   * Job id → what it took off the shelf, one part per string
+   * (docs/plans/stringing-earnings.md): ONE part for a plain job, TWO for a
+   * hybrid, each with the shelf line the count matched it to, the sets it
+   * took and what those cost AT THE PRICE OF THE DAY IT WAS STRUNG
+   * (`priceOn`; the day it was made when it has no strung entry). Earnings
+   * reads it rather than matching labels or pricing string a second time: a
+   * rule added to this matcher must reach both. A line's `costPerSetCents` is
+   * today's price, right for the shelf's value and wrong for a past month.
+   * ADDITIVE.
    */
-  jobLines?: Record<string, string>;
-  /**
-   * Job id → what its set cost, in cents, AT THE PRICE OF THE DAY IT WAS
-   * STRUNG (`priceOn`; the day it was made when it has no strung entry), for
-   * every job in `jobLines`; `null` when no purchase
-   * of that string was ever logged. A line's `costPerSetCents` is today's
-   * price, right for the shelf's value and wrong for a past month: a dearer
-   * reel logged in November re-priced every set strung since the summer
-   * (Grant, 2026-11-26: "It must be accurate end to end"). ADDITIVE.
-   */
-  jobCosts?: Record<string, number | null>;
+  jobParts?: Record<string, JobPart[]>;
+}
+
+/** What one string of a job took off the shelf. */
+export interface JobPart {
+  /** The shelf line it came off; null when the shelf lists no such string. */
+  line: string | null;
+  /** The string's own name on the job, for a row of its own when `line` is null. */
+  label: string;
+  /** 1 for a plain job; for one side of a hybrid, half a set off a reel or a whole packet (`sideSets`). */
+  sets: number;
+  /** What those sets cost on the day; null when no purchase of the string was ever logged. */
+  costCents: number | null;
 }
 
 /** One purchase as a price: what a metre cost, and when. */
@@ -184,6 +192,21 @@ export function priceOn(points: readonly PricePoint[], day: string | null): numb
     return (last((p) => p.paid && p.reel) ?? last((p) => p.paid) ?? upTo[upTo.length - 1]).perMetre;
   }
   return (points.find((p) => p.paid && p.reel) ?? points.find((p) => p.paid) ?? points[0]).perMetre;
+}
+
+/**
+ * How much of a set ONE SIDE of a hybrid takes (Grant, 2026-11-27: "depending
+ * if I have the reel or packet. Packet would be the customer paying the whole
+ * packet, 2 of them. Reel is per side"). Half a set when the string is bought
+ * by the reel: the side is cut to length and the rest stays on the reel. A
+ * whole set when it only ever came in packets: the packet is opened for that
+ * racket. "By the reel" is a reel logged on or before `day` (any reel when
+ * none was by then, as `priceOn` reads a job older than the first purchase);
+ * a string with no purchase logged counts as a packet.
+ */
+export function sideSets(points: readonly PricePoint[], day: string | null): number {
+  const upTo = day === null ? points : points.filter((p) => p.date <= day);
+  return (upTo.length > 0 ? upTo : points).some((p) => p.reel) ? 0.5 : 1;
 }
 
 export function summarizeStringStock(input: {
@@ -356,10 +379,16 @@ export function summarizeStringStock(input: {
   const unmatched = new Map<string, { label: string; usedSets: number }>();
   // The usage rate's inputs: every counted job's strung moment per line, and
   // the club's first one (the window never reaches back before it).
-  const strungMsByKey = new Map<string, number[]>();
+  // Each entry is [when, sets]: a hybrid's side counts as the half set (or the
+  // packet) it took, so the rate is in sets, not rackets.
+  const strungByKey = new Map<string, Array<[number, number]>>();
   let firstStrungMs = Infinity;
-  const jobLines: Record<string, string> = {};
-  const jobCosts: Record<string, number | null> = {};
+  const jobParts: Record<string, JobPart[]> = {};
+  /** The byKey key a label names: itself, a renamed purchase's line, or a catalog name's. */
+  const resolve = (label: string): string => {
+    const own = keyOf(label);
+    return byKey.has(own) ? own : renamed.get(own) ?? byOtherName(label) ?? own;
+  };
   for (const j of input.jobs) {
     if (!STRUNG_STATUSES.has(j.status)) continue;
     // The player's own string went in, not the club's (the request sheet's
@@ -367,35 +396,66 @@ export function summarizeStringStock(input: {
     if (j.ownString === true) continue;
     const strungMs = j.strungAt ? Date.parse(j.strungAt) : NaN;
     if (Number.isFinite(strungMs) && strungMs < firstStrungMs) firstStrungMs = strungMs;
-    const own = keyOf(j.stringLabel ?? '');
-    if (!own) continue;
-    const key = byKey.has(own) ? own : renamed.get(own) ?? byOtherName(j.stringLabel) ?? own;
-    const line = byKey.get(key);
-    if (line) {
-      if (j.id) {
-        jobLines[j.id] = line.label;
-        // Its set at the price of the day it went in. A job with no strung
-        // date (made before the history existed) is costed on the day it was
-        // made, the day Earnings counts it in; only one with neither takes
-        // today's price.
-        const perMetre = priceOn(pricePoints.get(key) ?? [], dayOf(j.strungAt ?? j.createdAt));
-        jobCosts[j.id] = perMetre === undefined ? null : Math.round(perMetre * line.setMetres);
+    const whole = (j.stringLabel ?? '').trim();
+    if (!keyOf(whole)) continue;
+    // Its string at the price of the day it went in. A job with no strung
+    // date (made before the history existed) is costed on the day it was
+    // made, the day Earnings counts it in; only one with neither takes
+    // today's price.
+    const day = dayOf(j.strungAt ?? j.createdAt);
+    // ONE string, or a hybrid's two. The whole label is tried first, so a
+    // shelf string whose own name holds " / " is still one string; only a
+    // label the shelf does not know as written is read as two sides
+    // (`splitSides`, the reading the bench row draws).
+    let sides: Array<{ label: string; colour: ReelColourId | null; side: boolean }>;
+    const split = byKey.has(resolve(whole)) ? null : splitSides(whole, j.stringColor, input.customColours);
+    // Two names for ONE shelf string ("BG80 / Yonex BG80") is not a hybrid:
+    // it is one set of that string, never a packet a side.
+    const twoStrings = split?.hybrid === true
+      && !(byKey.has(resolve(split.mains.string)) && resolve(split.mains.string) === resolve(split.crosses.string));
+    if (split && twoStrings) {
+      sides = [
+        { label: split.mains.string, colour: split.mains.colour, side: true },
+        { label: split.crosses.string, colour: split.crosses.colour, side: true },
+      ];
+    } else {
+      // One string. A label the shelf does not know as written is read
+      // without its bench-typed colour tail ("BG80 · white") or its repeated
+      // name ("BG80 / BG80"), which is still one set of one string.
+      const whole1 = colourIdOf(j.stringColor, input.customColours);
+      sides = [{
+        label: split ? split.mains.string : whole,
+        colour: whole1 ?? (split && split.mains.colour === split.crosses.colour ? split.mains.colour : null),
+        side: false,
+      }];
+    }
+    const parts: JobPart[] = [];
+    for (const side of sides) {
+      const key = resolve(side.label);
+      const line = byKey.get(key);
+      if (!line) {
+        // Not on the shelf: counted as a racket nobody can cost.
+        const u = unmatched.get(key) ?? { label: side.label, usedSets: 0 };
+        u.usedSets += 1;
+        unmatched.set(key, u);
+        parts.push({ line: null, label: side.label, sets: 1, costCents: null });
+        continue;
       }
-      line.usedSets += 1;
-      if (Number.isFinite(strungMs)) strungMsByKey.set(key, [...(strungMsByKey.get(key) ?? []), strungMs]);
-      // Strung before the latest count (or with no date to tell): its set was
-      // already gone when the shelf was counted.
+      const points = pricePoints.get(key) ?? [];
+      const sets = side.side ? sideSets(points, day) : 1;
+      const perMetre = priceOn(points, day);
+      parts.push({ line: line.label, label: side.label, sets, costCents: perMetre === undefined ? null : Math.round(perMetre * line.setMetres * sets) });
+      line.usedSets += sets;
+      if (Number.isFinite(strungMs)) strungByKey.set(key, [...(strungByKey.get(key) ?? []), [strungMs, sets]]);
+      // Strung before the latest count (or with no date to tell): its string
+      // was already gone when the shelf was counted.
       const counted = countByKey.get(key);
       if (counted && !(strungMs > counted.atMs)) continue;
       const pool = poolsOf(key);
-      const colour = colourIdOf(j.stringColor, input.customColours);
-      if (colour && pool.colourMetres.has(colour)) pool.colourUsed.set(colour, (pool.colourUsed.get(colour) ?? 0) + 1);
-      else pool.mixedUsed += 1;
-    } else {
-      const u = unmatched.get(key) ?? { label: j.stringLabel.trim(), usedSets: 0 };
-      u.usedSets += 1;
-      unmatched.set(key, u);
+      if (side.colour && pool.colourMetres.has(side.colour)) pool.colourUsed.set(side.colour, (pool.colourUsed.get(side.colour) ?? 0) + sets);
+      else pool.mixedUsed += sets;
     }
+    if (j.id) jobParts[j.id] = parts;
   }
 
   // The window: the last RATE_WINDOW_WEEKS, or since the club first strung
@@ -447,7 +507,7 @@ export function summarizeStringStock(input: {
     const costPerSetCents = perMetre === undefined ? null : Math.round(perMetre * s);
     const setsPerWeek = windowStartMs === null || windowWeeks === null
       ? null
-      : (strungMsByKey.get(lineKey) ?? []).filter((t) => t >= windowStartMs && t <= (nowMs as number)).length / windowWeeks;
+      : (strungByKey.get(lineKey) ?? []).filter(([t]) => t >= windowStartMs && t <= (nowMs as number)).reduce((n, [, sets]) => n + sets, 0) / windowWeeks;
     const remainingSets = Math.floor(remainingMetres / s);
     const counted = countByKey.get(lineKey);
     const lastCount = counted ? { at: counted.at, sets: counted.sets, source: counted.source } : null;
@@ -459,7 +519,7 @@ export function summarizeStringStock(input: {
       remainingMetres,
       remainingSets,
       costPerSetCents,
-      usedCostCents: costPerSetCents === null ? null : line.usedSets * costPerSetCents,
+      usedCostCents: costPerSetCents === null ? null : Math.round(line.usedSets * costPerSetCents),
       byColour,
       mixedRemainingSets,
       // Whole sets: a few metres short is a reel's slack, not a missing reel.
@@ -481,7 +541,7 @@ export function summarizeStringStock(input: {
     }),
     { purchasedCostCents: 0, usedSets: 0, usedCostCents: 0, remainingValueCents: 0, overdrawnSets: 0 },
   );
-  return { lines, unmatched: [...unmatched.values()].sort((a, b) => b.usedSets - a.usedSets), totals, jobLines, jobCosts };
+  return { lines, unmatched: [...unmatched.values()].sort((a, b) => b.usedSets - a.usedSets), totals, jobParts };
 }
 
 export function numberAttr(item: CatalogItem | undefined, key: string): number | null {

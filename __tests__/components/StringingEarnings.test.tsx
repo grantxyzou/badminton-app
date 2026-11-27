@@ -99,6 +99,30 @@ describe('StringingEarningsPage', () => {
     expect(within(rows[0]).getByText('$63')).toBeTruthy(); // 3 jobs at $31 less $30 of string
     expect(within(rows[0]).getByText('simulated')).toBeTruthy();
   });
+
+  it('a hybrid shows as half a set on each of its two strings, each with half the price', () => {
+    const hybrid: EarningsData = {
+      ...data,
+      months: [month('2026-11', {
+        jobs: 1, workCents: 3000, collectedCents: 3000, stringCostCents: 850, sets: 1,
+        strings: [
+          { key: 's:BG80', jobs: 0.5, sets: 0.5, workCents: 1500, costCents: 500 },
+          { key: 's:BG65', jobs: 0.5, sets: 0.5, workCents: 1500, costCents: 350 },
+        ],
+      })],
+    };
+    wrap(<StringingEarningsPage data={hybrid} error={false} onRetry={() => {}} />);
+    const rows = screen.getAllByTestId('earn-string');
+    expect(rows.map((r) => within(r).getAllByText(/BG80|BG65/)[0].textContent)).toEqual(['BG65', 'BG80']);
+    expect(within(rows[0]).getByText('0.5 sets used')).toBeTruthy();
+    expect(within(rows[0]).getByText('$11.50')).toBeTruthy(); // $15 of the job less $3.50 of string
+    expect(within(rows[1]).getByText('$10')).toBeTruthy();
+    // The what-if still steps the JOB's price: $1 more on a $30 hybrid is 50c for this string.
+    fireEvent.click(within(rows[1]).getByRole('button', { expanded: false }));
+    fireEvent.click(within(rows[1]).getByRole('button', { name: 'One dollar more' }));
+    expect(within(rows[1]).getByText('$31')).toBeTruthy();
+    expect(within(rows[1]).getByText('$10.50')).toBeTruthy();
+  });
 });
 
 describe('nothing is zero in silence', () => {

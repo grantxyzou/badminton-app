@@ -5,7 +5,7 @@ import { ensureClubSettings } from './stringingShop';
 import { readOfferedStringsWithLinks, type OfferedStringsRead } from './stringingStrings';
 import {
   STOCK_JOB_SELECT, countedJob, labelKey, metresFor, numberAttr, readStringCatalog, readStringPurchases, readStringUses,
-  summarizeStringStock, withDeletedUses, type StringStockSummary,
+  summarizeStringStock, withDeletedUses, type StringStockSummary, type StringUse,
 } from './stringStock';
 import {
   MAX_COUNT_SETS, MAX_GRAMS, STRING_COUNT_KIND, isFullness, setsByEye, setsByWeight,
@@ -39,6 +39,8 @@ export interface LoadedStock {
   purchases: StringPurchase[];
   catalog: Map<string, CatalogItem>;
   jobs: StringingJob[];
+  /** The deleted jobs' rows: their sets are in `summary`; Earnings reads their money. */
+  uses: StringUse[];
   counts: StringCount[];
   summary: StringStockSummary;
 }
@@ -72,7 +74,7 @@ export async function loadStringStock(
     jobs: withDeletedUses(jobs.map(countedJob), uses), catalog, customColours: offered.customColours,
     counts, ...(opts.now ? { now: opts.now } : {}),
   });
-  return { offered, purchases, catalog, jobs, counts, summary };
+  return { offered, purchases, catalog, jobs, uses, counts, summary };
 }
 
 // ── Who may count ──────────────────────────────────────────────────────────

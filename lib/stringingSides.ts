@@ -30,14 +30,24 @@ const HYBRID = ' / ';
 /** " · " before a colour at the end of a bench-typed label. */
 const LABEL_COLOUR = ' · ';
 
-export function jobSides(
-  job: { stringLabel: string; stringColor?: string | null; tensionMains: number; tensionCrosses: number },
+/** One side's string and colour, without its tension. */
+export type SideString = Pick<JobSide, 'string' | 'colour'>;
+
+/**
+ * The strings on a job's two sides, read off its label and colour: the ONE
+ * reading of a hybrid, shared by the bench row (`jobSides`) and the stock
+ * count (`summarizeStringStock`), so the shelf takes string off the same two
+ * strings the stringer is shown. `hybrid` is a different string on each side.
+ */
+export function splitSides(
+  stringLabel: string,
+  stringColor: string | null | undefined,
   customs: readonly CustomColour[] = [],
-): JobSides {
+): { mains: SideString; crosses: SideString; hybrid: boolean } {
   // A job added on the bench has no colour field; its label may end in one
   // ("BG80 · white"). Read it only when it names a colour we know, and drop
   // it from the string's name so the pill does not say it twice.
-  let label = job.stringLabel.trim();
+  let label = stringLabel.trim();
   let labelColour: ReelColourId | null = null;
   const dot = label.lastIndexOf(LABEL_COLOUR);
   if (dot > 0) {
@@ -48,15 +58,27 @@ export function jobSides(
   const mainsString = at > 0 ? label.slice(0, at).trim() : label;
   const crossesString = at > 0 ? label.slice(at + HYBRID.length).trim() || mainsString : mainsString;
 
-  const id = colourIdOf(job.stringColor ?? null, customs) ?? labelColour;
+  const id = colourIdOf(stringColor ?? null, customs) ?? labelColour;
   const parts = id ? comboParts(id) : null;
   const mainsColour: ReelColourId | null = parts ? parts.mains : id;
   const crossesColour: ReelColourId | null = parts ? parts.crosses : id;
 
   return {
-    mains: { string: mainsString, colour: mainsColour, tension: job.tensionMains },
-    crosses: { string: crossesString, colour: crossesColour, tension: job.tensionCrosses },
+    mains: { string: mainsString, colour: mainsColour },
+    crosses: { string: crossesString, colour: crossesColour },
+    hybrid: mainsString.toLowerCase() !== crossesString.toLowerCase(),
+  };
+}
+
+export function jobSides(
+  job: { stringLabel: string; stringColor?: string | null; tensionMains: number; tensionCrosses: number },
+  customs: readonly CustomColour[] = [],
+): JobSides {
+  const { mains, crosses, hybrid } = splitSides(job.stringLabel, job.stringColor, customs);
+  return {
+    mains: { ...mains, tension: job.tensionMains },
+    crosses: { ...crosses, tension: job.tensionCrosses },
     customTension: !isConventionalPair(job.tensionMains, job.tensionCrosses),
-    customStrings: mainsString.toLowerCase() !== crossesString.toLowerCase(),
+    customStrings: hybrid,
   };
 }

@@ -31,12 +31,13 @@ import { ensureContainer, getContainer } from './cosmos';
 import { pkFieldOf, type ContainerName } from './containers';
 import { listMembershipsForMember, reassignOwnership, clearGroupPayTo, updateJoinRequests } from './groups';
 import { isFlagOn } from './flags';
-import { BPM_GROUP_ID } from './groupScope';
+import { BPM_GROUP_ID, groupScope } from './groupScope';
+import { leavesAUse, recordStringUse } from './stringStock';
 import { listIdentitiesForMember } from './authIdentity';
 import { revokeAppleIdentity } from './appleRevoke';
 import { accountOf } from './storeCredit';
 import { ANON_LEDGER_ID, isSentinelLedgerId } from './ledgerMirror';
-import type { LedgerEntry } from './types';
+import type { LedgerEntry, StringingJob } from './types';
 import { anonymizeFeedbackRows } from './feedback';
 import { ALIAS_KIND } from './aliases';
 import { invalidateLatestRatings } from './latestRatings';
@@ -324,6 +325,15 @@ export async function purgeMember(memberId: string, nameOrNames: string | PurgeN
       }
       for (const row of rows) {
         if (t.container === 'memberships' && heldBack.has(String(row.groupId))) continue;
+        // A restring leaves its row behind, as an admin's delete of the job
+        // does (`DELETE /api/stringing/jobs/[id]`): the set stays off the
+        // shelf and a PAID job's money stays in Earnings, where the ledger
+        // already keeps it under `~anon`. The row holds the string, the days
+        // and the price, and nothing about the person. Written BEFORE the job
+        // goes; a failed write leaves the job and reports the container.
+        if (t.container === 'stringingJobs' && leavesAUse(row as unknown as StringingJob)) {
+          await recordStringUse(groupScope(typeof row.groupId === 'string' ? row.groupId : BPM_GROUP_ID), row as unknown as StringingJob);
+        }
         await getContainer(t.container)
           .item(String(row.id), String(row[pkFieldOf(t.container)]))
           .delete();

@@ -4,7 +4,7 @@ import { rosterMembers } from './roster';
 import { USAGE_KINDS, ERROR_KINDS, TIMING_KINDS } from './events';
 import { computeClubMetrics, USAGE_RECORDED_FROM, SKILL_SINCE, type ClubMetrics, type MetricsPlayer, type MetricsSession } from './metricsMath';
 import { isUnclaimed } from './claimLinks';
-import { readStringShelfReport } from './stringStockReport';
+import { readStringReports } from './stringStockReport';
 
 /**
  * The ONE place club metrics are read (docs/plans/usage-metrics.md). The admin
@@ -212,9 +212,9 @@ export async function clubMetrics(groupId: string, sessionsShown: SessionsShown,
     .items.query<{ memberId?: unknown }>({ query: 'SELECT c.memberId FROM c' })
     .fetchAll();
 
-  // The string shelf (docs/plans/string-usage-rate.md): read beside the rest so
-  // the report carries it; null for a club that does not string.
-  const stringShelf = await readStringShelfReport(groupId, now);
+  // The string shelf and what the bench earned (docs/plans/string-usage-rate.md,
+  // stringing-earnings.md), read once; both null for a club that does not string.
+  const { stringShelf, stringEarnings } = await readStringReports(groupId, now);
 
   const metrics = computeClubMetrics({
     now,
@@ -294,5 +294,5 @@ export async function clubMetrics(groupId: string, sessionsShown: SessionsShown,
         : [],
     ),
   });
-  return { ...metrics, stringShelf };
+  return { ...metrics, stringShelf, stringEarnings };
 }
