@@ -17,6 +17,10 @@
  * board ASKS rather than guesses, unless the call said "service over" and the
  * board knows who was serving. "X all" never needs asking: the side that was
  * one behind won.
+ *
+ * THE START (2026-11-27): the board asks which side serves first, and then
+ * nothing scores until it hears "zero zero" / "love all" (`isStartCall`), so a
+ * neighbouring court's "one zero" cannot open our game.
  */
 
 import { CAP, scoreState, type Score, type Side } from './scoreRules';
@@ -238,6 +242,13 @@ export function matchCall(score: Score, server: Side | null, calls: readonly Par
   if (repeated) return { kind: 'same' };
   if (firstHeard) return { kind: 'ignored', heard: firstHeard };
   return { kind: 'none' };
+}
+
+/** "Zero zero" or "love all" in any reading: the call that starts a game. */
+export function isStartCall(calls: readonly ParsedCall[]): boolean {
+  return calls.some((call) =>
+    call.readings.some((r) => (r.kind === 'all' ? r.n === 0 : r.first === 0 && r.second === 0)),
+  );
 }
 
 /** The score as it was spoken: "11–7". */

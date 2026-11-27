@@ -10288,6 +10288,24 @@ html:root .courtside {
   grid-template-columns: 1fr 1fr auto;
   gap: var(--space-3);
 }
+.courtside-voice-serve {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+/* A level-score call either side could have won (Grant, 2026-11-27: "light up
+   the screen flashing ask which side"): the half facing the court and the two
+   +1 buttons flash until someone answers. The tint is the resting state and
+   the animation only takes it away and back, so under reduced motion the
+   board stays lit and still. */
+.courtside[data-ask='true'] .courtside-board,
+.courtside[data-ask='true'] .courtside-point {
+  background-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  animation: courtside-ask-flash 0.9s ease-in-out infinite;
+}
+@keyframes courtside-ask-flash {
+  50% { background-color: transparent; }
+}
 @media (prefers-reduced-motion: reduce) {
   .courtside,
   .courtside-point,

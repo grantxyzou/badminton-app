@@ -2127,6 +2127,13 @@
       },
       "close": "Close",
       "voice": {
+        "serveTitle": "Which side serves first?",
+        "serveSide": "{side} serves",
+        "serveHint": "Pick the serving side and the mic turns on. Then say “zero zero” to start the game.",
+        "sayStart": "Say “zero zero” to start the game.",
+        "started": "Game on · {side} serving",
+        "waitStart": "Heard “{words}”. Say “zero zero” to start.",
+        "askBoard": "Which side won?",
         "preview": "Preview",
         "listen": "Listen for the score",
         "tap": "Tap, then call the score",

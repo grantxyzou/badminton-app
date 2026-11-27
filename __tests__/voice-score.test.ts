@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { heardText, matchCall, parseCall } from '@/lib/voiceScore';
+import { heardText, isStartCall, matchCall, parseCall } from '@/lib/voiceScore';
 import type { Score, Side } from '@/lib/scoreRules';
 
 /** What the board does with one transcript at `score`, `server` serving. */
@@ -121,5 +121,17 @@ describe('matchCall: one rally on, and nothing else', () => {
 
   it('heardText shows the score as spoken', () => {
     expect(heardText([8, 10])).toBe('8–10');
+  });
+});
+
+describe('isStartCall: the call that opens a game', () => {
+  it.each(['zero zero', 'love all', '0-0', '00', 'ok, zero zero'])('%s starts', (text) => {
+    expect(isStartCall([parseCall(text)])).toBe(true);
+  });
+  it.each(['one zero', 'two all', 'ready', ''])('%s does not', (text) => {
+    expect(isStartCall([parseCall(text)])).toBe(false);
+  });
+  it('is found in any of the recogniser\'s guesses', () => {
+    expect(isStartCall([parseCall('hero hero'), parseCall('zero zero')])).toBe(true);
   });
 });
