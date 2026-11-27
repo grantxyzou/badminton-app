@@ -2115,6 +2115,13 @@
       },
       "close": "关闭",
       "voice": {
+        "serveTitle": "哪一方先发球？",
+        "serveSide": "{side}发球",
+        "serveHint": "选好发球方，麦克风就会打开。然后用英文说“zero zero”开始比赛。",
+        "sayStart": "用英文说“zero zero”开始比赛。",
+        "started": "比赛开始 · {side}发球",
+        "waitStart": "听到“{words}”。说“zero zero”开始。",
+        "askBoard": "哪一方赢了这一分？",
         "preview": "预览",
         "listen": "语音计分",
         "tap": "点一下，然后报比分",
