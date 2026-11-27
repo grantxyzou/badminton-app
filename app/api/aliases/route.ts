@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
-import { isAdminAuthed, isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
+import { isAdminAuthedWithMember, unauthorized } from '@/lib/auth';
 import { createAlias, readAlias, readAliases, removeAlias, updateAlias } from '@/lib/aliases';
 import { resolveActiveMemberId } from '@/lib/memberResolve';
 
@@ -11,9 +11,12 @@ export const dynamic = 'force-dynamic';
 // (security rule 10), and a CLUB's payment data: every read and write here is
 // scoped to the group, so one club's mappings never reach another's admin.
 // Where a row lives (a `kind: 'alias'` doc in `clubSettings`) is lib/aliases.ts.
+// The read re-reads the admin like the writes: it lists the name each member
+// banks under, and the cookie alone kept answering a demoted or removed admin
+// for its 30 days.
 
 export async function GET(req: NextRequest) {
-  if (!isAdminAuthed(req)) return unauthorized();
+  if (!(await isAdminAuthedWithMember(req)).authed) return unauthorized();
   try {
     return NextResponse.json(await readAliases(groupScope(resolveGroupId(req))));
   } catch (error) {

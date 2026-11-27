@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { resetMockStore, makeGetRequest, makeRequest, setupAdminPin, seedMember, memberCookieValue, seedTestAdminMember } from './helpers';
+import { resetMockStore, makeGetRequest, makeRequest, setupAdminPin, seedMember, seedAdminMember, memberCookieValue, seedTestAdminMember } from './helpers';
 
 /** A signed-in member's GET — club-data reads refuse an anonymous caller (401) first. */
 function memberGet(url: string) {
@@ -66,6 +66,7 @@ describe('read failures answer 503, not a lying 200', () => {
       };
     });
     const { GET } = await import('../app/api/sessions/route');
+    seedAdminMember(); // the admin is re-read before the list is
     const res = await GET(makeGetRequest('http://localhost/api/sessions', true));
     expect(res.status).toBe(503);
     expect(await res.json()).toEqual({ error: 'read_failed' });

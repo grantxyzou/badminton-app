@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { groupScope } from '@/lib/groupScope';
 import { resolveGroupId } from '@/lib/groupContext';
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit';
-import { nameOwnership } from '@/lib/auth';
+import { isAdminAuthedWithMember, nameOwnership } from '@/lib/auth';
 import { resolveIdentity } from '@/lib/playerIdentity';
 import { computeOwed } from '@/lib/owedBalance';
 import { stringingTotal } from '@/lib/stringingBilling';
@@ -20,7 +20,8 @@ export const dynamic = 'force-dynamic';
  * A player's own "what do I still owe" view, used by the Profile
  * outstanding-payments card and the Home balance card.
  *
- * OWNER-OR-ADMIN. This used to be public-by-name, justified in this comment as
+ * OWNER-OR-ADMIN, and the admin is re-read on every call (see the handler).
+ * This used to be public-by-name, justified in this comment as
  * "same posture as /api/stats/attendance" — but that posture was removed on
  * 2026-08-25 when attendance, insight and partners were all gated, so the
  * precedent it leaned on no longer exists. It is also the most sensitive of the
@@ -60,6 +61,15 @@ export async function GET(req: NextRequest) {
   // Auth before DB (rule 3).
   const ownership = await nameOwnership(req, name);
   if (!ownership.allowed) {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  }
+  // Someone asking about ANOTHER person got here on the admin cookie alone,
+  // and `nameOwnership` reads only its signature. This is what a named member
+  // owes (the same data F23 closed on `admin/owed-audit`), so that arm
+  // re-reads the admin: a demoted or removed one kept reading everybody's
+  // balance for the cookie's 30 days. A member asking about themselves never
+  // reaches this, so Home's own read costs nothing more.
+  if (ownership.selfMemberId === null && !(await isAdminAuthedWithMember(req)).authed) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
 

@@ -15,6 +15,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 - **At a tied score the board flashes "Which side won?"** When the score was level, "6-5" is the same call whichever side won, so the phone cannot know. The score half lights up orange on A's side and violet on B's, and the two +1 buttons with it, until you tap a side (`docs/plans/voice-score.md`).
 - **Each side has its own colour.** A side is orange and B side is violet, on its name, its +1 button and the buttons that answer for it.
 
+## A removed admin stops seeing the club's money at once (2026-11-26)
+
+- **Ten admin reads now re-check that you are still an admin on every load**: the ledger's list of entries, club expenses, the Metrics page (it shows what the string shelf cost), the e-transfer names, the shuttle purchases, the sessions list and recent sessions (court costs and who has paid), the recent court prices, a member's payment history, and what a named member owes.
+- Before, an admin who was demoted, removed, or signed out everywhere could keep opening these for up to 30 days, until their old sign-in ran out. Changing anything was already refused.
+- Nothing changes for a current admin, or for a member reading their own balance.
+
 ## Stringing earnings: past months stay put, and nothing is $0 in silence (2026-11-26)
 
 - **A racket's string is costed at the reel price on the day it was strung.** Before, every job used today's price, so logging a dearer reel changed After string cost for months that were already over.

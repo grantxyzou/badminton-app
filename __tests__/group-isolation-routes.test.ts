@@ -19,6 +19,7 @@ import { GET as sessionGet } from '@/app/api/session/route';
 import { GET as playersGet } from '@/app/api/players/route';
 import { GET as announcementsGet } from '@/app/api/announcements/route';
 import { GET as birdsGet, POST as birdsPost } from '@/app/api/birds/route';
+import { GET as locationsGet } from '@/app/api/sessions/locations/route';
 import { POINTER_ID, sessionIdFromDate } from '@/lib/cosmos';
 import { groupDocId } from '@/lib/groupScope';
 
@@ -166,7 +167,7 @@ describe('the same route, two clubs, two cookies', () => {
     expect(bText).not.toContain('Alpha shuttles');
   });
 
-  it('a WRITE re-reads standing in the claimed club; the read does not, by design', async () => {
+  it('a WRITE and a MONEY READ re-read standing in the claimed club; a plain read does not, by design', async () => {
     seedClub(A, 'Alpha');
     const forged = `admin_session=${adminCookieValue({ groupId: A })}`;
 
@@ -178,12 +179,20 @@ describe('the same route, two clubs, two cookies', () => {
     );
     expect(write.status).toBe(401);
 
-    // The READ-ONLY verb deliberately does NOT: `isAdminAuthed` is signature
-    // and expiry only, because the claim was role-checked when it was minted
-    // and a Cosmos round-trip on every hot read buys a check already made.
-    // Pinning it so the asymmetry is a decision on the record rather than an
-    // oversight someone "fixes" in either direction by accident.
-    const read = await birdsGet(req('http://x/api/birds', forged));
+    // So does a read that names money (`.claude/rules/security.md`, "Fresh
+    // admin check wherever a read names money, costs or another person's
+    // contact"). The shuttle list carries what the club paid for each
+    // purchase; until 2026-11-26 it was the read this test pinned as open.
+    const moneyRead = await birdsGet(req('http://x/api/birds', forged));
+    expect(moneyRead.status).toBe(401);
+
+    // A READ-ONLY verb with no money in it deliberately does NOT:
+    // `isAdminAuthed` is signature and expiry only, because the claim was
+    // role-checked when it was minted and a Cosmos round-trip on every hot
+    // read buys a check already made. Pinning it so the asymmetry is a
+    // decision on the record rather than an oversight someone "fixes" in
+    // either direction by accident. Recent venues and titles are that read.
+    const read = await locationsGet(req('http://x/api/sessions/locations', forged));
     expect(read.status).toBe(200);
   });
 

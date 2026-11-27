@@ -355,7 +355,10 @@ so it could not be revoked for one person.
 4. **Read-only** routes call the sync `isAdminAuthed(req)` — signature, audience
    and expiry only, no Cosmos round trip. **Mutating** routes must
    `await isAdminAuthedWithMember(req)`, which re-reads the Member so a
-   demotion or deactivation takes effect on the very next request.
+   demotion or deactivation takes effect on the very next request. **So must a
+   read that names money, costs or another person's contact**
+   (`.claude/rules/security.md`): the sync check keeps answering a demoted
+   admin for the cookie's 30 days.
 5. `DELETE /api/admin` clears the cookie (logout).
 
 The `typ: 'admin'` claim is load-bearing. The client chooses which cookie name
