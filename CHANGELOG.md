@@ -8,6 +8,13 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/). Tag conv
 
 ---
 
+## Keeping score by voice: who serves, then "zero zero" (2026-11-27)
+
+- **The scoreboard asks which side serves first** (Stats → Play → Keep score, in a browser with a microphone). Tapping the side turns the mic on, so there is no separate "Listen" tap, and the board shows who is serving from the first rally.
+- **Say "zero zero" to start the game.** Nothing is scored before that, so another court's call cannot open your game. After it, call the score after each rally as before.
+- **At a tied score the board flashes "Which side won?"** When the score was level, "6-5" is the same call whichever side won, so the phone cannot know. The score half lights up orange on A's side and violet on B's, and the two +1 buttons with it, until you tap a side (`docs/plans/voice-score.md`).
+- **Each side has its own colour.** A side is orange and B side is violet, on its name, its +1 button and the buttons that answer for it.
+
 ## Old code out: one racket engine, one way to say a reason (2026-11-25)
 
 Nothing here changes what you see. It removes four leftovers the "replace in place" rule named.
