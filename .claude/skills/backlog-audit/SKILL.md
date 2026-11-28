@@ -89,13 +89,43 @@ re-checks what it can and stays silent when nothing moved.
    the live version: check that its diff holds only your own edits (merge
    anything else in), then publish the same file again.
 
-5. **Notify only on change.** Send a `PushNotification` when the run found
+5. **Mirror the roadmap to Asana, when Asana is reachable.** The page stays
+   the source of truth; Asana is a copy for working from day to day. Look for
+   the claude.ai **Asana** connector's tools (`ToolSearch` for "asana").
+   None loaded, or every call refused: skip this step silently. That is
+   normal for a cloud run and is never worth a notification.
+   - **Find or create the project** named **BPM Roadmap** in the one
+     workspace. If none exists, create it with sections Milestones, Now,
+     Next, Later, Parked, and the project description "Mirror of
+     https://claude.ai/artifact/7oJobvyJSTew4jbuMCu415; the page is the
+     source of truth."
+   - **Match tasks by name** against `SECS` and `MILESTONES`. Never create a
+     second task with the same name. Each task gets its section, its `due`,
+     and notes holding the task's `note`, `dep`, its links, then one line
+     `Owner · Priority · Status · Effort · Milestone · Rank`. Set custom
+     fields of those names instead where the project has them. Assign
+     Owner = Grant tasks to the connector's signed-in user, leave Claude
+     tasks unassigned, and make the five milestone rows milestones where the
+     connector allows.
+   - **Done:** a task the page marks `done` is completed in Asana. A task
+     that left `SECS` is completed, never deleted. A task completed in Asana
+     but still open on the page is reported back, not reopened: the
+     person may have finished something the repo cannot see, so it goes in
+     the notification as "done in Asana, not in the repo: mark it on the
+     page?".
+   - **Status update:** when this run rewrote `STATUS`, post it as the
+     project's status update (green `on`, yellow `risk`, red `off`), titled
+     with its status and date. Otherwise post nothing.
+   - Write only to the BPM Roadmap project. If a write fails, keep going and
+     put one line about it in the run's summary; never retry in a loop.
+
+6. **Notify only on change.** Send a `PushNotification` when the run found
    an item or roadmap task newly done, an item whose facts changed, a
    milestone or the goal changing status, a plan review newly overdue, a
    flag past its date, a red CI on an open PR, or a new open PR or issue.
    Lead with the one thing to act on. If nothing moved, send nothing.
 
-6. **New items.** Anything new found in a plan, an issue or a PR goes INTO
+7. **New items.** Anything new found in a plan, an issue or a PR goes INTO
    the page's item array (same shape) and into its umbrella issue
    (#518–#537), never only into a doc.
 
@@ -106,5 +136,7 @@ re-checks what it can and stays silent when nothing moved.
 - Don't mark an item done because its date passed. Done means the work is in
   the tree, the issue is closed, or the flag is gone.
 - Don't overwrite an owner mark. A `marks` doc wins over the audit.
+- Don't let Asana decide anything on the page: it mirrors the page, and
+  the page changes only on evidence from the code, GitHub, a plan or a mark.
 - Don't run `npm test` as the check for a code claim; grep is enough and the
   cloud clone usually has no `node_modules`.
